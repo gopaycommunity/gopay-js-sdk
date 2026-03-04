@@ -23,25 +23,25 @@ import { PaymentsModule } from './modules/payments/payments.module.js';
  * ```
  */
 export class GoPaySDK {
-  /** Authentication — obtain and refresh access tokens */
-  readonly auth: AuthModule;
+    /** Authentication — obtain and refresh access tokens */
+    readonly auth: AuthModule;
 
-  /** Payments — create and charge payment sessions */
-  readonly payments: PaymentsModule;
+    /** Payments — create and charge payment sessions */
+    readonly payments: PaymentsModule;
 
-  /** Cards — tokenize encrypted card data */
-  readonly cards: CardsModule;
+    /** Cards — tokenize encrypted card data */
+    readonly cards: CardsModule;
 
-  /** Encryption — fetch the public key for JWE card encryption */
-  readonly encryption: EncryptionModule;
+    /** Encryption — fetch the public key for JWE card encryption */
+    readonly encryption: EncryptionModule;
 
-  private readonly httpClient: HttpClient;
+    private readonly httpClient: HttpClient;
 
-  constructor(config: GoPayConfig = {}) {
-    this.httpClient = new HttpClient(config);
-    this.auth = new AuthModule(this.httpClient);
-    this.payments = new PaymentsModule(this.httpClient);
-    this.cards = new CardsModule(this.httpClient);
-    this.encryption = new EncryptionModule(this.httpClient);
-  }
+    constructor(config: GoPayConfig = {}) {
+        this.httpClient = new HttpClient(config);
+        this.auth = new AuthModule(this.httpClient);
+        this.payments = new PaymentsModule(this.httpClient);
+        this.cards = new CardsModule(this.httpClient);
+        this.encryption = new EncryptionModule(this.httpClient);
+    }
 }

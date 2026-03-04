@@ -2,8 +2,17 @@
   "name": "gopay-js-sdk",
   "version": "0.0.0",
   "description": "GoPay JavaScript SDK for browser and Node.js",
-  "keywords": ["gopay", "payment", "sdk", "javascript", "typescript"],
+  "keywords": [
+    "gopay",
+    "payment",
+    "sdk",
+    "javascript",
+    "typescript"
+  ],
   "license": "MIT",
+  "engines": {
+    "node": ">=20.12.0"
+  },
   "packageManager": "yarn@4.7.0",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -16,19 +25,25 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "codegen": "openapi-typescript ../Payments.yaml -o src/types/generated.ts"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
-    "semantic-release": "^24.0.0",
-    "tsup": "^8.0.0",
-    "typescript": "^5.4.0",
-    "vitest": "^2.0.0"
+    "@types/node": "^24.11.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "openapi-typescript": "^7.13.0",
+    "semantic-release": "^25.0.3",
+    "tsup": "^8.5.1",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.18"
   }
 }

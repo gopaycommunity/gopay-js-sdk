@@ -29,13 +29,16 @@
     #status { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
     code { font-family: 'SFMono-Regular', Menlo, monospace; font-size: 0.85rem; background: #eee; padding: 1px 5px; border-radius: 3px; }
     p.note { font-size: 0.8rem; color: #666; margin-top: 0.5rem; }
+    .fields { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .fields label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: #555; flex: 1; min-width: 180px; }
+    .fields input { padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; font-family: inherit; }
   </style>
 </head>
 <body>
 
 <header>
   <h1>GoPay JS SDK — Developer Example</h1>
-  <p>Demonstrates the SDK API shape. All methods currently throw <em>Not implemented</em> — this is expected.</p>
+  <p>Demonstrates the SDK API shape. Most methods currently throw <em>Not implemented</em> — this is expected.</p>
 </header>
 
 <main>
@@ -56,6 +59,11 @@
   <section>
     <h2>auth.authenticate()</h2>
     <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /oauth2/token — obtain an access token using client credentials.</p>
+    <div class="fields">
+      <label>Client ID<input id="auth-client-id" type="text" placeholder="your-client-id" /></label>
+      <label>Client Secret<input id="auth-client-secret" type="password" placeholder="your-client-secret" /></label>
+      <label>Scope<input id="auth-scope" type="text" value="payment:create" /></label>
+    </div>
     <button onclick="runAuthenticate()">Run</button>
     <pre id="auth-output">—</pre>
   </section>
@@ -168,7 +176,18 @@
       const result = await fn();
       pre.textContent = JSON.stringify(result, null, 2);
     } catch (err) {
-      pre.textContent = `[${err.constructor.name}] ${err.message}`;
+      let name, message;
+      if (err instanceof Error) {
+        name = err.constructor.name;
+        message = err.message;
+      } else if (err === null || err === undefined) {
+        name = typeof err;
+        message = String(err);
+      } else {
+        name = typeof err;
+        try { message = JSON.stringify(err); } catch { message = String(err); }
+      }
+      pre.textContent = `[${name}] ${message}`;
     }
   }
 
@@ -176,8 +195,12 @@
   // Demo calls
   // -----------------------------------------------------------------------
   function runAuthenticate() {
+    const client_id     = document.getElementById('auth-client-id').value.trim();
+    const client_secret = document.getElementById('auth-client-secret').value.trim();
+    const scope         = document.getElementById('auth-scope').value.trim() || 'payment:create';
+
     run('auth-output', () =>
-      sdk.auth.authenticate({ grant_type: 'client_credentials', scope: 'payment:create' })
+      sdk.auth.authenticate({ grant_type: 'client_credentials', client_id, client_secret, scope })
     );
   }
 

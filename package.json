@@ -2,28 +2,36 @@
   "name": "gp-gw-js-sdk-root",
   "private": true,
   "packageManager": "yarn@4.7.0",
-  "workspaces": ["sdk"],
+  "workspaces": [
+    "sdk"
+  ],
   "scripts": {
     "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
+    "ci": "yarn biome ci . && yarn workspace gopay-js-sdk run typecheck",
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
+    "@biomejs/biome": "^2.4.5",
     "@commitlint/cli": "^20.4.3",
     "@commitlint/config-conventional": "^20.4.3",
     "husky": "^9.1.7"
   },
   "commitlint": {
-    "extends": ["@commitlint/config-conventional"],
+    "extends": [
+      "@commitlint/config-conventional"
+    ],
     "parserPreset": {
       "parserOpts": {
-        "issuePrefixes": ["GPOMA-"]
+        "issuePrefixes": [
+          "GPOMA-"
+        ]
       }
     },
     "rules": {
-      "references-empty": [2, "never"]
+      "references-empty": [
+        2,
+        "never"
+      ]
     }
   }
 }

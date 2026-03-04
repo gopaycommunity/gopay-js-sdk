@@ -40,6 +40,16 @@ Thumbs.db
 *.exe
 *.war
 
+# Yarn internal state (environment-specific, must not be committed)
+.yarn/install-state.gz
+
+# Local environment files (never commit secrets)
+.env.e2e
+
+# Test coverage reports
+coverage/
+test-results/
+
 # Large media files
 *.mp4
 *.tiff

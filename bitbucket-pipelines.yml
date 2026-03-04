@@ -1,67 +1,65 @@
-image: node:22
+image: node:24
 
 definitions:
-  # ------------------------------------------------------------------
-  # Reusable caches
-  # ------------------------------------------------------------------
   caches:
     yarn-global: ~/.yarn
     yarn-cache: .yarn/cache
 
-  # ------------------------------------------------------------------
-  # Reusable step definitions
-  # ------------------------------------------------------------------
+  services:
+    docker2x:
+      type: docker
+      memory: 4096
+
   steps:
-    # --- install (root workspace, installs sdk/ via workspaces) ------
-    - step: &install
-        name: Install dependencies
+    - step: &code-quality
+        name: Code Quality Checks
         caches:
           - yarn-global
           - yarn-cache
         script:
           - corepack enable
           - yarn install --immutable
-        artifacts:
-          - node_modules/**
-          - sdk/node_modules/**
-
-    # --- lint (Biome at root) + security audit -----------------------
-    - step: &lint-and-audit
-        name: Lint & audit
-        caches:
-          - yarn-global
-          - yarn-cache
-        script:
-          - corepack enable
-          - yarn install --immutable
-          # Biome: lint + format check (fails if any issues)
-          - yarn biome ci .
-          # Security audit for the SDK package
-          - cd sdk && yarn npm audit --all --recursive
-
-    # --- type-check --------------------------------------------------
-    - step: &typecheck
-        name: Type check
-        caches:
-          - yarn-global
-          - yarn-cache
-        script:
-          - corepack enable
-          - yarn install --immutable
+          - yarn ci
+          - yarn npm audit --recursive --environment production
           - cd sdk && yarn typecheck
 
-    # --- unit tests --------------------------------------------------
+
+    # --- unit + e2e tests + coverage ---------------------------------
+    # E2E requires repository variables (mark as Secured in Bitbucket settings):
+    #   GP_GW_JS_SDK_BASE_URL, GP_GW_JS_SDK_CLIENT_ID, GP_GW_JS_SDK_CLIENT_SECRET
     - step: &test
-        name: Unit tests
+        name: Tests & coverage
         caches:
           - yarn-global
           - yarn-cache
         script:
           - corepack enable
           - yarn install --immutable
-          - cd sdk && yarn test
+          - yarn workspace gopay-js-sdk run test
+        artifacts:
+          - sdk/coverage/**
+          - sdk/test-results/**
 
-    # --- semantic-release dry-run (PR preview) -----------------------
+    - step: &sonar
+        name: Analyze on SonarCloud
+        size: 2x
+        services:
+            - docker2x
+        clone:
+          depth: full
+        script:
+          - pipe: sonarsource/sonarcloud-scan:4.1.0
+            variables:
+              SONAR_SCANNER_OPTS: -Xmx2560m
+              EXTRA_ARGS: -Dsonar.projectKey=gp-gopay_gp-gw-js-sdk
+                -Dsonar.organization=gp-gopay
+                -Dsonar.sources=sdk/src
+                -Dsonar.tests=sdk/tests
+                -Dsonar.inclusions=sdk/src/**/*.ts
+                -Dsonar.exclusions=**/*.spec.ts,**/*.test.ts
+                -Dsonar.javascript.lcov.reportPaths=sdk/coverage/lcov.info
+          - pipe: sonarsource/sonarcloud-quality-gate:0.2.0
+
     - step: &release-preview
         name: Release preview (dry-run)
         caches:
@@ -70,9 +68,8 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          - cd sdk && yarn dlx semantic-release --dry-run --no-ci
+          - yarn dlx semantic-release --dry-run --no-ci
 
-    # --- build SDK ---------------------------------------------------
     - step: &build
         name: Build SDK
         caches:
@@ -81,11 +78,10 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          - cd sdk && yarn build
+          - yarn workspace gopay-js-sdk run build
         artifacts:
           - sdk/dist/**
 
-    # --- release (publish npm + CDN upload) --------------------------
     - step: &release
         name: Release
         deployment: production
@@ -95,31 +91,25 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          - cd sdk && yarn build
+          - yarn workspace gopay-js-sdk run build
           # semantic-release: bumps version, tags commit, publishes npm, uploads CDN
           # Required secrets: NPM_TOKEN, BB_TOKEN (Bitbucket access token)
-          - cd sdk && yarn dlx semantic-release
+          - yarn dlx semantic-release
 
-# ------------------------------------------------------------------
-# Pipeline definitions
-# ------------------------------------------------------------------
 pipelines:
-
-  # Pull-requests: lint + audit + typecheck + test + dry-run preview
-  pull-requests:
-    '**':
-      - parallel:
-          - step: *lint-and-audit
-          - step: *typecheck
-          - step: *test
-      - step: *release-preview
-
-  # Master merge: full release pipeline
   branches:
     master:
       - parallel:
-          - step: *lint-and-audit
-          - step: *typecheck
-          - step: *test
-      - step: *build
+        - step: *test
+        - step: *build
+      - step: *sonar
       - step: *release
+  pull-requests:
+    '**':
+      - parallel:
+          - step: *code-quality
+          - step: *test
+          - step: *release-preview
+          - step: *build
+      - step: *sonar
+      
