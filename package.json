@@ -6,9 +6,24 @@
   "scripts": {
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0"
+    "@biomejs/biome": "^1.9.0",
+    "@commitlint/cli": "^20.4.3",
+    "@commitlint/config-conventional": "^20.4.3",
+    "husky": "^9.1.7"
+  },
+  "commitlint": {
+    "extends": ["@commitlint/config-conventional"],
+    "parserPreset": {
+      "parserOpts": {
+        "issuePrefixes": ["GPOMA-"]
+      }
+    },
+    "rules": {
+      "references-empty": [2, "never"]
+    }
   }
 }
