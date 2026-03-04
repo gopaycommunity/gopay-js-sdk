@@ -1,0 +1,14 @@
+{
+  "name": "gp-gw-js-sdk-root",
+  "private": true,
+  "packageManager": "yarn@4.7.0",
+  "workspaces": ["sdk"],
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0"
+  }
+}

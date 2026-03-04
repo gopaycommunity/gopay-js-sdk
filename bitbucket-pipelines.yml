@@ -1,0 +1,125 @@
+image: node:22
+
+definitions:
+  # ------------------------------------------------------------------
+  # Reusable caches
+  # ------------------------------------------------------------------
+  caches:
+    yarn-global: ~/.yarn
+    yarn-cache: .yarn/cache
+
+  # ------------------------------------------------------------------
+  # Reusable step definitions
+  # ------------------------------------------------------------------
+  steps:
+    # --- install (root workspace, installs sdk/ via workspaces) ------
+    - step: &install
+        name: Install dependencies
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          - corepack enable
+          - yarn install --immutable
+        artifacts:
+          - node_modules/**
+          - sdk/node_modules/**
+
+    # --- lint (Biome at root) + security audit -----------------------
+    - step: &lint-and-audit
+        name: Lint & audit
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          - corepack enable
+          - yarn install --immutable
+          # Biome: lint + format check (fails if any issues)
+          - yarn biome ci .
+          # Security audit for the SDK package
+          - cd sdk && yarn npm audit --all --recursive
+
+    # --- type-check --------------------------------------------------
+    - step: &typecheck
+        name: Type check
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          - corepack enable
+          - yarn install --immutable
+          - cd sdk && yarn typecheck
+
+    # --- unit tests --------------------------------------------------
+    - step: &test
+        name: Unit tests
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          - corepack enable
+          - yarn install --immutable
+          - cd sdk && yarn test
+
+    # --- semantic-release dry-run (PR preview) -----------------------
+    - step: &release-preview
+        name: Release preview (dry-run)
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          - corepack enable
+          - yarn install --immutable
+          - cd sdk && yarn dlx semantic-release --dry-run --no-ci
+
+    # --- build SDK ---------------------------------------------------
+    - step: &build
+        name: Build SDK
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          - corepack enable
+          - yarn install --immutable
+          - cd sdk && yarn build
+        artifacts:
+          - sdk/dist/**
+
+    # --- release (publish npm + CDN upload) --------------------------
+    - step: &release
+        name: Release
+        deployment: production
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          - corepack enable
+          - yarn install --immutable
+          - cd sdk && yarn build
+          # semantic-release: bumps version, tags commit, publishes npm, uploads CDN
+          # Required secrets: NPM_TOKEN, BB_TOKEN (Bitbucket access token)
+          - cd sdk && yarn dlx semantic-release
+
+# ------------------------------------------------------------------
+# Pipeline definitions
+# ------------------------------------------------------------------
+pipelines:
+
+  # Pull-requests: lint + audit + typecheck + test + dry-run preview
+  pull-requests:
+    '**':
+      - parallel:
+          - step: *lint-and-audit
+          - step: *typecheck
+          - step: *test
+      - step: *release-preview
+
+  # Master merge: full release pipeline
+  branches:
+    master:
+      - parallel:
+          - step: *lint-and-audit
+          - step: *typecheck
+          - step: *test
+      - step: *build
+      - step: *release
