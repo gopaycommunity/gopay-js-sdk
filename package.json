@@ -9,7 +9,8 @@
     "lint": "biome check .",
     "ci": "yarn biome ci . && yarn workspace gopay-js-sdk run typecheck",
     "prepare": "husky",
-    "test:browser": "yarn workspace gopay-js-sdk run build && playwright test"
+    "test:browser": "yarn workspace gopay-js-sdk run build && playwright test",
+    "example": "yarn workspace gopay-js-sdk run build && node example/serve.js"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",

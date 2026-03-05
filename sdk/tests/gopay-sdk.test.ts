@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpClient } from '../src/http/client.js';
 import { GoPaySDK } from '../src/index.js';
+import type { components } from '../src/types/generated.js';
+
+type TokenPair =
+    components['responses']['Token-Pair-Response']['content']['application/json'];
 
 // Expose protected buildUrl for testing
 class TestHttpClient extends HttpClient {
@@ -84,7 +88,7 @@ describe('GoPaySDK', () => {
             scope: 'payment:create',
             expires_in: 3600,
             refresh_expires_in: 86400,
-        };
+        } satisfies TokenPair;
 
         beforeEach(() => {
             vi.stubGlobal(

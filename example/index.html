@@ -49,9 +49,11 @@
     <div id="status"><span class="badge" id="sdk-badge">checking…</span></div>
     <pre id="sdk-info">Loading…</pre>
     <p class="note">
-      This page loads the IIFE bundle from <code>../sdk/dist/gopay-sdk.min.js</code>.
-      Run <code>cd sdk &amp;&amp; yarn build</code> first, then open this file in a browser.
-      In production, replace the script src with <code>https://gopaycdn.com/js-sdk/gopay-sdk.min.js</code>.
+      Run <code>yarn example</code> from the repo root — it builds the SDK and starts
+      the dev server automatically. Credentials and base URL are read from
+      <code>sdk/.env.e2e</code> (falls back to <code>process.env</code> in CI).
+      Opening via <code>file://</code> still works but env values won't be injected.
+      In production use <code>https://gopaycdn.com/js-sdk/gopay-sdk.min.js</code>.
     </p>
   </section>
 
@@ -140,21 +142,30 @@
 
   let sdk;
 
+  // Pre-populate auth fields from injected env (serve.js) — fall back to empty
+  const _env = window.__ENV__ || {};
+  if (_env.clientId)     document.getElementById('auth-client-id').value     = _env.clientId;
+  if (_env.clientSecret) document.getElementById('auth-client-secret').value = _env.clientSecret;
+
   if (typeof GoPaySDK === 'undefined' || typeof GoPaySDK.GoPaySDK === 'undefined') {
     badge.textContent = 'NOT LOADED';
     badge.className = 'badge err';
     sdkInfo.textContent =
       'GoPaySDK not found on window.\n\n' +
       'Build the SDK first:\n  cd sdk && yarn build\n\n' +
-      'Then open this page in a browser (file:// or a local server).';
+      'Then serve via:  node example/serve.js\n' +
+      '  (or open this file directly, but env values will not be injected)';
   } else {
-    sdk = new GoPaySDK.GoPaySDK({ environment: 'sandbox' });
+    const sdkConfig = _env.baseUrl
+      ? { baseUrl: _env.baseUrl }
+      : { environment: 'sandbox' };
+    sdk = new GoPaySDK.GoPaySDK(sdkConfig);
     badge.textContent = 'LOADED';
     badge.className = 'badge ok';
     sdkInfo.textContent = JSON.stringify(
       {
         class: sdk.constructor.name,
-        environment: sdk.httpClient?.baseUrl ?? '(internal — sandbox)',
+        baseUrl: _env.baseUrl ?? '(sandbox default)',
         modules: ['auth', 'payments', 'cards', 'encryption'].map(m => ({
           name: m,
           methods: Object.getOwnPropertyNames(Object.getPrototypeOf(sdk[m]))

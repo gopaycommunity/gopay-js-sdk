@@ -11,7 +11,7 @@ export default defineConfig({
         baseURL: 'http://localhost:3000',
     },
     webServer: {
-        command: 'serve . -l 3000',
+        command: 'node example/serve.js',
         url: 'http://localhost:3000',
         reuseExistingServer: !process.env.CI,
         timeout: 30_000,
