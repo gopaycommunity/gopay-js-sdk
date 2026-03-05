@@ -27,7 +27,7 @@ definitions:
     # --- unit + e2e tests + coverage ---------------------------------
     # E2E requires repository variables (mark as Secured in Bitbucket settings):
     #   GP_GW_JS_SDK_BASE_URL, GP_GW_JS_SDK_CLIENT_ID, GP_GW_JS_SDK_CLIENT_SECRET
-    - step: &test
+    - step: &test-vitest
         name: Tests & coverage
         caches:
           - yarn-global
@@ -81,6 +81,19 @@ definitions:
           - yarn workspace gopay-js-sdk run build
         artifacts:
           - sdk/dist/**
+ 
+    - step: &test-playwright
+        name: Browser smoke test (IIFE)
+        image: mcr.microsoft.com/playwright:v1.58.2-noble
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          - corepack enable
+          - yarn install --immutable
+          - yarn test:browser
+        artifacts:
+          - playwright-report/**
 
     - step: &release
         name: Release
@@ -100,16 +113,19 @@ pipelines:
   branches:
     master:
       - parallel:
-        - step: *test
+        - step: *test-vitest
         - step: *build
-      - step: *sonar
+        - step: *test-playwright
+      - parallel:
+        - step: *sonar
       - step: *release
   pull-requests:
     '**':
       - parallel:
           - step: *code-quality
-          - step: *test
+          - step: *test-vitest
           - step: *release-preview
-          - step: *build
-      - step: *sonar
+          - step: *test-playwright
+      - parallel:
+          - step: *sonar
       

@@ -49,6 +49,7 @@ Thumbs.db
 # Test coverage reports
 coverage/
 test-results/
+playwright-report/
 
 # Large media files
 *.mp4
