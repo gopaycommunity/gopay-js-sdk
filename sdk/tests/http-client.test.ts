@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpClient } from '../src/http/client.js';
+import type { TokenStore } from '../src/http/token-store.js';
+
+const tokenStore = (client: HttpClient) =>
+    (client as unknown as { tokenStore: TokenStore }).tokenStore;
 
 // Must return a real Response so ky accepts it as an afterResponse hook replacement
 const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
@@ -44,7 +48,7 @@ describe('HttpClient', () => {
     describe('get()', () => {
         it('sends GET to correct URL', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
             await client.get('/data');
             const [req] = fetchMock.mock.calls[0] as [Request];
             expect(req.method).toBe('GET');
@@ -53,7 +57,7 @@ describe('HttpClient', () => {
 
         it('injects Bearer header when token is stored', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
             await client.get('/data');
             const [req] = fetchMock.mock.calls[0] as [Request];
             expect(req.headers.get('Authorization')).toBe('Bearer at-abc');
@@ -68,7 +72,7 @@ describe('HttpClient', () => {
 
         it('uses accessToken option over stored token', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
             await client.get('/data', { accessToken: 'override-token' });
             const [req] = fetchMock.mock.calls[0] as [Request];
             expect(req.headers.get('Authorization')).toBe(
@@ -78,7 +82,7 @@ describe('HttpClient', () => {
 
         it('merges extra headers from options', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
             await client.get('/data', { headers: { 'X-Custom': 'value' } });
             const [req] = fetchMock.mock.calls[0] as [Request];
             expect(req.headers.get('X-Custom')).toBe('value');
@@ -98,7 +102,7 @@ describe('HttpClient', () => {
             });
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
             await client.post('/items', { name: 'foo' });
 
             const [req] = fetchMock.mock.calls[0] as [Request];
@@ -109,7 +113,7 @@ describe('HttpClient', () => {
 
         it('injects Bearer header when token is stored', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
             await client.post('/items', {});
             const [req] = fetchMock.mock.calls[0] as [Request];
             expect(req.headers.get('Authorization')).toBe('Bearer at-abc');
@@ -152,7 +156,7 @@ describe('HttpClient', () => {
             });
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
             await client.postForm('/oauth2/token', {
                 grant_type: 'client_credentials',
             });
@@ -213,7 +217,7 @@ describe('HttpClient', () => {
             fetchMock.mockResolvedValue(makeResponse({ data: 1 }, 200));
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
             const result = await client.get<{ data: number }>('/resource');
             expect(result).toEqual({ data: 1 });
         });
@@ -239,11 +243,11 @@ describe('HttpClient', () => {
             fetchMock.mockResolvedValue(makeResponse({}, 401, 'Unauthorized'));
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set({ ...storedTokens, refresh_token: '' });
+            tokenStore(client).set({ ...storedTokens, refresh_token: '' });
             await expect(client.get('/resource')).rejects.toThrow(
                 'Session expired and no refresh token available',
             );
-            expect(client.tokenStore.hasAccessToken()).toBe(false);
+            expect(tokenStore(client).hasAccessToken()).toBe(false);
         });
 
         it('throws when 401 received and refresh call fails', async () => {
@@ -260,12 +264,12 @@ describe('HttpClient', () => {
             });
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
 
             await expect(client.get('/resource')).rejects.toThrow(
                 'Token refresh failed',
             );
-            expect(client.tokenStore.hasAccessToken()).toBe(false);
+            expect(tokenStore(client).hasAccessToken()).toBe(false);
         });
 
         it('retries with fresh token after successful refresh', async () => {
@@ -286,11 +290,11 @@ describe('HttpClient', () => {
             });
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
 
             const result = await client.get<{ result: string }>('/resource');
             expect(result).toEqual({ result: 'ok' });
-            expect(client.tokenStore.get()?.access_token).toBe('at-new');
+            expect(tokenStore(client).get()?.access_token).toBe('at-new');
             expect(fetchMock).toHaveBeenCalledTimes(3);
 
             // retry request should carry the new token
@@ -313,12 +317,12 @@ describe('HttpClient', () => {
             });
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
 
             await expect(client.get('/resource')).rejects.toThrow(
                 'Request unauthorized after token refresh. Check OAuth2 scopes.',
             );
-            expect(client.tokenStore.hasAccessToken()).toBe(false);
+            expect(tokenStore(client).hasAccessToken()).toBe(false);
         });
     });
 
@@ -349,7 +353,7 @@ describe('HttpClient', () => {
             });
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens); // issued_at = 0 (fake time)
+            tokenStore(client).set(storedTokens); // issued_at = 0 (fake time)
             vi.advanceTimersByTime(871_000); // 29s left — within 30s buffer
 
             const result = await client.get<{ result: string }>('/resource');
@@ -358,12 +362,12 @@ describe('HttpClient', () => {
             expect(fetchMock).toHaveBeenCalledTimes(2);
             const refreshReq = fetchMock.mock.calls[0][0] as Request;
             expect(refreshReq.url).toContain('/oauth2/token');
-            expect(client.tokenStore.get()?.access_token).toBe('at-new');
+            expect(tokenStore(client).get()?.access_token).toBe('at-new');
         });
 
         it('does not refresh proactively when token has plenty of time', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
             vi.advanceTimersByTime(1_000); // 1s elapsed — well within expiry
 
             await client.get('/resource');
@@ -385,7 +389,7 @@ describe('HttpClient', () => {
             });
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
+            tokenStore(client).set(storedTokens);
             vi.advanceTimersByTime(871_000);
 
             const [r1, r2] = await Promise.all([
@@ -396,12 +400,12 @@ describe('HttpClient', () => {
             expect(r1).toEqual({ result: 'ok' });
             expect(r2).toEqual({ result: 'ok' });
             expect(refreshCallCount).toBe(1);
-            expect(client.tokenStore.get()?.access_token).toBe('at-new');
+            expect(tokenStore(client).get()?.access_token).toBe('at-new');
         });
 
         it('throws and clears store when proactive refresh has no refresh token', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set({
+            tokenStore(client).set({
                 ...storedTokens,
                 refresh_token: '',
             });
@@ -410,7 +414,7 @@ describe('HttpClient', () => {
             await expect(client.get('/resource')).rejects.toThrow(
                 'Session expired and no refresh token available',
             );
-            expect(client.tokenStore.hasAccessToken()).toBe(false);
+            expect(tokenStore(client).hasAccessToken()).toBe(false);
         });
     });
 });

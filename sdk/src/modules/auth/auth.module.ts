@@ -9,6 +9,15 @@ export class AuthModule {
     constructor(private readonly client: HttpClient) {}
 
     /**
+     * Initialise the SDK with a refresh token obtained server-side.
+     * The SDK will exchange it for an access token on the first API call.
+     * Use this in browser environments where client credentials must not be exposed.
+     */
+    setRefreshToken(refreshToken: string): void {
+        this.client.setRefreshToken(refreshToken);
+    }
+
+    /**
      * Obtain an access/refresh token pair.
      *
      * Grant types:
@@ -48,7 +57,7 @@ export class AuthModule {
                 '[GoPaySDK] Invalid token response: missing required fields.',
             );
         }
-        this.client.tokenStore.set({
+        this.client.setToken({
             access_token: tokenPair.access_token,
             refresh_token: tokenPair.refresh_token,
             expires_in: tokenPair.expires_in,

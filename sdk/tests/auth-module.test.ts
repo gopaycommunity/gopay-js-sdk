@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpClient } from '../src/http/client.js';
+import type { TokenStore } from '../src/http/token-store.js';
 import { AuthModule } from '../src/modules/auth/auth.module.js';
+
+const tokenStore = (client: HttpClient) =>
+    (client as unknown as { tokenStore: TokenStore }).tokenStore;
 
 const validTokenPair = {
     token_type: 'bearer' as const,
@@ -46,7 +50,7 @@ describe('AuthModule', () => {
             scope: 'payment:create',
         });
 
-        const stored = client.tokenStore.get();
+        const stored = tokenStore(client).get();
         expect(stored?.access_token).toBe('at-abc');
         expect(stored?.refresh_token).toBe('rt-xyz');
         expect(stored?.expires_in).toBe(900);
@@ -159,6 +163,35 @@ describe('AuthModule', () => {
         ).rejects.toThrow('Invalid token response: missing required fields.');
     });
 
+    // -------------------------------------------------------------------------
+    // setRefreshToken() — browser client flow
+    // -------------------------------------------------------------------------
+
+    it('setRefreshToken() stores the token and triggers exchange on first API call', async () => {
+        auth.setRefreshToken('rt-from-server');
+
+        expect(tokenStore(client).hasPendingRefreshToken()).toBe(true);
+        expect(tokenStore(client).hasAccessToken()).toBe(false);
+
+        // Simulate what the http client does: exchange pending refresh token
+        let capturedBodyText = '';
+        fetchMock.mockImplementation(async (req: Request) => {
+            capturedBodyText = await req.text();
+            return makeResponse(validTokenPair);
+        });
+
+        await auth.authenticate({
+            grant_type: 'refresh_token',
+            refresh_token: 'rt-from-server',
+        });
+
+        const params = new URLSearchParams(capturedBodyText);
+        expect(params.get('grant_type')).toBe('refresh_token');
+        expect(params.get('refresh_token')).toBe('rt-from-server');
+        expect(tokenStore(client).hasAccessToken()).toBe(true);
+        expect(tokenStore(client).hasPendingRefreshToken()).toBe(false);
+    });
+
     it('does not populate token store when token response is invalid', async () => {
         fetchMock.mockImplementation(async (req: Request) => {
             await req.text();
@@ -174,6 +207,6 @@ describe('AuthModule', () => {
             }),
         ).rejects.toThrow();
 
-        expect(client.tokenStore.hasAccessToken()).toBe(false);
+        expect(tokenStore(client).hasAccessToken()).toBe(false);
     });
 });

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpClient } from '../src/http/client.js';
+import type { TokenStore } from '../src/http/token-store.js';
 import { PaymentsModule } from '../src/modules/payments/payments.module.js';
+
+const tokenStore = (client: HttpClient) =>
+    (client as unknown as { tokenStore: TokenStore }).tokenStore;
 
 const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
     new Response(JSON.stringify(data), {
@@ -41,7 +45,7 @@ describe('PaymentsModule', () => {
             .mockResolvedValue(makeResponse(mockPaymentResponse));
         vi.stubGlobal('fetch', fetchMock);
         client = new HttpClient({ baseUrl: 'https://example.com' });
-        client.tokenStore.set({
+        tokenStore(client).set({
             access_token: 'at-test',
             refresh_token: 'rt-test',
             expires_in: 900,

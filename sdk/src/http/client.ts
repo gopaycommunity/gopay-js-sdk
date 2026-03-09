@@ -7,7 +7,7 @@ const AUTH_PATH = '/oauth2/token';
 
 export class HttpClient {
     readonly baseUrl: string;
-    readonly tokenStore: TokenStore;
+    private readonly tokenStore: TokenStore;
     private readonly kyInstance: KyInstance;
     private refreshPromise: Promise<void> | null = null;
 
@@ -16,6 +16,14 @@ export class HttpClient {
             config.baseUrl ?? BASE_URLS[config.environment ?? 'sandbox'];
         this.tokenStore = new TokenStore();
         this.kyInstance = this.buildKyInstance();
+    }
+
+    setToken(pair: Omit<StoredTokenPair, 'issued_at'>): void {
+        this.tokenStore.set(pair);
+    }
+
+    setRefreshToken(refreshToken: string): void {
+        this.tokenStore.setRefreshToken(refreshToken);
     }
 
     async get<T>(path: string, options?: RequestOptions): Promise<T> {
@@ -77,11 +85,11 @@ export class HttpClient {
         if (this.refreshPromise) return this.refreshPromise;
 
         this.refreshPromise = (async () => {
-            const tokens = this.tokenStore.get();
-            if (!tokens?.refresh_token) {
+            const refreshToken = this.tokenStore.getRefreshToken();
+            if (!refreshToken) {
                 this.tokenStore.clear();
                 throw new Error(
-                    '[GoPaySDK] Session expired and no refresh token available. Call authenticate() again.',
+                    '[GoPaySDK] Session expired and no refresh token available. Call authenticate() or setRefreshToken() again.',
                 );
             }
 
@@ -90,7 +98,7 @@ export class HttpClient {
                     Omit<StoredTokenPair, 'issued_at'>
                 >(AUTH_PATH, {
                     grant_type: 'refresh_token',
-                    refresh_token: tokens.refresh_token,
+                    refresh_token: refreshToken,
                 });
                 this.tokenStore.set(fresh);
             } catch {
@@ -115,7 +123,10 @@ export class HttpClient {
                         if (request.url.includes(AUTH_PATH)) return;
                         if (request.headers.has('Authorization')) return;
 
-                        if (this.tokenStore.isExpiringSoon()) {
+                        if (
+                            this.tokenStore.isExpiringSoon() ||
+                            this.tokenStore.hasPendingRefreshToken()
+                        ) {
                             await this.refreshTokens();
                         }
 
