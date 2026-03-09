@@ -44,6 +44,7 @@ describe('HttpClient', () => {
     describe('get()', () => {
         it('sends GET to correct URL', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
+            client.tokenStore.set(storedTokens);
             await client.get('/data');
             const [req] = fetchMock.mock.calls[0] as [Request];
             expect(req.method).toBe('GET');
@@ -58,11 +59,11 @@ describe('HttpClient', () => {
             expect(req.headers.get('Authorization')).toBe('Bearer at-abc');
         });
 
-        it('sends no Bearer header when token store is empty', async () => {
+        it('throws when token store is empty', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            await client.get('/data');
-            const [req] = fetchMock.mock.calls[0] as [Request];
-            expect(req.headers.get('Authorization')).toBeNull();
+            await expect(client.get('/data')).rejects.toThrow(
+                'No access token available. Call authenticate() first.',
+            );
         });
 
         it('uses accessToken option over stored token', async () => {
@@ -77,6 +78,7 @@ describe('HttpClient', () => {
 
         it('merges extra headers from options', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
+            client.tokenStore.set(storedTokens);
             await client.get('/data', { headers: { 'X-Custom': 'value' } });
             const [req] = fetchMock.mock.calls[0] as [Request];
             expect(req.headers.get('X-Custom')).toBe('value');
@@ -96,6 +98,7 @@ describe('HttpClient', () => {
             });
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
+            client.tokenStore.set(storedTokens);
             await client.post('/items', { name: 'foo' });
 
             const [req] = fetchMock.mock.calls[0] as [Request];
@@ -210,6 +213,7 @@ describe('HttpClient', () => {
             fetchMock.mockResolvedValue(makeResponse({ data: 1 }, 200));
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
+            client.tokenStore.set(storedTokens);
             const result = await client.get<{ data: number }>('/resource');
             expect(result).toEqual({ data: 1 });
         });
@@ -231,10 +235,11 @@ describe('HttpClient', () => {
             expect(fetchMock).toHaveBeenCalledTimes(1);
         });
 
-        it('throws when 401 received and token store is empty', async () => {
+        it('throws when 401 received and no refresh token available', async () => {
             fetchMock.mockResolvedValue(makeResponse({}, 401, 'Unauthorized'));
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
+            client.tokenStore.set({ ...storedTokens, refresh_token: '' });
             await expect(client.get('/resource')).rejects.toThrow(
                 'Session expired and no refresh token available',
             );

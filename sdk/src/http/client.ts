@@ -120,12 +120,15 @@ export class HttpClient {
                         }
 
                         const tokens = this.tokenStore.get();
-                        if (tokens) {
-                            request.headers.set(
-                                'Authorization',
-                                `Bearer ${tokens.access_token}`,
+                        if (!tokens) {
+                            throw new Error(
+                                '[GoPaySDK] No access token available. Call authenticate() first.',
                             );
                         }
+                        request.headers.set(
+                            'Authorization',
+                            `Bearer ${tokens.access_token}`,
+                        );
                     },
                 ],
                 afterResponse: [

@@ -38,7 +38,7 @@
 
 <header>
   <h1>GoPay JS SDK — Developer Example</h1>
-  <p>Demonstrates the SDK API shape. Most methods currently throw <em>Not implemented</em> — this is expected.</p>
+  <p>Demonstrates the SDK API shape. Authenticate first, then use <strong>payments.create()</strong> to create a real payment session.</p>
 </header>
 
 <main>
@@ -51,7 +51,9 @@
     <p class="note">
       Run <code>yarn example</code> from the repo root — it builds the SDK and starts
       the dev server automatically. Credentials and base URL are read from
-      <code>sdk/.env.e2e</code> (falls back to <code>process.env</code> in CI).
+      <code>sdk/.env.e2e</code> (<code>GP_GW_JS_SDK_CLIENT_ID</code>,
+      <code>GP_GW_JS_SDK_CLIENT_SECRET</code>, <code>GP_GW_JS_SDK_BASE_URL</code>)
+      and fall back to <code>process.env</code> in CI.
       Opening via <code>file://</code> still works but env values won't be injected.
       In production use <code>https://gopaycdn.com/js-sdk/gopay-sdk.min.js</code>.
     </p>
@@ -73,9 +75,19 @@
   <!-- Create payment -->
   <section>
     <h2>payments.create()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /eshops/{goid}/payments — create a payment session.</p>
+    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /eshops/{goid}/payments — create a payment session. Authenticate first to obtain a token.</p>
+    <div class="fields">
+      <label>GoID<input id="create-goid" type="text" value="8123456789" /></label>
+      <label>Amount (cents)<input id="create-amount" type="number" value="1000" /></label>
+      <label>Currency<input id="create-currency" type="text" value="CZK" /></label>
+      <label>Order Number<input id="create-order-number" type="text" value="ORDER-001" /></label>
+      <label>Customer Email<input id="create-customer-email" type="text" value="customer@example.com" /></label>
+      <label>Notification URL<input id="create-notification-url" type="text" value="https://yourshop.example.com/notify" /></label>
+      <label>Return URL<input id="create-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+    </div>
     <button onclick="runCreatePayment()">Run</button>
     <pre id="payment-create-output">—</pre>
+    <p class="note">On success, the response includes <code>gw_url</code> — redirect the customer there to complete payment.</p>
   </section>
 
   <!-- Charge payment -->
@@ -216,16 +228,21 @@
   }
 
   function runCreatePayment() {
+    const goid              = document.getElementById('create-goid').value.trim();
+    const amount            = parseInt(document.getElementById('create-amount').value, 10);
+    const currency          = document.getElementById('create-currency').value.trim() || 'CZK';
+    const order_number      = document.getElementById('create-order-number').value.trim();
+    const email             = document.getElementById('create-customer-email').value.trim();
+    const notification_url  = document.getElementById('create-notification-url').value.trim();
+    const return_url        = document.getElementById('create-return-url').value.trim();
+
     run('payment-create-output', () =>
-      sdk.payments.create('YOUR_GOID', {
-        amount: 1000,
-        currency: 'CZK',
-        order_number: 'ORDER-001',
-        customer: { email: 'customer@example.com' },
-        callback: {
-          notification_url: 'https://yourshop.example.com/notify',
-          return_url: 'https://yourshop.example.com/return',
-        },
+      sdk.payments.create(goid, {
+        amount,
+        currency,
+        order_number,
+        customer: { email },
+        callback: { notification_url, return_url },
       })
     );
   }

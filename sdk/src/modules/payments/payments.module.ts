@@ -17,7 +17,6 @@ type ValidateMerchantResponse =
     components['responses']['Validate-Merchant-Response']['content']['application/json'];
 
 export class PaymentsModule {
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: stub — will be used when implemented
     constructor(private readonly client: HttpClient) {}
 
     /**
@@ -29,10 +28,13 @@ export class PaymentsModule {
      * @param params - Payment creation parameters
      */
     async create(
-        _goid: string,
-        _params: PaymentCreateRequest,
+        goid: string,
+        params: PaymentCreateRequest,
     ): Promise<PaymentCreateResponse> {
-        throw new Error('Not implemented');
+        return this.client.post<PaymentCreateResponse>(
+            `/eshops/${goid}/payments`,
+            params,
+        );
     }
 
     /**
