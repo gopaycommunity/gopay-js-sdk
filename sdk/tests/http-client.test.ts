@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GoPayHTTPError, GoPaySDKError } from '../src/errors.js';
 import { HttpClient } from '../src/http/client.js';
 import type { TokenStore } from '../src/http/token-store.js';
 
@@ -182,18 +183,27 @@ describe('HttpClient', () => {
             expect(req.headers.get('Authorization')).toBe('Basic dXNlcjpwYXNz');
         });
 
-        it('re-wraps HTTPError as HTTP {status}: {statusText}', async () => {
+        it('throws GoPayHTTPError with status and parsed body on HTTP error', async () => {
             fetchMock.mockImplementation(async (req: Request) => {
                 await req.text();
-                return makeResponse({}, 401, 'Unauthorized');
+                return makeResponse(
+                    { error: 'UNAUTHORIZED' },
+                    401,
+                    'Unauthorized',
+                );
             });
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            await expect(
-                client.postForm('/oauth2/token', {
-                    grant_type: 'client_credentials',
-                }),
-            ).rejects.toThrow('HTTP 401: Unauthorized');
+            const err = await client
+                .postForm('/oauth2/token', { grant_type: 'client_credentials' })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPayHTTPError);
+            expect((err as GoPayHTTPError).status).toBe(401);
+            expect((err as GoPayHTTPError).body).toEqual({
+                error: 'UNAUTHORIZED',
+            });
+            expect((err as GoPayHTTPError).message).toBe('HTTP 401');
         });
 
         it('re-throws non-HTTPError as-is', async () => {
@@ -229,12 +239,15 @@ describe('HttpClient', () => {
             });
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            await expect(
-                client.postForm('/oauth2/token', {
+            const err = await client
+                .postForm('/oauth2/token', {
                     grant_type: 'refresh_token',
                     refresh_token: 'rt',
-                }),
-            ).rejects.toThrow('HTTP 401: Unauthorized');
+                })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPayHTTPError);
+            expect((err as GoPayHTTPError).status).toBe(401);
             // fetch called exactly once — no retry
             expect(fetchMock).toHaveBeenCalledTimes(1);
         });
@@ -244,7 +257,9 @@ describe('HttpClient', () => {
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
             tokenStore(client).set({ ...storedTokens, refresh_token: '' });
-            await expect(client.get('/resource')).rejects.toThrow(
+            const err = await client.get('/resource').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).message).toContain(
                 'Session expired and no refresh token available',
             );
             expect(tokenStore(client).hasAccessToken()).toBe(false);
@@ -266,7 +281,9 @@ describe('HttpClient', () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
             tokenStore(client).set(storedTokens);
 
-            await expect(client.get('/resource')).rejects.toThrow(
+            const err = await client.get('/resource').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).message).toContain(
                 'Token refresh failed',
             );
             expect(tokenStore(client).hasAccessToken()).toBe(false);
@@ -319,8 +336,10 @@ describe('HttpClient', () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
             tokenStore(client).set(storedTokens);
 
-            await expect(client.get('/resource')).rejects.toThrow(
-                'Request unauthorized after token refresh. Check OAuth2 scopes.',
+            const err = await client.get('/resource').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).message).toContain(
+                'Request unauthorized after token refresh',
             );
             expect(tokenStore(client).hasAccessToken()).toBe(false);
         });
@@ -411,7 +430,9 @@ describe('HttpClient', () => {
             });
             vi.advanceTimersByTime(871_000);
 
-            await expect(client.get('/resource')).rejects.toThrow(
+            const err = await client.get('/resource').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).message).toContain(
                 'Session expired and no refresh token available',
             );
             expect(tokenStore(client).hasAccessToken()).toBe(false);

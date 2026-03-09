@@ -1,3 +1,4 @@
+import { GoPaySDKError } from '../../errors.js';
 import type { HttpClient } from '../../http/client.js';
 import type { components } from '../../types/generated.js';
 import type { AuthenticateRequest } from '../../types/index.js';
@@ -12,9 +13,10 @@ export class AuthModule {
      * Initialise the SDK with a refresh token obtained server-side.
      * The SDK will exchange it for an access token on the first API call.
      * Use this in browser environments where client credentials must not be exposed.
+     * `clientId` is required to identify the OAuth2 client during token refresh.
      */
-    setRefreshToken(refreshToken: string): void {
-        this.client.setRefreshToken(refreshToken);
+    setRefreshToken(refreshToken: string, clientId: string): void {
+        this.client.setRefreshToken(refreshToken, clientId);
     }
 
     /**
@@ -53,7 +55,7 @@ export class AuthModule {
             tokenPair.expires_in === undefined ||
             tokenPair.refresh_expires_in === undefined
         ) {
-            throw new Error(
+            throw new GoPaySDKError(
                 '[GoPaySDK] Invalid token response: missing required fields.',
             );
         }

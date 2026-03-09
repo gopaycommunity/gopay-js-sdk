@@ -57,7 +57,7 @@ describe('TokenStore', () => {
         it('clears access token and exposes the refresh token via getRefreshToken()', () => {
             const store = new TokenStore();
             store.set(pair);
-            store.setRefreshToken('rt-browser');
+            store.setRefreshToken('rt-browser', 'client-123');
             expect(store.get()).toBeNull();
             expect(store.hasAccessToken()).toBe(false);
             expect(store.hasPendingRefreshToken()).toBe(true);
@@ -66,7 +66,7 @@ describe('TokenStore', () => {
 
         it('clears the pending refresh token once a full pair is set', () => {
             const store = new TokenStore();
-            store.setRefreshToken('rt-browser');
+            store.setRefreshToken('rt-browser', 'client-123');
             store.set(pair);
             expect(store.hasPendingRefreshToken()).toBe(false);
             expect(store.getRefreshToken()).toBe(pair.refresh_token);
@@ -74,7 +74,7 @@ describe('TokenStore', () => {
 
         it('clear() removes the pending refresh token', () => {
             const store = new TokenStore();
-            store.setRefreshToken('rt-browser');
+            store.setRefreshToken('rt-browser', 'client-123');
             store.clear();
             expect(store.hasPendingRefreshToken()).toBe(false);
             expect(store.getRefreshToken()).toBeNull();

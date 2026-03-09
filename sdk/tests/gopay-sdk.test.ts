@@ -207,7 +207,7 @@ describe('GoPaySDK', () => {
                     client_secret: 'bad-secret',
                     scope: 'payment:create',
                 }),
-            ).rejects.toThrow('HTTP 401: Unauthorized');
+            ).rejects.toThrow('HTTP 401');
         });
     });
 

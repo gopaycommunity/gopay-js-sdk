@@ -72,6 +72,19 @@
     <pre id="auth-output">—</pre>
   </section>
 
+  <!-- Browser auth flow -->
+  <section>
+    <h2>auth.setRefreshToken() — browser flow</h2>
+    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+      Simulates the browser client pattern: a server-side step obtains a token pair using the credentials above,
+      then a fresh SDK instance is seeded with only the refresh token (no credentials in the browser).
+      The first API call (<code>payments.create()</code>) automatically exchanges the refresh token for an access token.
+    </p>
+    <button onclick="runSetRefreshTokenFlow()">Run</button>
+    <pre id="set-refresh-token-output">—</pre>
+    <p class="note">Uses the Client ID / Secret / GoID fields above. Authenticate first is not required — this flow is self-contained.</p>
+  </section>
+
   <!-- Create payment -->
   <section>
     <h2>payments.create()</h2>
@@ -159,6 +172,10 @@
   if (_env.clientId)     document.getElementById('auth-client-id').value     = _env.clientId;
   if (_env.clientSecret) document.getElementById('auth-client-secret').value = _env.clientSecret;
 
+  const sdkConfig = _env.baseUrl
+    ? { baseUrl: _env.baseUrl }
+    : { environment: 'sandbox' };
+
   if (typeof GoPaySDK === 'undefined' || typeof GoPaySDK.GoPaySDK === 'undefined') {
     badge.textContent = 'NOT LOADED';
     badge.className = 'badge err';
@@ -168,9 +185,6 @@
       'Then serve via:  node example/serve.js\n' +
       '  (or open this file directly, but env values will not be injected)';
   } else {
-    const sdkConfig = _env.baseUrl
-      ? { baseUrl: _env.baseUrl }
-      : { environment: 'sandbox' };
     sdk = new GoPaySDK.GoPaySDK(sdkConfig);
     badge.textContent = 'LOADED';
     badge.className = 'badge ok';
@@ -225,6 +239,40 @@
     run('auth-output', () =>
       sdk.auth.authenticate({ grant_type: 'client_credentials', client_id, client_secret, scope })
     );
+  }
+
+  function runSetRefreshTokenFlow() {
+    const client_id     = document.getElementById('auth-client-id').value.trim();
+    const client_secret = document.getElementById('auth-client-secret').value.trim();
+    const scope         = document.getElementById('auth-scope').value.trim() || 'payment:create';
+    const goid          = document.getElementById('create-goid').value.trim();
+
+    run('set-refresh-token-output', async () => {
+      // Step 1 — server side: authenticate with credentials and obtain a token pair
+      const serverSdk = new GoPaySDK.GoPaySDK(sdkConfig);
+      const tokenPair = await serverSdk.auth.authenticate({
+        grant_type: 'client_credentials',
+        client_id,
+        client_secret,
+        scope,
+      });
+
+      // Step 2 — browser side: fresh SDK instance, no credentials, only the refresh token
+      const browserSdk = new GoPaySDK.GoPaySDK(sdkConfig);
+      browserSdk.auth.setRefreshToken(tokenPair.refresh_token, client_id);
+
+      // First API call — SDK exchanges the refresh token automatically
+      return browserSdk.payments.create(goid, {
+        amount: 1000,
+        currency: 'CZK',
+        order_number: 'ORDER-RT-TEST',
+        customer: { email: 'test@example.com' },
+        callback: {
+          notification_url: 'https://yourshop.example.com/notify',
+          return_url: 'https://yourshop.example.com/return',
+        },
+      });
+    });
   }
 
   function runCreatePayment() {

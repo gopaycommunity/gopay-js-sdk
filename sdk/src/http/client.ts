@@ -1,5 +1,6 @@
 import ky, { type KyInstance, type Options as KyOptions } from 'ky';
 import { BASE_URLS, type GoPayConfig } from '../config.js';
+import { GoPayHTTPError, GoPaySDKError } from '../errors.js';
 import { type StoredTokenPair, TokenStore } from './token-store.js';
 import type { RequestOptions } from './types.js';
 
@@ -22,8 +23,8 @@ export class HttpClient {
         this.tokenStore.set(pair);
     }
 
-    setRefreshToken(refreshToken: string): void {
-        this.tokenStore.setRefreshToken(refreshToken);
+    setRefreshToken(refreshToken: string, clientId: string): void {
+        this.tokenStore.setRefreshToken(refreshToken, clientId);
     }
 
     async get<T>(path: string, options?: RequestOptions): Promise<T> {
@@ -67,7 +68,13 @@ export class HttpClient {
         } catch (err) {
             if (err instanceof Error && 'response' in err) {
                 const res = (err as { response: Response }).response;
-                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                let body: unknown;
+                try {
+                    body = await res.json();
+                } catch {
+                    body = await res.text();
+                }
+                throw new GoPayHTTPError(res.status, body);
             }
             throw err;
         }
@@ -88,23 +95,27 @@ export class HttpClient {
             const refreshToken = this.tokenStore.getRefreshToken();
             if (!refreshToken) {
                 this.tokenStore.clear();
-                throw new Error(
+                throw new GoPaySDKError(
                     '[GoPaySDK] Session expired and no refresh token available. Call authenticate() or setRefreshToken() again.',
                 );
             }
 
             try {
-                const fresh = await this.postForm<
-                    Omit<StoredTokenPair, 'issued_at'>
-                >(AUTH_PATH, {
+                const form: Record<string, string> = {
                     grant_type: 'refresh_token',
                     refresh_token: refreshToken,
-                });
+                };
+                const clientId = this.tokenStore.getPendingClientId();
+                if (clientId) form.client_id = clientId;
+                const fresh = await this.postForm<
+                    Omit<StoredTokenPair, 'issued_at'>
+                >(AUTH_PATH, form);
                 this.tokenStore.set(fresh);
-            } catch {
+            } catch (cause) {
                 this.tokenStore.clear();
-                throw new Error(
+                throw new GoPaySDKError(
                     '[GoPaySDK] Token refresh failed. Call authenticate() again.',
+                    { cause },
                 );
             }
         })().finally(() => {
@@ -132,7 +143,7 @@ export class HttpClient {
 
                         const tokens = this.tokenStore.get();
                         if (!tokens) {
-                            throw new Error(
+                            throw new GoPaySDKError(
                                 '[GoPaySDK] No access token available. Call authenticate() first.',
                             );
                         }
@@ -164,7 +175,7 @@ export class HttpClient {
 
                         if (retryResponse.status === 401) {
                             this.tokenStore.clear();
-                            throw new Error(
+                            throw new GoPaySDKError(
                                 '[GoPaySDK] Request unauthorized after token refresh. Check OAuth2 scopes.',
                             );
                         }

@@ -10,6 +10,7 @@ export interface StoredTokenPair {
 export class TokenStore {
     private tokens: StoredTokenPair | null = null;
     private pendingRefreshToken: string | null = null;
+    private pendingClientId: string | null = null;
 
     get(): StoredTokenPair | null {
         return this.tokens;
@@ -19,19 +20,26 @@ export class TokenStore {
         return this.tokens?.refresh_token ?? this.pendingRefreshToken;
     }
 
+    getPendingClientId(): string | null {
+        return this.pendingClientId;
+    }
+
     set(pair: Omit<StoredTokenPair, 'issued_at'>): void {
         this.pendingRefreshToken = null;
+        this.pendingClientId = null;
         this.tokens = { ...pair, issued_at: Date.now() };
     }
 
-    setRefreshToken(refreshToken: string): void {
+    setRefreshToken(refreshToken: string, clientId: string): void {
         this.tokens = null;
         this.pendingRefreshToken = refreshToken;
+        this.pendingClientId = clientId;
     }
 
     clear(): void {
         this.tokens = null;
         this.pendingRefreshToken = null;
+        this.pendingClientId = null;
     }
 
     hasAccessToken(): boolean {

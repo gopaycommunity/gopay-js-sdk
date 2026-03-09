@@ -18,6 +18,39 @@ Browser (CDN):
 
 ---
 
+## Quick start
+
+```ts
+import { GoPaySDK } from 'gopay-js-sdk';
+
+const sdk = new GoPaySDK({ environment: 'production' });
+
+// Authenticate (server-side only — never expose credentials in the browser)
+await sdk.auth.authenticate({
+  grant_type: 'client_credentials',
+  client_id: process.env.GOPAY_CLIENT_ID,
+  client_secret: process.env.GOPAY_CLIENT_SECRET,
+  scope: 'payment:create',
+});
+
+// Create a payment session
+const payment = await sdk.payments.create('YOUR_GOID', {
+  amount: 1000, // CZK 10.00
+  currency: 'CZK',
+  order_number: 'ORDER-001',
+  customer: { email: 'customer@example.com' },
+  callback: {
+    notification_url: 'https://yourshop.com/notify',
+    return_url: 'https://yourshop.com/return',
+  },
+});
+
+// Redirect the customer to complete payment
+res.redirect(payment.gw_url);
+```
+
+---
+
 ## Authentication
 
 The SDK uses OAuth2. **Client credentials (`client_id` / `client_secret`) must never be exposed in browser JavaScript.** Choose the flow that matches your deployment:
@@ -83,12 +116,10 @@ const payment = await sdk.payments.create(goid, params);
 
 ## Configuration
 
-```ts
-new GoPaySDK({
-  environment: 'sandbox' | 'production', // defaults to 'sandbox'
-  baseUrl: 'https://...',                // override API base URL (e.g. for tests)
-})
-```
+| Option        | Type                        | Default      | Description                                      |
+|---------------|-----------------------------|--------------|--------------------------------------------------|
+| `environment` | `'sandbox' \| 'production'` | `'sandbox'`  | Target environment.                              |
+| `baseUrl`     | `string`                    | _(see below)_ | Override the API base URL (e.g. for mock servers). Takes precedence over `environment`. |
 
 ---
 
@@ -122,6 +153,49 @@ new GoPaySDK({
 | Method | Description |
 |---|---|
 | `fetchPublicKey()` | Fetch the JWE public key for card encryption (`GET /encryption/public-key`). |
+
+---
+
+## Errors
+
+The SDK throws two typed error classes so you can handle them precisely:
+
+### `GoPaySDKError`
+
+Thrown for lifecycle and configuration errors — e.g. no token available, token refresh failed, or an invalid token response was received.
+
+```ts
+import { GoPaySDKError } from 'gopay-js-sdk';
+
+try {
+  await sdk.payments.create(goid, params);
+} catch (err) {
+  if (err instanceof GoPaySDKError) {
+    console.error('SDK error:', err.message);
+  }
+}
+```
+
+### `GoPayHTTPError`
+
+Thrown when the GoPay API returns a non-2xx response. Exposes the HTTP `status` code and the parsed response `body`.
+
+```ts
+import { GoPayHTTPError } from 'gopay-js-sdk';
+
+try {
+  await sdk.auth.authenticate({ grant_type: 'client_credentials', ... });
+} catch (err) {
+  if (err instanceof GoPayHTTPError) {
+    console.error(`HTTP ${err.status}`, err.body);
+  }
+}
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `status` | `number` | HTTP status code (e.g. `401`, `422`). |
+| `body` | `unknown` | Parsed JSON response body, or raw text if JSON parsing failed. |
 
 ---
 

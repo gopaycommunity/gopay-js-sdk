@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GoPaySDKError } from '../src/errors.js';
 import { HttpClient } from '../src/http/client.js';
 import type { TokenStore } from '../src/http/token-store.js';
 import { AuthModule } from '../src/modules/auth/auth.module.js';
@@ -147,20 +148,25 @@ describe('AuthModule', () => {
             'missing refresh_expires_in',
             { ...validTokenPair, refresh_expires_in: undefined },
         ],
-    ])('throws on invalid token response: %s', async (_, partial) => {
+    ])('throws GoPaySDKError on invalid token response: %s', async (_, partial) => {
         fetchMock.mockImplementation(async (req: Request) => {
             await req.text();
             return makeResponse(partial);
         });
 
-        await expect(
-            auth.authenticate({
+        const err = await auth
+            .authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
                 scope: 'payment:create',
-            }),
-        ).rejects.toThrow('Invalid token response: missing required fields.');
+            })
+            .catch((e: unknown) => e);
+
+        expect(err).toBeInstanceOf(GoPaySDKError);
+        expect((err as GoPaySDKError).message).toContain(
+            'Invalid token response: missing required fields.',
+        );
     });
 
     // -------------------------------------------------------------------------
@@ -168,7 +174,7 @@ describe('AuthModule', () => {
     // -------------------------------------------------------------------------
 
     it('setRefreshToken() stores the token and triggers exchange on first API call', async () => {
-        auth.setRefreshToken('rt-from-server');
+        auth.setRefreshToken('rt-from-server', 'client-123');
 
         expect(tokenStore(client).hasPendingRefreshToken()).toBe(true);
         expect(tokenStore(client).hasAccessToken()).toBe(false);
