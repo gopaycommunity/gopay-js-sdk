@@ -23,17 +23,13 @@ export class AuthModule {
         const headers: Record<string, string> = {};
 
         if (params.grant_type === 'client_credentials') {
-            form.scope = params.scope as string;
+            form.scope = params.scope;
             const raw = `${params.client_id}:${params.client_secret}`;
-            const credentials =
-                typeof globalThis.btoa === 'function'
-                    ? globalThis.btoa(raw)
-                    : Buffer.from(raw).toString('base64');
-            headers.Authorization = `Basic ${credentials}`;
+            headers.Authorization = `Basic ${globalThis.btoa(raw)}`;
         } else {
             form.refresh_token = params.refresh_token;
             if (params.client_id) form.client_id = params.client_id;
-            if (params.scope) form.scope = params.scope as string;
+            if (params.scope) form.scope = params.scope;
         }
 
         const tokenPair = await this.client.postForm<TokenPair>(
@@ -42,8 +38,23 @@ export class AuthModule {
             { headers },
         );
 
-        // TODO: implement secure storage for tokenPair
-        console.log('[GoPaySDK] authenticate response:', tokenPair);
+        if (
+            !tokenPair.access_token ||
+            !tokenPair.refresh_token ||
+            tokenPair.expires_in === undefined ||
+            tokenPair.refresh_expires_in === undefined
+        ) {
+            throw new Error(
+                '[GoPaySDK] Invalid token response: missing required fields.',
+            );
+        }
+        this.client.tokenStore.set({
+            access_token: tokenPair.access_token,
+            refresh_token: tokenPair.refresh_token,
+            expires_in: tokenPair.expires_in,
+            refresh_expires_in: tokenPair.refresh_expires_in,
+            token_type: 'bearer',
+        });
 
         return tokenPair;
     }

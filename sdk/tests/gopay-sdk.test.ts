@@ -90,13 +90,30 @@ describe('GoPaySDK', () => {
             refresh_expires_in: 86400,
         } satisfies TokenPair;
 
+        const makeMockResponse = (
+            data: unknown,
+            status = 200,
+            statusText = 'OK',
+        ) => {
+            const body = JSON.stringify(data);
+            const res = {
+                ok: status >= 200 && status < 300,
+                status,
+                statusText,
+                headers: new Headers({ 'content-type': 'application/json' }),
+                json: () => Promise.resolve(data),
+                text: () => Promise.resolve(body),
+                clone() {
+                    return makeMockResponse(data, status, statusText);
+                },
+            };
+            return res;
+        };
+
         beforeEach(() => {
             vi.stubGlobal(
                 'fetch',
-                vi.fn().mockResolvedValue({
-                    ok: true,
-                    json: () => Promise.resolve(mockTokenPair),
-                }),
+                vi.fn().mockResolvedValue(makeMockResponse(mockTokenPair)),
             );
             vi.spyOn(console, 'log').mockImplementation(() => {});
         });
@@ -111,6 +128,17 @@ describe('GoPaySDK', () => {
         });
 
         it('authenticate() with client_credentials sends correct request', async () => {
+            let capturedReq!: Request;
+            let capturedBodyText = '';
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockImplementation(async (req: Request) => {
+                    capturedReq = req;
+                    capturedBodyText = await req.text();
+                    return makeMockResponse(mockTokenPair);
+                }),
+            );
+
             const sdk = new GoPaySDK({ environment: 'sandbox' });
             const result = await sdk.auth.authenticate({
                 grant_type: 'client_credentials',
@@ -120,25 +148,33 @@ describe('GoPaySDK', () => {
             });
 
             expect(result).toEqual(mockTokenPair);
-
-            const [url, init] = (fetch as ReturnType<typeof vi.fn>).mock
-                .calls[0];
-            expect(url).toBe(
+            expect(capturedReq.url).toBe(
                 'https://api.sandbox.gopay.com/api/merchant/payments/4.0/oauth2/token',
             );
-            expect(init.method).toBe('POST');
-            expect(init.headers['Content-Type']).toBe(
+            expect(capturedReq.method).toBe('POST');
+            expect(capturedReq.headers.get('Content-Type')).toBe(
                 'application/x-www-form-urlencoded',
             );
-            expect(init.headers.Authorization).toBe(
+            expect(capturedReq.headers.get('Authorization')).toBe(
                 `Basic ${btoa('my-client:my-secret')}`,
             );
-            const body = new URLSearchParams(init.body);
+            const body = new URLSearchParams(capturedBodyText);
             expect(body.get('grant_type')).toBe('client_credentials');
             expect(body.get('scope')).toBe('payment:create');
         });
 
         it('authenticate() with refresh_token sends correct request', async () => {
+            let capturedReq!: Request;
+            let capturedBodyText = '';
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockImplementation(async (req: Request) => {
+                    capturedReq = req;
+                    capturedBodyText = await req.text();
+                    return makeMockResponse(mockTokenPair);
+                }),
+            );
+
             const sdk = new GoPaySDK({ environment: 'sandbox' });
             const result = await sdk.auth.authenticate({
                 grant_type: 'refresh_token',
@@ -147,38 +183,21 @@ describe('GoPaySDK', () => {
             });
 
             expect(result).toEqual(mockTokenPair);
-
-            const [, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-            expect(init.headers.Authorization).toBeUndefined();
-            const body = new URLSearchParams(init.body);
+            expect(capturedReq.headers.get('Authorization')).toBeNull();
+            const body = new URLSearchParams(capturedBodyText);
             expect(body.get('grant_type')).toBe('refresh_token');
             expect(body.get('refresh_token')).toBe('refresh_xyz789');
             expect(body.get('scope')).toBe('payment:create');
         });
 
-        it('authenticate() logs the token pair to console', async () => {
-            const sdk = new GoPaySDK();
-            await sdk.auth.authenticate({
-                grant_type: 'client_credentials',
-                client_id: 'my-client',
-                client_secret: 'my-secret',
-                scope: 'payment:create',
-            });
-
-            expect(console.log).toHaveBeenCalledWith(
-                '[GoPaySDK] authenticate response:',
-                mockTokenPair,
-            );
-        });
-
         it('authenticate() throws on non-ok HTTP response', async () => {
             vi.stubGlobal(
                 'fetch',
-                vi.fn().mockResolvedValue({
-                    ok: false,
-                    status: 401,
-                    statusText: 'Unauthorized',
-                }),
+                vi
+                    .fn()
+                    .mockResolvedValue(
+                        makeMockResponse({}, 401, 'Unauthorized'),
+                    ),
             );
             const sdk = new GoPaySDK();
             await expect(
