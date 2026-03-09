@@ -33,6 +33,8 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "check:circular": "madge --circular --extensions ts --ts-config tsconfig.json src/",
+    "check:exports": "ts-unused-exports tsconfig.json --excludePathsFromReport='src/index' --ignoreFiles='types/generated'",
     "codegen": "openapi-typescript ../Payments.yaml -o src/types/generated.ts"
   },
   "devDependencies": {
@@ -40,8 +42,10 @@
     "@semantic-release/git": "^10.0.1",
     "@types/node": "^24.11.0",
     "@vitest/coverage-v8": "^4.0.18",
+    "madge": "^8.0.0",
     "openapi-typescript": "^7.13.0",
     "semantic-release": "^25.0.3",
+    "ts-unused-exports": "^11.0.1",
     "tsup": "^8.5.1",
     "typescript": "~5.9.3",
     "vitest": "^4.0.18"
