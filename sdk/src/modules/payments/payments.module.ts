@@ -15,6 +15,8 @@ type ApplePayInfoResponse =
     components['responses']['Apple-Pay-Info-Response']['content']['application/json'];
 type ValidateMerchantResponse =
     components['responses']['Validate-Merchant-Response']['content']['application/json'];
+type QRPaymentInfoResponse =
+    components['responses']['QR-Payment-Info-Response']['content']['application/json'];
 
 export class PaymentsModule {
     constructor(private readonly client: HttpClient) {}
@@ -59,12 +61,14 @@ export class PaymentsModule {
     /**
      * Retrieve Google Pay configuration for this payment.
      *
-     * GET /payments/{payment_id}/info/google-pay
+     * GET /payments/{payment_id}/google-pay/info
      *
      * @param paymentId - Payment session ID
      */
-    async getGooglePayInfo(_paymentId: string): Promise<GooglePayInfoResponse> {
-        throw new Error('Not implemented');
+    async getGooglePayInfo(paymentId: string): Promise<GooglePayInfoResponse> {
+        return this.client.get<GooglePayInfoResponse>(
+            `/payments/${paymentId}/google-pay/info`,
+        );
     }
 
     /**
@@ -74,8 +78,10 @@ export class PaymentsModule {
      *
      * @param paymentId - Payment session ID
      */
-    async getApplePayInfo(_paymentId: string): Promise<ApplePayInfoResponse> {
-        throw new Error('Not implemented');
+    async getApplePayInfo(paymentId: string): Promise<ApplePayInfoResponse> {
+        return this.client.get<ApplePayInfoResponse>(
+            `/payments/${paymentId}/apple-pay/info`,
+        );
     }
 
     /**
@@ -88,9 +94,32 @@ export class PaymentsModule {
      * @param origin    - Origin of the page displaying the Apple Pay button (e.g. "https://shop.example.com")
      */
     async validateApplePayMerchant(
-        _paymentId: string,
-        _origin: string,
+        paymentId: string,
+        origin: string,
     ): Promise<ValidateMerchantResponse> {
-        throw new Error('Not implemented');
+        return this.client.post<ValidateMerchantResponse>(
+            `/payments/${paymentId}/apple-pay/validate`,
+            undefined,
+            { headers: { Origin: origin } },
+        );
+    }
+
+    /**
+     * Retrieve QR payment info for this payment.
+     * Returns recipient details and base64-encoded QR code image(s).
+     *
+     * GET /payments/{payment_id}/qr-payment/info
+     *
+     * @param paymentId - Payment session ID
+     * @param format    - Image format of the QR code: 'png' (default) or 'svg'
+     */
+    async getQRPaymentInfo(
+        paymentId: string,
+        format?: 'png' | 'svg',
+    ): Promise<QRPaymentInfoResponse> {
+        const path = format
+            ? `/payments/${paymentId}/qr-payment/info?format=${format}`
+            : `/payments/${paymentId}/qr-payment/info`;
+        return this.client.get<QRPaymentInfoResponse>(path);
     }
 }

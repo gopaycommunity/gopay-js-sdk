@@ -389,28 +389,205 @@ describe('GoPaySDK', () => {
             expect(result).toEqual(mockCharge);
         });
 
-        it('getGooglePayInfo() throws Not implemented', async () => {
-            const sdk = new GoPaySDK();
-            await expect(
-                sdk.payments.getGooglePayInfo('payment-123'),
-            ).rejects.toThrow('Not implemented');
+        it('getGooglePayInfo() sends GET to /payments/{id}/google-pay/info', async () => {
+            const mockGooglePay = {
+                environment: 'TEST',
+                paymentDataRequest: {},
+            };
+            let capturedReq!: Request;
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockImplementation(async (req: Request) => {
+                    if (req.url.includes('/oauth2/token')) {
+                        await req.text();
+                        return new Response(
+                            JSON.stringify({
+                                token_type: 'bearer',
+                                access_token: 'at-test',
+                                refresh_token: 'rt-test',
+                                expires_in: 900,
+                                refresh_expires_in: 86400,
+                            }),
+                            {
+                                status: 200,
+                                headers: { 'content-type': 'application/json' },
+                            },
+                        );
+                    }
+                    capturedReq = req;
+                    return new Response(JSON.stringify(mockGooglePay), {
+                        status: 200,
+                        headers: { 'content-type': 'application/json' },
+                    });
+                }),
+            );
+
+            const sdk = new GoPaySDK({ environment: 'sandbox' });
+            await sdk.auth.authenticate({
+                grant_type: 'client_credentials',
+                client_id: 'id',
+                client_secret: 'secret',
+                scope: 'payment:create',
+            });
+            const result = await sdk.payments.getGooglePayInfo('payment-123');
+
+            expect(capturedReq.method).toBe('GET');
+            expect(capturedReq.url).toBe(
+                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/payments/payment-123/google-pay/info',
+            );
+            expect(result).toEqual(mockGooglePay);
         });
 
-        it('getApplePayInfo() throws Not implemented', async () => {
-            const sdk = new GoPaySDK();
-            await expect(
-                sdk.payments.getApplePayInfo('payment-123'),
-            ).rejects.toThrow('Not implemented');
+        it('getApplePayInfo() sends GET to /payments/{id}/apple-pay/info', async () => {
+            const mockApplePay = {
+                applepayVersion: 6,
+                merchantIdentifier: '8398119642',
+            };
+            let capturedReq!: Request;
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockImplementation(async (req: Request) => {
+                    if (req.url.includes('/oauth2/token')) {
+                        await req.text();
+                        return new Response(
+                            JSON.stringify({
+                                token_type: 'bearer',
+                                access_token: 'at-test',
+                                refresh_token: 'rt-test',
+                                expires_in: 900,
+                                refresh_expires_in: 86400,
+                            }),
+                            {
+                                status: 200,
+                                headers: { 'content-type': 'application/json' },
+                            },
+                        );
+                    }
+                    capturedReq = req;
+                    return new Response(JSON.stringify(mockApplePay), {
+                        status: 200,
+                        headers: { 'content-type': 'application/json' },
+                    });
+                }),
+            );
+
+            const sdk = new GoPaySDK({ environment: 'sandbox' });
+            await sdk.auth.authenticate({
+                grant_type: 'client_credentials',
+                client_id: 'id',
+                client_secret: 'secret',
+                scope: 'payment:create',
+            });
+            const result = await sdk.payments.getApplePayInfo('payment-123');
+
+            expect(capturedReq.method).toBe('GET');
+            expect(capturedReq.url).toBe(
+                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/payments/payment-123/apple-pay/info',
+            );
+            expect(result).toEqual(mockApplePay);
         });
 
-        it('validateApplePayMerchant() throws Not implemented', async () => {
-            const sdk = new GoPaySDK();
-            await expect(
-                sdk.payments.validateApplePayMerchant(
-                    'payment-123',
-                    'https://shop.example.com',
-                ),
-            ).rejects.toThrow('Not implemented');
+        it('validateApplePayMerchant() sends POST with Origin header to /payments/{id}/apple-pay/validate', async () => {
+            const mockSession = {
+                merchantSessionIdentifier: 'SSHC45CB',
+                domainName: 'shop.example.com',
+            };
+            let capturedReq!: Request;
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockImplementation(async (req: Request) => {
+                    await req.text();
+                    if (req.url.includes('/oauth2/token')) {
+                        return new Response(
+                            JSON.stringify({
+                                token_type: 'bearer',
+                                access_token: 'at-test',
+                                refresh_token: 'rt-test',
+                                expires_in: 900,
+                                refresh_expires_in: 86400,
+                            }),
+                            {
+                                status: 200,
+                                headers: { 'content-type': 'application/json' },
+                            },
+                        );
+                    }
+                    capturedReq = req;
+                    return new Response(JSON.stringify(mockSession), {
+                        status: 200,
+                        headers: { 'content-type': 'application/json' },
+                    });
+                }),
+            );
+
+            const sdk = new GoPaySDK({ environment: 'sandbox' });
+            await sdk.auth.authenticate({
+                grant_type: 'client_credentials',
+                client_id: 'id',
+                client_secret: 'secret',
+                scope: 'payment:create',
+            });
+            const result = await sdk.payments.validateApplePayMerchant(
+                'payment-123',
+                'https://shop.example.com',
+            );
+
+            expect(capturedReq.method).toBe('POST');
+            expect(capturedReq.url).toBe(
+                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/payments/payment-123/apple-pay/validate',
+            );
+            expect(capturedReq.headers.get('Origin')).toBe(
+                'https://shop.example.com',
+            );
+            expect(result).toEqual(mockSession);
+        });
+
+        it('getQRPaymentInfo() sends GET to /payments/{id}/qr-payment/info', async () => {
+            const mockQR = {
+                amount: 10000,
+                currency: 'CZK',
+                recipient: { name: 'GoPay Czech', bank_account: { international: { bic: 'FIOBCZPP', iban: 'CZ51201', reference: '123' } } },
+                qr_code: { spayd: 'base64==' },
+            };
+            let capturedReq!: Request;
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockImplementation(async (req: Request) => {
+                    if (req.url.includes('/oauth2/token')) {
+                        await req.text();
+                        return new Response(
+                            JSON.stringify({
+                                token_type: 'bearer',
+                                access_token: 'at-test',
+                                refresh_token: 'rt-test',
+                                expires_in: 900,
+                                refresh_expires_in: 86400,
+                            }),
+                            { status: 200, headers: { 'content-type': 'application/json' } },
+                        );
+                    }
+                    capturedReq = req;
+                    return new Response(JSON.stringify(mockQR), {
+                        status: 200,
+                        headers: { 'content-type': 'application/json' },
+                    });
+                }),
+            );
+
+            const sdk = new GoPaySDK({ environment: 'sandbox' });
+            await sdk.auth.authenticate({
+                grant_type: 'client_credentials',
+                client_id: 'id',
+                client_secret: 'secret',
+                scope: 'payment:create',
+            });
+            const result = await sdk.payments.getQRPaymentInfo('payment-123', 'svg');
+
+            expect(capturedReq.method).toBe('GET');
+            expect(capturedReq.url).toBe(
+                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/payments/payment-123/qr-payment/info?format=svg',
+            );
+            expect(result).toEqual(mockQR);
         });
     });
 });

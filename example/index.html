@@ -127,7 +127,7 @@
   <!-- Google Pay info -->
   <section>
     <h2>payments.getGooglePayInfo()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/info/google-pay — fetch Google Pay configuration.</p>
+    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/google-pay/info — fetch Google Pay configuration.</p>
     <div class="fields">
       <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="pay_300000001" /></label>
     </div>
@@ -156,6 +156,24 @@
     </div>
     <button onclick="runValidateMerchant()">Run</button>
     <pre id="applepay-validate-output">—</pre>
+  </section>
+
+  <!-- QR Payment info -->
+  <section>
+    <h2>payments.getQRPaymentInfo()</h2>
+    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/qr-payment/info — fetch QR code (base64) and recipient info.</p>
+    <div class="fields">
+      <label>Payment ID<input id="qr-payment-id" type="text" placeholder="pay_300000001" /></label>
+      <label>Format
+        <select id="qr-format" style="padding:0.4rem 0.6rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
+          <option value="">png (default)</option>
+          <option value="svg">svg</option>
+        </select>
+      </label>
+    </div>
+    <button onclick="runQRPaymentInfo()">Run</button>
+    <pre id="qr-output">—</pre>
+    <p class="note">QR codes are returned base64-encoded. The available field depends on currency: <code>spayd</code> (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
   </section>
 
   <!-- Fetch public key -->
@@ -307,7 +325,7 @@
   function prefillPaymentId(result) {
     const id = result?.id;
     if (!id) return;
-    ['charge-payment-id', 'googlepay-payment-id', 'applepay-payment-id', 'applepay-validate-payment-id']
+    ['charge-payment-id', 'googlepay-payment-id', 'applepay-payment-id', 'applepay-validate-payment-id', 'qr-payment-id']
       .forEach(fieldId => {
         const el = document.getElementById(fieldId);
         if (el && !el.value) el.value = id;
@@ -367,6 +385,12 @@
     run('applepay-validate-output', () =>
       sdk.payments.validateApplePayMerchant(paymentId, origin)
     );
+  }
+
+  function runQRPaymentInfo() {
+    const paymentId = document.getElementById('qr-payment-id').value.trim();
+    const format = document.getElementById('qr-format').value || undefined;
+    run('qr-output', () => sdk.payments.getQRPaymentInfo(paymentId, format));
   }
 
   function runFetchPublicKey() {

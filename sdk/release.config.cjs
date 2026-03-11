@@ -20,7 +20,9 @@ module.exports = {
         [
             '@semantic-release/npm',
             {
-                npmPublish: true,
+                // npmPublish: true,
+                // sdk is private for now
+                npmPublish: false,
             },
         ],
 
@@ -34,6 +36,7 @@ module.exports = {
         //        -H "Authorization: Bearer ${CDN_TOKEN}" \
         //        --data-binary @dist/gopay-sdk.min.js',
         //   },
+        // TODO nebo generovat pull request na static
         // ],
 
         // Commit version bump + CHANGELOG back to the repo

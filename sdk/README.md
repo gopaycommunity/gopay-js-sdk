@@ -168,6 +168,101 @@ const payment = await sdk.payments.create(goid, params);
 | `getGooglePayInfo(paymentId)` | Retrieve Google Pay configuration for a payment. |
 | `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment. |
 | `validateApplePayMerchant(paymentId, origin)` | Validate the Apple Pay merchant session. |
+| `getQRPaymentInfo(paymentId, format?)` | Retrieve QR code and recipient info (`GET /payments/{paymentId}/qr-payment/info`). |
+
+### Google Pay
+
+```ts
+// Fetch the Google Pay payment request object
+const googlePayInfo = await sdk.payments.getGooglePayInfo(payment.id);
+
+// Pass googlePayInfo.paymentDataRequest to the Google Pay API
+const paymentsClient = new google.payments.api.PaymentsClient({
+  environment: googlePayInfo.environment,
+});
+const paymentData = await paymentsClient.loadPaymentData(
+  googlePayInfo.paymentDataRequest,
+);
+
+// Charge using the Google Pay token
+const charge = await sdk.payments.charge(payment.id, {
+  payment_instrument: {
+    payment_instrument: 'PAYMENT_CARD',
+    input: {
+      input_type: 'GOOGLE_PAY',
+      protocolVersion: paymentData.paymentMethodData.tokenizationData.type,
+      signature: paymentData.paymentMethodData.tokenizationData.token,
+      signedMessage: paymentData.paymentMethodData.tokenizationData.token,
+    },
+  },
+  return_url: 'https://yourshop.com/return',
+});
+```
+
+### Apple Pay
+
+```ts
+// Fetch Apple Pay configuration for this payment
+const applePayInfo = await sdk.payments.getApplePayInfo(payment.id);
+
+// Use applePayInfo to initialise an ApplePaySession
+const session = new ApplePaySession(
+  applePayInfo.applepayVersion,
+  applePayInfo.applePayPaymentRequest,
+);
+
+// Validate the merchant — call from the onvalidatemerchant callback
+session.onvalidatemerchant = async () => {
+  const merchantSession = await sdk.payments.validateApplePayMerchant(
+    payment.id,
+    window.location.origin,
+  );
+  session.completeMerchantValidation(merchantSession);
+};
+
+// Charge using the Apple Pay token
+session.onpaymentauthorized = async (event) => {
+  const token = event.payment.token.paymentData;
+  const charge = await sdk.payments.charge(payment.id, {
+    payment_instrument: {
+      payment_instrument: 'PAYMENT_CARD',
+      input: {
+        input_type: 'APPLE_PAY',
+        data: token.data,
+        signature: token.signature,
+        version: token.version,
+        header: token.header,
+      },
+    },
+    return_url: 'https://yourshop.com/return',
+  });
+  session.completePayment(
+    charge.state === 'SUCCEEDED'
+      ? ApplePaySession.STATUS_SUCCESS
+      : ApplePaySession.STATUS_FAILURE,
+  );
+};
+
+session.begin();
+```
+
+### QR Payment
+
+```ts
+const qrInfo = await sdk.payments.getQRPaymentInfo(payment.id);
+// Optionally request SVG format instead of the default PNG:
+// const qrInfo = await sdk.payments.getQRPaymentInfo(payment.id, 'svg');
+
+// Display the QR code (currency-specific)
+const img = document.createElement('img');
+img.src = `data:image/png;base64,${qrInfo.qr_code?.spayd}`;        // CZK — Czech SPAYD
+// img.src = `data:image/png;base64,${qrInfo.qr_code?.paybysquare}`; // EUR — Slovak PayBySquare
+// img.src = `data:image/png;base64,${qrInfo.qr_code?.sepa}`;        // EUR — SEPA (EPC)
+// img.src = `data:image/png;base64,${qrInfo.qr_code?.mnb_qr}`;      // HUF — Hungarian MNB
+document.body.appendChild(img);
+```
+
+---
 
 ### `sdk.cards`
 

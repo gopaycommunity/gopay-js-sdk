@@ -21,7 +21,7 @@ Run all checks with a single command from the repo root:
 yarn ci
 ```
 
-This runs lint (Biome), typecheck, and tests in sequence. It is wired up to:
+This runs lint (Biome) and typecheck in sequence. It is wired up to:
 - **pre-commit hook** (husky) — runs automatically before every commit
 - **CI pipeline** (`bitbucket-pipelines.yml`, `code-quality` step) — runs on PRs and master
 

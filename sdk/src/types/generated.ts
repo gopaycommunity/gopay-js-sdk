@@ -98,7 +98,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/payments/{payment_id}/info/google-pay": {
+    "/payments/{payment_id}/qr-payment/info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        /** QR Payment Info */
+        get: operations["get-payments-payment_id-qr-payment-info"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payments/{payment_id}/google-pay/info": {
         parameters: {
             query?: never;
             header?: never;
@@ -148,7 +167,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Validate Merchant */
-        post: operations["get-payments-payment_id-apple-pay-validate"];
+        post: operations["post-payments-payment_id-apple-pay-validate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1043,6 +1062,7 @@ export interface components {
         "Additional-Param": {
             /** @example Custom param */
             name?: string;
+            /** @example Custom value */
             value?: string;
         };
         /**
@@ -1199,51 +1219,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /** @enum {unknown} */
-                    environment?: "PRODUCTION" | "TEST";
-                    paymentDataRequest?: {
-                        /** @example 2 */
-                        apiVersion?: number;
-                        /** @example 0 */
-                        apiVersionMinor?: number;
-                        allowedPaymentMethods?: {
-                            /** @constant */
-                            type?: "CARD";
-                            parameters?: {
-                                allowedAuthMethods?: ("PAN_ONLY" | "CRYPTOGRAM_3DS")[];
-                                allowedCardNetworks?: ("VISA" | "MASTERCARD")[];
-                            };
-                            tokenizationSpecification?: {
-                                /** @constant */
-                                type?: "PAYMENT_GATEWAY";
-                                parameters?: {
-                                    /** @example gopay */
-                                    gateway?: string;
-                                    /** @example 26046768005768011132 */
-                                    gatewayMerchantId?: string;
-                                };
-                            };
-                        }[];
-                        transactionInfo?: {
-                            currencyCode?: components["schemas"]["Currency"];
-                            /** @example CZ */
-                            countryCode?: string;
-                            /** @example FINAL */
-                            totalPriceStatus?: string;
-                            /** @example 5.00 */
-                            totalPrice?: string;
-                        };
-                        merchantInfo?: {
-                            /** @example GoPay Czech Branch */
-                            merchantName?: string;
-                            /** @example 14846034534970557458 */
-                            merchantId?: string;
-                        };
-                        /** @default true */
-                        emailRequired: boolean;
-                    };
-                };
+                "application/json": Record<string, never>;
             };
         };
         /** @description Example response */
@@ -1303,6 +1279,120 @@ export interface components {
                     displayName?: string;
                     /** @example 3080 */
                     signature?: string;
+                };
+            };
+        };
+        /** @description Example response */
+        "QR-Payment-Info-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /**
+                     * @description Payment amount in cents
+                     * @example 10000
+                     */
+                    amount: number;
+                    /** @description Payment currency */
+                    currency: components["schemas"]["Currency"];
+                    /** @description Information about the recipient */
+                    recipient: {
+                        /**
+                         * @description Recipient name
+                         * @example GoPay Czech
+                         */
+                        name: string;
+                        /** @description Recipient's bank account information */
+                        bank_account: {
+                            /** @description Recipient bank account information in local format */
+                            local?: {
+                                /**
+                                 * @description Account prefix
+                                 * @example 000000
+                                 */
+                                prefix: string;
+                                /**
+                                 * @description Account number in local format
+                                 * @example 9878039
+                                 */
+                                account_number: string;
+                                /**
+                                 * @description Local bank code
+                                 * @example 2010
+                                 */
+                                bank_code: string;
+                                /**
+                                 * @description Payment identifier
+                                 * @example 3123456789
+                                 */
+                                variable_symbol: string;
+                            };
+                            /** @description Recipient information in international format */
+                            international: {
+                                /**
+                                 * @description Recipient BIC/SWIFT
+                                 * @example FIOBCZPP
+                                 */
+                                bic: string;
+                                /**
+                                 * @description Recipient IBAN
+                                 * @example CZ5120100000000009878039
+                                 */
+                                iban: string;
+                                /**
+                                 * @description Payment identifier
+                                 * @example 3123456789
+                                 */
+                                reference: string;
+                            };
+                        };
+                        /** @description Recipient address */
+                        address?: {
+                            /**
+                             * @description Recipient address street
+                             * @example Senovazne nam. 1736
+                             */
+                            street: string;
+                            /**
+                             * @description Recipient address city
+                             * @example Ceske Budejovice
+                             */
+                            city: string;
+                            /**
+                             * @description Recipient address ZIP code
+                             * @example 37001
+                             */
+                            zip_code: string;
+                            /**
+                             * @description Recipient address country
+                             * @example Czech Republic
+                             */
+                            country: string;
+                        };
+                    };
+                    qr_code: {
+                        /**
+                         * @description Czech payment QR code (SPAYD) - only available for the CZK currency
+                         * @example {QR code in base64}
+                         */
+                        spayd?: string;
+                        /**
+                         * @description Slovak payment QR code (PayBySquare) - only available for the EUR currency
+                         * @example {QR code in base64}
+                         */
+                        paybysquare?: string;
+                        /**
+                         * @description SEPA payment QR code (specified by EPC) - only available for the EUR currency
+                         * @example {QR code in base64}
+                         */
+                        sepa?: string;
+                        /**
+                         * @description Hungarian payment QR code (specified by MNB) - only available for the HUF currency
+                         * @example {QR code in base64}
+                         */
+                        mnb_qr?: string;
+                    };
                 };
             };
         };
@@ -1455,6 +1545,26 @@ export interface operations {
             201: components["responses"]["Payment-Create-Response"];
         };
     };
+    "get-payments-payment_id-qr-payment-info": {
+        parameters: {
+            query?: {
+                /** @description File format of the generated base64 */
+                format?: "png" | "svg";
+            };
+            header?: {
+                /** @description application/json */
+                Accept?: string;
+            };
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["QR-Payment-Info-Response"];
+        };
+    };
     "get-payments-payment_id-info-google-pay": {
         parameters: {
             query?: never;
@@ -1489,7 +1599,7 @@ export interface operations {
             200: components["responses"]["Apple-Pay-Info-Response"];
         };
     };
-    "get-payments-payment_id-apple-pay-validate": {
+    "post-payments-payment_id-apple-pay-validate": {
         parameters: {
             query?: never;
             header: {

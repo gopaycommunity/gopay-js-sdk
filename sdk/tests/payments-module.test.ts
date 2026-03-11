@@ -260,4 +260,334 @@ describe('PaymentsModule', () => {
             expect(result.state).toBe('REQUESTED');
         });
     });
+
+    describe('getGooglePayInfo()', () => {
+        const mockGooglePayResponse = {
+            environment: 'TEST',
+            paymentDataRequest: {
+                apiVersion: 2,
+                apiVersionMinor: 0,
+                merchantInfo: { merchantName: 'GoPay Czech Branch' },
+            },
+        };
+
+        beforeEach(() => {
+            fetchMock.mockResolvedValue(makeResponse(mockGooglePayResponse));
+        });
+
+        it('sends GET to /payments/{paymentId}/google-pay/info', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(mockGooglePayResponse);
+            });
+
+            await payments.getGooglePayInfo('pay_300000001');
+
+            expect(capturedReq.method).toBe('GET');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001/google-pay/info',
+            );
+        });
+
+        it('interpolates paymentId correctly into the URL', async () => {
+            let capturedUrl = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedUrl = req.url;
+                return makeResponse(mockGooglePayResponse);
+            });
+
+            await payments.getGooglePayInfo('pay_999');
+
+            expect(capturedUrl).toContain('/payments/pay_999/google-pay/info');
+        });
+
+        it('sends Bearer token from token store', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(mockGooglePayResponse);
+            });
+
+            await payments.getGooglePayInfo('pay_300000001');
+
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                'Bearer at-test',
+            );
+        });
+
+        it('returns the Google Pay info response', async () => {
+            const result = await payments.getGooglePayInfo('pay_300000001');
+
+            expect(result).toEqual(mockGooglePayResponse);
+        });
+    });
+
+    describe('getApplePayInfo()', () => {
+        const mockApplePayResponse = {
+            applepayVersion: 6,
+            merchantDisplayName: 'GoPay Czech Branch',
+            merchantIdentifier: '8398119642',
+            applePayPaymentRequest: {
+                supportedNetworks: ['visa', 'masterCard'],
+                countryCode: 'CZ',
+                currencyCode: 'CZK',
+                total: {
+                    label: 'GoPay Czech Branch',
+                    amount: '10.00',
+                    type: 'final',
+                },
+            },
+        };
+
+        beforeEach(() => {
+            fetchMock.mockResolvedValue(makeResponse(mockApplePayResponse));
+        });
+
+        it('sends GET to /payments/{paymentId}/apple-pay/info', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(mockApplePayResponse);
+            });
+
+            await payments.getApplePayInfo('pay_300000001');
+
+            expect(capturedReq.method).toBe('GET');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001/apple-pay/info',
+            );
+        });
+
+        it('interpolates paymentId correctly into the URL', async () => {
+            let capturedUrl = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedUrl = req.url;
+                return makeResponse(mockApplePayResponse);
+            });
+
+            await payments.getApplePayInfo('pay_999');
+
+            expect(capturedUrl).toContain('/payments/pay_999/apple-pay/info');
+        });
+
+        it('sends Bearer token from token store', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(mockApplePayResponse);
+            });
+
+            await payments.getApplePayInfo('pay_300000001');
+
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                'Bearer at-test',
+            );
+        });
+
+        it('returns the Apple Pay info response', async () => {
+            const result = await payments.getApplePayInfo('pay_300000001');
+
+            expect(result).toEqual(mockApplePayResponse);
+        });
+    });
+
+    describe('validateApplePayMerchant()', () => {
+        const mockValidateMerchantResponse = {
+            epochTimestamp: 15445664606792,
+            expiresAt: 154167344466792,
+            merchantSessionIdentifier: 'SSHC45CB',
+            nonce: '8f47a9c1',
+            merchantIdentifier: '8398119642',
+            domainName: 'www.example.com',
+            displayName: 'GoPay Czech Branch',
+        };
+
+        beforeEach(() => {
+            fetchMock.mockResolvedValue(
+                makeResponse(mockValidateMerchantResponse),
+            );
+        });
+
+        it('sends POST to /payments/{paymentId}/apple-pay/validate', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse(mockValidateMerchantResponse);
+            });
+
+            await payments.validateApplePayMerchant(
+                'pay_300000001',
+                'https://shop.example.com',
+            );
+
+            expect(capturedReq.method).toBe('POST');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001/apple-pay/validate',
+            );
+        });
+
+        it('interpolates paymentId correctly into the URL', async () => {
+            let capturedUrl = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedUrl = req.url;
+                await req.text();
+                return makeResponse(mockValidateMerchantResponse);
+            });
+
+            await payments.validateApplePayMerchant(
+                'pay_999',
+                'https://shop.example.com',
+            );
+
+            expect(capturedUrl).toContain(
+                '/payments/pay_999/apple-pay/validate',
+            );
+        });
+
+        it('sends the Origin header', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse(mockValidateMerchantResponse);
+            });
+
+            await payments.validateApplePayMerchant(
+                'pay_300000001',
+                'https://shop.example.com',
+            );
+
+            expect(capturedReq.headers.get('Origin')).toBe(
+                'https://shop.example.com',
+            );
+        });
+
+        it('sends Bearer token from token store', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse(mockValidateMerchantResponse);
+            });
+
+            await payments.validateApplePayMerchant(
+                'pay_300000001',
+                'https://shop.example.com',
+            );
+
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                'Bearer at-test',
+            );
+        });
+
+        it('returns the validate merchant response', async () => {
+            const result = await payments.validateApplePayMerchant(
+                'pay_300000001',
+                'https://shop.example.com',
+            );
+
+            expect(result).toEqual(mockValidateMerchantResponse);
+            expect(result.domainName).toBe('www.example.com');
+        });
+    });
+
+    describe('getQRPaymentInfo()', () => {
+        const mockQRPaymentResponse = {
+            amount: 10000,
+            currency: 'CZK',
+            recipient: {
+                name: 'GoPay Czech',
+                bank_account: {
+                    international: {
+                        bic: 'FIOBCZPP',
+                        iban: 'CZ5120100000000009878039',
+                        reference: '3123456789',
+                    },
+                },
+            },
+            qr_code: {
+                spayd: 'base64encodedQR==',
+            },
+        };
+
+        beforeEach(() => {
+            fetchMock.mockResolvedValue(makeResponse(mockQRPaymentResponse));
+        });
+
+        it('sends GET to /payments/{paymentId}/qr-payment/info', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(mockQRPaymentResponse);
+            });
+
+            await payments.getQRPaymentInfo('pay_300000001');
+
+            expect(capturedReq.method).toBe('GET');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001/qr-payment/info',
+            );
+        });
+
+        it('interpolates paymentId correctly into the URL', async () => {
+            let capturedUrl = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedUrl = req.url;
+                return makeResponse(mockQRPaymentResponse);
+            });
+
+            await payments.getQRPaymentInfo('pay_999');
+
+            expect(capturedUrl).toContain('/payments/pay_999/qr-payment/info');
+        });
+
+        it('appends ?format=svg when format is provided', async () => {
+            let capturedUrl = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedUrl = req.url;
+                return makeResponse(mockQRPaymentResponse);
+            });
+
+            await payments.getQRPaymentInfo('pay_300000001', 'svg');
+
+            expect(capturedUrl).toContain(
+                '/payments/pay_300000001/qr-payment/info?format=svg',
+            );
+        });
+
+        it('does not append format when not provided', async () => {
+            let capturedUrl = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedUrl = req.url;
+                return makeResponse(mockQRPaymentResponse);
+            });
+
+            await payments.getQRPaymentInfo('pay_300000001');
+
+            expect(capturedUrl).not.toContain('format');
+        });
+
+        it('sends Bearer token from token store', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(mockQRPaymentResponse);
+            });
+
+            await payments.getQRPaymentInfo('pay_300000001');
+
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                'Bearer at-test',
+            );
+        });
+
+        it('returns the QR payment info response', async () => {
+            const result = await payments.getQRPaymentInfo('pay_300000001');
+
+            expect(result).toEqual(mockQRPaymentResponse);
+            expect(result.qr_code?.spayd).toBe('base64encodedQR==');
+        });
+    });
 });
