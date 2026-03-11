@@ -66,7 +66,14 @@
     <div class="fields">
       <label>Client ID<input id="auth-client-id" type="text" placeholder="your-client-id" /></label>
       <label>Client Secret<input id="auth-client-secret" type="password" placeholder="your-client-secret" /></label>
-      <label>Scope<input id="auth-scope" type="text" value="payment:create" /></label>
+      <label>Scope (⌘/Ctrl+click to select multiple)
+        <select id="auth-scope" multiple size="4" style="padding:0.3rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
+          <option value="payment:create" selected>payment:create</option>
+          <option value="payment:read">payment:read</option>
+          <option value="card:save">card:save</option>
+          <option value="card:read">card:read</option>
+        </select>
+      </label>
     </div>
     <button onclick="runAuthenticate()">Run</button>
     <pre id="auth-output">—</pre>
@@ -107,14 +114,23 @@
   <section>
     <h2>payments.charge()</h2>
     <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /payments/{id}/charge — charge using a card token.</p>
+    <div class="fields">
+      <label>Payment ID<input id="charge-payment-id" type="text" placeholder="pay_300000001" /></label>
+      <label>Card Token<input id="charge-card-token" type="text" placeholder="card token from cards.createToken()" /></label>
+      <label>Return URL<input id="charge-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+    </div>
     <button onclick="runCharge()">Run</button>
     <pre id="payment-charge-output">—</pre>
+    <p class="note">Use the Payment ID from <code>payments.create()</code> output. Card token obtained via <code>cards.createToken()</code>.</p>
   </section>
 
   <!-- Google Pay info -->
   <section>
     <h2>payments.getGooglePayInfo()</h2>
     <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/info/google-pay — fetch Google Pay configuration.</p>
+    <div class="fields">
+      <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="pay_300000001" /></label>
+    </div>
     <button onclick="runGooglePay()">Run</button>
     <pre id="googlepay-output">—</pre>
   </section>
@@ -123,6 +139,9 @@
   <section>
     <h2>payments.getApplePayInfo()</h2>
     <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/apple-pay/info — fetch Apple Pay configuration.</p>
+    <div class="fields">
+      <label>Payment ID<input id="applepay-payment-id" type="text" placeholder="pay_300000001" /></label>
+    </div>
     <button onclick="runApplePay()">Run</button>
     <pre id="applepay-output">—</pre>
   </section>
@@ -131,6 +150,10 @@
   <section>
     <h2>payments.validateApplePayMerchant()</h2>
     <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /payments/{id}/apple-pay/validate — validate the Apple Pay merchant session.</p>
+    <div class="fields">
+      <label>Payment ID<input id="applepay-validate-payment-id" type="text" placeholder="pay_300000001" /></label>
+      <label>Origin<input id="applepay-validate-origin" type="text" value="https://yourshop.example.com" /></label>
+    </div>
     <button onclick="runValidateMerchant()">Run</button>
     <pre id="applepay-validate-output">—</pre>
   </section>
@@ -206,12 +229,13 @@
   // -----------------------------------------------------------------------
   // Helper
   // -----------------------------------------------------------------------
-  async function run(outputId, fn) {
+  async function run(outputId, fn, onSuccess) {
     const pre = document.getElementById(outputId);
     pre.textContent = 'Running…';
     try {
       const result = await fn();
       pre.textContent = JSON.stringify(result, null, 2);
+      if (onSuccess) onSuccess(result);
     } catch (err) {
       let name, message;
       if (err instanceof Error) {
@@ -231,10 +255,15 @@
   // -----------------------------------------------------------------------
   // Demo calls
   // -----------------------------------------------------------------------
+  function getSelectedScopes() {
+    const el = document.getElementById('auth-scope');
+    return Array.from(el.selectedOptions).map(o => o.value).join(' ') || 'payment:create';
+  }
+
   function runAuthenticate() {
     const client_id     = document.getElementById('auth-client-id').value.trim();
     const client_secret = document.getElementById('auth-client-secret').value.trim();
-    const scope         = document.getElementById('auth-scope').value.trim() || 'payment:create';
+    const scope         = getSelectedScopes();
 
     run('auth-output', () =>
       sdk.auth.authenticate({ grant_type: 'client_credentials', client_id, client_secret, scope })
@@ -244,7 +273,7 @@
   function runSetRefreshTokenFlow() {
     const client_id     = document.getElementById('auth-client-id').value.trim();
     const client_secret = document.getElementById('auth-client-secret').value.trim();
-    const scope         = document.getElementById('auth-scope').value.trim() || 'payment:create';
+    const scope         = getSelectedScopes();
     const goid          = document.getElementById('create-goid').value.trim();
 
     run('set-refresh-token-output', async () => {
@@ -275,6 +304,16 @@
     });
   }
 
+  function prefillPaymentId(result) {
+    const id = result?.id;
+    if (!id) return;
+    ['charge-payment-id', 'googlepay-payment-id', 'applepay-payment-id', 'applepay-validate-payment-id']
+      .forEach(fieldId => {
+        const el = document.getElementById(fieldId);
+        if (el && !el.value) el.value = id;
+      });
+  }
+
   function runCreatePayment() {
     const goid              = document.getElementById('create-goid').value.trim();
     const amount            = parseInt(document.getElementById('create-amount').value, 10);
@@ -291,34 +330,42 @@
         order_number,
         customer: { email },
         callback: { notification_url, return_url },
-      })
+      }),
+      prefillPaymentId,
     );
   }
 
   function runCharge() {
+    const paymentId  = document.getElementById('charge-payment-id').value.trim();
+    const card_token = document.getElementById('charge-card-token').value.trim();
+    const return_url = document.getElementById('charge-return-url').value.trim();
+
     run('payment-charge-output', () =>
-      sdk.payments.charge('PAYMENT_ID', {
+      sdk.payments.charge(paymentId, {
         payment_instrument: {
           payment_instrument: 'PAYMENT_CARD',
-          input_type: 'CARD_TOKEN',
-          input: { input_type: 'CARD_TOKEN', card_token: 'CARD_TOKEN_HERE' },
+          input: { input_type: 'CARD_TOKEN', card_token },
         },
-        return_url: 'https://yourshop.example.com/return',
+        return_url,
       })
     );
   }
 
   function runGooglePay() {
-    run('googlepay-output', () => sdk.payments.getGooglePayInfo('PAYMENT_ID'));
+    const paymentId = document.getElementById('googlepay-payment-id').value.trim();
+    run('googlepay-output', () => sdk.payments.getGooglePayInfo(paymentId));
   }
 
   function runApplePay() {
-    run('applepay-output', () => sdk.payments.getApplePayInfo('PAYMENT_ID'));
+    const paymentId = document.getElementById('applepay-payment-id').value.trim();
+    run('applepay-output', () => sdk.payments.getApplePayInfo(paymentId));
   }
 
   function runValidateMerchant() {
+    const paymentId = document.getElementById('applepay-validate-payment-id').value.trim();
+    const origin    = document.getElementById('applepay-validate-origin').value.trim();
     run('applepay-validate-output', () =>
-      sdk.payments.validateApplePayMerchant('PAYMENT_ID', 'https://yourshop.example.com')
+      sdk.payments.validateApplePayMerchant(paymentId, origin)
     );
   }
 

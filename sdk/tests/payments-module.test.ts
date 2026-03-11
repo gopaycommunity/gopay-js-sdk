@@ -34,6 +34,40 @@ const createParams = {
     },
 } as const;
 
+const mockChargeResponse = {
+    id: 'pay_300000001',
+    state: 'REQUESTED',
+    payment_instrument: {
+        payment_instrument: 'PAYMENT_CARD',
+        details: {
+            input_type: 'CARD_TOKEN',
+            masked_pan: '406821******1234',
+            expiration_month: '01',
+            expiration_year: '30',
+            scheme: 'VISA',
+            fingerprint: '73c8d0a48d91def89761...',
+        },
+    },
+    return_url: 'https://example.com/return',
+    action: {
+        action_type: 'EMV3DS',
+        state: 'CREATED',
+        redirect_url: 'https://gate.gopay.com/redirect',
+    },
+};
+
+const chargeParams = {
+    payment_instrument: {
+        payment_instrument: 'PAYMENT_CARD',
+        input: {
+            input_type: 'CARD_TOKEN',
+            card_token: 'J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...',
+            challenge_preferrence: 'AUTO',
+        },
+    },
+    return_url: 'https://example.com/return',
+} as const;
+
 describe('PaymentsModule', () => {
     let fetchMock: ReturnType<typeof vi.fn>;
     let client: HttpClient;
@@ -139,6 +173,91 @@ describe('PaymentsModule', () => {
             expect(result.gw_url).toBe(
                 'https://gw.gopay.com/gw/v3/bCcvmwTKK5hrJx2aGG8ZnFyBJhAvF',
             );
+        });
+    });
+
+    describe('charge()', () => {
+        beforeEach(() => {
+            fetchMock.mockResolvedValue(makeResponse(mockChargeResponse, 201));
+        });
+
+        it('sends POST to /payments/{paymentId}/charge', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse(mockChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', chargeParams);
+
+            expect(capturedReq.method).toBe('POST');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001/charge',
+            );
+        });
+
+        it('interpolates paymentId correctly into the URL', async () => {
+            let capturedUrl = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedUrl = req.url;
+                await req.text();
+                return makeResponse(mockChargeResponse, 201);
+            });
+
+            await payments.charge('pay_999', chargeParams);
+
+            expect(capturedUrl).toContain('/payments/pay_999/charge');
+        });
+
+        it('sends JSON body with charge params', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(mockChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', chargeParams);
+
+            expect(JSON.parse(capturedBody)).toEqual(chargeParams);
+        });
+
+        it('sends Content-Type: application/json', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse(mockChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', chargeParams);
+
+            expect(capturedReq.headers.get('Content-Type')).toContain(
+                'application/json',
+            );
+        });
+
+        it('sends Bearer token from token store', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse(mockChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', chargeParams);
+
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                'Bearer at-test',
+            );
+        });
+
+        it('returns the charge response', async () => {
+            const result = await payments.charge('pay_300000001', chargeParams);
+
+            expect(result).toEqual(mockChargeResponse);
+            expect(result.id).toBe('pay_300000001');
+            expect(result.state).toBe('REQUESTED');
         });
     });
 });

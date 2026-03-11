@@ -317,20 +317,76 @@ describe('GoPaySDK', () => {
             expect(result).toEqual(mockPayment);
         });
 
-        it('charge() throws Not implemented', async () => {
-            const sdk = new GoPaySDK();
-            await expect(
-                sdk.payments.charge('payment-123', {
-                    payment_instrument: {
-                        payment_instrument: 'PAYMENT_CARD',
-                        input: {
-                            input_type: 'CARD_TOKEN',
-                            card_token: 'tok_123',
-                        },
+        it('charge() sends POST to /payments/{id}/charge and returns response', async () => {
+            const mockCharge = {
+                id: 'pay_300000001',
+                state: 'REQUESTED',
+                payment_instrument: {
+                    payment_instrument: 'PAYMENT_CARD',
+                    details: {
+                        input_type: 'CARD_TOKEN',
+                        masked_pan: '406821******1234',
                     },
-                    return_url: 'https://example.com/return',
+                },
+                return_url: 'https://example.com/return',
+                action: {
+                    action_type: 'EMV3DS',
+                    state: 'CREATED',
+                    redirect_url: 'https://gate.gopay.com/redirect',
+                },
+            };
+            let capturedChargeReq!: Request;
+            vi.stubGlobal(
+                'fetch',
+                vi.fn().mockImplementation(async (req: Request) => {
+                    await req.text();
+                    if (req.url.includes('/oauth2/token')) {
+                        return new Response(
+                            JSON.stringify({
+                                token_type: 'bearer',
+                                access_token: 'at-test',
+                                refresh_token: 'rt-test',
+                                scope: 'payment:create',
+                                expires_in: 900,
+                                refresh_expires_in: 86400,
+                            }),
+                            {
+                                status: 200,
+                                headers: { 'content-type': 'application/json' },
+                            },
+                        );
+                    }
+                    capturedChargeReq = req;
+                    return new Response(JSON.stringify(mockCharge), {
+                        status: 201,
+                        headers: { 'content-type': 'application/json' },
+                    });
                 }),
-            ).rejects.toThrow('Not implemented');
+            );
+
+            const sdk = new GoPaySDK({ environment: 'sandbox' });
+            await sdk.auth.authenticate({
+                grant_type: 'client_credentials',
+                client_id: 'id',
+                client_secret: 'secret',
+                scope: 'payment:create',
+            });
+            const result = await sdk.payments.charge('pay_300000001', {
+                payment_instrument: {
+                    payment_instrument: 'PAYMENT_CARD',
+                    input: {
+                        input_type: 'CARD_TOKEN',
+                        card_token: 'tok_123',
+                    },
+                },
+                return_url: 'https://example.com/return',
+            });
+
+            expect(capturedChargeReq.method).toBe('POST');
+            expect(capturedChargeReq.url).toBe(
+                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/payments/pay_300000001/charge',
+            );
+            expect(result).toEqual(mockCharge);
         });
 
         it('getGooglePayInfo() throws Not implemented', async () => {

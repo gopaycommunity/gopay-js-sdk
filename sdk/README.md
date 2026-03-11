@@ -49,6 +49,33 @@ const payment = await sdk.payments.create('YOUR_GOID', {
 res.redirect(payment.gw_url);
 ```
 
+### Charging a payment
+
+Once the customer completes the payment flow and returns to your site, charge the payment using the instrument they provided:
+
+```ts
+// Card token (obtained via sdk.cards.createToken())
+const charge = await sdk.payments.charge(payment.id, {
+  payment_instrument: {
+    payment_instrument: 'PAYMENT_CARD',
+    input: {
+      input_type: 'CARD_TOKEN',
+      card_token: cardToken,
+      challenge_preferrence: 'AUTO',
+    },
+  },
+  return_url: 'https://yourshop.com/return',
+});
+
+// For bank account payments, use BANK_ACCOUNT with an account token:
+// payment_instrument: { payment_instrument: 'BANK_ACCOUNT', input: { input_type: 'ACCOUNT_TOKEN', account_token: '...' } }
+
+if (charge.action?.redirect_url) {
+  // 3DS or PSD2 authentication required — redirect the customer
+  res.redirect(charge.action.redirect_url);
+}
+```
+
 ---
 
 ## Authentication
@@ -137,7 +164,7 @@ const payment = await sdk.payments.create(goid, params);
 | Method | Description |
 |---|---|
 | `create(goid, params)` | Create a new payment session (`POST /eshops/{goid}/payments`). |
-| `charge(paymentId, params)` | Charge a payment using a payment instrument. |
+| `charge(paymentId, params)` | Charge a payment using a payment instrument (`POST /payments/{paymentId}/charge`). |
 | `getGooglePayInfo(paymentId)` | Retrieve Google Pay configuration for a payment. |
 | `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment. |
 | `validateApplePayMerchant(paymentId, origin)` | Validate the Apple Pay merchant session. |
@@ -205,3 +232,9 @@ try {
 |---|---|
 | `sandbox` | `https://api.sandbox.gopay.com/api/merchant/payments/4.0` |
 | `production` | `https://api.gopay.com/api/merchant/payments/4.0` |
+
+---
+
+## Interactive example
+
+An interactive developer page is included in the repository. It exercises every SDK method against the real API.

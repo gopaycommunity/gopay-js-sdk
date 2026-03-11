@@ -47,10 +47,13 @@ export class PaymentsModule {
      * @param params    - Charge parameters including payment instrument details
      */
     async charge(
-        _paymentId: string,
-        _params: PaymentChargeRequest,
+        paymentId: string,
+        params: PaymentChargeRequest,
     ): Promise<PaymentChargeResponse> {
-        throw new Error('Not implemented');
+        return this.client.post<PaymentChargeResponse>(
+            `/payments/${paymentId}/charge`,
+            params,
+        );
     }
 
     /**
