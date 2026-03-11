@@ -117,7 +117,41 @@ paths:
         - $ref: '#/components/parameters/Accept-Json'
       requestBody:
         $ref: '#/components/requestBodies/Payment-Create-Request'
-  '/payments/{payment_id}/info/google-pay':
+  '/payments/{payment_id}/qr-payment/info':
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+    get:
+      summary: QR Payment Info
+      tags: []
+      responses:
+        '200':
+          $ref: '#/components/responses/QR-Payment-Info-Response'
+      operationId: get-payments-payment_id-qr-payment-info
+      parameters:
+        - schema:
+            type: string
+            example: application/json
+            default: application/json
+          in: header
+          name: Accept
+          description: application/json
+        - schema:
+            type: string
+            enum:
+              - png
+              - svg
+            example: png
+            default: png
+          in: query
+          name: format
+          description: File format of the generated base64
+      x-stoplight:
+        id: dvab3szgjw238
+  '/payments/{payment_id}/google-pay/info':
     parameters:
       - schema:
           type: string
@@ -178,7 +212,7 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/Validate-Merchant-Response'
-      operationId: get-payments-payment_id-apple-pay-validate
+      operationId: post-payments-payment_id-apple-pay-validate
       x-stoplight:
         id: gb1p7yi5l70cd
       parameters:
@@ -1484,7 +1518,7 @@ components:
             id: 7ja6w4inp4odb
         value:
           type: string
-          'example:': Custom value
+          example: Custom value
       description: Additional payment parameters
     Customer:
       type: object
@@ -1979,143 +2013,7 @@ components:
         application/json:
           schema:
             type: object
-            x-examples:
-              Example 1:
-                environment: TEST
-                paymentDataRequest:
-                  apiVersion: 2
-                  apiVersionMinor: 0
-                  allowedPaymentMethods:
-                    - type: CARD
-                      parameters:
-                        allowedAuthMethods:
-                          - PAN_ONLY
-                          - CRYPTOGRAM_3DS
-                        allowedCardNetworks:
-                          - MASTERCARD
-                          - VISA
-                      tokenizationSpecification:
-                        type: PAYMENT_GATEWAY
-                        parameters:
-                          gateway: gopay
-                          gatewayMerchantId: '26046768005768011132'
-                  transactionInfo:
-                    currencyCode: CZK
-                    countryCode: CZ
-                    totalPriceStatus: FINAL
-                    totalPrice: '5.00'
-                  merchantInfo:
-                    merchantName: GoPay Czech Branch
-                    merchantId: '14846034534970557458'
-                  emailRequired: true
-            properties:
-              environment:
-                enum:
-                  - PRODUCTION
-                  - TEST
-              paymentDataRequest:
-                type: object
-                properties:
-                  apiVersion:
-                    type: integer
-                    example: 2
-                  apiVersionMinor:
-                    type: integer
-                    example: 0
-                  allowedPaymentMethods:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        type:
-                          type: string
-                          const: CARD
-                        parameters:
-                          type: object
-                          properties:
-                            allowedAuthMethods:
-                              type: array
-                              items:
-                                enum:
-                                  - PAN_ONLY
-                                  - CRYPTOGRAM_3DS
-                            allowedCardNetworks:
-                              type: array
-                              items:
-                                enum:
-                                  - VISA
-                                  - MASTERCARD
-                        tokenizationSpecification:
-                          type: object
-                          properties:
-                            type:
-                              type: string
-                              const: PAYMENT_GATEWAY
-                            parameters:
-                              type: object
-                              properties:
-                                gateway:
-                                  type: string
-                                  example: gopay
-                                gatewayMerchantId:
-                                  type: string
-                                  example: '26046768005768011132'
-                  transactionInfo:
-                    type: object
-                    properties:
-                      currencyCode:
-                        $ref: '#/components/schemas/Currency'
-                      countryCode:
-                        type: string
-                        example: CZ
-                      totalPriceStatus:
-                        type: string
-                        example: FINAL
-                      totalPrice:
-                        type: string
-                        example: '5.00'
-                  merchantInfo:
-                    type: object
-                    properties:
-                      merchantName:
-                        type: string
-                        example: GoPay Czech Branch
-                      merchantId:
-                        type: string
-                        example: '14846034534970557458'
-                  emailRequired:
-                    type: boolean
-                    default: true
-          examples:
-            Example 1:
-              value:
-                environment: PRODUCTION
-                paymentDataRequest:
-                  apiVersion: 2
-                  apiVersionMinor: 0
-                  allowedPaymentMethods:
-                    - type: CARD
-                      parameters:
-                        allowedAuthMethods:
-                          - PAN_ONLY
-                          - CRYPTOGRAM_3DS
-                        allowedCardNetworks:
-                          - VISA
-                          - MASTERCARD
-                      tokenizationSpecification:
-                        type: PAYMENT_GATEWAY
-                        parameters:
-                          gateway: gopay
-                          gatewayMerchantId: '26046768005768011132'
-                  transactionInfo:
-                    currencyCode: CZK
-                    countryCode: CZ
-                    totalPriceStatus: FINAL
-                    totalPrice: '5.00'
-                  merchantInfo:
-                    merchantName: GoPay Czech Branch
-                    merchantId: '14846034534970557458'
-                  emailRequired: true
+            properties: {}
       headers: {}
     Apple-Pay-Info-Response:
       description: Example response
@@ -2273,6 +2171,158 @@ components:
                 displayName: GoPay Czech Branch
                 signature: '3080'
       headers: {}
+    QR-Payment-Info-Response:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            type: object
+            x-examples:
+              Example 1:
+                amount: 10000
+                currency: CZK
+                recipient:
+                  name: GoPay Czech
+                  bank_account:
+                    local:
+                      prefix: '000000'
+                      account_number: '9878039'
+                      bank_code: '2010'
+                      variable_symbol: '3123456789'
+                    international:
+                      bic: FIOBCZPP
+                      iban: CZ5120100000000009878039
+                      reference: '3123456789'
+                  address:
+                    street: Senovazne nam. 1736
+                    city: Ceske Budejovice
+                    zip_code: '37001'
+                    country: Czech Republic
+                qr_code:
+                  spayd: '{base64 QR code}'
+                  paybysquare: '{base64 QR code}'
+                  sepa: '{base64 QR code}'
+                  mnb_qr: '{base64 QR code}'
+            required:
+              - amount
+              - currency
+              - recipient
+              - qr_code
+            properties:
+              amount:
+                type: integer
+                example: 10000
+                description: Payment amount in cents
+              currency:
+                $ref: '#/components/schemas/Currency'
+                description: Payment currency
+              recipient:
+                type: object
+                description: Information about the recipient
+                required:
+                  - name
+                  - bank_account
+                properties:
+                  name:
+                    type: string
+                    example: GoPay Czech
+                    description: Recipient name
+                  bank_account:
+                    type: object
+                    description: Recipient's bank account information
+                    required:
+                      - international
+                    properties:
+                      local:
+                        type: object
+                        description: Recipient bank account information in local format
+                        required:
+                          - prefix
+                          - account_number
+                          - bank_code
+                          - variable_symbol
+                        properties:
+                          prefix:
+                            type: string
+                            example: '000000'
+                            description: Account prefix
+                          account_number:
+                            type: string
+                            example: '9878039'
+                            description: Account number in local format
+                          bank_code:
+                            type: string
+                            example: '2010'
+                            description: Local bank code
+                          variable_symbol:
+                            type: string
+                            example: '3123456789'
+                            description: Payment identifier
+                      international:
+                        type: object
+                        description: Recipient information in international format
+                        required:
+                          - bic
+                          - iban
+                          - reference
+                        properties:
+                          bic:
+                            type: string
+                            example: FIOBCZPP
+                            description: Recipient BIC/SWIFT
+                          iban:
+                            type: string
+                            example: CZ5120100000000009878039
+                            description: Recipient IBAN
+                          reference:
+                            type: string
+                            example: '3123456789'
+                            description: Payment identifier
+                  address:
+                    type: object
+                    description: Recipient address
+                    required:
+                      - street
+                      - city
+                      - zip_code
+                      - country
+                    properties:
+                      street:
+                        type: string
+                        example: Senovazne nam. 1736
+                        description: Recipient address street
+                      city:
+                        type: string
+                        example: Ceske Budejovice
+                        description: Recipient address city
+                      zip_code:
+                        type: string
+                        example: '37001'
+                        description: Recipient address ZIP code
+                      country:
+                        type: string
+                        example: Czech Republic
+                        description: Recipient address country
+              qr_code:
+                type: object
+                properties:
+                  spayd:
+                    type: string
+                    example: '{QR code in base64}'
+                    description: Czech payment QR code (SPAYD) - only available for the CZK currency
+                  paybysquare:
+                    type: string
+                    example: '{QR code in base64}'
+                    description: Slovak payment QR code (PayBySquare) - only available for the EUR currency
+                  sepa:
+                    type: string
+                    example: '{QR code in base64}'
+                    description: SEPA payment QR code (specified by EPC) - only available for the EUR currency
+                  mnb_qr:
+                    type: string
+                    example: '{QR code in base64}'
+                    description: Hungarian payment QR code (specified by MNB) - only available for the HUF currency
+          examples: {}
   parameters:
     Accept-Json:
       name: Accept
