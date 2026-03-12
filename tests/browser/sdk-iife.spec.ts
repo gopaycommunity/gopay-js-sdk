@@ -21,7 +21,8 @@ test('SDK exposes expected modules and methods', async ({ page }) => {
     );
 
     expect(modules.auth).toContain('authenticate');
-    expect(modules.auth).toContain('setRefreshToken');
+    expect(modules.auth).toContain('issueClientToken');
+    expect(modules.auth).toContain('setClientToken');
     expect(modules.payments).toContain('create');
     expect(modules.payments).toContain('charge');
     expect(modules.payments).toContain('getGooglePayInfo');

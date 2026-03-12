@@ -23,8 +23,19 @@ export class HttpClient {
         this.tokenStore.set(pair);
     }
 
-    setRefreshToken(refreshToken: string, clientId: string): void {
-        this.tokenStore.setRefreshToken(refreshToken, clientId);
+    setClientId(clientId: string): void {
+        this.tokenStore.setClientId(clientId);
+    }
+
+    setClientCredentials(clientId: string, clientSecret: string): void {
+        this.tokenStore.setClientSecret(clientId, clientSecret);
+    }
+
+    getClientCredentials(): { clientId: string; clientSecret: string } | null {
+        const clientId = this.tokenStore.getClientId();
+        const clientSecret = this.tokenStore.getClientSecret();
+        if (!clientId || !clientSecret) return null;
+        return { clientId, clientSecret };
     }
 
     async get<T>(path: string, options?: RequestOptions): Promise<T> {
@@ -96,7 +107,7 @@ export class HttpClient {
             if (!refreshToken) {
                 this.tokenStore.clear();
                 throw new GoPaySDKError(
-                    '[GoPaySDK] Session expired and no refresh token available. Call authenticate() or setRefreshToken() again.',
+                    '[GoPaySDK] Session expired and no refresh token available. Call authenticate() or setClientToken() again.',
                 );
             }
 
@@ -105,11 +116,20 @@ export class HttpClient {
                     grant_type: 'refresh_token',
                     refresh_token: refreshToken,
                 };
-                const clientId = this.tokenStore.getPendingClientId();
-                if (clientId) form.client_id = clientId;
+                const headers: Record<string, string> = {};
+                const clientId = this.tokenStore.getClientId();
+                const clientSecret = this.tokenStore.getClientSecret();
+                if (clientId && clientSecret) {
+                    const credentials = globalThis.btoa(
+                        `${clientId}:${clientSecret}`,
+                    );
+                    headers.Authorization = `Basic ${credentials}`;
+                } else if (clientId) {
+                    form.client_id = clientId;
+                }
                 const fresh = await this.postForm<
                     Omit<StoredTokenPair, 'issued_at'>
-                >(AUTH_PATH, form);
+                >(AUTH_PATH, form, { headers });
                 this.tokenStore.set(fresh);
             } catch (cause) {
                 this.tokenStore.clear();
@@ -134,10 +154,7 @@ export class HttpClient {
                         if (request.url.includes(AUTH_PATH)) return;
                         if (request.headers.has('Authorization')) return;
 
-                        if (
-                            this.tokenStore.isExpiringSoon() ||
-                            this.tokenStore.hasPendingRefreshToken()
-                        ) {
+                        if (this.tokenStore.isExpiringSoon()) {
                             await this.refreshTokens();
                         }
 

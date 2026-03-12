@@ -11,7 +11,7 @@ const PAYMENT_KEYS = [
     'gw_url',
 ] as const satisfies ReadonlyArray<keyof PaymentCreateResponse>;
 
-test('auth.setRefreshToken() allows authenticated API calls without client credentials in browser', async ({
+test('auth.issueClientToken() + auth.setClientToken() allows authenticated API calls without client credentials in browser', async ({
     page,
 }) => {
     // Proxy all cross-origin requests through Playwright's Node.js fetch to
@@ -26,10 +26,29 @@ test('auth.setRefreshToken() allows authenticated API calls without client crede
     // Confirm the SDK loaded before interacting
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
 
-    await page.click('[onclick="runSetRefreshTokenFlow()"]');
+    // Authenticate the server SDK first (credentials are pre-filled by serve.js)
+    await page.click('[onclick="runAuthenticate()"]');
+    const authOutput = page.locator('#auth-output');
+    await expect(authOutput).not.toHaveText('—', { timeout: 15_000 });
+    await expect(authOutput).not.toHaveText('Running…', { timeout: 15_000 });
+    expect(
+        (await authOutput.textContent()) ?? '',
+        'authenticate() should not have returned an error',
+    ).not.toMatch(/^\[/);
 
-    // Wait until the output is no longer the placeholder or the loading state
-    const output = page.locator('#set-refresh-token-output');
+    // Issue a client token using the server SDK, then run the browser flow
+    await page.click('[onclick="runIssueClientToken()"]');
+    const issueOutput = page.locator('#issue-client-token-output');
+    await expect(issueOutput).not.toHaveText('—', { timeout: 15_000 });
+    await expect(issueOutput).not.toHaveText('Running…', { timeout: 15_000 });
+    expect(
+        (await issueOutput.textContent()) ?? '',
+        'issueClientToken() should not have returned an error',
+    ).not.toMatch(/^\[/);
+
+    await page.click('[onclick="runSetClientTokenFlow()"]');
+
+    const output = page.locator('#set-client-token-output');
     await expect(output).not.toHaveText('—', { timeout: 15_000 });
     await expect(output).not.toHaveText('Running…', { timeout: 15_000 });
 
@@ -39,7 +58,7 @@ test('auth.setRefreshToken() allows authenticated API calls without client crede
     // Assert it is not an error before attempting to parse JSON.
     expect(
         text,
-        'setRefreshToken() flow should not have returned an error',
+        'setClientToken() flow should not have returned an error',
     ).not.toMatch(/^\[/);
 
     const json = JSON.parse(text);

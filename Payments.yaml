@@ -302,7 +302,7 @@ components:
         Each of these parts is Base64URL-encoded and concatenated using dots so the overall structure is:
         `BASE64URL(header).BASE64URL(claims).BASE64URL(signature)`
       examples:
-        - ewogICJhbGciOiAiSFMyNTYiLAogICJ0eXAiOiAiSldUIiwKICAia2lkIjogImtleS0yMDI1LTA0Igp9.ewogICJzdWIiOiAiY2xpZW50X2lkXzEyMyIsCiAgInNjb3BlIjogInBheW1lbnRzOnJlYWQgcGF5bWVudHM6d3JpdGUiLAogICJpYXQiOiAxNzEyNjQwMDAwLAogICJleHAiOiAxNzEyNjQzNjAwCn0.bWlrZWhlcmVfaXMtbXktc3VwZXJzZWNyZXQtbGlrZQ
+        - eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
       format: jwt
     JWT-header:
       title: JWT-header
@@ -1834,10 +1834,10 @@ components:
                 minimum: 0
                 example: 86400
           examples:
-            Example 1:
+            Example 2:
               value:
                 token_type: bearer
-                access_token: ewogICJhbGciOog...
+                access_token: eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
                 refresh_token: f14e5acc2d86480fb50e254c8a3c3164
                 scope: 'payment:create payment:read'
                 expires_in: 900
@@ -2013,7 +2013,100 @@ components:
         application/json:
           schema:
             type: object
-            properties: {}
+            x-examples:
+              Example 1:
+                enabled: true
+                environment: PRODUCTION
+                paymentDataRequest:
+                  apiVersion: 2
+                  apiVersionMinor: 0
+                  allowedPaymentMethods:
+                    - type: CARD
+                      parameters:
+                        allowedAuthMethods:
+                          - PAN_ONLY
+                          - CRYPTOGRAM_3DS
+                        allowedCardNetworks:
+                          - MASTERCARD
+                          - VISA
+                      tokenizationSpecification:
+                        type: PAYMENT_GATEWAY
+                        parameters:
+                          gateway: gopay
+                          gatewayMerchantId: '26046768005768011132'
+                  transactionInfo:
+                    currencyCode: CZK
+                    countryCode: CZ
+                    totalPriceStatus: FINAL
+                    totalPrice: '5.00'
+                  merchantInfo:
+                    merchantName: Nadační fond Kapka naděje
+                    merchantId: '14846034534970557458'
+                  emailRequired: true
+            properties:
+              environment:
+                type: string
+              paymentDataRequest:
+                type: object
+                properties:
+                  apiVersion:
+                    type: integer
+                  apiVersionMinor:
+                    type: integer
+                  allowedPaymentMethods:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                        parameters:
+                          type: object
+                          properties:
+                            allowedAuthMethods:
+                              type: array
+                              items:
+                                enum:
+                                  - PAN_ONLY
+                                  - CRYPTOGRAM_3DS
+                            allowedCardNetworks:
+                              type: array
+                              items:
+                                enum:
+                                  - VISA
+                                  - MASTERCARD
+                        tokenizationSpecification:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                            parameters:
+                              type: object
+                              properties:
+                                gateway:
+                                  type: string
+                                gatewayMerchantId:
+                                  type: string
+                  transactionInfo:
+                    type: object
+                    properties:
+                      currencyCode:
+                        $ref: '#/components/schemas/Currency'
+                      countryCode:
+                        type: string
+                      totalPriceStatus:
+                        type: string
+                      totalPrice:
+                        type: string
+                  merchantInfo:
+                    type: object
+                    properties:
+                      merchantName:
+                        type: string
+                      merchantId:
+                        type: string
+                  emailRequired:
+                    type: boolean
       headers: {}
     Apple-Pay-Info-Response:
       description: Example response
@@ -2051,9 +2144,6 @@ components:
               applepayVersion:
                 type: integer
                 example: 6
-              merchantDisplayName:
-                type: string
-                example: GoPay Czech Branch
               merchantIdentifier:
                 type: string
                 example: '8398119642'
@@ -2106,7 +2196,6 @@ components:
             Example 1:
               value:
                 applepayVersion: 6
-                merchantDisplayName: GoPay Czech Branch
                 merchantIdentifier: '8398119642'
                 applePayPaymentRequest:
                   merchantCapabilities:

@@ -9,45 +9,47 @@ export interface StoredTokenPair {
 
 export class TokenStore {
     private tokens: StoredTokenPair | null = null;
-    private pendingRefreshToken: string | null = null;
-    private pendingClientId: string | null = null;
+    private clientId: string | null = null;
+    /** Server-side client secret, persisted across token refreshes. Never set in browser flow. */
+    private clientSecret: string | null = null;
 
     get(): StoredTokenPair | null {
         return this.tokens;
     }
 
     getRefreshToken(): string | null {
-        return this.tokens?.refresh_token ?? this.pendingRefreshToken;
+        return this.tokens?.refresh_token ?? null;
     }
 
-    getPendingClientId(): string | null {
-        return this.pendingClientId;
+    getClientId(): string | null {
+        return this.clientId;
+    }
+
+    getClientSecret(): string | null {
+        return this.clientSecret;
+    }
+
+    setClientSecret(clientId: string, clientSecret: string): void {
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+    }
+
+    setClientId(clientId: string): void {
+        this.clientId = clientId;
     }
 
     set(pair: Omit<StoredTokenPair, 'issued_at'>): void {
-        this.pendingRefreshToken = null;
-        this.pendingClientId = null;
         this.tokens = { ...pair, issued_at: Date.now() };
-    }
-
-    setRefreshToken(refreshToken: string, clientId: string): void {
-        this.tokens = null;
-        this.pendingRefreshToken = refreshToken;
-        this.pendingClientId = clientId;
     }
 
     clear(): void {
         this.tokens = null;
-        this.pendingRefreshToken = null;
-        this.pendingClientId = null;
+        this.clientId = null;
+        this.clientSecret = null;
     }
 
     hasAccessToken(): boolean {
         return this.tokens !== null;
-    }
-
-    hasPendingRefreshToken(): boolean {
-        return this.pendingRefreshToken !== null;
     }
 
     isExpiringSoon(bufferSeconds = 30): boolean {

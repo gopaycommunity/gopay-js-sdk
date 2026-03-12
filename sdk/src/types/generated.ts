@@ -234,7 +234,7 @@ export interface components {
          *
          *     Each of these parts is Base64URL-encoded and concatenated using dots so the overall structure is:
          *     `BASE64URL(header).BASE64URL(claims).BASE64URL(signature)`
-         * @example ewogICJhbGciOiAiSFMyNTYiLAogICJ0eXAiOiAiSldUIiwKICAia2lkIjogImtleS0yMDI1LTA0Igp9.ewogICJzdWIiOiAiY2xpZW50X2lkXzEyMyIsCiAgInNjb3BlIjogInBheW1lbnRzOnJlYWQgcGF5bWVudHM6d3JpdGUiLAogICJpYXQiOiAxNzEyNjQwMDAwLAogICJleHAiOiAxNzEyNjQzNjAwCn0.bWlrZWhlcmVfaXMtbXktc3VwZXJzZWNyZXQtbGlrZQ
+         * @example eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
          */
         JWT: string;
         /**
@@ -1219,7 +1219,38 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": Record<string, never>;
+                "application/json": {
+                    environment?: string;
+                    paymentDataRequest?: {
+                        apiVersion?: number;
+                        apiVersionMinor?: number;
+                        allowedPaymentMethods?: {
+                            type?: string;
+                            parameters?: {
+                                allowedAuthMethods?: ("PAN_ONLY" | "CRYPTOGRAM_3DS")[];
+                                allowedCardNetworks?: ("VISA" | "MASTERCARD")[];
+                            };
+                            tokenizationSpecification?: {
+                                type?: string;
+                                parameters?: {
+                                    gateway?: string;
+                                    gatewayMerchantId?: string;
+                                };
+                            };
+                        }[];
+                        transactionInfo?: {
+                            currencyCode?: components["schemas"]["Currency"];
+                            countryCode?: string;
+                            totalPriceStatus?: string;
+                            totalPrice?: string;
+                        };
+                        merchantInfo?: {
+                            merchantName?: string;
+                            merchantId?: string;
+                        };
+                        emailRequired?: boolean;
+                    };
+                };
             };
         };
         /** @description Example response */
@@ -1231,8 +1262,6 @@ export interface components {
                 "application/json": {
                     /** @example 6 */
                     applepayVersion?: number;
-                    /** @example GoPay Czech Branch */
-                    merchantDisplayName?: string;
                     /** @example 8398119642 */
                     merchantIdentifier?: string;
                     applePayPaymentRequest?: {

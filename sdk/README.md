@@ -82,9 +82,9 @@ if (charge.action?.redirect_url) {
 
 The SDK uses OAuth2. **Client credentials (`client_id` / `client_secret`) must never be exposed in browser JavaScript.** Choose the flow that matches your deployment:
 
-### Server-side (Node.js)
+### Server-side (Node.js) — `authenticate()` must never run in the browser
 
-Your backend holds the credentials and authenticates directly:
+Your backend holds the credentials. Call `authenticate()` once on startup — the SDK stores the token and refreshes it transparently before expiry:
 
 ```ts
 import { GoPaySDK } from 'gopay-js-sdk';
@@ -95,34 +95,44 @@ await sdk.auth.authenticate({
   grant_type: 'client_credentials',
   client_id: process.env.GOPAY_CLIENT_ID,
   client_secret: process.env.GOPAY_CLIENT_SECRET,
-  scope: 'payment:create',
+  scope: 'payment:create payment:read',
 });
 
 // All subsequent calls attach the Bearer token automatically.
-// Tokens are refreshed transparently before expiry.
 const payment = await sdk.payments.create(goid, params);
 ```
 
 ### Browser client
 
-The browser must never hold credentials. The recommended pattern:
+Credentials must never leave the server. The SDK provides a two-step handoff:
 
-1. Your **server** authenticates with GoPay and returns the `refresh_token` to the browser (e.g. via a session endpoint).
-2. The **browser** passes that token to the SDK via `setRefreshToken()`.
-3. On the first API call the SDK automatically exchanges the refresh token for an access token. All subsequent calls and token renewals are handled transparently.
+1. **Server** calls `issueClientToken()` — obtains a fresh token pair for every browser client without touching its own session. The browser may use a **narrower scope** than the server.
+2. **Server** returns the `ClientToken` to the browser (e.g. via a session endpoint).
+3. **Browser** calls `setClientToken()` — seeds the SDK with both tokens. The `client_id` is extracted automatically from the JWT; no credentials are needed in the browser.
+4. All subsequent browser API calls use the access token directly, renewing via the refresh token transparently before expiry. The browser should finish it's business before refreshToken expires (usually 24 hrs) because it can't renew it. Else you need to provide a mechanism to get new client tokens.
+
+```ts
+// Server: issue a fresh token pair for the browser
+app.get('/session/gopay-token', async (req, res) => {
+  // Protect this endpoint with your own session check
+  const clientToken = await sdk.auth.issueClientToken('payment:create');
+  res.json(clientToken);
+});
+```
 
 ```html
+<!-- Browser (IIFE) -->
 <script src="https://gopaycdn.com/js-sdk/gopay-sdk.min.js"></script>
 <script>
-  const sdk = new GoPaySDK.GoPaySDK({ environment: 'production' });
+  const browserSdk = new GoPaySDK.GoPaySDK({ environment: 'production' });
 
-  // Fetch the refresh token from your server — never hardcode credentials here.
-  const { refreshToken } = await fetch('/session/gopay-token').then(r => r.json());
+  // Fetch the token pair from your server — never hardcode credentials here.
+  const clientToken = await fetch('/session/gopay-token').then(r => r.json());
 
-  sdk.auth.setRefreshToken(refreshToken);
+  // client_id is extracted automatically from the JWT access_token.
+  browserSdk.auth.setClientToken(clientToken);
 
-  // The SDK exchanges the refresh token and attaches the Bearer token automatically.
-  const payment = await sdk.payments.create(goid, params);
+  // SDK is now authenticated — make API calls as normal.
 </script>
 ```
 
@@ -131,12 +141,12 @@ ESM / bundler:
 ```ts
 import { GoPaySDK } from 'gopay-js-sdk';
 
-const sdk = new GoPaySDK({ environment: 'production' });
+const browserSdk = new GoPaySDK({ environment: 'production' });
 
-const { refreshToken } = await fetch('/session/gopay-token').then(r => r.json());
-sdk.auth.setRefreshToken(refreshToken);
+const clientToken = await fetch('/session/gopay-token').then(r => r.json());
+browserSdk.auth.setClientToken(clientToken);
 
-const payment = await sdk.payments.create(goid, params);
+// SDK is now authenticated — make API calls as normal.
 ```
 
 ---
@@ -156,8 +166,9 @@ const payment = await sdk.payments.create(goid, params);
 
 | Method | Description |
 |---|---|
-| `authenticate(params)` | Obtain an access/refresh token pair. Use `client_credentials` grant server-side or `refresh_token` grant to manually exchange a token. |
-| `setRefreshToken(token)` | Seed the SDK with a refresh token obtained from your server. The first API call will exchange it automatically. |
+| `authenticate(params)` | Server-side: obtain an access/refresh token pair using `client_credentials`. Stores the token internally for automatic refresh. |
+| `issueClientToken(scope?)` | Server-side: obtain a fresh token pair for a browser client without affecting the server session. Use a narrower `scope` if the browser only needs a subset of permissions. |
+| `setClientToken(token)` | Browser-side: seed the SDK with a `ClientToken` obtained from the server. Extracts `client_id` automatically from the JWT `access_token`. |
 
 ### `sdk.payments`
 

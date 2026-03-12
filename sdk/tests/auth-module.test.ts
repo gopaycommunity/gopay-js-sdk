@@ -3,6 +3,7 @@ import { GoPaySDKError } from '../src/errors.js';
 import { HttpClient } from '../src/http/client.js';
 import type { TokenStore } from '../src/http/token-store.js';
 import { AuthModule } from '../src/modules/auth/auth.module.js';
+import type { ClientToken } from '../src/types/index.js';
 
 const tokenStore = (client: HttpClient) =>
     (client as unknown as { tokenStore: TokenStore }).tokenStore;
@@ -23,6 +24,17 @@ const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
         headers: { 'content-type': 'application/json' },
     });
 
+/** Build a minimal fake JWT with the given sub claim. */
+const makeJwt = (sub: string) => {
+    const header = globalThis.btoa(
+        JSON.stringify({ alg: 'RS256', typ: 'JWT' }),
+    );
+    const payload = globalThis.btoa(
+        JSON.stringify({ sub, exp: 9_999_999_999 }),
+    );
+    return `${header}.${payload}.fake-sig`;
+};
+
 describe('AuthModule', () => {
     let fetchMock: ReturnType<typeof vi.fn>;
     let client: HttpClient;
@@ -40,7 +52,7 @@ describe('AuthModule', () => {
     });
 
     // -------------------------------------------------------------------------
-    // Token store population
+    // authenticate() — client_credentials only
     // -------------------------------------------------------------------------
 
     it('stores the token pair in the token store after success', async () => {
@@ -60,79 +72,17 @@ describe('AuthModule', () => {
         expect(stored?.issued_at).toBeTypeOf('number');
     });
 
-    // -------------------------------------------------------------------------
-    // refresh_token optional fields
-    // -------------------------------------------------------------------------
-
-    it('omits client_id from form when not provided in refresh_token grant', async () => {
-        let capturedBodyText = '';
-        fetchMock.mockImplementation(async (req: Request) => {
-            capturedBodyText = await req.text();
-            return makeResponse(validTokenPair);
-        });
-
+    it('stores client credentials for future token refresh', async () => {
         await auth.authenticate({
-            grant_type: 'refresh_token',
-            refresh_token: 'rt-xyz',
-        });
-
-        const params = new URLSearchParams(capturedBodyText);
-        expect(params.has('client_id')).toBe(false);
-    });
-
-    it('includes client_id in form when provided in refresh_token grant', async () => {
-        let capturedBodyText = '';
-        fetchMock.mockImplementation(async (req: Request) => {
-            capturedBodyText = await req.text();
-            return makeResponse(validTokenPair);
-        });
-
-        await auth.authenticate({
-            grant_type: 'refresh_token',
-            refresh_token: 'rt-xyz',
+            grant_type: 'client_credentials',
             client_id: 'my-client',
+            client_secret: 'my-secret',
+            scope: 'payment:create',
         });
 
-        const params = new URLSearchParams(capturedBodyText);
-        expect(params.get('client_id')).toBe('my-client');
+        expect(tokenStore(client).getClientId()).toBe('my-client');
+        expect(tokenStore(client).getClientSecret()).toBe('my-secret');
     });
-
-    it('omits scope from form when not provided in refresh_token grant', async () => {
-        let capturedBodyText = '';
-        fetchMock.mockImplementation(async (req: Request) => {
-            capturedBodyText = await req.text();
-            return makeResponse(validTokenPair);
-        });
-
-        await auth.authenticate({
-            grant_type: 'refresh_token',
-            refresh_token: 'rt-xyz',
-        });
-
-        const params = new URLSearchParams(capturedBodyText);
-        expect(params.has('scope')).toBe(false);
-    });
-
-    it('includes scope in form when provided in refresh_token grant', async () => {
-        let capturedBodyText = '';
-        fetchMock.mockImplementation(async (req: Request) => {
-            capturedBodyText = await req.text();
-            return makeResponse(validTokenPair);
-        });
-
-        await auth.authenticate({
-            grant_type: 'refresh_token',
-            refresh_token: 'rt-xyz',
-            scope: 'payment:read',
-        });
-
-        const params = new URLSearchParams(capturedBodyText);
-        expect(params.get('scope')).toBe('payment:read');
-    });
-
-    // -------------------------------------------------------------------------
-    // Invalid token response
-    // -------------------------------------------------------------------------
 
     it.each([
         [
@@ -169,35 +119,6 @@ describe('AuthModule', () => {
         );
     });
 
-    // -------------------------------------------------------------------------
-    // setRefreshToken() — browser client flow
-    // -------------------------------------------------------------------------
-
-    it('setRefreshToken() stores the token and triggers exchange on first API call', async () => {
-        auth.setRefreshToken('rt-from-server', 'client-123');
-
-        expect(tokenStore(client).hasPendingRefreshToken()).toBe(true);
-        expect(tokenStore(client).hasAccessToken()).toBe(false);
-
-        // Simulate what the http client does: exchange pending refresh token
-        let capturedBodyText = '';
-        fetchMock.mockImplementation(async (req: Request) => {
-            capturedBodyText = await req.text();
-            return makeResponse(validTokenPair);
-        });
-
-        await auth.authenticate({
-            grant_type: 'refresh_token',
-            refresh_token: 'rt-from-server',
-        });
-
-        const params = new URLSearchParams(capturedBodyText);
-        expect(params.get('grant_type')).toBe('refresh_token');
-        expect(params.get('refresh_token')).toBe('rt-from-server');
-        expect(tokenStore(client).hasAccessToken()).toBe(true);
-        expect(tokenStore(client).hasPendingRefreshToken()).toBe(false);
-    });
-
     it('does not populate token store when token response is invalid', async () => {
         fetchMock.mockImplementation(async (req: Request) => {
             await req.text();
@@ -214,5 +135,162 @@ describe('AuthModule', () => {
         ).rejects.toThrow();
 
         expect(tokenStore(client).hasAccessToken()).toBe(false);
+    });
+
+    // -------------------------------------------------------------------------
+    // issueClientToken()
+    // -------------------------------------------------------------------------
+
+    describe('issueClientToken()', () => {
+        beforeEach(async () => {
+            // Authenticate server first to store credentials
+            await auth.authenticate({
+                grant_type: 'client_credentials',
+                client_id: 'server-client',
+                client_secret: 'server-secret',
+                scope: 'payment:create payment:read',
+            });
+        });
+
+        it('returns a ClientToken without storing it in the token store', async () => {
+            const serverTokens = tokenStore(client).get();
+
+            const clientTokenPair = {
+                ...validTokenPair,
+                access_token: 'client-at',
+                refresh_token: 'client-rt',
+            };
+            fetchMock.mockResolvedValueOnce(makeResponse(clientTokenPair));
+
+            const result = await auth.issueClientToken('payment:create');
+
+            expect(result.access_token).toBe('client-at');
+            expect(result.refresh_token).toBe('client-rt');
+            expect(result.expires_in).toBe(900);
+            expect(result.refresh_expires_in).toBe(86400);
+            // Server's own token store is unchanged
+            expect(tokenStore(client).get()).toEqual(serverTokens);
+        });
+
+        it('sends correct scope when provided', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(validTokenPair);
+            });
+
+            await auth.issueClientToken('payment:create');
+
+            const params = new URLSearchParams(capturedBody);
+            expect(params.get('grant_type')).toBe('client_credentials');
+            expect(params.get('scope')).toBe('payment:create');
+        });
+
+        it('omits scope when not provided', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(validTokenPair);
+            });
+
+            await auth.issueClientToken();
+
+            const params = new URLSearchParams(capturedBody);
+            expect(params.has('scope')).toBe(false);
+        });
+
+        it('sends Basic Authorization header using stored credentials', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                await req.text();
+                capturedReq = req;
+                return makeResponse(validTokenPair);
+            });
+
+            await auth.issueClientToken('payment:create');
+
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                `Basic ${globalThis.btoa('server-client:server-secret')}`,
+            );
+        });
+
+        it('throws GoPaySDKError when no credentials are stored', async () => {
+            const freshClient = new HttpClient({
+                baseUrl: 'https://example.com',
+            });
+            const freshAuth = new AuthModule(freshClient);
+
+            await expect(freshAuth.issueClientToken()).rejects.toThrow(
+                GoPaySDKError,
+            );
+        });
+
+        it('throws GoPaySDKError on invalid token response', async () => {
+            fetchMock.mockResolvedValueOnce(
+                makeResponse({ ...validTokenPair, access_token: undefined }),
+            );
+
+            await expect(auth.issueClientToken()).rejects.toThrow(
+                GoPaySDKError,
+            );
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // setClientToken() — browser client flow
+    // -------------------------------------------------------------------------
+
+    describe('setClientToken()', () => {
+        const clientToken: ClientToken = {
+            access_token: makeJwt('client-123'),
+            refresh_token: 'rt-from-server',
+            expires_in: 900,
+            refresh_expires_in: 86400,
+        };
+
+        it('stores both tokens in the token store immediately', () => {
+            auth.setClientToken(clientToken);
+
+            expect(tokenStore(client).hasAccessToken()).toBe(true);
+            expect(tokenStore(client).get()?.access_token).toBe(
+                clientToken.access_token,
+            );
+            expect(tokenStore(client).getRefreshToken()).toBe('rt-from-server');
+        });
+
+        it('extracts client_id from the JWT sub claim', () => {
+            auth.setClientToken(clientToken);
+
+            expect(tokenStore(client).getClientId()).toBe('client-123');
+        });
+
+        it('stores expires_in and refresh_expires_in', () => {
+            auth.setClientToken(clientToken);
+
+            const stored = tokenStore(client).get();
+            expect(stored?.expires_in).toBe(900);
+            expect(stored?.refresh_expires_in).toBe(86400);
+        });
+
+        it('throws GoPaySDKError when JWT is malformed', () => {
+            expect(() =>
+                auth.setClientToken({
+                    ...clientToken,
+                    access_token: 'not-a-jwt',
+                }),
+            ).toThrow(GoPaySDKError);
+        });
+
+        it('throws GoPaySDKError when JWT is missing sub claim', () => {
+            const noSub = globalThis.btoa(JSON.stringify({ alg: 'RS256' }));
+            const noSubPayload = globalThis.btoa(
+                JSON.stringify({ exp: 9_999_999_999 }),
+            );
+            const jwtNoSub = `${noSub}.${noSubPayload}.fake-sig`;
+
+            expect(() =>
+                auth.setClientToken({ ...clientToken, access_token: jwtNoSub }),
+            ).toThrow(GoPaySDKError);
+        });
     });
 });

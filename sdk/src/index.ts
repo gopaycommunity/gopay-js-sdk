@@ -4,6 +4,6 @@ export { GoPaySDK } from './gopay-sdk.js';
 export type {
     AuthenticateRequest,
     ClientCredentialsRequest,
+    ClientToken,
     GoPayEnvironment,
-    RefreshTokenRequest,
 } from './types/index.js';

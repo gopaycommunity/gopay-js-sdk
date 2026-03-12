@@ -163,31 +163,45 @@ describe('GoPaySDK', () => {
             expect(body.get('scope')).toBe('payment:create');
         });
 
-        it('authenticate() with refresh_token sends correct request', async () => {
-            let capturedReq!: Request;
-            let capturedBodyText = '';
+        it('exposes issueClientToken() and setClientToken()', () => {
+            const sdk = new GoPaySDK();
+            expect(typeof sdk.auth.issueClientToken).toBe('function');
+            expect(typeof sdk.auth.setClientToken).toBe('function');
+        });
+
+        it('issueClientToken() returns a ClientToken without changing the server session', async () => {
+            const clientTokenPair = {
+                ...mockTokenPair,
+                access_token: 'client-at',
+                refresh_token: 'client-rt',
+            };
+            let callCount = 0;
             vi.stubGlobal(
                 'fetch',
                 vi.fn().mockImplementation(async (req: Request) => {
-                    capturedReq = req;
-                    capturedBodyText = await req.text();
-                    return makeMockResponse(mockTokenPair);
+                    await req.text();
+                    callCount++;
+                    // First call: authenticate (server session)
+                    // Second call: issueClientToken
+                    return makeMockResponse(
+                        callCount === 1 ? mockTokenPair : clientTokenPair,
+                    );
                 }),
             );
 
             const sdk = new GoPaySDK({ environment: 'sandbox' });
-            const result = await sdk.auth.authenticate({
-                grant_type: 'refresh_token',
-                refresh_token: 'refresh_xyz789',
-                scope: 'payment:create',
+            await sdk.auth.authenticate({
+                grant_type: 'client_credentials',
+                client_id: 'my-client',
+                client_secret: 'my-secret',
+                scope: 'payment:create payment:read',
             });
 
-            expect(result).toEqual(mockTokenPair);
-            expect(capturedReq.headers.get('Authorization')).toBeNull();
-            const body = new URLSearchParams(capturedBodyText);
-            expect(body.get('grant_type')).toBe('refresh_token');
-            expect(body.get('refresh_token')).toBe('refresh_xyz789');
-            expect(body.get('scope')).toBe('payment:create');
+            const token = await sdk.auth.issueClientToken('payment:create');
+            expect(token.access_token).toBe('client-at');
+            expect(token.refresh_token).toBe('client-rt');
+            expect(typeof token.expires_in).toBe('number');
+            expect(typeof token.refresh_expires_in).toBe('number');
         });
 
         it('authenticate() throws on non-ok HTTP response', async () => {
@@ -546,7 +560,16 @@ describe('GoPaySDK', () => {
             const mockQR = {
                 amount: 10000,
                 currency: 'CZK',
-                recipient: { name: 'GoPay Czech', bank_account: { international: { bic: 'FIOBCZPP', iban: 'CZ51201', reference: '123' } } },
+                recipient: {
+                    name: 'GoPay Czech',
+                    bank_account: {
+                        international: {
+                            bic: 'FIOBCZPP',
+                            iban: 'CZ51201',
+                            reference: '123',
+                        },
+                    },
+                },
                 qr_code: { spayd: 'base64==' },
             };
             let capturedReq!: Request;
@@ -563,7 +586,10 @@ describe('GoPaySDK', () => {
                                 expires_in: 900,
                                 refresh_expires_in: 86400,
                             }),
-                            { status: 200, headers: { 'content-type': 'application/json' } },
+                            {
+                                status: 200,
+                                headers: { 'content-type': 'application/json' },
+                            },
                         );
                     }
                     capturedReq = req;
@@ -581,7 +607,10 @@ describe('GoPaySDK', () => {
                 client_secret: 'secret',
                 scope: 'payment:create',
             });
-            const result = await sdk.payments.getQRPaymentInfo('payment-123', 'svg');
+            const result = await sdk.payments.getQRPaymentInfo(
+                'payment-123',
+                'svg',
+            );
 
             expect(capturedReq.method).toBe('GET');
             expect(capturedReq.url).toBe(

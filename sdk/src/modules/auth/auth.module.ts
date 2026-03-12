@@ -1,7 +1,7 @@
 import { GoPaySDKError } from '../../errors.js';
 import type { HttpClient } from '../../http/client.js';
 import type { components } from '../../types/generated.js';
-import type { AuthenticateRequest } from '../../types/index.js';
+import type { AuthenticateRequest, ClientToken } from '../../types/index.js';
 
 type TokenPair =
     components['responses']['Token-Pair-Response']['content']['application/json'];
@@ -10,38 +10,27 @@ export class AuthModule {
     constructor(private readonly client: HttpClient) {}
 
     /**
-     * Initialise the SDK with a refresh token obtained server-side.
-     * The SDK will exchange it for an access token on the first API call.
-     * Use this in browser environments where client credentials must not be exposed.
-     * `clientId` is required to identify the OAuth2 client during token refresh.
-     */
-    setRefreshToken(refreshToken: string, clientId: string): void {
-        this.client.setRefreshToken(refreshToken, clientId);
-    }
-
-    /**
-     * Obtain an access/refresh token pair.
+     * Authenticate the server-side SDK instance using client credentials.
      *
-     * Grant types:
-     * - `client_credentials` — use HTTP Basic credentials (pass via Authorization header)
-     * - `refresh_token` — exchange an existing refresh token
+     * Stores the resulting token pair internally. All subsequent API calls
+     * will attach the Bearer token automatically, and the SDK will refresh
+     * it transparently before expiry.
      *
-     * POST /oauth2/token
+     * POST /oauth2/token (`client_credentials` grant)
      */
     async authenticate(params: AuthenticateRequest): Promise<TokenPair> {
-        const form: Record<string, string> = { grant_type: params.grant_type };
-
-        const headers: Record<string, string> = {};
-
-        if (params.grant_type === 'client_credentials') {
-            form.scope = params.scope;
-            const raw = `${params.client_id}:${params.client_secret}`;
-            headers.Authorization = `Basic ${globalThis.btoa(raw)}`;
-        } else {
-            form.refresh_token = params.refresh_token;
-            if (params.client_id) form.client_id = params.client_id;
-            if (params.scope) form.scope = params.scope;
-        }
+        const form: Record<string, string> = {
+            grant_type: params.grant_type,
+            scope: params.scope,
+        };
+        const raw = `${params.client_id}:${params.client_secret}`;
+        const headers = {
+            Authorization: `Basic ${globalThis.btoa(raw)}`,
+        };
+        this.client.setClientCredentials(
+            params.client_id,
+            params.client_secret,
+        );
 
         const tokenPair = await this.client.postForm<TokenPair>(
             '/oauth2/token',
@@ -68,5 +57,97 @@ export class AuthModule {
         });
 
         return tokenPair;
+    }
+
+    /**
+     * Issue a token pair for a browser client without affecting the server's
+     * own session.
+     *
+     * The server calls this after `authenticate()` to obtain a fresh token
+     * pair — typically with a reduced scope — that it can hand to a browser
+     * client. The returned `ClientToken` should be sent to the browser (e.g.
+     * via a session endpoint) and passed to `setClientToken()` there.
+     *
+     * The browser client may request a narrower scope than the server (e.g.
+     * `payment:create` only) to limit what the browser-side token can do.
+     *
+     * POST /oauth2/token (`client_credentials` grant, does **not** store tokens)
+     */
+    async issueClientToken(scope?: string): Promise<ClientToken> {
+        const creds = this.client.getClientCredentials();
+        if (!creds) {
+            throw new GoPaySDKError(
+                '[GoPaySDK] No client credentials stored. Call authenticate() first.',
+            );
+        }
+
+        const form: Record<string, string> = {
+            grant_type: 'client_credentials',
+        };
+        if (scope) form.scope = scope;
+        const raw = `${creds.clientId}:${creds.clientSecret}`;
+        const headers = { Authorization: `Basic ${globalThis.btoa(raw)}` };
+
+        const tokenPair = await this.client.postForm<TokenPair>(
+            '/oauth2/token',
+            form,
+            { headers },
+        );
+
+        if (
+            !tokenPair.access_token ||
+            !tokenPair.refresh_token ||
+            tokenPair.expires_in === undefined ||
+            tokenPair.refresh_expires_in === undefined
+        ) {
+            throw new GoPaySDKError(
+                '[GoPaySDK] Invalid token response: missing required fields.',
+            );
+        }
+
+        return {
+            access_token: tokenPair.access_token,
+            refresh_token: tokenPair.refresh_token,
+            expires_in: tokenPair.expires_in,
+            refresh_expires_in: tokenPair.refresh_expires_in,
+        };
+    }
+
+    /**
+     * Seed a browser SDK instance with a token pair obtained from the server
+     * via `issueClientToken()`.
+     *
+     * The `client_id` is extracted automatically from the `sub` claim of the
+     * JWT access token — no credentials are required in the browser. The
+     * access token is used immediately; the refresh token renews the session
+     * transparently before expiry.
+     *
+     * **Client credentials must never be passed to the browser.** Obtain a
+     * `ClientToken` server-side and pass only that to this method.
+     */
+    setClientToken(token: ClientToken): void {
+        let clientId: string;
+        try {
+            const payload = JSON.parse(
+                globalThis.atob(token.access_token.split('.')[1]),
+            ) as Record<string, unknown>;
+            if (!payload.sub || typeof payload.sub !== 'string') {
+                throw new Error('missing sub claim');
+            }
+            clientId = payload.sub;
+        } catch {
+            throw new GoPaySDKError(
+                '[GoPaySDK] Cannot extract client_id from access_token JWT. Ensure the token is a valid JWT with a "sub" claim.',
+            );
+        }
+
+        this.client.setToken({
+            access_token: token.access_token,
+            refresh_token: token.refresh_token,
+            expires_in: token.expires_in,
+            refresh_expires_in: token.refresh_expires_in,
+            token_type: 'bearer',
+        });
+        this.client.setClientId(clientId);
     }
 }

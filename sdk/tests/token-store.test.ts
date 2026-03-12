@@ -49,42 +49,15 @@ describe('TokenStore', () => {
         expect(store.get()?.access_token).toBe('at2');
     });
 
-    // -------------------------------------------------------------------------
-    // setRefreshToken()
-    // -------------------------------------------------------------------------
+    it('getRefreshToken() returns refresh_token from a stored pair', () => {
+        const store = new TokenStore();
+        store.set(pair);
+        expect(store.getRefreshToken()).toBe(pair.refresh_token);
+    });
 
-    describe('setRefreshToken()', () => {
-        it('clears access token and exposes the refresh token via getRefreshToken()', () => {
-            const store = new TokenStore();
-            store.set(pair);
-            store.setRefreshToken('rt-browser', 'client-123');
-            expect(store.get()).toBeNull();
-            expect(store.hasAccessToken()).toBe(false);
-            expect(store.hasPendingRefreshToken()).toBe(true);
-            expect(store.getRefreshToken()).toBe('rt-browser');
-        });
-
-        it('clears the pending refresh token once a full pair is set', () => {
-            const store = new TokenStore();
-            store.setRefreshToken('rt-browser', 'client-123');
-            store.set(pair);
-            expect(store.hasPendingRefreshToken()).toBe(false);
-            expect(store.getRefreshToken()).toBe(pair.refresh_token);
-        });
-
-        it('clear() removes the pending refresh token', () => {
-            const store = new TokenStore();
-            store.setRefreshToken('rt-browser', 'client-123');
-            store.clear();
-            expect(store.hasPendingRefreshToken()).toBe(false);
-            expect(store.getRefreshToken()).toBeNull();
-        });
-
-        it('getRefreshToken() returns refresh_token from a full pair', () => {
-            const store = new TokenStore();
-            store.set(pair);
-            expect(store.getRefreshToken()).toBe(pair.refresh_token);
-        });
+    it('getRefreshToken() returns null when store is empty', () => {
+        const store = new TokenStore();
+        expect(store.getRefreshToken()).toBeNull();
     });
 
     // -------------------------------------------------------------------------

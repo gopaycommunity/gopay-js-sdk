@@ -12,13 +12,15 @@ export interface ClientCredentialsRequest {
     scope: string;
 }
 
-export interface RefreshTokenRequest {
-    grant_type: 'refresh_token';
-    refresh_token: string;
-    client_id?: string;
-    scope?: string;
-}
+export type AuthenticateRequest = ClientCredentialsRequest;
 
-export type AuthenticateRequest =
-    | ClientCredentialsRequest
-    | RefreshTokenRequest;
+/**
+ * A token pair issued for a browser client via `auth.issueClientToken()`.
+ * Pass this object directly to `auth.setClientToken()` in the browser.
+ */
+export interface ClientToken {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    refresh_expires_in: number;
+}

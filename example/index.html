@@ -61,8 +61,8 @@
 
   <!-- Authentication -->
   <section>
-    <h2>auth.authenticate()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /oauth2/token — obtain an access token using client credentials.</p>
+    <h2>auth.authenticate() <span style="font-size:0.75rem;color:#c00;font-weight:normal;">(server-only — never call from a browser)</span></h2>
+    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /oauth2/token — obtain an access token using client credentials. <strong>Keep <code>client_id</code> and <code>client_secret</code> on the server.</strong></p>
     <div class="fields">
       <label>Client ID<input id="auth-client-id" type="text" placeholder="your-client-id" /></label>
       <label>Client Secret<input id="auth-client-secret" type="password" placeholder="your-client-secret" /></label>
@@ -79,17 +79,51 @@
     <pre id="auth-output">—</pre>
   </section>
 
+  <!-- Issue client token (server side) -->
+  <section>
+    <h2>auth.issueClientToken() — server side</h2>
+    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+      Obtain a fresh token pair for a browser client without affecting the server session.
+      Authenticate first, then issue a token with a narrower scope if needed.
+      The result is auto-filled into the browser flow below.
+    </p>
+    <div class="fields">
+      <label>Scope (⌘/Ctrl+click to select multiple)
+        <select id="issue-client-token-scope" multiple size="4" style="padding:0.3rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
+          <option value="payment:create" selected>payment:create</option>
+          <option value="payment:read">payment:read</option>
+          <option value="card:save">card:save</option>
+          <option value="card:read">card:read</option>
+        </select>
+      </label>
+    </div>
+    <button onclick="runIssueClientToken()">Run</button>
+    <pre id="issue-client-token-output">—</pre>
+    <p class="note">Requires <code>auth.authenticate()</code> to have been called first.</p>
+  </section>
+
   <!-- Browser auth flow -->
   <section>
-    <h2>auth.setRefreshToken() — browser flow</h2>
+    <h2>auth.setClientToken() — browser flow</h2>
     <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
-      Simulates the browser client pattern: a server-side step obtains a token pair using the credentials above,
-      then a fresh SDK instance is seeded with only the refresh token (no credentials in the browser).
-      The first API call (<code>payments.create()</code>) automatically exchanges the refresh token for an access token.
+      Simulates the browser client pattern: a fresh SDK instance receives both tokens from the server
+      (no credentials in the browser). The <code>client_id</code> is extracted automatically from the JWT.
     </p>
-    <button onclick="runSetRefreshTokenFlow()">Run</button>
-    <pre id="set-refresh-token-output">—</pre>
-    <p class="note">Uses the Client ID / Secret / GoID fields above. Authenticate first is not required — this flow is self-contained.</p>
+    <div class="fields">
+      <label>GoID<input id="set-client-token-goid" type="text" value="8123456789" /></label>
+      <label>Access Token
+        <input id="set-client-token-access" type="password" placeholder="auto-filled by issueClientToken()" />
+      </label>
+      <label>Refresh Token
+        <input id="set-client-token-refresh" type="password" placeholder="auto-filled by issueClientToken()" />
+      </label>
+    </div>
+    <button onclick="runSetClientTokenFlow()">Run</button>
+    <pre id="set-client-token-output">—</pre>
+    <p class="note">
+      Client credentials must never leave the server. Run <code>auth.issueClientToken()</code> above
+      to populate the fields, or paste tokens obtained from your own server endpoint.
+    </p>
   </section>
 
   <!-- Create payment -->
@@ -288,31 +322,43 @@
     );
   }
 
-  function runSetRefreshTokenFlow() {
-    const client_id     = document.getElementById('auth-client-id').value.trim();
-    const client_secret = document.getElementById('auth-client-secret').value.trim();
-    const scope         = getSelectedScopes();
-    const goid          = document.getElementById('create-goid').value.trim();
+  function getSelectedBrowserScopes() {
+    const el = document.getElementById('issue-client-token-scope');
+    return Array.from(el.selectedOptions).map(o => o.value).join(' ') || 'payment:create';
+  }
 
-    run('set-refresh-token-output', async () => {
-      // Step 1 — server side: authenticate with credentials and obtain a token pair
-      const serverSdk = new GoPaySDK.GoPaySDK(sdkConfig);
-      const tokenPair = await serverSdk.auth.authenticate({
-        grant_type: 'client_credentials',
-        client_id,
-        client_secret,
-        scope,
-      });
+  // Stores the full ClientToken (including expires_in) from the last issueClientToken() call.
+  let _lastClientToken = null;
 
-      // Step 2 — browser side: fresh SDK instance, no credentials, only the refresh token
+  function runIssueClientToken() {
+    const scope = getSelectedBrowserScopes();
+    run('issue-client-token-output', async () => {
+      const token = await sdk.auth.issueClientToken(scope || undefined);
+      _lastClientToken = token;
+      document.getElementById('set-client-token-access').value  = token.access_token;
+      document.getElementById('set-client-token-refresh').value = token.refresh_token;
+      return token;
+    });
+  }
+
+  function runSetClientTokenFlow() {
+    const goid        = document.getElementById('set-client-token-goid').value.trim();
+    const accessToken = document.getElementById('set-client-token-access').value.trim();
+    const refreshToken = document.getElementById('set-client-token-refresh').value.trim();
+
+    run('set-client-token-output', async () => {
       const browserSdk = new GoPaySDK.GoPaySDK(sdkConfig);
-      browserSdk.auth.setRefreshToken(tokenPair.refresh_token, client_id);
+      // Use full ClientToken if available (preserves expires_in from server response),
+      // otherwise fall back to defaults so manually pasted tokens still work.
+      const clientToken = (_lastClientToken?.access_token === accessToken && _lastClientToken)
+        ? _lastClientToken
+        : { access_token: accessToken, refresh_token: refreshToken, expires_in: 900, refresh_expires_in: 86400 };
+      browserSdk.auth.setClientToken(clientToken);
 
-      // First API call — SDK exchanges the refresh token automatically
       return browserSdk.payments.create(goid, {
         amount: 1000,
         currency: 'CZK',
-        order_number: 'ORDER-RT-TEST',
+        order_number: 'ORDER-CT-TEST',
         customer: { email: 'test@example.com' },
         callback: {
           notification_url: 'https://yourshop.example.com/notify',
