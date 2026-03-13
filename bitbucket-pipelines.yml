@@ -58,7 +58,7 @@ definitions:
                 -Dsonar.sources=sdk/src
                 -Dsonar.tests=sdk/tests
                 -Dsonar.inclusions=sdk/src/**/*.ts
-                -Dsonar.exclusions=**/*.spec.ts,**/*.test.ts
+                -Dsonar.exclusions=**/*.spec.ts,**/*.test.ts,sdk/src/types/generated.ts
                 -Dsonar.javascript.lcov.reportPaths=sdk/coverage/lcov.info
           - pipe: sonarsource/sonarcloud-quality-gate:0.2.0
 
