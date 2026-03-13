@@ -75,7 +75,7 @@
         </select>
       </label>
     </div>
-    <button onclick="runAuthenticate()">Run</button>
+    <button type="button" onclick="runAuthenticate()">Run</button>
     <pre id="auth-output">—</pre>
   </section>
 
@@ -97,7 +97,7 @@
         </select>
       </label>
     </div>
-    <button onclick="runIssueClientToken()">Run</button>
+    <button type="button" onclick="runIssueClientToken()">Run</button>
     <pre id="issue-client-token-output">—</pre>
     <p class="note">Requires <code>auth.authenticate()</code> to have been called first.</p>
   </section>
@@ -118,7 +118,7 @@
         <input id="set-client-token-refresh" type="password" placeholder="auto-filled by issueClientToken()" />
       </label>
     </div>
-    <button onclick="runSetClientTokenFlow()">Run</button>
+    <button type="button" onclick="runSetClientTokenFlow()">Run</button>
     <pre id="set-client-token-output">—</pre>
     <p class="note">
       Client credentials must never leave the server. Run <code>auth.issueClientToken()</code> above
@@ -139,7 +139,7 @@
       <label>Notification URL<input id="create-notification-url" type="text" value="https://yourshop.example.com/notify" /></label>
       <label>Return URL<input id="create-return-url" type="text" value="https://yourshop.example.com/return" /></label>
     </div>
-    <button onclick="runCreatePayment()">Run</button>
+    <button type="button" onclick="runCreatePayment()">Run</button>
     <pre id="payment-create-output">—</pre>
     <p class="note">On success, the response includes <code>gw_url</code> — redirect the customer there to complete payment.</p>
   </section>
@@ -153,7 +153,7 @@
       <label>Card Token<input id="charge-card-token" type="text" placeholder="card token from cards.createToken()" /></label>
       <label>Return URL<input id="charge-return-url" type="text" value="https://yourshop.example.com/return" /></label>
     </div>
-    <button onclick="runCharge()">Run</button>
+    <button type="button" onclick="runCharge()">Run</button>
     <pre id="payment-charge-output">—</pre>
     <p class="note">Use the Payment ID from <code>payments.create()</code> output. Card token obtained via <code>cards.createToken()</code>.</p>
   </section>
@@ -165,7 +165,7 @@
     <div class="fields">
       <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="pay_300000001" /></label>
     </div>
-    <button onclick="runGooglePay()">Run</button>
+    <button type="button" onclick="runGooglePay()">Run</button>
     <pre id="googlepay-output">—</pre>
   </section>
 
@@ -176,7 +176,7 @@
     <div class="fields">
       <label>Payment ID<input id="applepay-payment-id" type="text" placeholder="pay_300000001" /></label>
     </div>
-    <button onclick="runApplePay()">Run</button>
+    <button type="button" onclick="runApplePay()">Run</button>
     <pre id="applepay-output">—</pre>
   </section>
 
@@ -188,7 +188,7 @@
       <label>Payment ID<input id="applepay-validate-payment-id" type="text" placeholder="pay_300000001" /></label>
       <label>Origin<input id="applepay-validate-origin" type="text" value="https://yourshop.example.com" /></label>
     </div>
-    <button onclick="runValidateMerchant()">Run</button>
+    <button type="button" onclick="runValidateMerchant()">Run</button>
     <pre id="applepay-validate-output">—</pre>
   </section>
 
@@ -205,7 +205,7 @@
         </select>
       </label>
     </div>
-    <button onclick="runQRPaymentInfo()">Run</button>
+    <button type="button" onclick="runQRPaymentInfo()">Run</button>
     <pre id="qr-output">—</pre>
     <p class="note">QR codes are returned base64-encoded. The available field depends on currency: <code>spayd</code> (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
   </section>
@@ -214,7 +214,7 @@
   <section>
     <h2>encryption.fetchPublicKey()</h2>
     <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /encryption/public-key — fetch the JWK public key for card encryption.</p>
-    <button onclick="runFetchPublicKey()">Run</button>
+    <button type="button" onclick="runFetchPublicKey()">Run</button>
     <pre id="encryption-output">—</pre>
   </section>
 
@@ -222,7 +222,7 @@
   <section>
     <h2>cards.createToken()</h2>
     <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /cards/tokens — tokenize encrypted card data.</p>
-    <button onclick="runCreateToken()">Run</button>
+    <button type="button" onclick="runCreateToken()">Run</button>
     <pre id="cards-output">—</pre>
   </section>
 
@@ -312,6 +312,7 @@
     return Array.from(el.selectedOptions).map(o => o.value).join(' ') || 'payment:create';
   }
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runAuthenticate() {
     const client_id     = document.getElementById('auth-client-id').value.trim();
     const client_secret = document.getElementById('auth-client-secret').value.trim();
@@ -330,6 +331,7 @@
   // Stores the full ClientToken (including expires_in) from the last issueClientToken() call.
   let _lastClientToken = null;
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runIssueClientToken() {
     const scope = getSelectedBrowserScopes();
     run('issue-client-token-output', async () => {
@@ -341,6 +343,7 @@
     });
   }
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runSetClientTokenFlow() {
     const goid        = document.getElementById('set-client-token-goid').value.trim();
     const accessToken = document.getElementById('set-client-token-access').value.trim();
@@ -378,6 +381,7 @@
       });
   }
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runCreatePayment() {
     const goid              = document.getElementById('create-goid').value.trim();
     const amount            = parseInt(document.getElementById('create-amount').value, 10);
@@ -399,6 +403,7 @@
     );
   }
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runCharge() {
     const paymentId  = document.getElementById('charge-payment-id').value.trim();
     const card_token = document.getElementById('charge-card-token').value.trim();
@@ -415,16 +420,19 @@
     );
   }
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runGooglePay() {
     const paymentId = document.getElementById('googlepay-payment-id').value.trim();
     run('googlepay-output', () => sdk.payments.getGooglePayInfo(paymentId));
   }
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runApplePay() {
     const paymentId = document.getElementById('applepay-payment-id').value.trim();
     run('applepay-output', () => sdk.payments.getApplePayInfo(paymentId));
   }
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runValidateMerchant() {
     const paymentId = document.getElementById('applepay-validate-payment-id').value.trim();
     const origin    = document.getElementById('applepay-validate-origin').value.trim();
@@ -433,16 +441,19 @@
     );
   }
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runQRPaymentInfo() {
     const paymentId = document.getElementById('qr-payment-id').value.trim();
     const format = document.getElementById('qr-format').value || undefined;
     run('qr-output', () => sdk.payments.getQRPaymentInfo(paymentId, format));
   }
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runFetchPublicKey() {
     run('encryption-output', () => sdk.encryption.fetchPublicKey());
   }
 
+  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
   function runCreateToken() {
     run('cards-output', () =>
       sdk.cards.createToken({ payload: 'JWE_ENCRYPTED_CARD_DATA', permanent: false })

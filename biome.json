@@ -38,7 +38,6 @@
       "!**/.yarn",
       "!**/CHANGELOG.md",
       "!**/coverage",
-      "!**/example",
       "!**/playwright-report",
       "!**/test-results",
       "!sdk/src/types/generated.ts"
