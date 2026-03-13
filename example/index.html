@@ -1,464 +1,625 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GoPay JS SDK — Example</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
-    header { background: #1a1a2e; color: #fff; padding: 1.5rem 2rem; }
-    header h1 { font-size: 1.4rem; font-weight: 600; }
-    header p  { font-size: 0.85rem; color: #aaa; margin-top: 0.25rem; }
-    main { max-width: 860px; margin: 2rem auto; padding: 0 1rem; }
-    section { background: #fff; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-    h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #1a1a2e; }
-    button {
-      display: inline-block; padding: 0.5rem 1.25rem; border: none; border-radius: 5px;
-      background: #1a1a2e; color: #fff; cursor: pointer; font-size: 0.875rem; margin: 0.25rem 0.25rem 0.25rem 0;
-    }
-    button:hover { background: #2e2e5e; }
-    pre {
-      background: #1e1e2e; color: #cdd6f4; border-radius: 6px; padding: 1rem;
-      font-size: 0.8rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all;
-      margin-top: 0.75rem; min-height: 2.5rem;
-    }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-    .ok   { background: #d4edda; color: #155724; }
-    .err  { background: #f8d7da; color: #721c24; }
-    #status { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-    code { font-family: 'SFMono-Regular', Menlo, monospace; font-size: 0.85rem; background: #eee; padding: 1px 5px; border-radius: 3px; }
-    p.note { font-size: 0.8rem; color: #666; margin-top: 0.5rem; }
-    .fields { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .fields label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: #555; flex: 1; min-width: 180px; }
-    .fields input { padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; font-family: inherit; }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GoPay JS SDK — Example</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        header {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 1.5rem 2rem;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+
+        header p {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-top: 0.25rem;
+        }
+
+        main {
+            max-width: 860px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        section {
+            background: #fff;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+        }
+
+        h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1a1a2e;
+        }
+
+        button {
+            display: inline-block;
+            padding: 0.5rem 1.25rem;
+            border: none;
+            border-radius: 5px;
+            background: #1a1a2e;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin: 0.25rem 0.25rem 0.25rem 0;
+        }
+
+        button:hover {
+            background: #2e2e5e;
+        }
+
+        pre {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            border-radius: 6px;
+            padding: 1rem;
+            font-size: 0.8rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 0.75rem;
+            min-height: 2.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .ok {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .err {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        #status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        code {
+            font-family: 'SFMono-Regular', Menlo, monospace;
+            font-size: 0.85rem;
+            background: #eee;
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        p.note {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .fields label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+            color: #555;
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .fields input {
+            padding: 0.4rem 0.6rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+    </style>
 </head>
+
 <body>
 
-<header>
-  <h1>GoPay JS SDK — Developer Example</h1>
-  <p>Demonstrates the SDK API shape. Authenticate first, then use <strong>payments.create()</strong> to create a real payment session.</p>
-</header>
+    <header>
+        <h1>GoPay JS SDK — Developer Example</h1>
+        <p>Demonstrates the SDK API shape. Authenticate first, then use <strong>payments.create()</strong> to create a
+            real
+            payment session.</p>
+    </header>
 
-<main>
+    <main>
 
-  <!-- SDK status -->
-  <section>
-    <h2>SDK Status</h2>
-    <div id="status"><span class="badge" id="sdk-badge">checking…</span></div>
-    <pre id="sdk-info">Loading…</pre>
-    <p class="note">
-      Run <code>yarn example</code> from the repo root — it builds the SDK and starts
-      the dev server automatically. Credentials and base URL are read from
-      <code>sdk/.env.e2e</code> (<code>GP_GW_JS_SDK_CLIENT_ID</code>,
-      <code>GP_GW_JS_SDK_CLIENT_SECRET</code>, <code>GP_GW_JS_SDK_BASE_URL</code>)
-      and fall back to <code>process.env</code> in CI.
-      Opening via <code>file://</code> still works but env values won't be injected.
-      In production use <code>https://gopaycdn.com/js-sdk/gopay-sdk.min.js</code>.
-    </p>
-  </section>
+        <!-- SDK status -->
+        <section>
+            <h2>SDK Status</h2>
+            <div id="status"><span class="badge" id="sdk-badge">checking…</span></div>
+            <pre id="sdk-info">Loading…</pre>
+            <p class="note">
+                Run <code>yarn example</code> from the repo root — it builds the SDK and starts
+                the dev server automatically. Credentials and base URL are read from
+                <code>sdk/.env.e2e</code> (<code>GP_GW_JS_SDK_CLIENT_ID</code>,
+                <code>GP_GW_JS_SDK_CLIENT_SECRET</code>, <code>GP_GW_JS_SDK_BASE_URL</code>)
+                and fall back to <code>process.env</code> in CI.
+                Opening via <code>file://</code> still works but env values won't be injected.
+                In production use <code>https://gopaycdn.com/js-sdk/gopay-sdk.min.js</code>.
+            </p>
+        </section>
 
-  <!-- Authentication -->
-  <section>
-    <h2>auth.authenticate() <span style="font-size:0.75rem;color:#c00;font-weight:normal;">(server-only — never call from a browser)</span></h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /oauth2/token — obtain an access token using client credentials. <strong>Keep <code>client_id</code> and <code>client_secret</code> on the server.</strong></p>
-    <div class="fields">
-      <label>Client ID<input id="auth-client-id" type="text" placeholder="your-client-id" /></label>
-      <label>Client Secret<input id="auth-client-secret" type="password" placeholder="your-client-secret" /></label>
-      <label>Scope (⌘/Ctrl+click to select multiple)
-        <select id="auth-scope" multiple size="4" style="padding:0.3rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
-          <option value="payment:create" selected>payment:create</option>
-          <option value="payment:read">payment:read</option>
-          <option value="card:save">card:save</option>
-          <option value="card:read">card:read</option>
-        </select>
-      </label>
-    </div>
-    <button type="button" onclick="runAuthenticate()">Run</button>
-    <pre id="auth-output">—</pre>
-  </section>
+        <!-- Authentication -->
+        <section>
+            <h2>auth.authenticate() <span style="font-size:0.75rem;color:#c00;font-weight:normal;">(server-only — never
+                    call
+                    from a browser)</span></h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /oauth2/token — obtain an access token
+                using
+                client credentials. <strong>Keep <code>client_id</code> and <code>client_secret</code> on the
+                    server.</strong>
+            </p>
+            <div class="fields">
+                <label>Client ID<input id="auth-client-id" type="text" placeholder="your-client-id" /></label>
+                <label>Client Secret<input id="auth-client-secret" type="password"
+                        placeholder="your-client-secret" /></label>
+                <label>Scope (⌘/Ctrl+click to select multiple)
+                    <select id="auth-scope" multiple size="4"
+                        style="padding:0.3rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
+                        <option value="payment:create" selected>payment:create</option>
+                        <option value="payment:read">payment:read</option>
+                        <option value="card:save">card:save</option>
+                        <option value="card:read">card:read</option>
+                    </select>
+                </label>
+            </div>
+            <button type="button" onclick="runAuthenticate()">Run</button>
+            <pre id="auth-output">—</pre>
+        </section>
 
-  <!-- Issue client token (server side) -->
-  <section>
-    <h2>auth.issueClientToken() — server side</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
-      Obtain a fresh token pair for a browser client without affecting the server session.
-      Authenticate first, then issue a token with a narrower scope if needed.
-      The result is auto-filled into the browser flow below.
-    </p>
-    <div class="fields">
-      <label>Scope (⌘/Ctrl+click to select multiple)
-        <select id="issue-client-token-scope" multiple size="4" style="padding:0.3rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
-          <option value="payment:create" selected>payment:create</option>
-          <option value="payment:read">payment:read</option>
-          <option value="card:save">card:save</option>
-          <option value="card:read">card:read</option>
-        </select>
-      </label>
-    </div>
-    <button type="button" onclick="runIssueClientToken()">Run</button>
-    <pre id="issue-client-token-output">—</pre>
-    <p class="note">Requires <code>auth.authenticate()</code> to have been called first.</p>
-  </section>
+        <!-- Issue client token (server side) -->
+        <section>
+            <h2>auth.issueClientToken() — server side</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+                Obtain a fresh token pair for a browser client without affecting the server session.
+                Authenticate first, then issue a token with a narrower scope if needed.
+                The result is auto-filled into the browser flow below.
+            </p>
+            <div class="fields">
+                <label>Scope (⌘/Ctrl+click to select multiple)
+                    <select id="issue-client-token-scope" multiple size="4"
+                        style="padding:0.3rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
+                        <option value="payment:create" selected>payment:create</option>
+                        <option value="payment:read">payment:read</option>
+                        <option value="card:save">card:save</option>
+                        <option value="card:read">card:read</option>
+                    </select>
+                </label>
+            </div>
+            <button type="button" onclick="runIssueClientToken()">Run</button>
+            <pre id="issue-client-token-output">—</pre>
+            <p class="note">Requires <code>auth.authenticate()</code> to have been called first.</p>
+        </section>
 
-  <!-- Browser auth flow -->
-  <section>
-    <h2>auth.setClientToken() — browser flow</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
-      Simulates the browser client pattern: a fresh SDK instance receives both tokens from the server
-      (no credentials in the browser). The <code>client_id</code> is extracted automatically from the JWT.
-    </p>
-    <div class="fields">
-      <label>GoID<input id="set-client-token-goid" type="text" value="8123456789" /></label>
-      <label>Access Token
-        <input id="set-client-token-access" type="password" placeholder="auto-filled by issueClientToken()" />
-      </label>
-      <label>Refresh Token
-        <input id="set-client-token-refresh" type="password" placeholder="auto-filled by issueClientToken()" />
-      </label>
-    </div>
-    <button type="button" onclick="runSetClientTokenFlow()">Run</button>
-    <pre id="set-client-token-output">—</pre>
-    <p class="note">
-      Client credentials must never leave the server. Run <code>auth.issueClientToken()</code> above
-      to populate the fields, or paste tokens obtained from your own server endpoint.
-    </p>
-  </section>
+        <!-- Browser auth flow -->
+        <section>
+            <h2>auth.setClientToken() — browser flow</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+                Simulates the browser client pattern: a fresh SDK instance receives both tokens from the server
+                (no credentials in the browser). The <code>client_id</code> is extracted automatically from the JWT.
+            </p>
+            <div class="fields">
+                <label>GoID<input id="set-client-token-goid" type="text" value="8123456789" /></label>
+                <label>Access Token
+                    <input id="set-client-token-access" type="password"
+                        placeholder="auto-filled by issueClientToken()" />
+                </label>
+                <label>Refresh Token
+                    <input id="set-client-token-refresh" type="password"
+                        placeholder="auto-filled by issueClientToken()" />
+                </label>
+            </div>
+            <button type="button" onclick="runSetClientTokenFlow()">Run</button>
+            <pre id="set-client-token-output">—</pre>
+            <p class="note">
+                Client credentials must never leave the server. Run <code>auth.issueClientToken()</code> above
+                to populate the fields, or paste tokens obtained from your own server endpoint.
+            </p>
+        </section>
 
-  <!-- Create payment -->
-  <section>
-    <h2>payments.create()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /eshops/{goid}/payments — create a payment session. Authenticate first to obtain a token.</p>
-    <div class="fields">
-      <label>GoID<input id="create-goid" type="text" value="8123456789" /></label>
-      <label>Amount (cents)<input id="create-amount" type="number" value="1000" /></label>
-      <label>Currency<input id="create-currency" type="text" value="CZK" /></label>
-      <label>Order Number<input id="create-order-number" type="text" value="ORDER-001" /></label>
-      <label>Customer Email<input id="create-customer-email" type="text" value="customer@example.com" /></label>
-      <label>Notification URL<input id="create-notification-url" type="text" value="https://yourshop.example.com/notify" /></label>
-      <label>Return URL<input id="create-return-url" type="text" value="https://yourshop.example.com/return" /></label>
-    </div>
-    <button type="button" onclick="runCreatePayment()">Run</button>
-    <pre id="payment-create-output">—</pre>
-    <p class="note">On success, the response includes <code>gw_url</code> — redirect the customer there to complete payment.</p>
-  </section>
+        <!-- Create payment -->
+        <section>
+            <h2>payments.create()</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /eshops/{goid}/payments — create a
+                payment
+                session. Authenticate first to obtain a token.</p>
+            <div class="fields">
+                <label>GoID<input id="create-goid" type="text" value="8123456789" /></label>
+                <label>Amount (cents)<input id="create-amount" type="number" value="1000" /></label>
+                <label>Currency<input id="create-currency" type="text" value="CZK" /></label>
+                <label>Order Number<input id="create-order-number" type="text" value="ORDER-001" /></label>
+                <label>Customer Email<input id="create-customer-email" type="text"
+                        value="customer@example.com" /></label>
+                <label>Notification URL<input id="create-notification-url" type="text"
+                        value="https://yourshop.example.com/notify" /></label>
+                <label>Return URL<input id="create-return-url" type="text"
+                        value="https://yourshop.example.com/return" /></label>
+            </div>
+            <button type="button" onclick="runCreatePayment()">Run</button>
+            <pre id="payment-create-output">—</pre>
+            <p class="note">On success, the response includes <code>gw_url</code> — redirect the customer there to
+                complete
+                payment.</p>
+        </section>
 
-  <!-- Charge payment -->
-  <section>
-    <h2>payments.charge()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /payments/{id}/charge — charge using a card token.</p>
-    <div class="fields">
-      <label>Payment ID<input id="charge-payment-id" type="text" placeholder="pay_300000001" /></label>
-      <label>Card Token<input id="charge-card-token" type="text" placeholder="card token from cards.createToken()" /></label>
-      <label>Return URL<input id="charge-return-url" type="text" value="https://yourshop.example.com/return" /></label>
-    </div>
-    <button type="button" onclick="runCharge()">Run</button>
-    <pre id="payment-charge-output">—</pre>
-    <p class="note">Use the Payment ID from <code>payments.create()</code> output. Card token obtained via <code>cards.createToken()</code>.</p>
-  </section>
+        <!-- Charge payment -->
+        <section>
+            <h2>payments.charge()</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /payments/{id}/charge — charge using a
+                card
+                token.</p>
+            <div class="fields">
+                <label>Payment ID<input id="charge-payment-id" type="text" placeholder="pay_300000001" /></label>
+                <label>Card Token<input id="charge-card-token" type="text"
+                        placeholder="card token from cards.createToken()" /></label>
+                <label>Return URL<input id="charge-return-url" type="text"
+                        value="https://yourshop.example.com/return" /></label>
+            </div>
+            <button type="button" onclick="runCharge()">Run</button>
+            <pre id="payment-charge-output">—</pre>
+            <p class="note">Use the Payment ID from <code>payments.create()</code> output. Card token obtained via
+                <code>cards.createToken()</code>.
+            </p>
+        </section>
 
-  <!-- Google Pay info -->
-  <section>
-    <h2>payments.getGooglePayInfo()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/google-pay/info — fetch Google Pay configuration.</p>
-    <div class="fields">
-      <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="pay_300000001" /></label>
-    </div>
-    <button type="button" onclick="runGooglePay()">Run</button>
-    <pre id="googlepay-output">—</pre>
-  </section>
+        <!-- Google Pay info -->
+        <section>
+            <h2>payments.getGooglePayInfo()</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/google-pay/info — fetch
+                Google
+                Pay configuration.</p>
+            <div class="fields">
+                <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="pay_300000001" /></label>
+            </div>
+            <button type="button" onclick="runGooglePay()">Run</button>
+            <pre id="googlepay-output">—</pre>
+        </section>
 
-  <!-- Apple Pay info -->
-  <section>
-    <h2>payments.getApplePayInfo()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/apple-pay/info — fetch Apple Pay configuration.</p>
-    <div class="fields">
-      <label>Payment ID<input id="applepay-payment-id" type="text" placeholder="pay_300000001" /></label>
-    </div>
-    <button type="button" onclick="runApplePay()">Run</button>
-    <pre id="applepay-output">—</pre>
-  </section>
+        <!-- Apple Pay info -->
+        <section>
+            <h2>payments.getApplePayInfo()</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/apple-pay/info — fetch
+                Apple Pay
+                configuration.</p>
+            <div class="fields">
+                <label>Payment ID<input id="applepay-payment-id" type="text" placeholder="pay_300000001" /></label>
+            </div>
+            <button type="button" onclick="runApplePay()">Run</button>
+            <pre id="applepay-output">—</pre>
+        </section>
 
-  <!-- Apple Pay validate -->
-  <section>
-    <h2>payments.validateApplePayMerchant()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /payments/{id}/apple-pay/validate — validate the Apple Pay merchant session.</p>
-    <div class="fields">
-      <label>Payment ID<input id="applepay-validate-payment-id" type="text" placeholder="pay_300000001" /></label>
-      <label>Origin<input id="applepay-validate-origin" type="text" value="https://yourshop.example.com" /></label>
-    </div>
-    <button type="button" onclick="runValidateMerchant()">Run</button>
-    <pre id="applepay-validate-output">—</pre>
-  </section>
+        <!-- Apple Pay validate -->
+        <section>
+            <h2>payments.validateApplePayMerchant()</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /payments/{id}/apple-pay/validate —
+                validate
+                the Apple Pay merchant session.</p>
+            <div class="fields">
+                <label>Payment ID<input id="applepay-validate-payment-id" type="text"
+                        placeholder="pay_300000001" /></label>
+                <label>Origin<input id="applepay-validate-origin" type="text"
+                        value="https://yourshop.example.com" /></label>
+            </div>
+            <button type="button" onclick="runValidateMerchant()">Run</button>
+            <pre id="applepay-validate-output">—</pre>
+        </section>
 
-  <!-- QR Payment info -->
-  <section>
-    <h2>payments.getQRPaymentInfo()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/qr-payment/info — fetch QR code (base64) and recipient info.</p>
-    <div class="fields">
-      <label>Payment ID<input id="qr-payment-id" type="text" placeholder="pay_300000001" /></label>
-      <label>Format
-        <select id="qr-format" style="padding:0.4rem 0.6rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
-          <option value="">png (default)</option>
-          <option value="svg">svg</option>
-        </select>
-      </label>
-    </div>
-    <button type="button" onclick="runQRPaymentInfo()">Run</button>
-    <pre id="qr-output">—</pre>
-    <p class="note">QR codes are returned base64-encoded. The available field depends on currency: <code>spayd</code> (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
-  </section>
+        <!-- QR Payment info -->
+        <section>
+            <h2>payments.getQRPaymentInfo()</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/qr-payment/info — fetch QR
+                code
+                (base64) and recipient info.</p>
+            <div class="fields">
+                <label>Payment ID<input id="qr-payment-id" type="text" placeholder="pay_300000001" /></label>
+                <label>Format
+                    <select id="qr-format"
+                        style="padding:0.4rem 0.6rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
+                        <option value="">png (default)</option>
+                        <option value="svg">svg</option>
+                    </select>
+                </label>
+            </div>
+            <button type="button" onclick="runQRPaymentInfo()">Run</button>
+            <pre id="qr-output">—</pre>
+            <p class="note">QR codes are returned base64-encoded. The available field depends on currency:
+                <code>spayd</code>
+                (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
+        </section>
 
-  <!-- Fetch public key -->
-  <section>
-    <h2>encryption.fetchPublicKey()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /encryption/public-key — fetch the JWK public key for card encryption.</p>
-    <button type="button" onclick="runFetchPublicKey()">Run</button>
-    <pre id="encryption-output">—</pre>
-  </section>
+        <!-- Fetch public key -->
+        <section>
+            <h2>encryption.fetchPublicKey()</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /encryption/public-key — fetch the JWK
+                public
+                key for card encryption.</p>
+            <button type="button" onclick="runFetchPublicKey()">Run</button>
+            <pre id="encryption-output">—</pre>
+        </section>
 
-  <!-- Card tokenization -->
-  <section>
-    <h2>cards.createToken()</h2>
-    <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /cards/tokens — tokenize encrypted card data.</p>
-    <button type="button" onclick="runCreateToken()">Run</button>
-    <pre id="cards-output">—</pre>
-  </section>
+        <!-- Card tokenization -->
+        <section>
+            <h2>cards.createToken()</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /cards/tokens — tokenize encrypted card
+                data.
+            </p>
+            <button type="button" onclick="runCreateToken()">Run</button>
+            <pre id="cards-output">—</pre>
+        </section>
 
-</main>
+    </main>
 
-<!--
+    <!--
   PRODUCTION:  <script src="https://gopaycdn.com/js-sdk/gopay-sdk.min.js"></script>
   DEVELOPMENT: load the local build below
 -->
-<script src="../sdk/dist/gopay-sdk.min.js"></script>
-<script>
-  // -----------------------------------------------------------------------
-  // Initialise
-  // -----------------------------------------------------------------------
-  const badge   = document.getElementById('sdk-badge');
-  const sdkInfo = document.getElementById('sdk-info');
+    <script src="../sdk/dist/gopay-sdk.min.js"></script>
+    <script>
+        // -----------------------------------------------------------------------
+        // Initialise
+        // -----------------------------------------------------------------------
+        const badge = document.getElementById('sdk-badge');
+        const sdkInfo = document.getElementById('sdk-info');
 
-  let sdk;
+        let sdk;
 
-  // Pre-populate auth fields from injected env (serve.js) — fall back to empty
-  const _env = window.__ENV__ || {};
-  if (_env.clientId)     document.getElementById('auth-client-id').value     = _env.clientId;
-  if (_env.clientSecret) document.getElementById('auth-client-secret').value = _env.clientSecret;
+        // Pre-populate auth fields from injected env (serve.js) — fall back to empty
+        const _env = window.__ENV__ || {};
+        if (_env.clientId) document.getElementById('auth-client-id').value = _env.clientId;
+        if (_env.clientSecret) document.getElementById('auth-client-secret').value = _env.clientSecret;
 
-  const sdkConfig = _env.baseUrl
-    ? { baseUrl: _env.baseUrl }
-    : { environment: 'sandbox' };
+        const sdkConfig = _env.baseUrl
+            ? { baseUrl: _env.baseUrl }
+            : { environment: 'sandbox' };
 
-  if (typeof GoPaySDK === 'undefined' || typeof GoPaySDK.GoPaySDK === 'undefined') {
-    badge.textContent = 'NOT LOADED';
-    badge.className = 'badge err';
-    sdkInfo.textContent =
-      'GoPaySDK not found on window.\n\n' +
-      'Build the SDK first:\n  cd sdk && yarn build\n\n' +
-      'Then serve via:  node example/serve.js\n' +
-      '  (or open this file directly, but env values will not be injected)';
-  } else {
-    sdk = new GoPaySDK.GoPaySDK(sdkConfig);
-    badge.textContent = 'LOADED';
-    badge.className = 'badge ok';
-    sdkInfo.textContent = JSON.stringify(
-      {
-        class: sdk.constructor.name,
-        baseUrl: _env.baseUrl ?? '(sandbox default)',
-        modules: ['auth', 'payments', 'cards', 'encryption'].map(m => ({
-          name: m,
-          methods: Object.getOwnPropertyNames(Object.getPrototypeOf(sdk[m]))
-            .filter(n => n !== 'constructor'),
-        })),
-      },
-      null,
-      2,
-    );
-  }
+        if (typeof GoPaySDK === 'undefined' || typeof GoPaySDK.GoPaySDK === 'undefined') {
+            badge.textContent = 'NOT LOADED';
+            badge.className = 'badge err';
+            sdkInfo.textContent =
+                'GoPaySDK not found on window.\n\n' +
+                'Build the SDK first:\n  cd sdk && yarn build\n\n' +
+                'Then serve via:  node example/serve.js\n' +
+                '  (or open this file directly, but env values will not be injected)';
+        } else {
+            sdk = new GoPaySDK.GoPaySDK(sdkConfig);
+            badge.textContent = 'LOADED';
+            badge.className = 'badge ok';
+            sdkInfo.textContent = JSON.stringify(
+                {
+                    class: sdk.constructor.name,
+                    baseUrl: _env.baseUrl ?? '(sandbox default)',
+                    modules: ['auth', 'payments', 'cards', 'encryption'].map(m => ({
+                        name: m,
+                        methods: Object.getOwnPropertyNames(Object.getPrototypeOf(sdk[m]))
+                            .filter(n => n !== 'constructor'),
+                    })),
+                },
+                null,
+                2,
+            );
+        }
 
-  // -----------------------------------------------------------------------
-  // Helper
-  // -----------------------------------------------------------------------
-  async function run(outputId, fn, onSuccess) {
-    const pre = document.getElementById(outputId);
-    pre.textContent = 'Running…';
-    try {
-      const result = await fn();
-      pre.textContent = JSON.stringify(result, null, 2);
-      if (onSuccess) onSuccess(result);
-    } catch (err) {
-      let name, message;
-      if (err instanceof Error) {
-        name = err.constructor.name;
-        message = err.message;
-      } else if (err === null || err === undefined) {
-        name = typeof err;
-        message = String(err);
-      } else {
-        name = typeof err;
-        try { message = JSON.stringify(err); } catch { message = String(err); }
-      }
-      pre.textContent = `[${name}] ${message}`;
-    }
-  }
+        // -----------------------------------------------------------------------
+        // Helper
+        // -----------------------------------------------------------------------
+        async function run(outputId, fn, onSuccess) {
+            const pre = document.getElementById(outputId);
+            pre.textContent = 'Running…';
+            try {
+                const result = await fn();
+                pre.textContent = JSON.stringify(result, null, 2);
+                if (onSuccess) onSuccess(result);
+            } catch (err) {
+                let name, message;
+                if (err instanceof Error) {
+                    name = err.constructor.name;
+                    message = err.message;
+                } else if (err === null || err === undefined) {
+                    name = typeof err;
+                    message = String(err);
+                } else {
+                    name = typeof err;
+                    try { message = JSON.stringify(err); } catch { message = String(err); }
+                }
+                pre.textContent = `[${name}] ${message}`;
+            }
+        }
 
-  // -----------------------------------------------------------------------
-  // Demo calls
-  // -----------------------------------------------------------------------
-  function getSelectedScopes() {
-    const el = document.getElementById('auth-scope');
-    return Array.from(el.selectedOptions).map(o => o.value).join(' ') || 'payment:create';
-  }
+        // -----------------------------------------------------------------------
+        // Demo calls
+        // -----------------------------------------------------------------------
+        function getSelectedScopes() {
+            const el = document.getElementById('auth-scope');
+            return Array.from(el.selectedOptions).map(o => o.value).join(' ') || 'payment:create';
+        }
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runAuthenticate() {
-    const client_id     = document.getElementById('auth-client-id').value.trim();
-    const client_secret = document.getElementById('auth-client-secret').value.trim();
-    const scope         = getSelectedScopes();
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runAuthenticate() {
+            const client_id = document.getElementById('auth-client-id').value.trim();
+            const client_secret = document.getElementById('auth-client-secret').value.trim();
+            const scope = getSelectedScopes();
 
-    run('auth-output', () =>
-      sdk.auth.authenticate({ grant_type: 'client_credentials', client_id, client_secret, scope })
-    );
-  }
+            run('auth-output', () =>
+                sdk.auth.authenticate({ grant_type: 'client_credentials', client_id, client_secret, scope })
+            );
+        }
 
-  function getSelectedBrowserScopes() {
-    const el = document.getElementById('issue-client-token-scope');
-    return Array.from(el.selectedOptions).map(o => o.value).join(' ') || 'payment:create';
-  }
+        function getSelectedBrowserScopes() {
+            const el = document.getElementById('issue-client-token-scope');
+            return Array.from(el.selectedOptions).map(o => o.value).join(' ') || 'payment:create';
+        }
 
-  // Stores the full ClientToken (including expires_in) from the last issueClientToken() call.
-  let _lastClientToken = null;
+        // Stores the full ClientToken (including expires_in) from the last issueClientToken() call.
+        let _lastClientToken = null;
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runIssueClientToken() {
-    const scope = getSelectedBrowserScopes();
-    run('issue-client-token-output', async () => {
-      const token = await sdk.auth.issueClientToken(scope || undefined);
-      _lastClientToken = token;
-      document.getElementById('set-client-token-access').value  = token.access_token;
-      document.getElementById('set-client-token-refresh').value = token.refresh_token;
-      return token;
-    });
-  }
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runIssueClientToken() {
+            const scope = getSelectedBrowserScopes();
+            run('issue-client-token-output', async () => {
+                const token = await sdk.auth.issueClientToken(scope || undefined);
+                _lastClientToken = token;
+                document.getElementById('set-client-token-access').value = token.access_token;
+                document.getElementById('set-client-token-refresh').value = token.refresh_token;
+                return token;
+            });
+        }
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runSetClientTokenFlow() {
-    const goid        = document.getElementById('set-client-token-goid').value.trim();
-    const accessToken = document.getElementById('set-client-token-access').value.trim();
-    const refreshToken = document.getElementById('set-client-token-refresh').value.trim();
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runSetClientTokenFlow() {
+            const goid = document.getElementById('set-client-token-goid').value.trim();
+            const accessToken = document.getElementById('set-client-token-access').value.trim();
+            const refreshToken = document.getElementById('set-client-token-refresh').value.trim();
 
-    run('set-client-token-output', async () => {
-      const browserSdk = new GoPaySDK.GoPaySDK(sdkConfig);
-      // Use full ClientToken if available (preserves expires_in from server response),
-      // otherwise fall back to defaults so manually pasted tokens still work.
-      const clientToken = (_lastClientToken?.access_token === accessToken && _lastClientToken)
-        ? _lastClientToken
-        : { access_token: accessToken, refresh_token: refreshToken, expires_in: 900, refresh_expires_in: 86400 };
-      browserSdk.auth.setClientToken(clientToken);
+            run('set-client-token-output', async () => {
+                const browserSdk = new GoPaySDK.GoPaySDK(sdkConfig);
+                // Use full ClientToken if available (preserves expires_in from server response),
+                // otherwise fall back to defaults so manually pasted tokens still work.
+                const clientToken = (_lastClientToken?.access_token === accessToken && _lastClientToken)
+                    ? _lastClientToken
+                    : { access_token: accessToken, refresh_token: refreshToken, expires_in: 900, refresh_expires_in: 86400 };
+                browserSdk.auth.setClientToken(clientToken);
 
-      return browserSdk.payments.create(goid, {
-        amount: 1000,
-        currency: 'CZK',
-        order_number: 'ORDER-CT-TEST',
-        customer: { email: 'test@example.com' },
-        callback: {
-          notification_url: 'https://yourshop.example.com/notify',
-          return_url: 'https://yourshop.example.com/return',
-        },
-      });
-    });
-  }
+                return browserSdk.payments.create(goid, {
+                    amount: 1000,
+                    currency: 'CZK',
+                    order_number: 'ORDER-CT-TEST',
+                    customer: { email: 'test@example.com' },
+                    callback: {
+                        notification_url: 'https://yourshop.example.com/notify',
+                        return_url: 'https://yourshop.example.com/return',
+                    },
+                });
+            });
+        }
 
-  function prefillPaymentId(result) {
-    const id = result?.id;
-    if (!id) return;
-    ['charge-payment-id', 'googlepay-payment-id', 'applepay-payment-id', 'applepay-validate-payment-id', 'qr-payment-id']
-      .forEach(fieldId => {
-        const el = document.getElementById(fieldId);
-        if (el && !el.value) el.value = id;
-      });
-  }
+        function prefillPaymentId(result) {
+            const id = result?.id;
+            if (!id) return;
+            ['charge-payment-id', 'googlepay-payment-id', 'applepay-payment-id', 'applepay-validate-payment-id', 'qr-payment-id']
+                .forEach(fieldId => {
+                    const el = document.getElementById(fieldId);
+                    if (el && !el.value) el.value = id;
+                });
+        }
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runCreatePayment() {
-    const goid              = document.getElementById('create-goid').value.trim();
-    const amount            = parseInt(document.getElementById('create-amount').value, 10);
-    const currency          = document.getElementById('create-currency').value.trim() || 'CZK';
-    const order_number      = document.getElementById('create-order-number').value.trim();
-    const email             = document.getElementById('create-customer-email').value.trim();
-    const notification_url  = document.getElementById('create-notification-url').value.trim();
-    const return_url        = document.getElementById('create-return-url').value.trim();
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runCreatePayment() {
+            const goid = document.getElementById('create-goid').value.trim();
+            const amount = parseInt(document.getElementById('create-amount').value, 10);
+            const currency = document.getElementById('create-currency').value.trim() || 'CZK';
+            const order_number = document.getElementById('create-order-number').value.trim();
+            const email = document.getElementById('create-customer-email').value.trim();
+            const notification_url = document.getElementById('create-notification-url').value.trim();
+            const return_url = document.getElementById('create-return-url').value.trim();
 
-    run('payment-create-output', () =>
-      sdk.payments.create(goid, {
-        amount,
-        currency,
-        order_number,
-        customer: { email },
-        callback: { notification_url, return_url },
-      }),
-      prefillPaymentId,
-    );
-  }
+            run('payment-create-output', () =>
+                sdk.payments.create(goid, {
+                    amount,
+                    currency,
+                    order_number,
+                    customer: { email },
+                    callback: { notification_url, return_url },
+                }),
+                prefillPaymentId,
+            );
+        }
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runCharge() {
-    const paymentId  = document.getElementById('charge-payment-id').value.trim();
-    const card_token = document.getElementById('charge-card-token').value.trim();
-    const return_url = document.getElementById('charge-return-url').value.trim();
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runCharge() {
+            const paymentId = document.getElementById('charge-payment-id').value.trim();
+            const card_token = document.getElementById('charge-card-token').value.trim();
+            const return_url = document.getElementById('charge-return-url').value.trim();
 
-    run('payment-charge-output', () =>
-      sdk.payments.charge(paymentId, {
-        payment_instrument: {
-          payment_instrument: 'PAYMENT_CARD',
-          input: { input_type: 'CARD_TOKEN', card_token },
-        },
-        return_url,
-      })
-    );
-  }
+            run('payment-charge-output', () =>
+                sdk.payments.charge(paymentId, {
+                    payment_instrument: {
+                        payment_instrument: 'PAYMENT_CARD',
+                        input: { input_type: 'CARD_TOKEN', card_token },
+                    },
+                    return_url,
+                })
+            );
+        }
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runGooglePay() {
-    const paymentId = document.getElementById('googlepay-payment-id').value.trim();
-    run('googlepay-output', () => sdk.payments.getGooglePayInfo(paymentId));
-  }
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runGooglePay() {
+            const paymentId = document.getElementById('googlepay-payment-id').value.trim();
+            run('googlepay-output', () => sdk.payments.getGooglePayInfo(paymentId));
+        }
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runApplePay() {
-    const paymentId = document.getElementById('applepay-payment-id').value.trim();
-    run('applepay-output', () => sdk.payments.getApplePayInfo(paymentId));
-  }
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runApplePay() {
+            const paymentId = document.getElementById('applepay-payment-id').value.trim();
+            run('applepay-output', () => sdk.payments.getApplePayInfo(paymentId));
+        }
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runValidateMerchant() {
-    const paymentId = document.getElementById('applepay-validate-payment-id').value.trim();
-    const origin    = document.getElementById('applepay-validate-origin').value.trim();
-    run('applepay-validate-output', () =>
-      sdk.payments.validateApplePayMerchant(paymentId, origin)
-    );
-  }
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runValidateMerchant() {
+            const paymentId = document.getElementById('applepay-validate-payment-id').value.trim();
+            const origin = document.getElementById('applepay-validate-origin').value.trim();
+            run('applepay-validate-output', () =>
+                sdk.payments.validateApplePayMerchant(paymentId, origin)
+            );
+        }
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runQRPaymentInfo() {
-    const paymentId = document.getElementById('qr-payment-id').value.trim();
-    const format = document.getElementById('qr-format').value || undefined;
-    run('qr-output', () => sdk.payments.getQRPaymentInfo(paymentId, format));
-  }
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runQRPaymentInfo() {
+            const paymentId = document.getElementById('qr-payment-id').value.trim();
+            const format = document.getElementById('qr-format').value || undefined;
+            run('qr-output', () => sdk.payments.getQRPaymentInfo(paymentId, format));
+        }
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runFetchPublicKey() {
-    run('encryption-output', () => sdk.encryption.fetchPublicKey());
-  }
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runFetchPublicKey() {
+            run('encryption-output', () => sdk.encryption.fetchPublicKey());
+        }
 
-  // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-  function runCreateToken() {
-    run('cards-output', () =>
-      sdk.cards.createToken({ payload: 'JWE_ENCRYPTED_CARD_DATA', permanent: false })
-    );
-  }
-</script>
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runCreateToken() {
+            run('cards-output', () =>
+                sdk.cards.createToken({ payload: 'JWE_ENCRYPTED_CARD_DATA', permanent: false })
+            );
+        }
+    </script>
 </body>
+
 </html>
