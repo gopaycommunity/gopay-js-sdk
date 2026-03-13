@@ -1,46 +1,46 @@
 {
-  "assist": {
-    "actions": {
-      "source": {
-        "organizeImports": "on"
-      }
-    }
-  },
-  "formatter": {
-    "enabled": true,
-    "indentStyle": "space",
-    "indentWidth": 4
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
-      "correctness": {
-        "noUnusedImports": "error"
-      }
-    }
-  },
-  "javascript": {
+    "assist": {
+        "actions": {
+            "source": {
+                "organizeImports": "on"
+            }
+        }
+    },
     "formatter": {
-      "quoteStyle": "single"
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 4
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": true,
+            "correctness": {
+                "noUnusedImports": "error"
+            }
+        }
+    },
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "single"
+        }
+    },
+    "json": {
+        "formatter": {
+            "enabled": true
+        }
+    },
+    "files": {
+        "includes": [
+            "**",
+            "!**/dist",
+            "!**/node_modules",
+            "!**/.yarn",
+            "!**/CHANGELOG.md",
+            "!**/coverage",
+            "!**/playwright-report",
+            "!**/test-results",
+            "!sdk/src/types/generated.ts"
+        ]
     }
-  },
-  "json": {
-    "formatter": {
-      "enabled": false
-    }
-  },
-  "files": {
-    "includes": [
-      "**",
-      "!**/dist",
-      "!**/node_modules",
-      "!**/.yarn",
-      "!**/CHANGELOG.md",
-      "!**/coverage",
-      "!**/playwright-report",
-      "!**/test-results",
-      "!sdk/src/types/generated.ts"
-    ]
-  }
 }
