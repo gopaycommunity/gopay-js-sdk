@@ -21,9 +21,10 @@ definitions:
           - yarn install --immutable
           - yarn ci
           - yarn npm audit --recursive --environment production
-          - cd sdk && yarn typecheck
-          - cd sdk && yarn check:circular
-          - cd sdk && yarn check:exports
+          - cd sdk
+          - yarn typecheck
+          - yarn check:circular
+          - yarn check:exports
 
 
     # --- unit + e2e tests + coverage ---------------------------------
