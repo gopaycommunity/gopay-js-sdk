@@ -413,6 +413,10 @@
         const _env = window.__ENV__ || {};
         if (_env.clientId) document.getElementById('auth-client-id').value = _env.clientId;
         if (_env.clientSecret) document.getElementById('auth-client-secret').value = _env.clientSecret;
+        if (_env.goid) {
+            document.getElementById('create-goid').value = _env.goid;
+            document.getElementById('set-client-token-goid').value = _env.goid;
+        }
 
         const sdkConfig = _env.baseUrl
             ? { baseUrl: _env.baseUrl }
@@ -456,18 +460,17 @@
                 pre.textContent = JSON.stringify(result, null, 2);
                 if (onSuccess) onSuccess(result);
             } catch (err) {
-                let name, message;
-                if (err instanceof Error) {
-                    name = err.constructor.name;
-                    message = err.message;
+                if (err instanceof GoPaySDK.GoPayHTTPError) {
+                    pre.textContent = `[GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`;
+                } else if (err instanceof Error) {
+                    pre.textContent = `[${err.constructor.name}] ${err.message}`;
                 } else if (err === null || err === undefined) {
-                    name = typeof err;
-                    message = String(err);
+                    pre.textContent = `[${typeof err}] ${String(err)}`;
                 } else {
-                    name = typeof err;
-                    try { message = JSON.stringify(err); } catch { message = String(err); }
+                    let msg;
+                    try { msg = JSON.stringify(err); } catch { msg = String(err); }
+                    pre.textContent = `[${typeof err}] ${msg}`;
                 }
-                pre.textContent = `[${name}] ${message}`;
             }
         }
 

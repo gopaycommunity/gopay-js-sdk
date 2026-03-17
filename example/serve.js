@@ -4,6 +4,7 @@
 // Missing or incomplete .env.e2e is handled gracefully — missing keys become null.
 
 const http = require('node:http');
+const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -37,10 +38,13 @@ function loadEnv(filePath) {
 const raw = loadEnv(path.join(ROOT, 'sdk/.env.e2e'));
 
 // File values take precedence; fall back to process.env (CI repository variables)
+const upstreamBaseUrl =
+    raw.GP_GW_JS_SDK_BASE_URL || process.env.GP_GW_JS_SDK_BASE_URL || null;
+
 /** Values exposed as window.__ENV__ in the browser */
 const ENV = {
-    baseUrl:
-        raw.GP_GW_JS_SDK_BASE_URL || process.env.GP_GW_JS_SDK_BASE_URL || null,
+    // Point the SDK at the local proxy so the browser never hits the API directly
+    baseUrl: upstreamBaseUrl ? `http://localhost:${PORT}/proxy` : null,
     clientId:
         raw.GP_GW_JS_SDK_CLIENT_ID ||
         process.env.GP_GW_JS_SDK_CLIENT_ID ||
@@ -49,7 +53,50 @@ const ENV = {
         raw.GP_GW_JS_SDK_CLIENT_SECRET ||
         process.env.GP_GW_JS_SDK_CLIENT_SECRET ||
         null,
+    goid: raw.GP_GW_JS_SDK_GOID || process.env.GP_GW_JS_SDK_GOID || null,
 };
+
+// ---------------------------------------------------------------------------
+// Proxy — forwards /proxy/* to the upstream API, bypassing browser CORS
+// ---------------------------------------------------------------------------
+function proxyRequest(req, res) {
+    if (!upstreamBaseUrl) {
+        res.writeHead(502, { 'Content-Type': 'text/plain' });
+        res.end('Proxy: GP_GW_JS_SDK_BASE_URL is not set in sdk/.env.e2e');
+        return;
+    }
+
+    const suffix = req.url.slice('/proxy'.length); // e.g. /oauth2/token
+    const base = upstreamBaseUrl.endsWith('/')
+        ? upstreamBaseUrl.slice(0, -1)
+        : upstreamBaseUrl;
+    const target = new URL(`${base}${suffix || '/'}`);
+
+    const options = {
+        method: req.method,
+        headers: { ...req.headers, host: target.host },
+    };
+    delete options.headers.origin;
+    delete options.headers.referer;
+    delete options.headers.cookie;
+
+    const upstreamReq = https.request(target, options, (upstreamRes) => {
+        res.writeHead(upstreamRes.statusCode, {
+            ...upstreamRes.headers,
+            'access-control-allow-origin': '*',
+            'access-control-allow-headers': '*',
+            'access-control-allow-methods': '*',
+        });
+        upstreamRes.pipe(res);
+    });
+
+    upstreamReq.on('error', (err) => {
+        res.writeHead(502, { 'Content-Type': 'text/plain' });
+        res.end(`Proxy error: ${err.message}`);
+    });
+
+    req.pipe(upstreamReq);
+}
 
 // ---------------------------------------------------------------------------
 // MIME types
@@ -67,6 +114,25 @@ const MIME = {
 // Request handler
 // ---------------------------------------------------------------------------
 function handler(req, res) {
+    // Forward /proxy/* to the upstream API server-side (avoids browser CORS)
+    if (
+        req.url === '/proxy' ||
+        req.url.startsWith('/proxy/') ||
+        req.url.startsWith('/proxy?')
+    ) {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, {
+                'access-control-allow-origin': '*',
+                'access-control-allow-headers': '*',
+                'access-control-allow-methods': '*',
+            });
+            res.end();
+            return;
+        }
+        proxyRequest(req, res);
+        return;
+    }
+
     // Serve index.html for /, /index.html, and /example/index.html
     const urlPath = req.url.split('?')[0];
     const isIndex =
@@ -117,4 +183,6 @@ server.once('error', (err) => {
     process.exit(1);
 });
 
-server.listen(PORT);
+server.listen(PORT, () => {
+    console.log(`Example app running at http://localhost:${PORT}`);
+});

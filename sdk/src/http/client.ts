@@ -39,9 +39,13 @@ export class HttpClient {
     }
 
     async get<T>(path: string, options?: RequestOptions): Promise<T> {
-        return this.kyInstance
-            .get(this.buildUrl(path), this.kyOptions(options))
-            .json<T>();
+        try {
+            return await this.kyInstance
+                .get(this.buildUrl(path), this.kyOptions(options))
+                .json<T>();
+        } catch (err) {
+            return this.throwHTTPError(err);
+        }
     }
 
     async post<T>(
@@ -49,12 +53,16 @@ export class HttpClient {
         body?: unknown,
         options?: RequestOptions,
     ): Promise<T> {
-        return this.kyInstance
-            .post(this.buildUrl(path), {
-                ...this.kyOptions(options),
-                json: body,
-            })
-            .json<T>();
+        try {
+            return await this.kyInstance
+                .post(this.buildUrl(path), {
+                    ...this.kyOptions(options),
+                    json: body,
+                })
+                .json<T>();
+        } catch (err) {
+            return this.throwHTTPError(err);
+        }
     }
 
     async postForm<T>(
@@ -77,18 +85,23 @@ export class HttpClient {
                 })
                 .json<T>();
         } catch (err) {
-            if (err instanceof Error && 'response' in err) {
-                const res = (err as { response: Response }).response;
-                let body: unknown;
-                try {
-                    body = await res.json();
-                } catch {
-                    body = await res.text();
-                }
-                throw new GoPayHTTPError(res.status, body);
-            }
-            throw err;
+            return this.throwHTTPError(err);
         }
+    }
+
+    private async throwHTTPError(err: unknown): Promise<never> {
+        if (err instanceof Error && 'response' in err) {
+            const res = (err as { response: Response }).response;
+            const text = await res.text();
+            let body: unknown;
+            try {
+                body = JSON.parse(text);
+            } catch {
+                body = text;
+            }
+            throw new GoPayHTTPError(res.status, body);
+        }
+        throw err;
     }
 
     protected buildUrl(path: string): string {

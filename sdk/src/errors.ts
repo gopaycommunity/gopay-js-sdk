@@ -40,6 +40,8 @@ export class GoPayHTTPError extends Error {
         public readonly status: number,
         public readonly body: unknown,
     ) {
-        super(`HTTP ${status}`);
+        super(
+            `HTTP ${status}: ${typeof body === 'string' ? body : JSON.stringify(body)}`,
+        );
     }
 }
