@@ -486,6 +486,113 @@ describe('PaymentsModule', () => {
         });
     });
 
+    describe('charge() with Apple Pay instrument', () => {
+        const mockApplePayChargeResponse = {
+            id: 'pay_300000001',
+            state: 'REQUESTED',
+            payment_instrument: {
+                payment_instrument: 'PAYMENT_CARD',
+                details: {
+                    input_type: 'APPLE_PAY',
+                },
+            },
+            return_url: 'https://example.com/return',
+            action: {
+                action_type: 'EMV3DS',
+                state: 'CREATED',
+                redirect_url: 'https://gate.gopay.com/redirect',
+            },
+        };
+
+        const applePayChargeParams = {
+            payment_instrument: {
+                payment_instrument: 'PAYMENT_CARD',
+                input: {
+                    input_type: 'APPLE_PAY',
+                    data: 'V7OcjttPJnUJaQH7x7OjbIeZSINuc==',
+                    signature: 'MIAGCSqGSIb3DQEHAqCAM==',
+                    version: 'EC_v1',
+                    header: {
+                        ephemeralPublicKey: 'MFkwEwYHKoZIzj==',
+                        publicKeyHash:
+                            'L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=',
+                        transactionId: '4f4fac7a1a6a8ba2c0e8c5',
+                    },
+                },
+            },
+            return_url: 'https://example.com/return',
+        } as const;
+
+        beforeEach(() => {
+            fetchMock.mockResolvedValue(
+                makeResponse(mockApplePayChargeResponse, 201),
+            );
+        });
+
+        it('sends POST to /payments/{paymentId}/charge', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse(mockApplePayChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', applePayChargeParams);
+
+            expect(capturedReq.method).toBe('POST');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001/charge',
+            );
+        });
+
+        it('sends JSON body with APPLE_PAY input_type and all required token fields', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(mockApplePayChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', applePayChargeParams);
+
+            const body = JSON.parse(capturedBody);
+            const input = body.payment_instrument.input;
+            expect(input.input_type).toBe('APPLE_PAY');
+            expect(input.data).toBe('V7OcjttPJnUJaQH7x7OjbIeZSINuc==');
+            expect(input.signature).toBe('MIAGCSqGSIb3DQEHAqCAM==');
+            expect(input.version).toBe('EC_v1');
+            expect(input.header.ephemeralPublicKey).toBe('MFkwEwYHKoZIzj==');
+            expect(input.header.publicKeyHash).toBe(
+                'L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=',
+            );
+            expect(input.header.transactionId).toBe('4f4fac7a1a6a8ba2c0e8c5');
+        });
+
+        it('sends Bearer token from token store', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse(mockApplePayChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', applePayChargeParams);
+
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                'Bearer at-test',
+            );
+        });
+
+        it('returns the charge response', async () => {
+            const result = await payments.charge(
+                'pay_300000001',
+                applePayChargeParams,
+            );
+
+            expect(result).toEqual(mockApplePayChargeResponse);
+            expect(result.state).toBe('REQUESTED');
+        });
+    });
+
     describe('getApplePayInfo()', () => {
         const mockApplePayResponse = {
             applepayVersion: 6,

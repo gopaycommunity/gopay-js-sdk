@@ -76,7 +76,6 @@ function proxyRequest(req, res) {
         method: req.method,
         headers: { ...req.headers, host: target.host },
     };
-    delete options.headers.origin;
     delete options.headers.referer;
     delete options.headers.cookie;
 

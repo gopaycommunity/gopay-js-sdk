@@ -119,6 +119,22 @@ describe('HttpClient', () => {
             const [req] = fetchMock.mock.calls[0] as [Request];
             expect(req.headers.get('Authorization')).toBe('Bearer at-abc');
         });
+
+        it('throws GoPayHTTPError on HTTP error response', async () => {
+            fetchMock.mockImplementation(async (req: Request) => {
+                await req.text();
+                return makeResponse({ error: 'FORBIDDEN' }, 403, 'Forbidden');
+            });
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+
+            const err = await client
+                .post('/items', { name: 'foo' })
+                .catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPayHTTPError);
+            expect((err as GoPayHTTPError).status).toBe(403);
+        });
     });
 
     // -------------------------------------------------------------------------
@@ -217,6 +233,88 @@ describe('HttpClient', () => {
                     grant_type: 'client_credentials',
                 }),
             ).rejects.toThrow('network failure');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // throwHTTPError — non-JSON body fallback (line 100)
+    // -------------------------------------------------------------------------
+
+    describe('throwHTTPError() — non-JSON body', () => {
+        it('sets body to plain text string when response body is not JSON', async () => {
+            fetchMock.mockResolvedValue(
+                new Response('upstream error details', {
+                    status: 400,
+                    statusText: 'Bad Request',
+                    headers: { 'content-type': 'text/plain' },
+                }),
+            );
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+
+            const err = await client.get('/resource').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPayHTTPError);
+            expect((err as GoPayHTTPError).status).toBe(400);
+            expect((err as GoPayHTTPError).body).toBe('upstream error details');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // refreshTokens() — credential forwarding (lines 136–139, 141)
+    // -------------------------------------------------------------------------
+
+    describe('refreshTokens() — credential forwarding', () => {
+        it('sends Basic Authorization on refresh when clientId and clientSecret are set', async () => {
+            let callCount = 0;
+            let capturedRefreshReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                callCount++;
+                if (callCount === 1)
+                    return makeResponse({}, 401, 'Unauthorized');
+                if (callCount === 2) {
+                    capturedRefreshReq = req;
+                    await req.text();
+                    return makeResponse(freshTokens);
+                }
+                return makeResponse({ ok: true });
+            });
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+            client.setClientCredentials('my-client', 'my-secret');
+
+            await client.get('/resource');
+
+            const expected = `Basic ${btoa('my-client:my-secret')}`;
+            expect(capturedRefreshReq.headers.get('Authorization')).toBe(
+                expected,
+            );
+        });
+
+        it('includes client_id in refresh form body when only clientId is set', async () => {
+            let callCount = 0;
+            let capturedRefreshBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                callCount++;
+                if (callCount === 1)
+                    return makeResponse({}, 401, 'Unauthorized');
+                if (callCount === 2) {
+                    capturedRefreshBody = await req.text();
+                    return makeResponse(freshTokens);
+                }
+                return makeResponse({ ok: true });
+            });
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+            client.setClientId('only-client-id');
+
+            await client.get('/resource');
+
+            const params = new URLSearchParams(capturedRefreshBody);
+            expect(params.get('client_id')).toBe('only-client-id');
+            expect(params.get('grant_type')).toBe('refresh_token');
         });
     });
 

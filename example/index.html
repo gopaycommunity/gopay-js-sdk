@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GoPay JS SDK — Example</title>
     <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
+    <script src="example/apple-pay-polyfill.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -15,25 +16,35 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f5f5f5;
-            color: #333;
+            background: #333;
+            color: #2c2c3a;
         }
 
         header {
-            background: #1a1a2e;
-            color: #fff;
-            padding: 1.5rem 2rem;
+            background: #ccc;
+            color: #333;
+            padding: 1.25rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
         }
 
-        header h1 {
-            font-size: 1.4rem;
+        header img {
+            height: 28px;
+            width: auto;
+            flex-shrink: 0;
+        }
+
+        header .header-text h1 {
+            font-size: 1.1rem;
             font-weight: 600;
+            color: #000;
         }
 
-        header p {
-            font-size: 0.85rem;
-            color: #aaa;
-            margin-top: 0.25rem;
+        header .header-text p {
+            font-size: 0.82rem;
+            color: #9999bb;
+            margin-top: 0.2rem;
         }
 
         main {
@@ -43,11 +54,12 @@
         }
 
         section {
-            background: #fff;
+            background: #bbb;
+            border: 1px solid #d0d0dc;
             border-radius: 8px;
             padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+            margin-bottom: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .07);
         }
 
         h2 {
@@ -114,14 +126,15 @@
         code {
             font-family: 'SFMono-Regular', Menlo, monospace;
             font-size: 0.85rem;
-            background: #eee;
+            background: #dcdce8;
+            color: #2c2c3a;
             padding: 1px 5px;
             border-radius: 3px;
         }
 
         p.note {
             font-size: 0.8rem;
-            color: #666;
+            color: #5a5a72;
             margin-top: 0.5rem;
         }
 
@@ -137,17 +150,25 @@
             flex-direction: column;
             gap: 0.25rem;
             font-size: 0.8rem;
-            color: #555;
+            color: #5a5a72;
             flex: 1;
             min-width: 180px;
         }
 
         .fields input {
             padding: 0.4rem 0.6rem;
-            border: 1px solid #ccc;
+            border: 1px solid #c0c0cc;
             border-radius: 4px;
             font-size: 0.85rem;
             font-family: inherit;
+            background: #eaeaf0;
+            color: #2c2c3a;
+        }
+
+        select {
+            background: #eaeaf0;
+            color: #2c2c3a;
+            border-color: #c0c0cc;
         }
     </style>
 </head>
@@ -155,10 +176,11 @@
 <body>
 
     <header>
-        <h1>GoPay JS SDK — Developer Example</h1>
-        <p>Demonstrates the SDK API shape. Authenticate first, then use <strong>payments.create()</strong> to create a
-            real
-            payment session.</p>
+        <img src="https://static1.gopaycdn.com/images/gopay-logo/default.svg" alt="GoPay" />
+        <div class="header-text">
+            <h1>JS SDK — Developer Example</h1>
+            <p>Demonstrates the SDK API shape. Authenticate first, then use <strong>payments.create()</strong> to create a payment session.</p>
+        </div>
     </header>
 
     <main>
@@ -197,9 +219,9 @@
                     <select id="auth-scope" multiple size="4"
                         style="padding:0.3rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
                         <option value="payment:create" selected>payment:create</option>
-                        <option value="payment:read">payment:read</option>
-                        <option value="card:save">card:save</option>
-                        <option value="card:read">card:read</option>
+                        <option value="payment:read" selected>payment:read</option>
+                        <option value="card:save" selected>card:save</option>
+                        <option value="card:read" selected>card:read</option>
                     </select>
                 </label>
             </div>
@@ -220,9 +242,9 @@
                     <select id="issue-client-token-scope" multiple size="4"
                         style="padding:0.3rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
                         <option value="payment:create" selected>payment:create</option>
-                        <option value="payment:read">payment:read</option>
-                        <option value="card:save">card:save</option>
-                        <option value="card:read">card:read</option>
+                        <option value="payment:read" selected>payment:read</option>
+                        <option value="card:save" selected>card:save</option>
+                        <option value="card:read" selected>card:read</option>
                     </select>
                 </label>
             </div>
@@ -321,33 +343,24 @@
                 Google Pay sheet runs in <code>TEST</code> mode — no real card data is used.</p>
         </section>
 
-        <!-- Apple Pay info -->
+        <!-- Apple Pay full flow -->
         <section>
-            <h2>payments.getApplePayInfo()</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/apple-pay/info — fetch
-                Apple Pay
-                configuration.</p>
+            <h2>Apple Pay — full flow</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+                Step 1: <code>payments.getApplePayInfo()</code> — fetch config, render Apple Pay button.<br>
+                Step 2: Click the Apple Pay button — merchant validation runs automatically via <code>payments.validateApplePayMerchant()</code>.<br>
+                Step 3: <code>payments.charge()</code> — submit the token returned by Apple.
+            </p>
             <div class="fields">
                 <label>Payment ID<input id="applepay-payment-id" type="text" placeholder="pay_300000001" /></label>
+                <label>Return URL<input id="applepay-return-url" type="text" value="https://yourshop.example.com/return" /></label>
             </div>
-            <button type="button" onclick="runApplePay()">Run</button>
+            <button type="button" onclick="applePayLoadInfo()">Load Apple Pay Config</button>
+            <div id="applepay-button-container" style="margin:0.5rem 0;"></div>
             <pre id="applepay-output">—</pre>
-        </section>
-
-        <!-- Apple Pay validate -->
-        <section>
-            <h2>payments.validateApplePayMerchant()</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /payments/{id}/apple-pay/validate —
-                validate
-                the Apple Pay merchant session.</p>
-            <div class="fields">
-                <label>Payment ID<input id="applepay-validate-payment-id" type="text"
-                        placeholder="pay_300000001" /></label>
-                <label>Origin<input id="applepay-validate-origin" type="text"
-                        value="https://yourshop.example.com" /></label>
-            </div>
-            <button type="button" onclick="runValidateMerchant()">Run</button>
-            <pre id="applepay-validate-output">—</pre>
+            <p class="note">Requires a payment created with Apple Pay as an allowed instrument. In non-Safari browsers
+                the Apple Pay sheet is simulated by a dev polyfill — no real card data is used. On Safari with Apple Pay
+                configured, the native payment sheet appears.</p>
         </section>
 
         <!-- QR Payment info -->
@@ -452,6 +465,33 @@
         // -----------------------------------------------------------------------
         // Helper
         // -----------------------------------------------------------------------
+        function show3dsPrompt(pre, redirectUrl) {
+            if (pre.nextElementSibling?.dataset.tds) pre.nextElementSibling.remove();
+            if (!redirectUrl) return;
+            const div = document.createElement('div');
+            div.dataset.tds = '1';
+            Object.assign(div.style, {
+                marginTop: '0.6rem', padding: '0.75rem 1rem',
+                background: '#fff8e1', border: '1px solid #e0b840',
+                borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '1rem',
+            });
+            const msg = document.createElement('span');
+            Object.assign(msg.style, { fontSize: '0.82rem', flex: '1', color: '#5a4200' });
+            msg.textContent = '3DS authentication required — redirect the customer to complete verification.';
+            const btn = document.createElement('a');
+            btn.href = redirectUrl;
+            btn.target = '_blank';
+            btn.rel = 'noopener';
+            btn.textContent = 'Open 3DS verification →';
+            Object.assign(btn.style, {
+                padding: '0.4rem 0.9rem', background: '#1a1a2e', color: '#fff',
+                borderRadius: '5px', fontSize: '0.82rem', textDecoration: 'none', whiteSpace: 'nowrap',
+            });
+            div.appendChild(msg);
+            div.appendChild(btn);
+            pre.insertAdjacentElement('afterend', div);
+        }
+
         async function run(outputId, fn, onSuccess) {
             const pre = document.getElementById(outputId);
             pre.textContent = 'Running…';
@@ -544,7 +584,7 @@
         function prefillPaymentId(result) {
             const id = result?.id;
             if (!id) return;
-            ['charge-payment-id', 'googlepay-payment-id', 'applepay-payment-id', 'applepay-validate-payment-id', 'qr-payment-id']
+            ['charge-payment-id', 'googlepay-payment-id', 'applepay-payment-id', 'qr-payment-id']
                 .forEach(fieldId => {
                     const el = document.getElementById(fieldId);
                     if (el && !el.value) el.value = id;
@@ -586,7 +626,8 @@
                         input: { input_type: 'CARD_TOKEN', card_token },
                     },
                     return_url,
-                })
+                }),
+                (result) => show3dsPrompt(document.getElementById('payment-charge-output'), result.action?.redirect_url),
             );
         }
 
@@ -658,24 +699,101 @@
                     return_url,
                 });
                 pre.textContent += `\n\nStep 3 done:\n${JSON.stringify(result, null, 2)}`;
+                show3dsPrompt(pre, result.action?.redirect_url);
             } catch (err) {
                 pre.textContent += `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
             }
         }
 
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runApplePay() {
-            const paymentId = document.getElementById('applepay-payment-id').value.trim();
-            run('applepay-output', () => sdk.payments.getApplePayInfo(paymentId));
-        }
+        // Holds the config fetched in step 1, consumed in step 2
+        let _applePayInfo = null;
+        let _applePaymentId = null;
 
         // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runValidateMerchant() {
-            const paymentId = document.getElementById('applepay-validate-payment-id').value.trim();
-            const origin = document.getElementById('applepay-validate-origin').value.trim();
-            run('applepay-validate-output', () =>
-                sdk.payments.validateApplePayMerchant(paymentId, origin)
-            );
+        async function applePayLoadInfo() {
+            const paymentId = document.getElementById('applepay-payment-id').value.trim();
+            const pre = document.getElementById('applepay-output');
+            const container = document.getElementById('applepay-button-container');
+            container.innerHTML = '';
+            _applePayInfo = null;
+            _applePaymentId = null;
+
+            if (!window.ApplePaySession) {
+                pre.textContent = 'ApplePaySession not available — polyfill may still be loading, please try again.';
+                return;
+            }
+
+            pre.textContent = 'Step 1: Fetching Apple Pay info…';
+            try {
+                _applePayInfo = await sdk.payments.getApplePayInfo(paymentId);
+                _applePaymentId = paymentId;
+                pre.textContent = `── API response (getApplePayInfo) ──\n${JSON.stringify(_applePayInfo, null, 2)}\n\nClick the Apple Pay button to proceed.`;
+            } catch (err) {
+                pre.textContent = `[Step 1 failed] ${err?.message ?? String(err)}`;
+                return;
+            }
+
+            // Render the Apple Pay button
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = ' Pay';
+            Object.assign(btn.style, {
+                background: '#000', color: '#fff', borderRadius: '6px',
+                padding: '0.5rem 1.5rem', fontSize: '1rem', fontWeight: '600',
+                letterSpacing: '-0.3px', border: 'none', cursor: 'pointer',
+            });
+            btn.onclick = applePayBeginSession;
+            container.appendChild(btn);
+        }
+
+        function applePayBeginSession() {
+            const return_url = document.getElementById('applepay-return-url').value.trim();
+            const pre = document.getElementById('applepay-output');
+            if (!_applePayInfo || !_applePaymentId) return;
+
+            const session = new ApplePaySession(_applePayInfo.applepayVersion, _applePayInfo.applePayPaymentRequest);
+
+            session.onvalidatemerchant = async () => {
+                const origin = window.location.origin;
+                pre.textContent += `\n\n── Step 2: validateApplePayMerchant ──\nRequest: POST /payments/${_applePaymentId}/apple-pay/validate\nOrigin: ${origin}`;
+                try {
+                    const merchantSession = await sdk.payments.validateApplePayMerchant(
+                        _applePaymentId,
+                        origin,
+                    );
+                    pre.textContent += `\nResponse:\n${JSON.stringify(merchantSession, null, 2)}`;
+                    session.completeMerchantValidation(merchantSession);
+                } catch (err) {
+                    pre.textContent += `\n\n[Step 2 failed] ${err?.message ?? String(err)}`;
+                    session.abort();
+                }
+            };
+
+            session.onpaymentauthorized = async (event) => {
+                pre.textContent += '\n\nStep 3: Charging payment…';
+                const { data, signature, version, header } = event.payment.token.paymentData;
+                try {
+                    const result = await sdk.payments.charge(_applePaymentId, {
+                        payment_instrument: {
+                            payment_instrument: 'PAYMENT_CARD',
+                            input: { input_type: 'APPLE_PAY', data, signature, version, header },
+                        },
+                        return_url,
+                    });
+                    session.completePayment(ApplePaySession.STATUS_SUCCESS);
+                    pre.textContent += `\n\nStep 3 done:\n${JSON.stringify(result, null, 2)}`;
+                    show3dsPrompt(pre, result.action?.redirect_url);
+                } catch (err) {
+                    session.completePayment(ApplePaySession.STATUS_FAILURE);
+                    pre.textContent += `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
+                }
+            };
+
+            session.oncancel = () => {
+                pre.textContent += '\n\nApple Pay sheet closed. User cancelled.';
+            };
+
+            session.begin();
         }
 
         // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
