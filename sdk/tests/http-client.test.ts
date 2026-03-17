@@ -203,7 +203,9 @@ describe('HttpClient', () => {
             expect((err as GoPayHTTPError).body).toEqual({
                 error: 'UNAUTHORIZED',
             });
-            expect((err as GoPayHTTPError).message).toBe('HTTP 401');
+            expect((err as GoPayHTTPError).message).toBe(
+                'HTTP 401: {"error":"UNAUTHORIZED"}',
+            );
         });
 
         it('re-throws non-HTTPError as-is', async () => {
