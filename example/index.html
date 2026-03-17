@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GoPay JS SDK — Example</title>
+    <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -301,17 +302,23 @@
             </p>
         </section>
 
-        <!-- Google Pay info -->
+        <!-- Google Pay full flow -->
         <section>
-            <h2>payments.getGooglePayInfo()</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/google-pay/info — fetch
-                Google
-                Pay configuration.</p>
+            <h2>Google Pay — full flow</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+                Step 1: <code>payments.getGooglePayInfo()</code> — fetch config, render Google Pay button.<br>
+                Step 2: Click the Google Pay button — user selects a card.<br>
+                Step 3: <code>payments.charge()</code> — submit the token returned by Google.
+            </p>
             <div class="fields">
                 <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="pay_300000001" /></label>
+                <label>Return URL<input id="googlepay-return-url" type="text" value="https://yourshop.example.com/return" /></label>
             </div>
-            <button type="button" onclick="runGooglePay()">Run</button>
+            <button type="button" onclick="googlePayLoadInfo()">Load Google Pay Config</button>
+            <div id="googlepay-button-container" style="margin:0.5rem 0;"></div>
             <pre id="googlepay-output">—</pre>
+            <p class="note">Requires a payment created with Google Pay as an allowed instrument. In sandbox the
+                Google Pay sheet runs in <code>TEST</code> mode — no real card data is used.</p>
         </section>
 
         <!-- Apple Pay info -->
@@ -580,10 +587,74 @@
             );
         }
 
+        // Holds the config fetched in step 1, consumed in step 2
+        let _googlePayInfo = null;
+        let _googlePaymentId = null;
+
         // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runGooglePay() {
+        async function googlePayLoadInfo() {
             const paymentId = document.getElementById('googlepay-payment-id').value.trim();
-            run('googlepay-output', () => sdk.payments.getGooglePayInfo(paymentId));
+            const pre = document.getElementById('googlepay-output');
+            const container = document.getElementById('googlepay-button-container');
+            container.innerHTML = '';
+            _googlePayInfo = null;
+            _googlePaymentId = null;
+
+            pre.textContent = 'Step 1: Fetching Google Pay info…';
+            try {
+                _googlePayInfo = await sdk.payments.getGooglePayInfo(paymentId);
+                _googlePaymentId = paymentId;
+                pre.textContent = `── API response (getGooglePayInfo) ──\n${JSON.stringify(_googlePayInfo, null, 2)}\n\nClick the Google Pay button to proceed.`;
+            } catch (err) {
+                pre.textContent = `[Step 1 failed] ${err?.message ?? String(err)}`;
+                return;
+            }
+
+            // Render the Google Pay button — loadPaymentData must be called directly from its click
+            const env = _googlePayInfo.environment === 'PRODUCTION' ? { environment: 'PRODUCTION' } : {};
+            const paymentsClient = new google.payments.api.PaymentsClient(env);
+            const btn = paymentsClient.createButton({ onClick: googlePayOpenSheet });
+            container.appendChild(btn);
+        }
+
+        async function googlePayOpenSheet() {
+            const return_url = document.getElementById('googlepay-return-url').value.trim();
+            const pre = document.getElementById('googlepay-output');
+            if (!_googlePayInfo || !_googlePaymentId) return;
+
+            const env = _googlePayInfo.environment === 'PRODUCTION' ? { environment: 'PRODUCTION' } : {};
+            const paymentsClient = new google.payments.api.PaymentsClient(env);
+
+            let paymentData;
+            try {
+                const paymentDataRequest = _googlePayInfo.paymentDataRequest;
+                pre.textContent += `\n\nOpening Google Pay sheet…`;
+                paymentData = await paymentsClient.loadPaymentData(paymentDataRequest);
+            } catch (err) {
+                pre.textContent += `\n\nGoogle Pay sheet closed.\n${err?.statusCode === 'CANCELED' ? 'User cancelled.' : String(err?.message ?? err)}`;
+                return;
+            }
+
+            pre.textContent += '\n\nStep 3: Charging payment…';
+            try {
+                // tokenizationData.token is a JSON string: { protocolVersion, signature, signedMessage, ... }
+                const tokenData = JSON.parse(paymentData.paymentMethodData.tokenizationData.token);
+                const result = await sdk.payments.charge(_googlePaymentId, {
+                    payment_instrument: {
+                        payment_instrument: 'PAYMENT_CARD',
+                        input: {
+                            input_type: 'GOOGLE_PAY',
+                            protocolVersion: tokenData.protocolVersion,
+                            signature: tokenData.signature,
+                            signedMessage: tokenData.signedMessage,
+                        },
+                    },
+                    return_url,
+                });
+                pre.textContent += `\n\nStep 3 done:\n${JSON.stringify(result, null, 2)}`;
+            } catch (err) {
+                pre.textContent += `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
+            }
         }
 
         // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick

@@ -267,7 +267,33 @@ describe('PaymentsModule', () => {
             paymentDataRequest: {
                 apiVersion: 2,
                 apiVersionMinor: 0,
-                merchantInfo: { merchantName: 'GoPay Czech Branch' },
+                allowedPaymentMethods: [
+                    {
+                        type: 'CARD',
+                        parameters: {
+                            allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
+                            allowedCardNetworks: ['VISA', 'MASTERCARD'],
+                        },
+                        tokenizationSpecification: {
+                            type: 'PAYMENT_GATEWAY',
+                            parameters: {
+                                gateway: 'gopay',
+                                gatewayMerchantId: '26046768005768011132',
+                            },
+                        },
+                    },
+                ],
+                transactionInfo: {
+                    currencyCode: 'CZK',
+                    countryCode: 'CZ',
+                    totalPriceStatus: 'FINAL',
+                    totalPrice: '5.00',
+                },
+                merchantInfo: {
+                    merchantName: 'GoPay Czech',
+                    merchantId: '14846034534970557458',
+                },
+                emailRequired: true,
             },
         };
 
@@ -316,10 +342,147 @@ describe('PaymentsModule', () => {
             );
         });
 
-        it('returns the Google Pay info response', async () => {
+        it('does not send a request body', async () => {
+            let capturedBody: string | null = null;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(mockGooglePayResponse);
+            });
+
+            await payments.getGooglePayInfo('pay_300000001');
+
+            expect(capturedBody).toBe('');
+        });
+
+        it('returns the full Google Pay info response', async () => {
             const result = await payments.getGooglePayInfo('pay_300000001');
 
             expect(result).toEqual(mockGooglePayResponse);
+            expect(result.environment).toBe('TEST');
+            expect(result.paymentDataRequest?.apiVersion).toBe(2);
+            expect(
+                result.paymentDataRequest?.transactionInfo?.currencyCode,
+            ).toBe('CZK');
+            expect(result.paymentDataRequest?.merchantInfo?.merchantName).toBe(
+                'GoPay Czech',
+            );
+            expect(
+                result.paymentDataRequest?.allowedPaymentMethods,
+            ).toHaveLength(1);
+            expect(
+                result.paymentDataRequest?.allowedPaymentMethods?.[0]
+                    ?.tokenizationSpecification?.parameters?.gateway,
+            ).toBe('gopay');
+        });
+
+        it('returns PRODUCTION environment when set', async () => {
+            const productionResponse = {
+                ...mockGooglePayResponse,
+                environment: 'PRODUCTION',
+            };
+            fetchMock.mockResolvedValue(makeResponse(productionResponse));
+
+            const result = await payments.getGooglePayInfo('pay_300000001');
+
+            expect(result.environment).toBe('PRODUCTION');
+        });
+    });
+
+    describe('charge() with Google Pay instrument', () => {
+        const mockGooglePayChargeResponse = {
+            id: 'pay_300000001',
+            state: 'REQUESTED',
+            payment_instrument: {
+                payment_instrument: 'PAYMENT_CARD',
+                details: {
+                    input_type: 'GOOGLE_PAY',
+                },
+            },
+            return_url: 'https://example.com/return',
+            action: {
+                action_type: 'EMV3DS',
+                state: 'CREATED',
+                redirect_url: 'https://gate.gopay.com/redirect',
+            },
+        };
+
+        const googlePayChargeParams = {
+            payment_instrument: {
+                payment_instrument: 'PAYMENT_CARD',
+                input: {
+                    input_type: 'GOOGLE_PAY',
+                    google_pay_token: JSON.stringify({
+                        protocolVersion: 'ECv2',
+                        signature: 'sig==',
+                        signedMessage: '{"encryptedMessage":"enc=="}',
+                    }),
+                    challenge_preferrence: 'AUTO',
+                },
+            },
+            return_url: 'https://example.com/return',
+        } as const;
+
+        beforeEach(() => {
+            fetchMock.mockResolvedValue(
+                makeResponse(mockGooglePayChargeResponse, 201),
+            );
+        });
+
+        it('sends POST to /payments/{paymentId}/charge', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse(mockGooglePayChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', googlePayChargeParams);
+
+            expect(capturedReq.method).toBe('POST');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001/charge',
+            );
+        });
+
+        it('sends JSON body with GOOGLE_PAY input_type', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(mockGooglePayChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', googlePayChargeParams);
+
+            const body = JSON.parse(capturedBody);
+            expect(body.payment_instrument.input.input_type).toBe('GOOGLE_PAY');
+            expect(
+                body.payment_instrument.input.google_pay_token,
+            ).toBeDefined();
+        });
+
+        it('sends Bearer token from token store', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse(mockGooglePayChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', googlePayChargeParams);
+
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                'Bearer at-test',
+            );
+        });
+
+        it('returns the charge response', async () => {
+            const result = await payments.charge(
+                'pay_300000001',
+                googlePayChargeParams,
+            );
+
+            expect(result).toEqual(mockGooglePayChargeResponse);
+            expect(result.state).toBe('REQUESTED');
         });
     });
 
