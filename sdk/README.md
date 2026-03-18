@@ -177,33 +177,38 @@ browserSdk.auth.setClientToken(clientToken);
 | `create(goid, params)` | Create a new payment session (`POST /eshops/{goid}/payments`). |
 | `charge(paymentId, params)` | Charge a payment using a payment instrument (`POST /payments/{paymentId}/charge`). |
 | `getGooglePayInfo(paymentId)` | Retrieve Google Pay configuration for a payment. |
-| `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment. |
-| `validateApplePayMerchant(paymentId, origin)` | Validate the Apple Pay merchant session. |
+| `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment (`applepayVersion`, `merchantIdentifier`, `applePayPaymentRequest`). |
+| `validateApplePayMerchant(paymentId, origin)` | Validate the Apple Pay merchant session. Must be called from inside `onvalidatemerchant`; pass `window.location.origin` as `origin`. |
 | `getQRPaymentInfo(paymentId, format?)` | Retrieve QR code and recipient info (`GET /payments/{paymentId}/qr-payment/info`). |
 
 ### Google Pay
 
 ```ts
-// Fetch the Google Pay payment request object
+// Fetch Google Pay configuration for this payment.
+// googlePayInfo contains:
+//   environment        — "TEST" or "PRODUCTION", passed to PaymentsClient
+//   paymentDataRequest — pre-filled PaymentRequest object (allowed networks,
+//                        transaction info, merchant info, etc.) ready to pass
+//                        to loadPaymentData()
 const googlePayInfo = await sdk.payments.getGooglePayInfo(payment.id);
 
-// Pass googlePayInfo.paymentDataRequest to the Google Pay API
+// Initialise the Google Pay client and request payment data.
 const paymentsClient = new google.payments.api.PaymentsClient({
-  environment: googlePayInfo.environment,
+  environment: googlePayInfo.environment, // "TEST" | "PRODUCTION"
 });
 const paymentData = await paymentsClient.loadPaymentData(
   googlePayInfo.paymentDataRequest,
 );
 
-// Charge using the Google Pay token
+// paymentData.paymentMethodData.tokenizationData.token is a JSON string
+// containing { protocolVersion, signature, signedMessage }.
+// Pass it as-is to google_pay_token — GoPay's backend parses it.
 const charge = await sdk.payments.charge(payment.id, {
   payment_instrument: {
     payment_instrument: 'PAYMENT_CARD',
     input: {
       input_type: 'GOOGLE_PAY',
-      protocolVersion: paymentData.paymentMethodData.tokenizationData.type,
-      signature: paymentData.paymentMethodData.tokenizationData.token,
-      signedMessage: paymentData.paymentMethodData.tokenizationData.token,
+      google_pay_token: paymentData.paymentMethodData.tokenizationData.token,
     },
   },
   return_url: 'https://yourshop.com/return',
@@ -212,26 +217,41 @@ const charge = await sdk.payments.charge(payment.id, {
 
 ### Apple Pay
 
+> **Safari only.** `ApplePaySession` is available exclusively in Safari on Apple
+> devices. In other browsers the example page loads `apple-pay-polyfill.js`
+> (a dev-only stub) so the flow can be exercised without a real device.
+
 ```ts
-// Fetch Apple Pay configuration for this payment
+// Fetch Apple Pay configuration for this payment.
+// applePayInfo contains:
+//   applepayVersion          — Apple Pay JS API version to pass to ApplePaySession
+//   merchantIdentifier       — your registered Apple Pay merchant ID
+//   applePayPaymentRequest   — pre-filled PaymentRequest object (networks, country,
+//                              currency, total, etc.) ready to pass to ApplePaySession
 const applePayInfo = await sdk.payments.getApplePayInfo(payment.id);
 
-// Use applePayInfo to initialise an ApplePaySession
+// Create the session with the version and request object returned above.
 const session = new ApplePaySession(
   applePayInfo.applepayVersion,
   applePayInfo.applePayPaymentRequest,
 );
 
-// Validate the merchant — call from the onvalidatemerchant callback
-session.onvalidatemerchant = async () => {
+// Step 1 — Merchant validation (server-to-server trust handshake).
+// The browser fires onvalidatemerchant as soon as begin() is called.
+// GoPay contacts Apple's servers on your behalf using your merchant certificate
+// and returns an opaque merchantSession token that unlocks the payment sheet.
+session.onvalidatemerchant = async (event) => {
+  // event.validationURL is provided by Apple; the SDK forwards it to GoPay.
   const merchantSession = await sdk.payments.validateApplePayMerchant(
     payment.id,
-    window.location.origin,
+    window.location.origin, // origin of the page showing the Apple Pay button
   );
   session.completeMerchantValidation(merchantSession);
 };
 
-// Charge using the Apple Pay token
+// Step 2 — Payment authorisation.
+// Fires after the user authenticates with Face ID / Touch ID.
+// event.payment.token.paymentData is an Apple-encrypted blob — pass it to charge().
 session.onpaymentauthorized = async (event) => {
   const token = event.payment.token.paymentData;
   const charge = await sdk.payments.charge(payment.id, {
@@ -247,6 +267,7 @@ session.onpaymentauthorized = async (event) => {
     },
     return_url: 'https://yourshop.com/return',
   });
+  // Tell the sheet to show a success or failure animation, then close.
   session.completePayment(
     charge.state === 'SUCCEEDED'
       ? ApplePaySession.STATUS_SUCCESS
@@ -254,6 +275,13 @@ session.onpaymentauthorized = async (event) => {
   );
 };
 
+// Step 3 — Cancellation.
+// Fires when the user dismisses the sheet without paying.
+session.oncancel = () => {
+  // Update your UI to reflect the cancelled state.
+};
+
+// Opens the Apple Pay sheet and triggers the merchant-validation handshake.
 session.begin();
 ```
 

@@ -61,6 +61,11 @@ export class PaymentsModule {
     /**
      * Retrieve Google Pay configuration for this payment.
      *
+     * Returns the fields needed to initialise a Google Pay flow:
+     * - `environment` — `"TEST"` or `"PRODUCTION"`, pass to `PaymentsClient`
+     * - `paymentDataRequest` — pre-filled `PaymentDataRequest` object (allowed
+     *   auth methods/networks, transaction info, merchant info, etc.)
+     *
      * GET /payments/{payment_id}/google-pay/info
      *
      * @param paymentId - Payment session ID
@@ -73,6 +78,12 @@ export class PaymentsModule {
 
     /**
      * Retrieve Apple Pay configuration for this payment.
+     *
+     * Returns the fields needed to initialise an `ApplePaySession`:
+     * - `applepayVersion` — Apple Pay JS API version number
+     * - `merchantIdentifier` — registered Apple Pay merchant ID
+     * - `applePayPaymentRequest` — pre-filled `PaymentRequest` object (supported
+     *   networks, country/currency codes, total, etc.)
      *
      * GET /payments/{payment_id}/apple-pay/info
      *
