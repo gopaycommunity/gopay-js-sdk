@@ -93,10 +93,18 @@ export class HttpClient {
         if (err instanceof Error && 'response' in err) {
             const res = (err as { response: Response }).response;
             const text = await res.text();
+            const contentType = res.headers.get('content-type') ?? '';
             let body: unknown;
-            try {
-                body = JSON.parse(text);
-            } catch {
+            if (
+                contentType.startsWith('application/json') ||
+                contentType.includes('+json')
+            ) {
+                try {
+                    body = JSON.parse(text);
+                } catch {
+                    body = text;
+                }
+            } else {
                 body = text;
             }
             throw new GoPayHTTPError(res.status, body);

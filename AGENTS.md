@@ -15,7 +15,7 @@ Run this whenever `Payments.yaml` is updated to keep the types in sync.
 
 ## Checks
 
-Run all checks with a single command from the repo root:
+After every edit, run checks with a single command from the repo root:
 
 ```bash
 yarn ci

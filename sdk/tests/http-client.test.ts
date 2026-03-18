@@ -258,6 +258,29 @@ describe('HttpClient', () => {
             expect((err as GoPayHTTPError).status).toBe(400);
             expect((err as GoPayHTTPError).body).toBe('upstream error details');
         });
+
+        it.each([
+            ['true', 'true'],
+            ['0', '0'],
+        ])('keeps text/plain body %s as a raw string (not parsed as JSON)', async (bodyText, expected) => {
+            fetchMock.mockResolvedValue(
+                new Response(bodyText, {
+                    status: 502,
+                    statusText: 'Bad Gateway',
+                    headers: { 'content-type': 'text/plain' },
+                }),
+            );
+
+            const client = new HttpClient({
+                baseUrl: 'https://example.com',
+            });
+            tokenStore(client).set(storedTokens);
+
+            const err = await client.get('/resource').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPayHTTPError);
+            expect(typeof (err as GoPayHTTPError).body).toBe('string');
+            expect((err as GoPayHTTPError).body).toBe(expected);
+        });
     });
 
     // -------------------------------------------------------------------------
