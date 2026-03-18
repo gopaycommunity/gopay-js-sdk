@@ -139,11 +139,6 @@ if (!window.ApplePaySession) {
         });
     }
 
-    function removeModal() {
-        const el = document.getElementById('ap-polyfill-overlay');
-        if (el) el.remove();
-    }
-
     // -------------------------------------------------------------------------
     // Mock ApplePaySession
     // -------------------------------------------------------------------------
@@ -172,6 +167,7 @@ if (!window.ApplePaySession) {
             this.oncancel = null;
             this._merchantSession = null;
             this._modal = null;
+            this._removeTimer = null;
         }
 
         static get STATUS_SUCCESS() {
@@ -194,7 +190,8 @@ if (!window.ApplePaySession) {
             document.body.appendChild(modal);
 
             showStatus('Validating merchant…');
-            setButtonsEnabled(false);
+            const payBtn = document.getElementById('ap-polyfill-pay');
+            if (payBtn) payBtn.disabled = true;
 
             // Fire onvalidatemerchant asynchronously (mirrors real behaviour)
             setTimeout(() => {
@@ -255,11 +252,21 @@ if (!window.ApplePaySession) {
                     ? 'Payment succeeded.'
                     : 'Payment failed.',
             );
-            setTimeout(() => removeModal(), 800);
+            const modal = this._modal;
+            this._removeTimer = setTimeout(() => {
+                if (modal) modal.remove();
+                this._modal = null;
+                this._removeTimer = null;
+            }, 800);
         }
 
         abort() {
-            removeModal();
+            clearTimeout(this._removeTimer);
+            this._removeTimer = null;
+            if (this._modal) {
+                this._modal.remove();
+                this._modal = null;
+            }
         }
     }
 

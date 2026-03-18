@@ -79,7 +79,8 @@ function proxyRequest(req, res) {
     delete options.headers.referer;
     delete options.headers.cookie;
 
-    const upstreamReq = https.request(target, options, (upstreamRes) => {
+    const transport = target.protocol === 'http:' ? http : https;
+    const upstreamReq = transport.request(target, options, (upstreamRes) => {
         res.writeHead(upstreamRes.statusCode, {
             ...upstreamRes.headers,
             'access-control-allow-origin': '*',
