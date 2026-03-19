@@ -1,3 +1,19 @@
+# [1.1.0](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/v1.0.0...v1.1.0) (2026-03-19)
+
+
+### Bug Fixes
+
+* add ApplePay real calls (in supported browsers) GPOMA-2195 ([eac1af2](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/eac1af2d60f8478055c74a0f7ae1a520dfebabc1))
+* improve ApplePay polyfill lifecycle GPOMA-2195 ([763d8fd](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/763d8fd18ebb7b43616324116dbf0621686c4387))
+* improve docs GPOMA-2195 ([8f69d08](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8f69d081df88105e681e935fa85ef4334a24f523))
+* improve error reporting, parse only json body GPOMA-2195 ([b40eb22](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b40eb22474c1b8f26f6e3c66183a03b2c74ca0a2))
+
+
+### Features
+
+* add ApplePay example and tests GPOMA-2195 ([aa7ccb1](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/aa7ccb1da2694ee5d6b036c6fa9a0359361485dd))
+* add logout and structured error messages GPOMA-2195 ([828cadc](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/828cadc74f9b0b989b95552c07ae2f0ba0ee5b45))
+
 # 1.0.0 (2026-03-18)
 
 
