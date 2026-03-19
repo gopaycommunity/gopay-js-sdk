@@ -1,4 +1,4 @@
-import { GoPaySDKError } from '../../errors.js';
+import { GoPayErrorCodes, GoPaySDKError } from '../../errors.js';
 import type { HttpClient } from '../../http/client.js';
 import type { components } from '../../types/generated.js';
 import type { AuthenticateRequest, ClientToken } from '../../types/index.js';
@@ -44,8 +44,11 @@ export class AuthModule {
             tokenPair.expires_in === undefined ||
             tokenPair.refresh_expires_in === undefined
         ) {
-            throw new GoPaySDKError(
-                '[GoPaySDK] Invalid token response: missing required fields.',
+            throw this.client.emitError(
+                new GoPaySDKError(
+                    '[GoPaySDK] Invalid token response: missing required fields.',
+                    { errorCode: GoPayErrorCodes.AUTH_INVALID_RESPONSE },
+                ),
             );
         }
         this.client.setToken({
@@ -76,8 +79,11 @@ export class AuthModule {
     async issueClientToken(scope?: string): Promise<ClientToken> {
         const creds = this.client.getClientCredentials();
         if (!creds) {
-            throw new GoPaySDKError(
-                '[GoPaySDK] No client credentials stored. Call authenticate() first.',
+            throw this.client.emitError(
+                new GoPaySDKError(
+                    '[GoPaySDK] No client credentials stored. Call authenticate() first.',
+                    { errorCode: GoPayErrorCodes.AUTH_CREDENTIALS_MISSING },
+                ),
             );
         }
 
@@ -100,8 +106,11 @@ export class AuthModule {
             tokenPair.expires_in === undefined ||
             tokenPair.refresh_expires_in === undefined
         ) {
-            throw new GoPaySDKError(
-                '[GoPaySDK] Invalid token response: missing required fields.',
+            throw this.client.emitError(
+                new GoPaySDKError(
+                    '[GoPaySDK] Invalid token response: missing required fields.',
+                    { errorCode: GoPayErrorCodes.AUTH_INVALID_RESPONSE },
+                ),
             );
         }
 
@@ -136,8 +145,11 @@ export class AuthModule {
             }
             clientId = payload.sub;
         } catch {
-            throw new GoPaySDKError(
-                '[GoPaySDK] Cannot extract client_id from access_token JWT. Ensure the token is a valid JWT with a "sub" claim.',
+            throw this.client.emitError(
+                new GoPaySDKError(
+                    '[GoPaySDK] Cannot extract client_id from access_token JWT. Ensure the token is a valid JWT with a "sub" claim.',
+                    { errorCode: GoPayErrorCodes.AUTH_INVALID_TOKEN },
+                ),
             );
         }
 
@@ -149,5 +161,23 @@ export class AuthModule {
             token_type: 'bearer',
         });
         this.client.setClientId(clientId);
+    }
+
+    /**
+     * Returns `true` if a token pair is currently stored (the SDK is
+     * authenticated). Does not check expiry — expired tokens are refreshed
+     * transparently on the next API call.
+     */
+    isAuthenticated(): boolean {
+        return this.client.isAuthenticated();
+    }
+
+    /**
+     * Clear all stored tokens and credentials.
+     * After calling this, all API calls will throw until the SDK is
+     * re-authenticated via `authenticate()` or `setClientToken()`.
+     */
+    logout(): void {
+        this.client.clearTokens();
     }
 }

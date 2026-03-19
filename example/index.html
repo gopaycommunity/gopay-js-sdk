@@ -188,7 +188,10 @@
         <!-- SDK status -->
         <section>
             <h2>SDK Status</h2>
-            <div id="status"><span class="badge" id="sdk-badge">checking…</span></div>
+            <div id="status">
+                <span class="badge" id="sdk-badge">checking…</span>
+                <span class="badge" id="auth-badge" style="background:#e2e3e5;color:#383d41;">not authenticated</span>
+            </div>
             <pre id="sdk-info">Loading…</pre>
             <p class="note">
                 Run <code>yarn example</code> from the repo root — it builds the SDK and starts
@@ -226,6 +229,7 @@
                 </label>
             </div>
             <button type="button" onclick="runAuthenticate()">Run</button>
+            <button type="button" onclick="runLogout()" style="background:#721c24;">Logout</button>
             <pre id="auth-output">—</pre>
         </section>
 
@@ -464,6 +468,19 @@
         }
 
         // -----------------------------------------------------------------------
+        // Auth badge
+        // -----------------------------------------------------------------------
+        const authBadge = document.getElementById('auth-badge');
+
+        function updateAuthBadge() {
+            if (!sdk) return;
+            const ok = sdk.auth.isAuthenticated();
+            authBadge.textContent = ok ? 'authenticated' : 'not authenticated';
+            authBadge.style.background = ok ? '#d4edda' : '#e2e3e5';
+            authBadge.style.color = ok ? '#155724' : '#383d41';
+        }
+
+        // -----------------------------------------------------------------------
         // Helper
         // -----------------------------------------------------------------------
         function show3dsPrompt(pre, redirectUrl) {
@@ -503,6 +520,8 @@
             } catch (err) {
                 if (err instanceof GoPaySDK.GoPayHTTPError) {
                     pre.textContent = `[GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`;
+                } else if (err instanceof GoPaySDK.GoPaySDKError) {
+                    pre.textContent = `[GoPaySDKError] ${err.errorCode ? `(${err.errorCode}) ` : ''}${err.message}`;
                 } else if (err instanceof Error) {
                     pre.textContent = `[${err.constructor.name}] ${err.message}`;
                 } else if (err === null || err === undefined) {
@@ -530,8 +549,16 @@
             const scope = getSelectedScopes();
 
             run('auth-output', () =>
-                sdk.auth.authenticate({ grant_type: 'client_credentials', client_id, client_secret, scope })
+                sdk.auth.authenticate({ grant_type: 'client_credentials', client_id, client_secret, scope }),
+                () => updateAuthBadge(),
             );
+        }
+
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function runLogout() {
+            sdk.auth.logout();
+            updateAuthBadge();
+            document.getElementById('auth-output').textContent = 'Logged out.';
         }
 
         function getSelectedBrowserScopes() {
@@ -568,6 +595,7 @@
                     ? _lastClientToken
                     : { access_token: accessToken, refresh_token: refreshToken, expires_in: 900, refresh_expires_in: 86400 };
                 browserSdk.auth.setClientToken(clientToken);
+                updateAuthBadge();
 
                 return browserSdk.payments.create(goid, {
                     amount: 1000,

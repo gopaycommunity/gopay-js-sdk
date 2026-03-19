@@ -1,5 +1,6 @@
 export type { GoPayConfig } from './config.js';
-export { GoPayHTTPError, GoPaySDKError } from './errors.js';
+export type { GoPayErrorCode } from './errors.js';
+export { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from './errors.js';
 export { GoPaySDK } from './gopay-sdk.js';
 export type {
     AuthenticateRequest,

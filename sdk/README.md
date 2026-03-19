@@ -153,10 +153,24 @@ browserSdk.auth.setClientToken(clientToken);
 
 ## Configuration
 
-| Option        | Type                        | Default      | Description                                      |
-|---------------|-----------------------------|--------------|--------------------------------------------------|
-| `environment` | `'sandbox' \| 'production'` | `'sandbox'`  | Target environment.                              |
-| `baseUrl`     | `string`                    | _(see below)_ | Override the API base URL (e.g. for mock servers). Takes precedence over `environment`. |
+| Option                | Type                                              | Default     | Description                                                                              |
+|-----------------------|---------------------------------------------------|-------------|------------------------------------------------------------------------------------------|
+| `environment`         | `'sandbox' \| 'production'`                       | `'sandbox'` | Target environment.                                                                      |
+| `baseUrl`             | `string`                                          | _(see below)_ | Override the API base URL (e.g. for mock servers). Takes precedence over `environment`. |
+| `requestTimeoutMs`    | `number`                                          | `10000`     | Per-request timeout in milliseconds. Throws `GoPaySDKError` with `errorCode: 'NETWORK_TIMEOUT'` on expiry. |
+| `debugLoggingEnabled` | `boolean`                                         | `false`     | Logs `→ METHOD URL` / `← STATUS URL` for every request via `console.debug`.             |
+| `onError`             | `(error: GoPaySDKError \| GoPayHTTPError) => void` | —           | Called synchronously for every error the SDK throws. Useful for centralised logging or alerting. |
+
+```ts
+const sdk = new GoPaySDK({
+  environment: 'production',
+  requestTimeoutMs: 5000,
+  debugLoggingEnabled: true,
+  onError(err) {
+    Sentry.captureException(err);
+  },
+});
+```
 
 ---
 
@@ -169,6 +183,8 @@ browserSdk.auth.setClientToken(clientToken);
 | `authenticate(params)` | Server-side: obtain an access/refresh token pair using `client_credentials`. Stores the token internally for automatic refresh. |
 | `issueClientToken(scope?)` | Server-side: obtain a fresh token pair for a browser client without affecting the server session. Use a narrower `scope` if the browser only needs a subset of permissions. |
 | `setClientToken(token)` | Browser-side: seed the SDK with a `ClientToken` obtained from the server. Extracts `client_id` automatically from the JWT `access_token`. |
+| `isAuthenticated()` | Returns `true` if a token is currently stored. Does not check expiry — expired tokens are refreshed transparently on the next API call. |
+| `logout()` | Clear all stored tokens and credentials. All subsequent API calls will throw until the SDK is re-authenticated. |
 
 ### `sdk.payments`
 
@@ -200,9 +216,11 @@ const paymentData = await paymentsClient.loadPaymentData(
   googlePayInfo.paymentDataRequest,
 );
 
-// paymentData.paymentMethodData.tokenizationData.token is a JSON string
-// containing { protocolVersion, signature, signedMessage }.
-// Pass it as-is to google_pay_token — GoPay's backend parses it.
+// paymentData.paymentMethodData.tokenizationData.token is an opaque string
+// whose internal structure is tokenization-method-dependent (DIRECT tokens
+// follow the { protocolVersion, signature, signedMessage } shape; PAYMENT_GATEWAY
+// tokens are gateway-defined). Do not parse or inspect it — pass it unchanged
+// to google_pay_token and let GoPay's backend handle parsing.
 const charge = await sdk.payments.charge(payment.id, {
   payment_instrument: {
     payment_instrument: 'PAYMENT_CARD',
@@ -319,20 +337,40 @@ document.body.appendChild(img);
 
 ## Errors
 
-The SDK throws two typed error classes so you can handle them precisely:
+The SDK throws two typed error classes so you can handle them precisely.
 
 ### `GoPaySDKError`
 
 Thrown for lifecycle and configuration errors — e.g. no token available, token refresh failed, or an invalid token response was received.
 
+Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErrorCodes` constant:
+
+| `errorCode` | When thrown |
+|---|---|
+| `AUTH_TOKEN_MISSING` | A protected API call was made before authenticating. |
+| `AUTH_REFRESH_TOKEN_MISSING` | Token expired and no refresh token is stored. |
+| `AUTH_REFRESH_FAILED` | Token refresh request failed (network or API error). |
+| `AUTH_INVALID_RESPONSE` | The OAuth2 endpoint returned an incomplete token response. |
+| `AUTH_CREDENTIALS_MISSING` | `issueClientToken()` called without prior `authenticate()`. |
+| `AUTH_INVALID_TOKEN` | `setClientToken()` received a JWT without a valid `sub` claim. |
+| `AUTH_UNAUTHORIZED` | Still 401 after a successful token refresh — check OAuth2 scopes. |
+| `NETWORK_TIMEOUT` | Request exceeded `requestTimeoutMs`. |
+| `NETWORK_ERROR` | Network-level failure (no response received). |
+
 ```ts
-import { GoPaySDKError } from 'gopay-js-sdk';
+import { GoPaySDKError, GoPayErrorCodes } from 'gopay-js-sdk';
 
 try {
   await sdk.payments.create(goid, params);
 } catch (err) {
   if (err instanceof GoPaySDKError) {
-    console.error('SDK error:', err.message);
+    if (err.errorCode === GoPayErrorCodes.AUTH_TOKEN_MISSING) {
+      // redirect to login
+    } else if (err.errorCode === GoPayErrorCodes.NETWORK_TIMEOUT) {
+      // show retry UI
+    } else {
+      console.error('SDK error:', err.message);
+    }
   }
 }
 ```
@@ -357,6 +395,21 @@ try {
 |---|---|---|
 | `status` | `number` | HTTP status code (e.g. `401`, `422`). |
 | `body` | `unknown` | Parsed JSON response body, or raw text if JSON parsing failed. |
+
+### Centralised error handling with `onError`
+
+Pass an `onError` callback to the SDK config to intercept every error in one place — useful for logging or alerting — without replacing per-call `catch` blocks:
+
+```ts
+const sdk = new GoPaySDK({
+  environment: 'production',
+  onError(err) {
+    analytics.track('gopay_error', { code: err instanceof GoPaySDKError ? err.errorCode : err.status });
+  },
+});
+```
+
+The callback fires synchronously before the error propagates to the caller.
 
 ---
 

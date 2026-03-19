@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GoPaySDKError } from '../src/errors.js';
+import { GoPayErrorCodes, GoPaySDKError } from '../src/errors.js';
 import { HttpClient } from '../src/http/client.js';
 import type { TokenStore } from '../src/http/token-store.js';
 import { AuthModule } from '../src/modules/auth/auth.module.js';
@@ -117,6 +117,9 @@ describe('AuthModule', () => {
         expect((err as GoPaySDKError).message).toContain(
             'Invalid token response: missing required fields.',
         );
+        expect((err as GoPaySDKError).errorCode).toBe(
+            GoPayErrorCodes.AUTH_INVALID_RESPONSE,
+        );
     });
 
     it('does not populate token store when token response is invalid', async () => {
@@ -220,8 +223,12 @@ describe('AuthModule', () => {
             });
             const freshAuth = new AuthModule(freshClient);
 
-            await expect(freshAuth.issueClientToken()).rejects.toThrow(
-                GoPaySDKError,
+            const err = await freshAuth
+                .issueClientToken()
+                .catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.AUTH_CREDENTIALS_MISSING,
             );
         });
 
@@ -273,12 +280,19 @@ describe('AuthModule', () => {
         });
 
         it('throws GoPaySDKError when JWT is malformed', () => {
-            expect(() =>
+            let err: unknown;
+            try {
                 auth.setClientToken({
                     ...clientToken,
                     access_token: 'not-a-jwt',
-                }),
-            ).toThrow(GoPaySDKError);
+                });
+            } catch (e) {
+                err = e;
+            }
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.AUTH_INVALID_TOKEN,
+            );
         });
 
         it('throws GoPaySDKError when JWT is missing sub claim', () => {
@@ -291,6 +305,123 @@ describe('AuthModule', () => {
             expect(() =>
                 auth.setClientToken({ ...clientToken, access_token: jwtNoSub }),
             ).toThrow(GoPaySDKError);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // isAuthenticated()
+    // -------------------------------------------------------------------------
+
+    describe('isAuthenticated()', () => {
+        it('returns false before authenticate', () => {
+            expect(auth.isAuthenticated()).toBe(false);
+        });
+
+        it('returns true after authenticate', async () => {
+            await auth.authenticate({
+                grant_type: 'client_credentials',
+                client_id: 'id',
+                client_secret: 'secret',
+                scope: 'payment:create',
+            });
+            expect(auth.isAuthenticated()).toBe(true);
+        });
+
+        it('returns true after setClientToken', () => {
+            auth.setClientToken({
+                access_token: makeJwt('client-123'),
+                refresh_token: 'rt',
+                expires_in: 900,
+                refresh_expires_in: 86400,
+            });
+            expect(auth.isAuthenticated()).toBe(true);
+        });
+
+        it('returns false after logout', async () => {
+            await auth.authenticate({
+                grant_type: 'client_credentials',
+                client_id: 'id',
+                client_secret: 'secret',
+                scope: 'payment:create',
+            });
+            auth.logout();
+            expect(auth.isAuthenticated()).toBe(false);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // logout()
+    // -------------------------------------------------------------------------
+
+    describe('logout()', () => {
+        it('clears token so next API call throws AUTH_TOKEN_MISSING', async () => {
+            await auth.authenticate({
+                grant_type: 'client_credentials',
+                client_id: 'id',
+                client_secret: 'secret',
+                scope: 'payment:create',
+            });
+            auth.logout();
+
+            const err = await client.get('/resource').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.AUTH_TOKEN_MISSING,
+            );
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // onError callback
+    // -------------------------------------------------------------------------
+
+    describe('onError callback', () => {
+        it('is called when authenticate returns invalid token response', async () => {
+            const onError = vi.fn();
+            const clientWithCallback = new HttpClient({
+                baseUrl: 'https://example.com',
+                onError,
+            });
+            const authWithCallback = new AuthModule(clientWithCallback);
+
+            fetchMock.mockImplementation(async (req: Request) => {
+                await req.text();
+                return makeResponse({
+                    ...validTokenPair,
+                    access_token: undefined,
+                });
+            });
+
+            await authWithCallback
+                .authenticate({
+                    grant_type: 'client_credentials',
+                    client_id: 'id',
+                    client_secret: 'secret',
+                    scope: 'payment:create',
+                })
+                .catch(() => {});
+
+            expect(onError).toHaveBeenCalledOnce();
+            const err = onError.mock.calls[0][0] as GoPaySDKError;
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect(err.errorCode).toBe(GoPayErrorCodes.AUTH_INVALID_RESPONSE);
+        });
+
+        it('is called when no credentials are stored for issueClientToken', async () => {
+            const onError = vi.fn();
+            const clientWithCallback = new HttpClient({
+                baseUrl: 'https://example.com',
+                onError,
+            });
+            const authWithCallback = new AuthModule(clientWithCallback);
+
+            await authWithCallback.issueClientToken().catch(() => {});
+
+            expect(onError).toHaveBeenCalledOnce();
+            const err = onError.mock.calls[0][0] as GoPaySDKError;
+            expect(err.errorCode).toBe(
+                GoPayErrorCodes.AUTH_CREDENTIALS_MISSING,
+            );
         });
     });
 });

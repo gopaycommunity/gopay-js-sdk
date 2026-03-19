@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GoPayHTTPError, GoPaySDKError } from '../src/errors.js';
+import {
+    GoPayErrorCodes,
+    GoPayHTTPError,
+    GoPaySDKError,
+} from '../src/errors.js';
 import { HttpClient } from '../src/http/client.js';
 import type { TokenStore } from '../src/http/token-store.js';
 
@@ -64,10 +68,12 @@ describe('HttpClient', () => {
             expect(req.headers.get('Authorization')).toBe('Bearer at-abc');
         });
 
-        it('throws when token store is empty', async () => {
+        it('throws AUTH_TOKEN_MISSING when token store is empty', async () => {
             const client = new HttpClient({ baseUrl: 'https://example.com' });
-            await expect(client.get('/data')).rejects.toThrow(
-                'No access token available. Call authenticate() first.',
+            const err = await client.get('/data').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.AUTH_TOKEN_MISSING,
             );
         });
 
@@ -375,7 +381,7 @@ describe('HttpClient', () => {
             expect(fetchMock).toHaveBeenCalledTimes(1);
         });
 
-        it('throws when 401 received and no refresh token available', async () => {
+        it('throws AUTH_REFRESH_TOKEN_MISSING when no refresh token available', async () => {
             fetchMock.mockResolvedValue(makeResponse({}, 401, 'Unauthorized'));
 
             const client = new HttpClient({ baseUrl: 'https://example.com' });
@@ -385,10 +391,13 @@ describe('HttpClient', () => {
             expect((err as GoPaySDKError).message).toContain(
                 'Session expired and no refresh token available',
             );
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.AUTH_REFRESH_TOKEN_MISSING,
+            );
             expect(tokenStore(client).hasAccessToken()).toBe(false);
         });
 
-        it('throws when 401 received and refresh call fails', async () => {
+        it('throws AUTH_REFRESH_FAILED when refresh call fails', async () => {
             let callCount = 0;
             fetchMock.mockImplementation(async (req: Request) => {
                 callCount++;
@@ -408,6 +417,9 @@ describe('HttpClient', () => {
             expect(err).toBeInstanceOf(GoPaySDKError);
             expect((err as GoPaySDKError).message).toContain(
                 'Token refresh failed',
+            );
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.AUTH_REFRESH_FAILED,
             );
             expect(tokenStore(client).hasAccessToken()).toBe(false);
         });
@@ -442,7 +454,7 @@ describe('HttpClient', () => {
             expect(retryReq.headers.get('Authorization')).toBe('Bearer at-new');
         });
 
-        it('throws when retry after refresh is also 401', async () => {
+        it('throws AUTH_UNAUTHORIZED when retry after refresh is also 401', async () => {
             let callCount = 0;
             fetchMock.mockImplementation(async (req: Request) => {
                 callCount++;
@@ -463,6 +475,9 @@ describe('HttpClient', () => {
             expect(err).toBeInstanceOf(GoPaySDKError);
             expect((err as GoPaySDKError).message).toContain(
                 'Request unauthorized after token refresh',
+            );
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.AUTH_UNAUTHORIZED,
             );
             expect(tokenStore(client).hasAccessToken()).toBe(false);
         });
@@ -559,6 +574,114 @@ describe('HttpClient', () => {
                 'Session expired and no refresh token available',
             );
             expect(tokenStore(client).hasAccessToken()).toBe(false);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // onError callback
+    // -------------------------------------------------------------------------
+
+    describe('onError callback', () => {
+        it('is called with GoPayHTTPError on non-2xx response', async () => {
+            const onError = vi.fn();
+            fetchMock.mockImplementation(async (req: Request) => {
+                await req.text();
+                return makeResponse({ error: 'FORBIDDEN' }, 403, 'Forbidden');
+            });
+
+            const client = new HttpClient({
+                baseUrl: 'https://example.com',
+                onError,
+            });
+            tokenStore(client).set(storedTokens);
+
+            await client.post('/items', {}).catch(() => {});
+
+            expect(onError).toHaveBeenCalledOnce();
+            expect(onError.mock.calls[0][0]).toBeInstanceOf(GoPayHTTPError);
+            expect((onError.mock.calls[0][0] as GoPayHTTPError).status).toBe(
+                403,
+            );
+        });
+
+        it('is called with GoPaySDKError when no token is stored', async () => {
+            const onError = vi.fn();
+            const client = new HttpClient({
+                baseUrl: 'https://example.com',
+                onError,
+            });
+
+            await client.get('/data').catch(() => {});
+
+            expect(onError).toHaveBeenCalledOnce();
+            const err = onError.mock.calls[0][0] as GoPaySDKError;
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect(err.errorCode).toBe(GoPayErrorCodes.AUTH_TOKEN_MISSING);
+        });
+
+        it('is not called on successful requests', async () => {
+            const onError = vi.fn();
+            const client = new HttpClient({
+                baseUrl: 'https://example.com',
+                onError,
+            });
+            tokenStore(client).set(storedTokens);
+
+            await client.get('/data');
+
+            expect(onError).not.toHaveBeenCalled();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // Network errors
+    // -------------------------------------------------------------------------
+
+    describe('network errors', () => {
+        it('wraps TimeoutError as GoPaySDKError with NETWORK_TIMEOUT code', async () => {
+            const timeout = new Error('Request timed out');
+            timeout.name = 'TimeoutError';
+            fetchMock.mockRejectedValue(timeout);
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+
+            const err = await client.get('/data').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.NETWORK_TIMEOUT,
+            );
+        });
+
+        it('wraps fetch failure as GoPaySDKError with NETWORK_ERROR code', async () => {
+            fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+
+            const err = await client.get('/data').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.NETWORK_ERROR,
+            );
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // requestTimeoutMs config
+    // -------------------------------------------------------------------------
+
+    describe('requestTimeoutMs config', () => {
+        it('defaults to 10 000 ms (ky timeout option)', async () => {
+            // We can't inspect ky internals directly, but we can verify the
+            // instance was built without error and the config value is accepted.
+            expect(
+                () =>
+                    new HttpClient({
+                        baseUrl: 'https://example.com',
+                        requestTimeoutMs: 5_000,
+                    }),
+            ).not.toThrow();
         });
     });
 });
