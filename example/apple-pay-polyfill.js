@@ -7,7 +7,9 @@
  *
  * DO NOT ship this in production — it is a development-only stub.
  */
-if (!window.ApplePaySession) {
+// Always run — exposes MockApplePaySession on window for the dev mock button.
+// Also sets window.ApplePaySession when no native implementation is present.
+(() => {
     // -------------------------------------------------------------------------
     // Modal helpers
     // -------------------------------------------------------------------------
@@ -48,7 +50,7 @@ if (!window.ApplePaySession) {
         });
 
         const badge = document.createElement('div');
-        badge.textContent = 'DEV POLYFILL — non-Safari browser';
+        badge.textContent = 'DEV POLYFILL';
         Object.assign(badge.style, {
             display: 'inline-block',
             background: '#fff3cd',
@@ -270,9 +272,20 @@ if (!window.ApplePaySession) {
         }
     }
 
-    window.ApplePaySession = ApplePaySession;
+    ApplePaySession.__isPolyfill = true;
 
-    console.info(
-        '[apple-pay-polyfill] ApplePaySession stub installed (non-Safari dev mode).',
-    );
-}
+    // Always expose as MockApplePaySession so the dev mock button works in any browser
+    window.MockApplePaySession = ApplePaySession;
+
+    // Replace ApplePaySession only when no native implementation is present
+    if (!window.ApplePaySession) {
+        window.ApplePaySession = ApplePaySession;
+        console.info(
+            '[apple-pay-polyfill] ApplePaySession stub installed (non-Safari dev mode).',
+        );
+    } else {
+        console.info(
+            '[apple-pay-polyfill] MockApplePaySession available (native ApplePaySession kept).',
+        );
+    }
+})();

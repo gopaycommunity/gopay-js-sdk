@@ -358,9 +358,10 @@
             <button type="button" onclick="applePayLoadInfo()">Load Apple Pay Config</button>
             <div id="applepay-button-container" style="margin:0.5rem 0;"></div>
             <pre id="applepay-output">—</pre>
-            <p class="note">Requires a payment created with Apple Pay as an allowed instrument. In non-Safari browsers
-                the Apple Pay sheet is simulated by a dev polyfill — no real card data is used. On Safari with Apple Pay
-                configured, the native payment sheet appears.</p>
+            <p class="note">Requires a payment created with Apple Pay as an allowed instrument.
+                <strong>ApplePaySession</strong>: native on Safari; simulated by a dev polyfill in other browsers.
+                <strong>PaymentRequest</strong>: shown on Chrome/Edge when the browser supports Apple Pay — triggers
+                a cross-device QR code flow authenticated via iPhone or Apple Watch.</p>
         </section>
 
         <!-- QR Payment info -->
@@ -718,40 +719,138 @@
             _applePayInfo = null;
             _applePaymentId = null;
 
-            if (!window.ApplePaySession) {
-                pre.textContent = 'ApplePaySession not available — polyfill may still be loading, please try again.';
-                return;
-            }
-
             pre.textContent = 'Step 1: Fetching Apple Pay info…';
             try {
                 _applePayInfo = await sdk.payments.getApplePayInfo(paymentId);
                 _applePaymentId = paymentId;
-                pre.textContent = `── API response (getApplePayInfo) ──\n${JSON.stringify(_applePayInfo, null, 2)}\n\nClick the Apple Pay button to proceed.`;
+                pre.textContent = `── API response (getApplePayInfo) ──\n${JSON.stringify(_applePayInfo, null, 2)}\n\nClick a button below to proceed.`;
             } catch (err) {
                 pre.textContent = `[Step 1 failed] ${err?.message ?? String(err)}`;
                 return;
             }
 
-            // Render the Apple Pay button
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.textContent = ' Pay';
-            Object.assign(btn.style, {
-                background: '#000', color: '#fff', borderRadius: '6px',
-                padding: '0.5rem 1.5rem', fontSize: '1rem', fontWeight: '600',
-                letterSpacing: '-0.3px', border: 'none', cursor: 'pointer',
-            });
-            btn.onclick = applePayBeginSession;
-            container.appendChild(btn);
+            // Mock button — always shown, uses the polyfill stub
+            if (window.MockApplePaySession) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = ' Pay (Mock — dev only)';
+                Object.assign(btn.style, {
+                    background: '#856404', color: '#fff', borderRadius: '6px',
+                    padding: '0.5rem 1.5rem', fontSize: '1rem', fontWeight: '600',
+                    letterSpacing: '-0.3px', border: '2px dashed #ffc107', cursor: 'pointer',
+                });
+                btn.onclick = () => applePayBeginSession(window.MockApplePaySession);
+                container.appendChild(btn);
+            }
+
+            // Native Safari ApplePaySession button
+            const hasNativeSession = window.ApplePaySession && !window.ApplePaySession.__isPolyfill;
+            if (hasNativeSession) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = ' Pay (Safari native)';
+                Object.assign(btn.style, {
+                    background: '#000', color: '#fff', borderRadius: '6px',
+                    padding: '0.5rem 1.5rem', fontSize: '1rem', fontWeight: '600',
+                    letterSpacing: '-0.3px', border: 'none', cursor: 'pointer',
+                });
+                btn.onclick = () => applePayBeginSession(window.ApplePaySession);
+                container.appendChild(btn);
+            }
+
+            // PaymentRequest (cross-device QR) button — only on non-Apple browsers.
+            // On Safari/WebKit, PaymentRequest just opens the same native sheet as ApplePaySession.
+            if (!hasNativeSession && await supportsPaymentRequestApplePay(_applePayInfo)) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = ' Pay (QR code)';
+                Object.assign(btn.style, {
+                    background: '#1a1a2e', color: '#fff', borderRadius: '6px',
+                    padding: '0.5rem 1.5rem', fontSize: '1rem', fontWeight: '600',
+                    letterSpacing: '-0.3px', border: 'none', cursor: 'pointer',
+                });
+                btn.onclick = applePayPaymentRequestFlow;
+                container.appendChild(btn);
+            }
         }
 
-        function applePayBeginSession() {
+        function buildApplePayPaymentMethod(info) {
+            const pr = info.applePayPaymentRequest;
+            return {
+                supportedMethods: 'https://apple.com/apple-pay',
+                data: {
+                    version: info.applepayVersion,
+                    merchantIdentifier: info.merchantIdentifier,
+                    merchantCapabilities: pr.merchantCapabilities,
+                    supportedNetworks: pr.supportedNetworks,
+                    countryCode: pr.countryCode,
+                },
+            };
+        }
+
+        function buildPaymentDetails(info) {
+            const pr = info.applePayPaymentRequest;
+            return {
+                total: {
+                    label: pr.total.label,
+                    amount: { currency: pr.currencyCode, value: String(pr.total.amount) },
+                },
+            };
+        }
+
+        async function supportsPaymentRequestApplePay(info) {
+            if (!window.PaymentRequest) return false;
+            try {
+                const req = new PaymentRequest([buildApplePayPaymentMethod(info)], buildPaymentDetails(info));
+                return await req.canMakePayment();
+            } catch {
+                return false;
+            }
+        }
+
+        async function applePayPaymentRequestFlow() {
             const return_url = document.getElementById('applepay-return-url').value.trim();
             const pre = document.getElementById('applepay-output');
             if (!_applePayInfo || !_applePaymentId) return;
 
-            const session = new ApplePaySession(_applePayInfo.applepayVersion, _applePayInfo.applePayPaymentRequest);
+            pre.textContent += '\n\n── Step 2: PaymentRequest (cross-device QR) ──';
+            let paymentResponse;
+            try {
+                const request = new PaymentRequest(
+                    [buildApplePayPaymentMethod(_applePayInfo)],
+                    buildPaymentDetails(_applePayInfo),
+                );
+                paymentResponse = await request.show();
+            } catch (err) {
+                pre.textContent += `\nCancelled or failed: ${err?.message ?? String(err)}`;
+                return;
+            }
+
+            pre.textContent += '\n\nStep 3: Charging payment…';
+            try {
+                const { data, signature, version, header } = paymentResponse.details.token.paymentData;
+                const result = await sdk.payments.charge(_applePaymentId, {
+                    payment_instrument: {
+                        payment_instrument: 'PAYMENT_CARD',
+                        input: { input_type: 'APPLE_PAY', data, signature, version, header },
+                    },
+                    return_url,
+                });
+                await paymentResponse.complete('success');
+                pre.textContent += `\n\nStep 3 done:\n${JSON.stringify(result, null, 2)}`;
+                show3dsPrompt(pre, result.action?.redirect_url);
+            } catch (err) {
+                await paymentResponse.complete('fail').catch(() => {});
+                pre.textContent += `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
+            }
+        }
+
+        function applePayBeginSession(SessionClass = window.ApplePaySession) {
+            const return_url = document.getElementById('applepay-return-url').value.trim();
+            const pre = document.getElementById('applepay-output');
+            if (!_applePayInfo || !_applePaymentId) return;
+
+            const session = new SessionClass(_applePayInfo.applepayVersion, _applePayInfo.applePayPaymentRequest);
 
             session.onvalidatemerchant = async () => {
                 const origin = window.location.origin;
@@ -780,11 +879,11 @@
                         },
                         return_url,
                     });
-                    session.completePayment(ApplePaySession.STATUS_SUCCESS);
+                    session.completePayment(SessionClass.STATUS_SUCCESS);
                     pre.textContent += `\n\nStep 3 done:\n${JSON.stringify(result, null, 2)}`;
                     show3dsPrompt(pre, result.action?.redirect_url);
                 } catch (err) {
-                    session.completePayment(ApplePaySession.STATUS_FAILURE);
+                    session.completePayment(SessionClass.STATUS_FAILURE);
                     pre.textContent += `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
                 }
             };

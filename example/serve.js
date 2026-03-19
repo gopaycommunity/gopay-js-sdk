@@ -41,10 +41,9 @@ const raw = loadEnv(path.join(ROOT, 'sdk/.env.e2e'));
 const upstreamBaseUrl =
     raw.GP_GW_JS_SDK_BASE_URL || process.env.GP_GW_JS_SDK_BASE_URL || null;
 
-/** Values exposed as window.__ENV__ in the browser */
+/** Values exposed as window.__ENV__ in the browser — baseUrl is set in startServer() */
 const ENV = {
-    // Point the SDK at the local proxy so the browser never hits the API directly
-    baseUrl: upstreamBaseUrl ? `http://localhost:${PORT}/proxy` : null,
+    baseUrl: null,
     clientId:
         raw.GP_GW_JS_SDK_CLIENT_ID ||
         process.env.GP_GW_JS_SDK_CLIENT_ID ||
@@ -168,21 +167,71 @@ function handler(req, res) {
 }
 
 // ---------------------------------------------------------------------------
-// Start
+// Start — HTTPS if cert files are present, HTTP otherwise
 // ---------------------------------------------------------------------------
-const server = http.createServer(handler);
+const HTTPS_PORT = process.env.HTTPS_PORT || 3443;
+const CERT_FILE = path.join(__dirname, 'localhost.pem');
+const KEY_FILE = path.join(__dirname, 'localhost-key.pem');
 
-server.once('error', (err) => {
+function startServer() {
+    let certExists = false;
+    try {
+        fs.accessSync(CERT_FILE);
+        fs.accessSync(KEY_FILE);
+        certExists = true;
+    } catch {
+        // cert files absent — fall back to HTTP
+    }
+
+    if (certExists) {
+        if (upstreamBaseUrl)
+            ENV.baseUrl = `https://localhost:${HTTPS_PORT}/proxy`;
+        const tlsOptions = {
+            cert: fs.readFileSync(CERT_FILE),
+            key: fs.readFileSync(KEY_FILE),
+        };
+        const server = https.createServer(tlsOptions, handler);
+        server.once('error', onError);
+        server.listen(HTTPS_PORT, () => {
+            console.log(
+                `Example app running at https://localhost:${HTTPS_PORT}`,
+            );
+            console.log(
+                'Apple Pay (ApplePaySession) is supported on this origin.',
+            );
+        });
+    } else {
+        if (upstreamBaseUrl) ENV.baseUrl = `http://localhost:${PORT}/proxy`;
+        const server = http.createServer(handler);
+        server.once('error', onError);
+        server.listen(PORT, () => {
+            console.log(`Example app running at http://localhost:${PORT}`);
+            console.log('');
+            console.log('  Apple Pay requires HTTPS. To enable it:');
+            console.log(
+                '   1. Install mkcert:  brew install mkcert && mkcert -install',
+            );
+            console.log(
+                `   2. Generate certs:  cd example && mkcert localhost`,
+            );
+            console.log(
+                '   3. Restart yarn example script — HTTPS will start automatically on port',
+                HTTPS_PORT,
+            );
+        });
+    }
+}
+
+function onError(err) {
     if (err.code === 'EADDRINUSE') {
-        console.error(`Error: port ${PORT} is already in use.`);
+        const port = err.port ?? PORT;
+        console.error(`Error: port ${port} is already in use.`);
         console.error('A stale "serve" process may still be running.');
-        console.error(`  Kill it: lsof -ti :${PORT} | xargs kill`);
+        console.error(`  Kill it: lsof -ti :${port} | xargs kill`);
         process.exit(1);
     }
     console.error('Server error:', err.message);
     process.exit(1);
-});
+}
 
-server.listen(PORT, () => {
-    console.log(`Example app running at http://localhost:${PORT}`);
-});
+startServer();
