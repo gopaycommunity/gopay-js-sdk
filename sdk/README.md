@@ -327,11 +327,11 @@ document.body.appendChild(img);
 |---|---|
 | `createToken(params)` | Tokenize encrypted card data (`POST /cards/tokens`). |
 
-### `sdk.encryption`
+### Card data encryption
 
-| Method | Description |
-|---|---|
-| `fetchPublicKey()` | Fetch the JWE public key for card encryption (`GET /encryption/public-key`). |
+`GET /encryption/public-key` and the JWE construction it enables are **intentionally not part of this SDK's API surface**.
+
+Card number encryption must never run in publicly reachable JavaScript — doing so would expose the raw PAN to any script on the merchant's page. The correct approach is to use secure iframe supplied by GoPay. Do not use the `sdk/src/iframe/card-encrypt.html` stub in production or testing.
 
 ---
 

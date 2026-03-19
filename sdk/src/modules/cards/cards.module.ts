@@ -7,7 +7,6 @@ type CardTokenResponse =
     components['responses']['Card-Token-Response']['content']['application/json'];
 
 export class CardsModule {
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: stub — will be used when implemented
     constructor(private readonly client: HttpClient) {}
 
     /**
@@ -16,7 +15,7 @@ export class CardsModule {
      *
      * POST /cards/tokens
      */
-    async createToken(_params: CardTokenRequest): Promise<CardTokenResponse> {
-        throw new Error('Not implemented');
+    async createToken(params: CardTokenRequest): Promise<CardTokenResponse> {
+        return this.client.post<CardTokenResponse>('/cards/tokens', params);
     }
 }

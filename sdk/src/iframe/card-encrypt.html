@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'" />
+  <style>
+    body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; }
+    button { padding: 0.5rem 1.25rem; font-size: 1rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h3>This is development stub, do not use in production or testing.</h3>
+  <button type="button" id="btn">Pay</button>
+  <script>
+    'use strict';
+
+    const STUB_CARD_TOKEN = 'eyJalgIjoiUlNBLU9BRVAtMjU2IiwiZW5jIjoiQTI1NkdDTSIsImtpZCI6ImtleV8yMDI1MDQwNl8wMDEifQ.aG93ZGlkYmFzZTY0.dGhpc2lzdGhlaXY.ZW5jcnlwdGVkY2FyZGhvbGRlcmRhdGE.YXV0aHRhZw';
+
+    document.getElementById('btn').addEventListener('click', () => {
+      window.parent.postMessage({ type: 'GOPAY_CARD_ENCRYPT_RESULT', card_token: STUB_CARD_TOKEN }, '*');
+    });
+
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'GOPAY_CARD_ENCRYPT_READY' }, '*');
+    }
+  </script>
+</body>
+</html>

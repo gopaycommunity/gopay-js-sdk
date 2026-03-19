@@ -391,15 +391,6 @@
                 (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
         </section>
 
-        <!-- Fetch public key -->
-        <section>
-            <h2>encryption.fetchPublicKey()</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /encryption/public-key — fetch the JWK
-                public
-                key for card encryption.</p>
-            <button type="button" onclick="runFetchPublicKey()">Run</button>
-            <pre id="encryption-output">—</pre>
-        </section>
 
         <!-- Card tokenization -->
         <section>
@@ -409,6 +400,26 @@
             </p>
             <button type="button" onclick="runCreateToken()">Run</button>
             <pre id="cards-output">—</pre>
+        </section>
+
+        <!-- Card Pay full flow -->
+        <section>
+            <h2>Card Pay — full flow</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+                Step 1: <code>payments.create()</code> fills in the Payment ID below.<br>
+                Step 2: Click <em>Open Card Payment</em> — confirm in the iframe.<br>
+                Step 3: <code>cards.createToken()</code> — tokenize the encrypted card data.<br>
+                Step 4: <code>payments.charge()</code> — charge the payment.
+            </p>
+            <div class="fields">
+                <label>Payment ID<input id="cardpay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+                <label>Return URL<input id="cardpay-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+            </div>
+            <button type="button" onclick="cardPayOpenIframe()">Open Card Payment</button>
+            <div id="cardpay-iframe-container" style="display:none;margin:0.75rem 0;border:1px solid #c0c0cc;border-radius:6px;overflow:hidden;height:60px;">
+                <iframe id="cardpay-iframe" src="/sdk/src/iframe/card-encrypt.html" style="width:100%;height:100%;border:none;" title="Card payment"></iframe>
+            </div>
+            <pre id="cardpay-output">—</pre>
         </section>
 
     </main>
@@ -456,7 +467,7 @@
                 {
                     class: sdk.constructor.name,
                     baseUrl: _env.baseUrl ?? '(sandbox default)',
-                    modules: ['auth', 'payments', 'cards', 'encryption'].map(m => ({
+                    modules: ['auth', 'payments', 'cards'].map(m => ({
                         name: m,
                         methods: Object.getOwnPropertyNames(Object.getPrototypeOf(sdk[m]))
                             .filter(n => n !== 'constructor'),
@@ -613,7 +624,7 @@
         function prefillPaymentId(result) {
             const id = result?.id;
             if (!id) return;
-            ['charge-payment-id', 'googlepay-payment-id', 'applepay-payment-id', 'qr-payment-id']
+            ['charge-payment-id', 'googlepay-payment-id', 'applepay-payment-id', 'qr-payment-id', 'cardpay-payment-id']
                 .forEach(fieldId => {
                     const el = document.getElementById(fieldId);
                     if (el && !el.value) el.value = id;
@@ -930,10 +941,6 @@
             run('qr-output', () => sdk.payments.getQRPaymentInfo(paymentId, format));
         }
 
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runFetchPublicKey() {
-            run('encryption-output', () => sdk.encryption.fetchPublicKey());
-        }
 
         // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
         function runCreateToken() {
@@ -941,6 +948,66 @@
                 sdk.cards.createToken({ payload: 'JWE_ENCRYPTED_CARD_DATA', permanent: false })
             );
         }
+
+        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
+        function cardPayOpenIframe() {
+            const paymentId = document.getElementById('cardpay-payment-id').value.trim();
+            const pre = document.getElementById('cardpay-output');
+            document.getElementById('cardpay-iframe-container').style.display = 'block';
+            pre.textContent = `── Step 1: iframe opened ──\nPayment ID: ${paymentId || '(none)'}\n\nStep 2: Waiting for card confirmation in iframe…`;
+        }
+
+        window.addEventListener('message', async (event) => {
+            if (!event.data) return;
+
+            const pre = document.getElementById('cardpay-output');
+
+            if (event.data.type === 'GOPAY_CARD_ENCRYPT_READY') {
+                pre.textContent += '\n\niframe ready — waiting for Pay button click.';
+                return;
+            }
+
+            if (event.data.type !== 'GOPAY_CARD_ENCRYPT_RESULT') return;
+
+            document.getElementById('cardpay-iframe-container').style.display = 'none';
+
+            const paymentId = document.getElementById('cardpay-payment-id').value.trim();
+            const return_url = document.getElementById('cardpay-return-url').value.trim();
+
+            pre.textContent += `\n\n── Step 2: received from iframe ──\ncard_token: ${event.data.card_token}`;
+
+            // Step 3 — create card token
+            pre.textContent += '\n\nStep 3: Creating card token…';
+            let cardToken;
+            try {
+                const tokenResult = await sdk.cards.createToken({ payload: event.data.card_token });
+                pre.textContent += `\n\n── Step 3: createToken ──\n${JSON.stringify(tokenResult, null, 2)}`;
+                cardToken = tokenResult.token;
+            } catch (err) {
+                pre.textContent += err instanceof GoPaySDK.GoPayHTTPError
+                    ? `\n\n[Step 3 failed — GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`
+                    : `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
+                return;
+            }
+
+            // Step 4 — charge
+            pre.textContent += '\n\nStep 4: Charging payment…';
+            try {
+                const result = await sdk.payments.charge(paymentId, {
+                    payment_instrument: {
+                        payment_instrument: 'PAYMENT_CARD',
+                        input: { input_type: 'CARD_TOKEN', card_token: cardToken },
+                    },
+                    return_url,
+                });
+                pre.textContent += `\n\n── Step 4: charge ──\n${JSON.stringify(result, null, 2)}`;
+                show3dsPrompt(pre, result.action?.redirect_url);
+            } catch (err) {
+                pre.textContent += err instanceof GoPaySDK.GoPayHTTPError
+                    ? `\n\n[Step 4 failed — GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`
+                    : `\n\n[Step 4 failed] ${err?.message ?? String(err)}`;
+            }
+        });
     </script>
 </body>
 
