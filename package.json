@@ -13,12 +13,12 @@
         "example": "yarn workspace gopay-js-sdk run build && node example/serve.js"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.4.5",
-        "@commitlint/cli": "^20.4.3",
-        "@commitlint/config-conventional": "^20.4.3",
-        "@playwright/test": "^1.58.0",
+        "@biomejs/biome": "^2.4.8",
+        "@commitlint/cli": "^20.5.0",
+        "@commitlint/config-conventional": "^20.5.0",
+        "@playwright/test": "^1.58.2",
         "husky": "^9.1.7",
-        "serve": "^14.2.0"
+        "serve": "^14.2.6"
     },
     "commitlint": {
         "extends": [
