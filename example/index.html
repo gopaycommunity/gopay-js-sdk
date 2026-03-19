@@ -308,37 +308,15 @@
                 payment.</p>
         </section>
 
-        <!-- Charge payment -->
-        <section>
-            <h2>payments.charge()</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /payments/{id}/charge — charge using a
-                card
-                token.</p>
-            <div class="fields">
-                <label>Payment ID<input id="charge-payment-id" type="text" placeholder="pay_300000001" /></label>
-                <label>Card Token<input id="charge-card-token" type="text"
-                        placeholder="card token from cards.createToken()" /></label>
-                <label>Return URL<input id="charge-return-url" type="text"
-                        value="https://yourshop.example.com/return" /></label>
-            </div>
-            <button type="button" onclick="runCharge()">Run</button>
-            <pre id="payment-charge-output">—</pre>
-            <p class="note">Use the Payment ID from <code>payments.create()</code> output. Card token obtained via
-                <code>cards.createToken()</code>.
-            </p>
-        </section>
-
         <!-- Google Pay full flow -->
         <section>
             <h2>Google Pay — full flow</h2>
             <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
                 Step 1: <code>payments.getGooglePayInfo()</code> — fetch config, render Google Pay button.<br>
-                Step 2: Click the Google Pay button — user selects a card.<br>
-                Step 3: <code>payments.charge()</code> — submit the token returned by Google.
+                Step 2: Click the Google Pay button — user selects a card. Token is prefilled into <em>payments.charge()</em> below.
             </p>
             <div class="fields">
                 <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="pay_300000001" /></label>
-                <label>Return URL<input id="googlepay-return-url" type="text" value="https://yourshop.example.com/return" /></label>
             </div>
             <button type="button" onclick="googlePayLoadInfo()">Load Google Pay Config</button>
             <div id="googlepay-button-container" style="margin:0.5rem 0;"></div>
@@ -352,12 +330,10 @@
             <h2>Apple Pay — full flow</h2>
             <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
                 Step 1: <code>payments.getApplePayInfo()</code> — fetch config, render Apple Pay button.<br>
-                Step 2: Click the Apple Pay button — merchant validation runs automatically via <code>payments.validateApplePayMerchant()</code>.<br>
-                Step 3: <code>payments.charge()</code> — submit the token returned by Apple.
+                Step 2: Click the Apple Pay button — merchant validation runs automatically via <code>payments.startApplePaySession()</code>. Token is prefilled into <em>payments.charge()</em> below.
             </p>
             <div class="fields">
                 <label>Payment ID<input id="applepay-payment-id" type="text" placeholder="pay_300000001" /></label>
-                <label>Return URL<input id="applepay-return-url" type="text" value="https://yourshop.example.com/return" /></label>
             </div>
             <button type="button" onclick="applePayLoadInfo()">Load Apple Pay Config</button>
             <div id="applepay-button-container" style="margin:0.5rem 0;"></div>
@@ -408,18 +384,32 @@
             <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
                 Step 1: <code>payments.create()</code> fills in the Payment ID below.<br>
                 Step 2: Click <em>Open Card Payment</em> — confirm in the iframe.<br>
-                Step 3: <code>cards.createToken()</code> — tokenize the encrypted card data.<br>
-                Step 4: <code>payments.charge()</code> — charge the payment.
+                Step 3: <code>cards.createToken()</code> — tokenize. Token is prefilled into <em>payments.charge()</em> below.
             </p>
             <div class="fields">
                 <label>Payment ID<input id="cardpay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
-                <label>Return URL<input id="cardpay-return-url" type="text" value="https://yourshop.example.com/return" /></label>
             </div>
             <button type="button" onclick="cardPayOpenIframe()">Open Card Payment</button>
             <div id="cardpay-iframe-container" style="display:none;margin:0.75rem 0;border:1px solid #c0c0cc;border-radius:6px;overflow:hidden;height:60px;">
                 <iframe id="cardpay-iframe" src="/sdk/src/iframe/card-encrypt.html" style="width:100%;height:100%;border:none;" title="Card payment"></iframe>
             </div>
             <pre id="cardpay-output">—</pre>
+        </section>
+
+        <!-- Charge payment -->
+        <section>
+            <h2>payments.charge()</h2>
+            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /payments/{id}/charge — submit the payment instrument token obtained from Google Pay, Apple Pay, or Card Pay above.</p>
+            <div class="fields">
+                <label>Payment ID<input id="charge-payment-id" type="text" placeholder="pay_300000001" /></label>
+                <label>Return URL<input id="charge-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+            </div>
+            <pre id="charge-instrument-info" style="margin-bottom:0.5rem;font-size:0.78rem;">No instrument prefilled — complete a payment flow above, or enter a card token manually.</pre>
+            <div class="fields" id="charge-token-fields">
+                <label>Card Token<input id="charge-card-token" type="text" placeholder="card token from cards.createToken()" /></label>
+            </div>
+            <button type="button" onclick="runCharge()">Run</button>
+            <pre id="payment-charge-output">—</pre>
         </section>
 
     </main>
@@ -631,6 +621,16 @@
                 });
         }
 
+        // Instrument prefilled by Google Pay / Apple Pay / Card Pay flows
+        let _pendingInstrument = null;
+
+        function prefillCharge(paymentId, instrument) {
+            _pendingInstrument = instrument;
+            if (paymentId) document.getElementById('charge-payment-id').value = paymentId;
+            document.getElementById('charge-instrument-info').textContent = JSON.stringify(instrument, null, 2);
+            document.getElementById('charge-token-fields').style.display = 'none';
+        }
+
         // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
         function runCreatePayment() {
             const goid = document.getElementById('create-goid').value.trim();
@@ -656,17 +656,14 @@
         // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
         function runCharge() {
             const paymentId = document.getElementById('charge-payment-id').value.trim();
-            const card_token = document.getElementById('charge-card-token').value.trim();
             const return_url = document.getElementById('charge-return-url').value.trim();
+            const instrument = _pendingInstrument ?? {
+                payment_instrument: 'PAYMENT_CARD',
+                input: { input_type: 'CARD_TOKEN', card_token: document.getElementById('charge-card-token').value.trim() },
+            };
 
             run('payment-charge-output', () =>
-                sdk.payments.charge(paymentId, {
-                    payment_instrument: {
-                        payment_instrument: 'PAYMENT_CARD',
-                        input: { input_type: 'CARD_TOKEN', card_token },
-                    },
-                    return_url,
-                }),
+                sdk.payments.charge(paymentId, { payment_instrument: instrument, return_url }),
                 (result) => show3dsPrompt(document.getElementById('payment-charge-output'), result.action?.redirect_url),
             );
         }
@@ -706,7 +703,6 @@
         }
 
         async function googlePayOpenSheet() {
-            const return_url = document.getElementById('googlepay-return-url').value.trim();
             const pre = document.getElementById('googlepay-output');
             if (!_googlePayInfo || !_googlePaymentId) return;
 
@@ -714,35 +710,28 @@
 
             let paymentData;
             try {
-                const paymentDataRequest = _googlePayInfo.paymentDataRequest;
                 pre.textContent += `\n\nOpening Google Pay sheet…`;
-                paymentData = await paymentsClient.loadPaymentData(paymentDataRequest);
+                paymentData = await paymentsClient.loadPaymentData(_googlePayInfo.paymentDataRequest);
             } catch (err) {
                 pre.textContent += `\n\nGoogle Pay sheet closed.\n${err?.statusCode === 'CANCELED' ? 'User cancelled.' : String(err?.message ?? err)}`;
                 return;
             }
 
-            pre.textContent += '\n\nStep 3: Charging payment…';
-            try {
-                // tokenizationData.token is a JSON string: { protocolVersion, signature, signedMessage, ... }
-                const tokenData = JSON.parse(paymentData.paymentMethodData.tokenizationData.token);
-                const result = await sdk.payments.charge(_googlePaymentId, {
-                    payment_instrument: {
-                        payment_instrument: 'PAYMENT_CARD',
-                        input: {
-                            input_type: 'GOOGLE_PAY',
-                            protocolVersion: tokenData.protocolVersion,
-                            signature: tokenData.signature,
-                            signedMessage: tokenData.signedMessage,
-                        },
+            // tokenizationData.token is a JSON string: { protocolVersion, signature, signedMessage, ... }
+            const tokenData = JSON.parse(paymentData.paymentMethodData.tokenizationData.token);
+            prefillCharge(
+                _googlePaymentId,
+                {
+                    payment_instrument: 'PAYMENT_CARD',
+                    input: {
+                        input_type: 'GOOGLE_PAY',
+                        protocolVersion: tokenData.protocolVersion,
+                        signature: tokenData.signature,
+                        signedMessage: tokenData.signedMessage,
                     },
-                    return_url,
-                });
-                pre.textContent += `\n\nStep 3 done:\n${JSON.stringify(result, null, 2)}`;
-                show3dsPrompt(pre, result.action?.redirect_url);
-            } catch (err) {
-                pre.textContent += `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
-            }
+                },
+            );
+            pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
         }
 
         // Holds the config fetched in step 1, consumed in step 2
@@ -848,7 +837,6 @@
         }
 
         async function applePayPaymentRequestFlow() {
-            const return_url = document.getElementById('applepay-return-url').value.trim();
             const pre = document.getElementById('applepay-output');
             if (!_applePayInfo || !_applePaymentId) return;
 
@@ -865,73 +853,43 @@
                 return;
             }
 
-            pre.textContent += '\n\nStep 3: Charging payment…';
-            try {
-                const { data, signature, version, header } = paymentResponse.details.token.paymentData;
-                const result = await sdk.payments.charge(_applePaymentId, {
-                    payment_instrument: {
-                        payment_instrument: 'PAYMENT_CARD',
-                        input: { input_type: 'APPLE_PAY', data, signature, version, header },
-                    },
-                    return_url,
-                });
-                await paymentResponse.complete('success');
-                pre.textContent += `\n\nStep 3 done:\n${JSON.stringify(result, null, 2)}`;
-                show3dsPrompt(pre, result.action?.redirect_url);
-            } catch (err) {
-                await paymentResponse.complete('fail').catch(() => {});
-                pre.textContent += `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
-            }
+            const { data, signature, version, header } = paymentResponse.details.token.paymentData;
+            await paymentResponse.complete('success');
+            prefillCharge(
+                _applePaymentId,
+                {
+                    payment_instrument: 'PAYMENT_CARD',
+                    input: { input_type: 'APPLE_PAY', data, signature, version, header },
+                },
+            );
+            pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
         }
 
         function applePayBeginSession(SessionClass = window.ApplePaySession) {
-            const return_url = document.getElementById('applepay-return-url').value.trim();
             const pre = document.getElementById('applepay-output');
             if (!_applePayInfo || !_applePaymentId) return;
 
             const session = new SessionClass(_applePayInfo.applepayVersion, _applePayInfo.applePayPaymentRequest);
 
-            session.onvalidatemerchant = async () => {
-                const origin = window.location.origin;
-                pre.textContent += `\n\n── Step 2: validateApplePayMerchant ──\nRequest: POST /payments/${_applePaymentId}/apple-pay/validate\nOrigin: ${origin}`;
-                try {
-                    const merchantSession = await sdk.payments.validateApplePayMerchant(
-                        _applePaymentId,
-                        origin,
-                    );
-                    pre.textContent += `\nResponse:\n${JSON.stringify(merchantSession, null, 2)}`;
-                    session.completeMerchantValidation(merchantSession);
-                } catch (err) {
-                    pre.textContent += `\n\n[Step 2 failed] ${err?.message ?? String(err)}`;
-                    session.abort();
-                }
-            };
-
-            session.onpaymentauthorized = async (event) => {
-                pre.textContent += '\n\nStep 3: Charging payment…';
+            session.onpaymentauthorized = (event) => {
                 const { data, signature, version, header } = event.payment.token.paymentData;
-                try {
-                    const result = await sdk.payments.charge(_applePaymentId, {
-                        payment_instrument: {
-                            payment_instrument: 'PAYMENT_CARD',
-                            input: { input_type: 'APPLE_PAY', data, signature, version, header },
-                        },
-                        return_url,
-                    });
-                    session.completePayment(SessionClass.STATUS_SUCCESS);
-                    pre.textContent += `\n\nStep 3 done:\n${JSON.stringify(result, null, 2)}`;
-                    show3dsPrompt(pre, result.action?.redirect_url);
-                } catch (err) {
-                    session.completePayment(SessionClass.STATUS_FAILURE);
-                    pre.textContent += `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
-                }
+                session.completePayment(SessionClass.STATUS_SUCCESS);
+                prefillCharge(
+                    _applePaymentId,
+                    {
+                        payment_instrument: 'PAYMENT_CARD',
+                        input: { input_type: 'APPLE_PAY', data, signature, version, header },
+                    },
+                    'Apple Pay token received — scroll down and click Run to charge.',
+                );
+                pre.textContent += '\n\nApple Pay token received. Charge section prefilled — scroll down to run.';
             };
 
             session.oncancel = () => {
                 pre.textContent += '\n\nApple Pay sheet closed. User cancelled.';
             };
 
-            session.begin();
+            sdk.payments.startApplePaySession(_applePaymentId, session);
         }
 
         // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
@@ -972,40 +930,26 @@
             document.getElementById('cardpay-iframe-container').style.display = 'none';
 
             const paymentId = document.getElementById('cardpay-payment-id').value.trim();
-            const return_url = document.getElementById('cardpay-return-url').value.trim();
 
             pre.textContent += `\n\n── Step 2: received from iframe ──\ncard_token: ${event.data.card_token}`;
 
             // Step 3 — create card token
             pre.textContent += '\n\nStep 3: Creating card token…';
-            let cardToken;
             try {
                 const tokenResult = await sdk.cards.createToken({ payload: event.data.card_token });
                 pre.textContent += `\n\n── Step 3: createToken ──\n${JSON.stringify(tokenResult, null, 2)}`;
-                cardToken = tokenResult.token;
+                prefillCharge(
+                    paymentId,
+                    {
+                        payment_instrument: 'PAYMENT_CARD',
+                        input: { input_type: 'CARD_TOKEN', card_token: tokenResult.token },
+                    },
+                );
+                pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
             } catch (err) {
                 pre.textContent += err instanceof GoPaySDK.GoPayHTTPError
                     ? `\n\n[Step 3 failed — GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`
                     : `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
-                return;
-            }
-
-            // Step 4 — charge
-            pre.textContent += '\n\nStep 4: Charging payment…';
-            try {
-                const result = await sdk.payments.charge(paymentId, {
-                    payment_instrument: {
-                        payment_instrument: 'PAYMENT_CARD',
-                        input: { input_type: 'CARD_TOKEN', card_token: cardToken },
-                    },
-                    return_url,
-                });
-                pre.textContent += `\n\n── Step 4: charge ──\n${JSON.stringify(result, null, 2)}`;
-                show3dsPrompt(pre, result.action?.redirect_url);
-            } catch (err) {
-                pre.textContent += err instanceof GoPaySDK.GoPayHTTPError
-                    ? `\n\n[Step 4 failed — GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`
-                    : `\n\n[Step 4 failed] ${err?.message ?? String(err)}`;
             }
         });
     </script>

@@ -194,7 +194,7 @@ const sdk = new GoPaySDK({
 | `charge(paymentId, params)` | Charge a payment using a payment instrument (`POST /payments/{paymentId}/charge`). |
 | `getGooglePayInfo(paymentId)` | Retrieve Google Pay configuration for a payment. |
 | `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment (`applepayVersion`, `merchantIdentifier`, `applePayPaymentRequest`). |
-| `validateApplePayMerchant(paymentId, origin)` | Validate the Apple Pay merchant session. Must be called from inside `onvalidatemerchant`; pass `window.location.origin` as `origin`. |
+| `startApplePaySession(paymentId, session, origin?)` | Wire merchant validation onto an `ApplePaySession` and call `begin()`. Handles `onvalidatemerchant` automatically; `origin` defaults to `window.location.origin`. |
 | `getQRPaymentInfo(paymentId, format?)` | Retrieve QR code and recipient info (`GET /payments/{paymentId}/qr-payment/info`). |
 
 ### Google Pay
@@ -254,20 +254,7 @@ const session = new ApplePaySession(
   applePayInfo.applePayPaymentRequest,
 );
 
-// Step 1 — Merchant validation (server-to-server trust handshake).
-// The browser fires onvalidatemerchant as soon as begin() is called.
-// GoPay contacts Apple's servers on your behalf using your merchant certificate
-// and returns an opaque merchantSession token that unlocks the payment sheet.
-session.onvalidatemerchant = async (event) => {
-  // event.validationURL is provided by Apple; the SDK forwards it to GoPay.
-  const merchantSession = await sdk.payments.validateApplePayMerchant(
-    payment.id,
-    window.location.origin, // origin of the page showing the Apple Pay button
-  );
-  session.completeMerchantValidation(merchantSession);
-};
-
-// Step 2 — Payment authorisation.
+// Step 1 — Payment authorisation.
 // Fires after the user authenticates with Face ID / Touch ID.
 // event.payment.token.paymentData is an Apple-encrypted blob — pass it to charge().
 session.onpaymentauthorized = async (event) => {
@@ -293,14 +280,15 @@ session.onpaymentauthorized = async (event) => {
   );
 };
 
-// Step 3 — Cancellation.
+// Step 2 — Cancellation.
 // Fires when the user dismisses the sheet without paying.
 session.oncancel = () => {
   // Update your UI to reflect the cancelled state.
 };
 
-// Opens the Apple Pay sheet and triggers the merchant-validation handshake.
-session.begin();
+// Wire merchant validation, then open the Apple Pay sheet.
+// onvalidatemerchant is handled automatically by the SDK.
+sdk.payments.startApplePaySession(payment.id, session);
 ```
 
 ### QR Payment

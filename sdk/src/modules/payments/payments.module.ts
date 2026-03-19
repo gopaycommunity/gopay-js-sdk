@@ -95,16 +95,7 @@ export class PaymentsModule {
         );
     }
 
-    /**
-     * Validate the Apple Pay merchant session.
-     * Pass the `origin` from the document where the Apple Pay button is displayed.
-     *
-     * POST /payments/{payment_id}/apple-pay/validate
-     *
-     * @param paymentId - Payment session ID
-     * @param origin    - Origin of the page displaying the Apple Pay button (e.g. "https://shop.example.com")
-     */
-    async validateApplePayMerchant(
+    private async validateApplePayMerchant(
         paymentId: string,
         origin: string,
     ): Promise<ValidateMerchantResponse> {
@@ -113,6 +104,46 @@ export class PaymentsModule {
             undefined,
             { headers: { Origin: origin } },
         );
+    }
+
+    /**
+     * Wire merchant validation onto an `ApplePaySession` and begin it.
+     *
+     * Handles the `onvalidatemerchant` callback automatically:
+     * calls `validateApplePayMerchant`, passes the result to
+     * `session.completeMerchantValidation`, and aborts the session on failure.
+     *
+     * The caller is still responsible for creating the session (must happen
+     * synchronously from a user-gesture handler) and for handling
+     * `onpaymentauthorized` and `oncancel`.
+     *
+     * @param paymentId - Payment session ID
+     * @param session   - `ApplePaySession` instance created by the caller
+     * @param origin    - Origin of the page; defaults to `window.location.origin`
+     */
+    startApplePaySession(
+        paymentId: string,
+        session: {
+            onvalidatemerchant: ((event: unknown) => void) | null;
+            completeMerchantValidation(merchantSession: unknown): void;
+            abort(): void;
+            begin(): void;
+        },
+        origin: string = globalThis.location?.origin ?? '',
+    ): void {
+        session.onvalidatemerchant = async () => {
+            try {
+                const merchantSession = await this.validateApplePayMerchant(
+                    paymentId,
+                    origin,
+                );
+                session.completeMerchantValidation(merchantSession);
+            } catch (err) {
+                session.abort();
+                throw err;
+            }
+        };
+        session.begin();
     }
 
     /**

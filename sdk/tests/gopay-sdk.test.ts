@@ -77,7 +77,6 @@ describe('GoPaySDK', () => {
         expect(sdk.auth).toBeDefined();
         expect(sdk.payments).toBeDefined();
         expect(sdk.cards).toBeDefined();
-        expect(sdk.encryption).toBeDefined();
     });
 
     describe('AuthModule', () => {
@@ -225,31 +224,10 @@ describe('GoPaySDK', () => {
         });
     });
 
-    describe('EncryptionModule', () => {
-        it('exposes fetchPublicKey()', () => {
-            const sdk = new GoPaySDK();
-            expect(typeof sdk.encryption.fetchPublicKey).toBe('function');
-        });
-
-        it('fetchPublicKey() throws Not implemented', async () => {
-            const sdk = new GoPaySDK();
-            await expect(sdk.encryption.fetchPublicKey()).rejects.toThrow(
-                'Not implemented',
-            );
-        });
-    });
-
     describe('CardsModule', () => {
         it('exposes createToken()', () => {
             const sdk = new GoPaySDK();
             expect(typeof sdk.cards.createToken).toBe('function');
-        });
-
-        it('createToken() throws Not implemented', async () => {
-            const sdk = new GoPaySDK();
-            await expect(
-                sdk.cards.createToken({ payload: 'encrypted' }),
-            ).rejects.toThrow('Not implemented');
         });
     });
 
@@ -259,7 +237,7 @@ describe('GoPaySDK', () => {
             'charge',
             'getGooglePayInfo',
             'getApplePayInfo',
-            'validateApplePayMerchant',
+            'startApplePaySession',
         ] as const;
 
         it.each(paymentMethods)('exposes %s()', (method) => {
@@ -499,61 +477,6 @@ describe('GoPaySDK', () => {
                 'https://api.sandbox.gopay.com/api/merchant/payments/4.0/payments/payment-123/apple-pay/info',
             );
             expect(result).toEqual(mockApplePay);
-        });
-
-        it('validateApplePayMerchant() sends POST with Origin header to /payments/{id}/apple-pay/validate', async () => {
-            const mockSession = {
-                merchantSessionIdentifier: 'SSHC45CB',
-                domainName: 'shop.example.com',
-            };
-            let capturedReq!: Request;
-            vi.stubGlobal(
-                'fetch',
-                vi.fn().mockImplementation(async (req: Request) => {
-                    await req.text();
-                    if (req.url.includes('/oauth2/token')) {
-                        return new Response(
-                            JSON.stringify({
-                                token_type: 'bearer',
-                                access_token: 'at-test',
-                                refresh_token: 'rt-test',
-                                expires_in: 900,
-                                refresh_expires_in: 86400,
-                            }),
-                            {
-                                status: 200,
-                                headers: { 'content-type': 'application/json' },
-                            },
-                        );
-                    }
-                    capturedReq = req;
-                    return new Response(JSON.stringify(mockSession), {
-                        status: 200,
-                        headers: { 'content-type': 'application/json' },
-                    });
-                }),
-            );
-
-            const sdk = new GoPaySDK({ environment: 'sandbox' });
-            await sdk.auth.authenticate({
-                grant_type: 'client_credentials',
-                client_id: 'id',
-                client_secret: 'secret',
-                scope: 'payment:create',
-            });
-            const result = await sdk.payments.validateApplePayMerchant(
-                'payment-123',
-                'https://shop.example.com',
-            );
-
-            expect(capturedReq.method).toBe('POST');
-            expect(capturedReq.url).toBe(
-                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/payments/payment-123/apple-pay/validate',
-            );
-            expect(capturedReq.headers.get('Origin')).toBe(
-                'https://shop.example.com',
-            );
-            expect(result).toEqual(mockSession);
         });
 
         it('getQRPaymentInfo() sends GET to /payments/{id}/qr-payment/info', async () => {

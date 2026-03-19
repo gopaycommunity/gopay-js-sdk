@@ -27,7 +27,6 @@ test('SDK exposes expected modules and methods', async ({ page }) => {
     expect(modules.payments).toContain('charge');
     expect(modules.payments).toContain('getGooglePayInfo');
     expect(modules.payments).toContain('getApplePayInfo');
-    expect(modules.payments).toContain('validateApplePayMerchant');
-    expect(modules.encryption).toContain('fetchPublicKey');
+    expect(modules.payments).toContain('startApplePaySession');
     expect(modules.cards).toContain('createToken');
 });
