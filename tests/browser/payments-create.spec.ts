@@ -8,22 +8,18 @@ const PAYMENT_KEYS = ['id', 'state', 'amount'] as const satisfies ReadonlyArray<
     keyof PaymentCreateResponse
 >;
 
-test('auth.issueClientToken() + auth.setClientToken() allows authenticated API calls without client credentials in browser', async ({
+test('payments.create() returns a payment with all expected keys', async ({
     page,
 }) => {
-    // Proxy all cross-origin requests through Playwright's Node.js fetch to
-    // avoid CORS restrictions in the browser (mock server has no CORS headers).
     await page.route(
         (url) => url.hostname !== 'localhost',
         async (route) => route.fulfill({ response: await route.fetch() }),
     );
 
     await page.goto('/');
-
-    // Confirm the SDK loaded before interacting
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
 
-    // Authenticate the server SDK first (credentials are pre-filled by serve.js)
+    // Authenticate first
     await page.click('[onclick="runAuthenticate()"]');
     const authOutput = page.locator('#auth-output');
     await expect(authOutput).not.toHaveText('—', { timeout: 15_000 });
@@ -33,33 +29,19 @@ test('auth.issueClientToken() + auth.setClientToken() allows authenticated API c
         'authenticate() should not have returned an error',
     ).not.toMatch(/^\[/);
 
-    // Issue a client token using the server SDK, then run the browser flow
-    await page.click('[onclick="runIssueClientToken()"]');
-    const issueOutput = page.locator('#issue-client-token-output');
-    await expect(issueOutput).not.toHaveText('—', { timeout: 15_000 });
-    await expect(issueOutput).not.toHaveText('Running…', { timeout: 15_000 });
-    expect(
-        (await issueOutput.textContent()) ?? '',
-        'issueClientToken() should not have returned an error',
-    ).not.toMatch(/^\[/);
-
-    await page.click('[onclick="runSetClientTokenFlow()"]');
-
-    const output = page.locator('#set-client-token-output');
+    // Create payment
+    await page.click('[onclick="runCreatePayment()"]');
+    const output = page.locator('#payment-create-output');
     await expect(output).not.toHaveText('—', { timeout: 15_000 });
     await expect(output).not.toHaveText('Running…', { timeout: 15_000 });
 
     const text = (await output.textContent()) ?? '';
-
-    // The run() helper formats errors as "[ClassName] message".
-    // Assert it is not an error before attempting to parse JSON.
     expect(
         text,
-        'setClientToken() flow should not have returned an error',
+        'payments.create() should not have returned an error',
     ).not.toMatch(/^\[/);
 
     const json = JSON.parse(text);
-
     for (const key of PAYMENT_KEYS) {
         expect(json, `key "${key}" should be present`).toHaveProperty(key);
     }

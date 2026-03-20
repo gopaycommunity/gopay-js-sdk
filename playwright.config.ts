@@ -8,13 +8,15 @@ export default defineConfig({
         ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ],
     use: {
-        baseURL: 'http://localhost:3000',
+        baseURL: 'https://localhost:3000',
+        ignoreHTTPSErrors: true,
     },
     webServer: {
-        command: 'node example/serve.js',
-        url: 'http://localhost:3000',
+        command: 'yarn workspace gopay-js-sdk-example run dev',
+        url: 'https://localhost:3000',
+        ignoreHTTPSErrors: true,
         reuseExistingServer: !process.env.CI,
-        timeout: 30_000,
+        timeout: 60_000,
     },
     projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 });

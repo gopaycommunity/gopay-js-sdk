@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-test('IIFE bundle loads GoPaySDK on window', async ({ page }) => {
-    await page.goto('/example/index.html');
+test('SDK loads and initialises GoPaySDK', async ({ page }) => {
+    await page.goto('/');
 
     const badge = page.locator('#sdk-badge');
     await expect(badge).toHaveText('LOADED');
@@ -9,7 +9,7 @@ test('IIFE bundle loads GoPaySDK on window', async ({ page }) => {
 });
 
 test('SDK exposes expected modules and methods', async ({ page }) => {
-    await page.goto('/example/index.html');
+    await page.goto('/');
 
     const raw = await page.locator('#sdk-info').textContent();
     const info = JSON.parse(raw ?? '{}') as {

@@ -3,14 +3,15 @@
     "private": true,
     "packageManager": "yarn@4.13.0",
     "workspaces": [
-        "sdk"
+        "sdk",
+        "example"
     ],
     "scripts": {
         "lint": "biome check .",
         "ci": "yarn biome ci . && yarn workspace gopay-js-sdk run typecheck",
         "prepare": "husky",
-        "test:browser": "yarn workspace gopay-js-sdk run build && playwright test",
-        "example": "yarn workspace gopay-js-sdk run build && node example/serve.js"
+        "test:browser": "playwright test",
+        "example": "yarn workspace gopay-js-sdk run build && yarn workspace gopay-js-sdk-example run dev"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.8",

@@ -25,7 +25,7 @@ test('auth.authenticate() returns a token response with all expected keys', asyn
         async (route) => route.fulfill({ response: await route.fetch() }),
     );
 
-    await page.goto('/example/index.html');
+    await page.goto('/');
 
     // Confirm the SDK loaded before interacting
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');

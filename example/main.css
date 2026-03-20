@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+pre {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 6px;
+    padding: 1rem;
+    font-size: 0.8rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-top: 0.75rem;
+    min-height: 2.5rem;
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.ok {
+    background: #d4edda;
+    color: #155724;
+}
+
+.err {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+code {
+    font-family: "SFMono-Regular", Menlo, monospace;
+    font-size: 0.85rem;
+    background: #dcdce8;
+    color: #2c2c3a;
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+p.note {
+    font-size: 0.8rem;
+    color: #5a5a72;
+    margin-top: 0.5rem;
+}
+
+p.desc {
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 0.75rem;
+}
+
+.fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: #5a5a72;
+    flex: 1;
+    min-width: 180px;
+}
+
+.fields input,
+.fields select {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #c0c0cc;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: #eaeaf0;
+    color: #2c2c3a;
+}
+
+button {
+    display: inline-block;
+    padding: 0.5rem 1.25rem;
+    border: none;
+    border-radius: 5px;
+    background: #1a1a2e;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.875rem;
+    margin: 0.25rem 0.25rem 0.25rem 0;
+}
+
+button:hover {
+    background: #2e2e5e;
+}

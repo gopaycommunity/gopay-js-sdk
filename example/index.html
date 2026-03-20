@@ -5,44 +5,40 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GoPay JS SDK — Example</title>
-    <link rel="stylesheet" href="example/example.css" />
     <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
-    <script src="example/apple-pay-polyfill.js"></script>
+    <script src="./apple-pay-polyfill.js"></script>
 </head>
 
-<body>
+<body class="bg-gray-600 font-sans text-[#2c2c3a]">
 
-    <header>
-        <img src="https://static1.gopaycdn.com/images/gopay-logo/default.svg" alt="GoPay" />
-        <div class="header-text">
-            <h1>JS SDK — Developer Example</h1>
-            <p>Demonstrates the SDK API shape. Authenticate first, then use <strong>payments.create()</strong> to create a payment session.</p>
+    <header class="bg-gray-300 px-8 py-5 flex items-center gap-5">
+        <img src="https://static1.gopaycdn.com/images/gopay-logo/default.svg" alt="GoPay" class="h-7 w-auto shrink-0" />
+        <div>
+            <h1 class="text-base font-semibold text-black">JS SDK — Developer Example</h1>
+            <p class="text-[0.82rem] text-[#9999bb] mt-0.5">Demonstrates the SDK API shape. Authenticate first, then use <strong>payments.create()</strong> to create a payment session.</p>
         </div>
     </header>
 
-    <main>
+    <main class="max-w-3xl mx-auto my-8 px-4 space-y-5">
 
         <!-- SDK status -->
-        <section>
-            <h2>SDK Status</h2>
-            <div id="status">
+        <section class="bg-gray-400 border border-[#d0d0dc] rounded-lg p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#1a1a2e] mb-4">SDK Status</h2>
+            <div class="flex items-center gap-2 mb-2">
                 <span class="badge" id="sdk-badge">checking…</span>
                 <span class="badge" id="auth-badge" style="background:#e2e3e5;color:#383d41;">not authenticated</span>
             </div>
             <pre id="sdk-info">Loading…</pre>
             <p class="note">
-                Run <code>yarn example</code> from the repo root — it builds the SDK and starts
-                the dev server automatically. Credentials and base URL are read from
-                <code>sdk/.env.e2e</code> (<code>GP_GW_JS_SDK_CLIENT_ID</code>,
-                <code>GP_GW_JS_SDK_CLIENT_SECRET</code>, <code>GP_GW_JS_SDK_BASE_URL</code>)
-                and fall back to <code>process.env</code> in CI.
-                In production use <code>https://gopaycdn.com/js-sdk/gopay-sdk.min.js</code>.
+                Run  <code>yarn example</code> from the repo root.
+                Credentials and base URL can be supplied for testing in <code>sdk/.env.e2e</code>
+                (<code>GP_GW_JS_SDK_CLIENT_ID</code>, <code>GP_GW_JS_SDK_CLIENT_SECRET</code>, <code>GP_GW_JS_SDK_BASE_URL</code>).
             </p>
         </section>
 
         <!-- Authentication -->
-        <section>
-            <h2>auth.authenticate() <span style="font-size:0.75rem;color:#c00;font-weight:normal;">(server-only — never call from a browser)</span></h2>
+        <section class="bg-gray-400 border border-[#d0d0dc] rounded-lg p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#1a1a2e] mb-4">auth.authenticate() <span class="text-xs text-red-700 font-normal">(server-only — never call from a browser)</span></h2>
             <p class="desc">POST /oauth2/token — obtain an access token using client credentials. <strong>Keep <code>client_id</code> and <code>client_secret</code> on the server.</strong></p>
             <div class="fields">
                 <label>Client ID<input id="auth-client-id" type="text" placeholder="your-client-id" /></label>
@@ -57,13 +53,13 @@
                 </label>
             </div>
             <button type="button" onclick="runAuthenticate()">Run</button>
-            <button type="button" onclick="runLogout()" style="background:#721c24;">Logout</button>
+            <button type="button" onclick="runLogout()" class="!bg-[#721c24]">Logout</button>
             <pre id="auth-output">—</pre>
         </section>
 
         <!-- Issue client token (server side) -->
-        <section>
-            <h2>auth.issueClientToken() — server side</h2>
+        <section class="bg-gray-400 border border-[#d0d0dc] rounded-lg p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#1a1a2e] mb-4">auth.issueClientToken() — server side</h2>
             <p class="desc">Obtain a fresh token pair for a browser client without affecting the server session. Authenticate first, then issue a token with a narrower scope if needed. The result is auto-filled into the browser flow below.</p>
             <div class="fields">
                 <label>Scope (⌘/Ctrl+click to select multiple)
@@ -81,8 +77,8 @@
         </section>
 
         <!-- Browser auth flow -->
-        <section>
-            <h2>auth.setClientToken() — browser flow</h2>
+        <section class="bg-gray-400 border border-[#d0d0dc] rounded-lg p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#1a1a2e] mb-4">auth.setClientToken() — browser flow</h2>
             <p class="desc">Simulates the browser client pattern: a fresh SDK instance receives both tokens from the server (no credentials in the browser). The <code>client_id</code> is extracted automatically from the JWT.</p>
             <div class="fields">
                 <label>GoID<input id="set-client-token-goid" type="text" value="8123456789" /></label>
@@ -95,8 +91,8 @@
         </section>
 
         <!-- Create payment -->
-        <section>
-            <h2>payments.create()</h2>
+        <section class="bg-gray-400 border border-[#d0d0dc] rounded-lg p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#1a1a2e] mb-4">payments.create()</h2>
             <p class="desc">POST /eshops/{goid}/payments — create a payment session. Authenticate first to obtain a token.</p>
             <div class="fields">
                 <label>GoID<input id="create-goid" type="text" value="8123456789" /></label>
@@ -113,8 +109,8 @@
         </section>
 
         <!-- Google Pay -->
-        <section>
-            <h2>Google Pay</h2>
+        <section class="bg-gray-400 border border-[#d0d0dc] rounded-lg p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#1a1a2e] mb-4">Google Pay</h2>
             <p class="desc">
                 Step 1: <code>payments.getGooglePayInfo()</code> — fetch config, render Google Pay button.<br>
                 Step 2: Click the Google Pay button — user selects a card. Token is prefilled into <em>payments.charge()</em> below.
@@ -123,14 +119,14 @@
                 <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="pay_300000001" /></label>
             </div>
             <button type="button" onclick="googlePayLoadInfo()">Load Google Pay Config</button>
-            <div id="googlepay-button-container" style="margin:0.5rem 0;"></div>
+            <div id="googlepay-button-container" class="my-2"></div>
             <pre id="googlepay-output">—</pre>
             <p class="note">Requires a payment created with Google Pay as an allowed instrument. In sandbox the Google Pay sheet runs in <code>TEST</code> mode — no real card data is used.</p>
         </section>
 
         <!-- Apple Pay -->
-        <section>
-            <h2>Apple Pay</h2>
+        <section class="bg-gray-400 border border-[#d0d0dc] rounded-lg p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#1a1a2e] mb-4">Apple Pay</h2>
             <p class="desc">
                 Step 1: <code>payments.getApplePayInfo()</code> — fetch config, render Apple Pay button.<br>
                 Step 2: Click the Apple Pay button — merchant validation runs automatically via <code>payments.startApplePaySession()</code>. Token is prefilled into <em>payments.charge()</em> below.
@@ -139,7 +135,7 @@
                 <label>Payment ID<input id="applepay-payment-id" type="text" placeholder="pay_300000001" /></label>
             </div>
             <button type="button" onclick="applePayLoadInfo()">Load Apple Pay Config</button>
-            <div id="applepay-button-container" style="margin:0.5rem 0;"></div>
+            <div id="applepay-button-container" class="my-2"></div>
             <pre id="applepay-output">—</pre>
             <p class="note">Requires a payment created with Apple Pay as an allowed instrument.
                 <strong>ApplePaySession</strong>: native on Safari; simulated by a dev polyfill in other browsers.
@@ -147,8 +143,8 @@
         </section>
 
         <!-- QR Payment info -->
-        <section>
-            <h2>payments.getQRPaymentInfo()</h2>
+        <section class="bg-gray-400 border border-[#d0d0dc] rounded-lg p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#1a1a2e] mb-4">payments.getQRPaymentInfo()</h2>
             <p class="desc">GET /payments/{id}/qr-payment/info — fetch QR code (base64) and recipient info.</p>
             <div class="fields">
                 <label>Payment ID<input id="qr-payment-id" type="text" placeholder="pay_300000001" /></label>
@@ -165,8 +161,8 @@
         </section>
 
         <!-- Card Pay -->
-        <section>
-            <h2>Card Pay</h2>
+        <section class="bg-gray-400 border border-[#d0d0dc] rounded-lg p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#1a1a2e] mb-4">Card Pay</h2>
             <p class="desc">
                 Step 1: <code>payments.create()</code> fills in the Payment ID below.<br>
                 Step 2: Click <em>Open Card Payment</em> — <code>cards.mountCardForm()</code> mounts the iframe, awaits the user, and tokenizes automatically. Token is prefilled into <em>payments.charge()</em> below.
@@ -175,34 +171,31 @@
                 <label>Payment ID<input id="cardpay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
             </div>
             <button type="button" onclick="cardPayOpenIframe()">Open Card Payment</button>
-            <div id="cardpay-iframe-container" style="display:none;margin:0.75rem 0;border:1px solid #c0c0cc;border-radius:6px;overflow:hidden;height:60px;"></div>
+            <div id="cardpay-iframe-container" class="hidden my-3 border border-[#c0c0cc] rounded-md overflow-hidden h-15"></div>
             <pre id="cardpay-output">—</pre>
         </section>
 
         <!-- Charge payment -->
-        <section>
-            <h2>payments.charge()</h2>
+        <section class="bg-gray-400 border border-[#d0d0dc] rounded-lg p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#1a1a2e] mb-4">payments.charge()</h2>
             <p class="desc">POST /payments/{id}/charge — submit the payment instrument token obtained from Google Pay, Apple Pay, or Card Pay above.</p>
             <div class="fields">
                 <label>Payment ID<input id="charge-payment-id" type="text" placeholder="pay_300000001" /></label>
                 <label>Return URL<input id="charge-return-url" type="text" value="https://yourshop.example.com/return" /></label>
             </div>
-            <pre id="charge-instrument-info" style="margin-bottom:0.5rem;font-size:0.78rem;">No instrument prefilled — complete a payment flow above, or enter a card token manually.</pre>
+            <pre id="charge-instrument-info" class="mb-2 text-[0.78rem]">No instrument prefilled — complete a payment flow above, or enter a card token manually.</pre>
             <div class="fields" id="charge-token-fields">
                 <label>Card Token<input id="charge-card-token" type="text" placeholder="card token from cards.mountCardForm()" /></label>
             </div>
             <button type="button" onclick="runCharge()">Run</button>
+            <button type="button" onclick="clearCharge()" class="!bg-[#5a5a72]">Clear</button>
             <pre id="payment-charge-output">—</pre>
         </section>
 
     </main>
 
-    <!--
-  PRODUCTION:  <script src="https://gopaycdn.com/js-sdk/gopay-sdk.min.js"></script>
-  DEVELOPMENT: load the local build below
--->
-    <script src="../sdk/dist/gopay-sdk.min.js"></script>
-    <script src="example/example.js"></script>
+    <script type="module" src="./main.js"></script>
+
 </body>
 
 </html>

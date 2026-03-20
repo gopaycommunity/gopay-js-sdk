@@ -1,3 +1,6 @@
+import { GoPayHTTPError, GoPaySDK, GoPaySDKError } from 'gopay-js-sdk';
+import './main.css';
+
 // -----------------------------------------------------------------------
 // Initialise
 // -----------------------------------------------------------------------
@@ -6,40 +9,35 @@ const sdkInfo = document.getElementById('sdk-info');
 
 let sdk;
 
-// Pre-populate auth fields from injected env (serve.js) — fall back to empty
-const _env = window.__ENV__ || {};
-if (_env.clientId)
-    document.getElementById('auth-client-id').value = _env.clientId;
-if (_env.clientSecret)
-    document.getElementById('auth-client-secret').value = _env.clientSecret;
-if (_env.goid) {
-    document.getElementById('create-goid').value = _env.goid;
-    document.getElementById('set-client-token-goid').value = _env.goid;
+// Pre-populate auth fields from Vite env (sdk/.env.e2e) — fall back to empty
+const clientId = import.meta.env.GP_GW_JS_SDK_CLIENT_ID;
+const clientSecret = import.meta.env.GP_GW_JS_SDK_CLIENT_SECRET;
+const goid = import.meta.env.GP_GW_JS_SDK_GOID;
+const hasProxy = Boolean(import.meta.env.GP_GW_JS_SDK_BASE_URL);
+
+if (clientId) document.getElementById('auth-client-id').value = clientId;
+if (clientSecret)
+    document.getElementById('auth-client-secret').value = clientSecret;
+if (goid) {
+    document.getElementById('create-goid').value = goid;
+    document.getElementById('set-client-token-goid').value = goid;
 }
 
-const sdkConfig = _env.baseUrl
-    ? { baseUrl: _env.baseUrl }
+// When a base URL is configured, route SDK calls through the Vite proxy (/proxy → API).
+const sdkConfig = hasProxy
+    ? { baseUrl: `${window.location.origin}/proxy` }
     : { environment: 'sandbox' };
 
-if (
-    typeof GoPaySDK === 'undefined' ||
-    typeof GoPaySDK.GoPaySDK === 'undefined'
-) {
-    badge.textContent = 'NOT LOADED';
-    badge.className = 'badge err';
-    sdkInfo.textContent =
-        'GoPaySDK not found on window.\n\n' +
-        'Build the SDK first:\n  cd sdk && yarn build\n\n' +
-        'Then serve via:  node example/serve.js\n' +
-        '  (or open this file directly, but env values will not be injected)';
-} else {
-    sdk = new GoPaySDK.GoPaySDK(sdkConfig);
+try {
+    sdk = new GoPaySDK(sdkConfig);
     badge.textContent = 'LOADED';
     badge.className = 'badge ok';
     sdkInfo.textContent = JSON.stringify(
         {
             class: sdk.constructor.name,
-            baseUrl: _env.baseUrl ?? '(sandbox default)',
+            baseUrl: hasProxy
+                ? `${window.location.origin}/proxy`
+                : '(sandbox default)',
             modules: ['auth', 'payments', 'cards'].map((m) => ({
                 name: m,
                 methods: Object.getOwnPropertyNames(
@@ -50,6 +48,10 @@ if (
         null,
         2,
     );
+} catch (err) {
+    badge.textContent = 'NOT LOADED';
+    badge.className = 'badge err';
+    sdkInfo.textContent = `Failed to initialise GoPaySDK: ${err?.message ?? String(err)}`;
 }
 
 // -----------------------------------------------------------------------
@@ -118,9 +120,9 @@ async function run(outputId, fn, onSuccess) {
         pre.textContent = JSON.stringify(result, null, 2);
         if (onSuccess) onSuccess(result);
     } catch (err) {
-        if (err instanceof GoPaySDK.GoPayHTTPError) {
+        if (err instanceof GoPayHTTPError) {
             pre.textContent = `[GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`;
-        } else if (err instanceof GoPaySDK.GoPaySDKError) {
+        } else if (err instanceof GoPaySDKError) {
             pre.textContent = `[GoPaySDKError] ${err.errorCode ? `(${err.errorCode}) ` : ''}${err.message}`;
         } else if (err instanceof Error) {
             pre.textContent = `[${err.constructor.name}] ${err.message}`;
@@ -150,8 +152,7 @@ function getSelectedScopes() {
     );
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-function runAuthenticate() {
+window.runAuthenticate = function runAuthenticate() {
     const client_id = document.getElementById('auth-client-id').value.trim();
     const client_secret = document
         .getElementById('auth-client-secret')
@@ -169,14 +170,13 @@ function runAuthenticate() {
             }),
         () => updateAuthBadge(),
     );
-}
+};
 
-// biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-function runLogout() {
+window.runLogout = function runLogout() {
     sdk.auth.logout();
     updateAuthBadge();
     document.getElementById('auth-output').textContent = 'Logged out.';
-}
+};
 
 function getSelectedBrowserScopes() {
     const el = document.getElementById('issue-client-token-scope');
@@ -190,8 +190,7 @@ function getSelectedBrowserScopes() {
 // Stores the full ClientToken (including expires_in) from the last issueClientToken() call.
 let _lastClientToken = null;
 
-// biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-function runIssueClientToken() {
+window.runIssueClientToken = function runIssueClientToken() {
     const scope = getSelectedBrowserScopes();
     run('issue-client-token-output', async () => {
         const token = await sdk.auth.issueClientToken(scope || undefined);
@@ -202,10 +201,9 @@ function runIssueClientToken() {
             token.refresh_token;
         return token;
     });
-}
+};
 
-// biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-function runSetClientTokenFlow() {
+window.runSetClientTokenFlow = function runSetClientTokenFlow() {
     const goid = document.getElementById('set-client-token-goid').value.trim();
     const accessToken = document
         .getElementById('set-client-token-access')
@@ -215,7 +213,7 @@ function runSetClientTokenFlow() {
         .value.trim();
 
     run('set-client-token-output', async () => {
-        const browserSdk = new GoPaySDK.GoPaySDK(sdkConfig);
+        const browserSdk = new GoPaySDK(sdkConfig);
         // Use full ClientToken if available (preserves expires_in from server response),
         // otherwise fall back to defaults so manually pasted tokens still work.
         const clientToken =
@@ -241,21 +239,21 @@ function runSetClientTokenFlow() {
             },
         });
     });
-}
+};
 
 function prefillPaymentId(result) {
     const id = result?.id;
     if (!id) return;
-    [
+    for (const fieldId of [
         'charge-payment-id',
         'googlepay-payment-id',
         'applepay-payment-id',
         'qr-payment-id',
         'cardpay-payment-id',
-    ].forEach((fieldId) => {
+    ]) {
         const el = document.getElementById(fieldId);
         if (el) el.value = id;
-    });
+    }
     _pendingInstrument = null;
     document.getElementById('charge-instrument-info').textContent = '';
     document.getElementById('charge-token-fields').style.display = '';
@@ -273,8 +271,7 @@ function prefillCharge(paymentId, instrument) {
     document.getElementById('charge-token-fields').style.display = 'none';
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-function runCreatePayment() {
+window.runCreatePayment = function runCreatePayment() {
     const goid = document.getElementById('create-goid').value.trim();
     const amount = parseInt(document.getElementById('create-amount').value, 10);
     const currency =
@@ -302,10 +299,9 @@ function runCreatePayment() {
             }),
         prefillPaymentId,
     );
-}
+};
 
-// biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-function runCharge() {
+window.runCharge = function runCharge() {
     const paymentId = document.getElementById('charge-payment-id').value.trim();
     const return_url = document
         .getElementById('charge-return-url')
@@ -333,14 +329,23 @@ function runCharge() {
                 result.action?.redirect_url,
             ),
     );
-}
+};
+
+window.clearCharge = function clearCharge() {
+    _pendingInstrument = null;
+    document.getElementById('charge-payment-id').value = '';
+    document.getElementById('charge-card-token').value = '';
+    document.getElementById('charge-instrument-info').textContent =
+        'No instrument prefilled — complete a payment flow above, or enter a card token manually.';
+    document.getElementById('charge-token-fields').style.display = '';
+    document.getElementById('payment-charge-output').textContent = '—';
+};
 
 // Holds the config fetched in step 1, consumed in step 2
 let _googlePayInfo = null;
 let _googlePaymentId = null;
 
-// biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-async function googlePayLoadInfo() {
+window.googlePayLoadInfo = async function googlePayLoadInfo() {
     const paymentId = document
         .getElementById('googlepay-payment-id')
         .value.trim();
@@ -367,24 +372,24 @@ async function googlePayLoadInfo() {
     }
 
     // Render the Google Pay button — loadPaymentData must be called directly from its click
-    const paymentsClient = new google.payments.api.PaymentsClient({
+    const paymentsClient = new window.google.payments.api.PaymentsClient({
         environment: _googlePayInfo.environment,
     });
     const btn = paymentsClient.createButton({ onClick: googlePayOpenSheet });
     container.appendChild(btn);
-}
+};
 
 async function googlePayOpenSheet() {
     const pre = document.getElementById('googlepay-output');
     if (!_googlePayInfo || !_googlePaymentId) return;
 
-    const paymentsClient = new google.payments.api.PaymentsClient({
+    const paymentsClient = new window.google.payments.api.PaymentsClient({
         environment: _googlePayInfo.environment,
     });
 
     let paymentData;
     try {
-        pre.textContent += `\n\nOpening Google Pay sheet…`;
+        pre.textContent += '\n\nOpening Google Pay sheet…';
         paymentData = await paymentsClient.loadPaymentData(
             _googlePayInfo.paymentDataRequest,
         );
@@ -413,8 +418,7 @@ async function googlePayOpenSheet() {
 let _applePayInfo = null;
 let _applePaymentId = null;
 
-// biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-async function applePayLoadInfo() {
+window.applePayLoadInfo = async function applePayLoadInfo() {
     const paymentId = document
         .getElementById('applepay-payment-id')
         .value.trim();
@@ -438,6 +442,7 @@ async function applePayLoadInfo() {
     if (window.MockApplePaySession) {
         const btn = document.createElement('button');
         btn.type = 'button';
+        btn.id = 'applepay-mock-btn';
         btn.textContent = ' Pay (Mock — dev only)';
         Object.assign(btn.style, {
             background: '#856404',
@@ -499,7 +504,7 @@ async function applePayLoadInfo() {
         btn.onclick = applePayPaymentRequestFlow;
         container.appendChild(btn);
     }
-}
+};
 
 function buildApplePayPaymentMethod(info) {
     const pr = info.applePayPaymentRequest;
@@ -561,18 +566,14 @@ async function applePayPaymentRequestFlow() {
     const { data, signature, version, header } =
         paymentResponse.details.token.paymentData;
     const returnUrl = document.getElementById('charge-return-url').value.trim();
+    const instrument = {
+        payment_instrument: 'PAYMENT_CARD',
+        input: { input_type: 'APPLE_PAY', data, signature, version, header },
+    };
+    prefillCharge(_applePaymentId, instrument);
     try {
         const charge = await sdk.payments.charge(_applePaymentId, {
-            payment_instrument: {
-                payment_instrument: 'PAYMENT_CARD',
-                input: {
-                    input_type: 'APPLE_PAY',
-                    data,
-                    signature,
-                    version,
-                    header,
-                },
-            },
+            payment_instrument: instrument,
             return_url: returnUrl,
         });
         await paymentResponse.complete('success');
@@ -601,18 +602,20 @@ function applePayBeginSession(SessionClass = window.ApplePaySession) {
         const returnUrl = document
             .getElementById('charge-return-url')
             .value.trim();
+        const instrument = {
+            payment_instrument: 'PAYMENT_CARD',
+            input: {
+                input_type: 'APPLE_PAY',
+                data,
+                signature,
+                version,
+                header,
+            },
+        };
+        prefillCharge(_applePaymentId, instrument);
         try {
             const charge = await sdk.payments.charge(_applePaymentId, {
-                payment_instrument: {
-                    payment_instrument: 'PAYMENT_CARD',
-                    input: {
-                        input_type: 'APPLE_PAY',
-                        data,
-                        signature,
-                        version,
-                        header,
-                    },
-                },
+                payment_instrument: instrument,
                 return_url: returnUrl,
             });
             session.completePayment(SessionClass.STATUS_SUCCESS);
@@ -633,15 +636,13 @@ function applePayBeginSession(SessionClass = window.ApplePaySession) {
     sdk.payments.startApplePaySession(_applePaymentId, session);
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-function runQRPaymentInfo() {
+window.runQRPaymentInfo = function runQRPaymentInfo() {
     const paymentId = document.getElementById('qr-payment-id').value.trim();
     const format = document.getElementById('qr-format').value || undefined;
     run('qr-output', () => sdk.payments.getQRPaymentInfo(paymentId, format));
-}
+};
 
-// biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-async function cardPayOpenIframe() {
+window.cardPayOpenIframe = async function cardPayOpenIframe() {
     const paymentId = document
         .getElementById('cardpay-payment-id')
         .value.trim();
@@ -665,8 +666,8 @@ async function cardPayOpenIframe() {
     } catch (err) {
         container.style.display = 'none';
         pre.textContent +=
-            err instanceof GoPaySDK.GoPayHTTPError
+            err instanceof GoPayHTTPError
                 ? `\n\n[GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`
                 : `\n\n[Error] ${err?.message ?? String(err)}`;
     }
-}
+};

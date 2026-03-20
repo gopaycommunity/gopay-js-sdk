@@ -94,6 +94,7 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
+          - yarn workspace gopay-js-sdk run build
           - yarn test:browser
         artifacts:
           - playwright-report/**
