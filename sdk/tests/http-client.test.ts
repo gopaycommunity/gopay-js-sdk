@@ -665,6 +665,63 @@ describe('HttpClient', () => {
                 GoPayErrorCodes.NETWORK_ERROR,
             );
         });
+
+        it('re-throws non-Error thrown values as-is', async () => {
+            fetchMock.mockRejectedValue('raw-string-error');
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+
+            await expect(client.get('/data')).rejects.toBe('raw-string-error');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // HTTP error — malformed JSON body
+    // -------------------------------------------------------------------------
+
+    describe('HTTP error with malformed JSON body', () => {
+        it('falls back to raw text when content-type is JSON but body is not valid JSON', async () => {
+            fetchMock.mockResolvedValue(
+                new Response('not-valid-json{{{', {
+                    status: 400,
+                    statusText: 'Bad Request',
+                    headers: { 'content-type': 'application/json' },
+                }),
+            );
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+
+            const err = await client.get('/resource').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPayHTTPError);
+            expect((err as GoPayHTTPError).status).toBe(400);
+            expect((err as GoPayHTTPError).body).toBe('not-valid-json{{{');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // debugLoggingEnabled
+    // -------------------------------------------------------------------------
+
+    describe('debugLoggingEnabled', () => {
+        it('logs outgoing request and incoming response when enabled', async () => {
+            const debugSpy = vi
+                .spyOn(console, 'debug')
+                .mockImplementation(() => {});
+
+            const client = new HttpClient({
+                baseUrl: 'https://example.com',
+                debugLoggingEnabled: true,
+            });
+            tokenStore(client).set(storedTokens);
+
+            await client.get('/data');
+
+            expect(debugSpy).toHaveBeenCalledTimes(2);
+            expect(debugSpy.mock.calls[0][0]).toBe('[GoPaySDK] →');
+            expect(debugSpy.mock.calls[1][0]).toBe('[GoPaySDK] ←');
+        });
     });
 
     // -------------------------------------------------------------------------

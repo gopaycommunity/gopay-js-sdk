@@ -408,12 +408,9 @@ describe('PaymentsModule', () => {
                 payment_instrument: 'PAYMENT_CARD',
                 input: {
                     input_type: 'GOOGLE_PAY',
-                    google_pay_token: JSON.stringify({
-                        protocolVersion: 'ECv2',
-                        signature: 'sig==',
-                        signedMessage: '{"encryptedMessage":"enc=="}',
-                    }),
-                    challenge_preferrence: 'AUTO',
+                    protocolVersion: 'ECv2',
+                    signature: 'sig==',
+                    signedMessage: '{"encryptedMessage":"enc=="}',
                 },
             },
             return_url: 'https://example.com/return',
@@ -452,9 +449,9 @@ describe('PaymentsModule', () => {
 
             const body = JSON.parse(capturedBody);
             expect(body.payment_instrument.input.input_type).toBe('GOOGLE_PAY');
-            expect(
-                body.payment_instrument.input.google_pay_token,
-            ).toBeDefined();
+            expect(body.payment_instrument.input.protocolVersion).toBe('ECv2');
+            expect(body.payment_instrument.input.signature).toBe('sig==');
+            expect(body.payment_instrument.input.signedMessage).toBeDefined();
         });
 
         it('sends Bearer token from token store', async () => {
@@ -656,6 +653,107 @@ describe('PaymentsModule', () => {
             const result = await payments.getApplePayInfo('pay_300000001');
 
             expect(result).toEqual(mockApplePayResponse);
+        });
+    });
+
+    describe('startApplePaySession()', () => {
+        const mockMerchantSession = { merchantSessionIdentifier: 'ms-abc123' };
+
+        function makeSession() {
+            return {
+                onvalidatemerchant: null as ((event: unknown) => void) | null,
+                completeMerchantValidation: vi.fn(),
+                abort: vi.fn(),
+                begin: vi.fn(),
+            };
+        }
+
+        it('sets onvalidatemerchant and calls session.begin()', () => {
+            const session = makeSession();
+            payments.startApplePaySession(
+                'pay_123',
+                session,
+                'https://shop.example.com',
+            );
+            expect(typeof session.onvalidatemerchant).toBe('function');
+            expect(session.begin).toHaveBeenCalledOnce();
+        });
+
+        it('calls completeMerchantValidation with the API response on success', async () => {
+            fetchMock.mockImplementation(async (req: Request) => {
+                if (req.url.includes('/apple-pay/validate')) {
+                    return makeResponse(mockMerchantSession);
+                }
+                return makeResponse({});
+            });
+
+            const session = makeSession();
+            payments.startApplePaySession(
+                'pay_123',
+                session,
+                'https://shop.example.com',
+            );
+            (session.onvalidatemerchant as (e: unknown) => void)({});
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(session.completeMerchantValidation).toHaveBeenCalledWith(
+                mockMerchantSession,
+            );
+            expect(session.abort).not.toHaveBeenCalled();
+        });
+
+        it('calls session.abort() when merchant validation fails', async () => {
+            fetchMock.mockImplementation(async (req: Request) => {
+                if (req.url.includes('/apple-pay/validate')) {
+                    await req.text();
+                    return makeResponse(
+                        { error: 'FORBIDDEN' },
+                        403,
+                        'Forbidden',
+                    );
+                }
+                return makeResponse({});
+            });
+
+            const session = makeSession();
+            payments.startApplePaySession(
+                'pay_123',
+                session,
+                'https://shop.example.com',
+            );
+            (session.onvalidatemerchant as (e: unknown) => void)({});
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(session.abort).toHaveBeenCalledOnce();
+            expect(session.completeMerchantValidation).not.toHaveBeenCalled();
+        });
+
+        it('POSTs to /payments/{paymentId}/apple-pay/validate with Origin header', async () => {
+            let capturedReq: Request | undefined;
+            fetchMock.mockImplementation(async (req: Request) => {
+                if (req.url.includes('/apple-pay/validate')) {
+                    capturedReq = req;
+                    return makeResponse(mockMerchantSession);
+                }
+                return makeResponse({});
+            });
+
+            const session = makeSession();
+            payments.startApplePaySession(
+                'pay_abc',
+                session,
+                'https://merchant.example.com',
+            );
+            (session.onvalidatemerchant as (e: unknown) => void)({});
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(capturedReq?.method).toBe('POST');
+            expect(capturedReq?.url).toContain(
+                '/payments/pay_abc/apple-pay/validate',
+            );
+            expect(capturedReq?.headers.get('Origin')).toBe(
+                'https://merchant.example.com',
+            );
         });
     });
 
