@@ -143,8 +143,16 @@ function handler(req, res) {
     // Serve index.html for / and /index.html
     const isIndex = urlPath === '/' || urlPath === '/index.html';
     const filePath = isIndex
-        ? path.join(ROOT, 'example', 'index.html')
-        : path.join(ROOT, urlPath);
+        ? path.resolve(ROOT, 'example', 'index.html')
+        : path.resolve(ROOT, urlPath.slice(1));
+
+    // Reject any path that escapes the repository root
+    const rel = path.relative(ROOT, filePath);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Forbidden');
+        return;
+    }
 
     let content;
     try {

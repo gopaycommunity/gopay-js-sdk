@@ -236,6 +236,7 @@ describe('GoPaySDK', () => {
             'create',
             'charge',
             'getGooglePayInfo',
+            'getApplePayInfo',
             'startApplePaySession',
         ] as const;
 

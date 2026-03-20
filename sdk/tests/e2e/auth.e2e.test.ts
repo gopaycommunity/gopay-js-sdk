@@ -8,7 +8,19 @@ describe('auth.authenticate() — E2E', () => {
 
     beforeAll(() => {
         const baseUrl = process.env.GP_GW_JS_SDK_BASE_URL;
-        const environment = process.env.GP_GW_JS_SDK_ENVIRONMENT as
+        const rawEnvironment = process.env.GP_GW_JS_SDK_ENVIRONMENT;
+        const validEnvironments = ['sandbox', 'production'] as const;
+        if (
+            rawEnvironment !== undefined &&
+            !validEnvironments.includes(
+                rawEnvironment as (typeof validEnvironments)[number],
+            )
+        ) {
+            throw new Error(
+                `GP_GW_JS_SDK_ENVIRONMENT must be 'sandbox' or 'production', got: '${rawEnvironment}'`,
+            );
+        }
+        const environment = rawEnvironment as
             | 'sandbox'
             | 'production'
             | undefined;

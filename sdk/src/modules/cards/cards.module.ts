@@ -50,11 +50,7 @@ export class CardsModule {
             const onMessage = async (event: MessageEvent) => {
                 if (event.origin !== expectedOrigin) return;
                 if (event.source !== iframe.contentWindow) return;
-                if (
-                    !event.data ||
-                    event.data.type !== 'GOPAY_CARD_ENCRYPT_RESULT'
-                )
-                    return;
+                if (event.data?.type !== 'GOPAY_CARD_ENCRYPT_RESULT') return;
 
                 cleanup();
                 try {

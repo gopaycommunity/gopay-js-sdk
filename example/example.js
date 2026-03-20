@@ -256,6 +256,9 @@ function prefillPaymentId(result) {
         const el = document.getElementById(fieldId);
         if (el) el.value = id;
     });
+    _pendingInstrument = null;
+    document.getElementById('charge-instrument-info').textContent = '';
+    document.getElementById('charge-token-fields').style.display = '';
 }
 
 // Instrument prefilled by Google Pay / Apple Pay / Card Pay flows
@@ -557,12 +560,30 @@ async function applePayPaymentRequestFlow() {
 
     const { data, signature, version, header } =
         paymentResponse.details.token.paymentData;
-    await paymentResponse.complete('success');
-    prefillCharge(_applePaymentId, {
-        payment_instrument: 'PAYMENT_CARD',
-        input: { input_type: 'APPLE_PAY', data, signature, version, header },
-    });
-    pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
+    const returnUrl = document.getElementById('charge-return-url').value.trim();
+    try {
+        const charge = await sdk.payments.charge(_applePaymentId, {
+            payment_instrument: {
+                payment_instrument: 'PAYMENT_CARD',
+                input: {
+                    input_type: 'APPLE_PAY',
+                    data,
+                    signature,
+                    version,
+                    header,
+                },
+            },
+            return_url: returnUrl,
+        });
+        await paymentResponse.complete('success');
+        pre.textContent += `\n\nCharge result:\n${JSON.stringify(charge, null, 2)}`;
+        if (charge.action?.redirect_url) {
+            pre.textContent += `\n\nRedirect to: ${charge.action.redirect_url}`;
+        }
+    } catch (err) {
+        await paymentResponse.complete('fail');
+        pre.textContent += `\nCharge failed: ${err?.message ?? String(err)}`;
+    }
 }
 
 function applePayBeginSession(SessionClass = window.ApplePaySession) {
@@ -574,26 +595,35 @@ function applePayBeginSession(SessionClass = window.ApplePaySession) {
         _applePayInfo.applePayPaymentRequest,
     );
 
-    session.onpaymentauthorized = (event) => {
+    session.onpaymentauthorized = async (event) => {
         const { data, signature, version, header } =
             event.payment.token.paymentData;
-        session.completePayment(SessionClass.STATUS_SUCCESS);
-        prefillCharge(
-            _applePaymentId,
-            {
-                payment_instrument: 'PAYMENT_CARD',
-                input: {
-                    input_type: 'APPLE_PAY',
-                    data,
-                    signature,
-                    version,
-                    header,
+        const returnUrl = document
+            .getElementById('charge-return-url')
+            .value.trim();
+        try {
+            const charge = await sdk.payments.charge(_applePaymentId, {
+                payment_instrument: {
+                    payment_instrument: 'PAYMENT_CARD',
+                    input: {
+                        input_type: 'APPLE_PAY',
+                        data,
+                        signature,
+                        version,
+                        header,
+                    },
                 },
-            },
-            'Apple Pay token received — scroll down and click Run to charge.',
-        );
-        pre.textContent +=
-            '\n\nApple Pay token received. Charge section prefilled — scroll down to run.';
+                return_url: returnUrl,
+            });
+            session.completePayment(SessionClass.STATUS_SUCCESS);
+            pre.textContent += `\n\nCharge result:\n${JSON.stringify(charge, null, 2)}`;
+            if (charge.action?.redirect_url) {
+                pre.textContent += `\n\nRedirect to: ${charge.action.redirect_url}`;
+            }
+        } catch (err) {
+            session.completePayment(SessionClass.STATUS_FAILURE);
+            pre.textContent += `\nCharge failed: ${err?.message ?? String(err)}`;
+        }
     };
 
     session.oncancel = () => {

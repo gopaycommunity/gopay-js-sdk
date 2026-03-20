@@ -129,17 +129,12 @@ export class PaymentsModule {
         },
         origin: string = globalThis.location?.origin ?? '',
     ): void {
-        session.onvalidatemerchant = async () => {
-            try {
-                const merchantSession = await this.validateApplePayMerchant(
-                    paymentId,
-                    origin,
-                );
-                session.completeMerchantValidation(merchantSession);
-            } catch (err) {
-                session.abort();
-                throw err;
-            }
+        session.onvalidatemerchant = () => {
+            this.validateApplePayMerchant(paymentId, origin)
+                .then((merchantSession) =>
+                    session.completeMerchantValidation(merchantSession),
+                )
+                .catch(() => session.abort());
         };
         session.begin();
     }
