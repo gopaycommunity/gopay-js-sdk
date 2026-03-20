@@ -45,8 +45,8 @@ const payment = await sdk.payments.create('YOUR_GOID', {
   },
 });
 
-// Redirect the customer to complete payment
-res.redirect(payment.gw_url);
+// Use payment.id to charge via card token, Apple Pay, Google Pay, etc.
+// See sdk.payments.charge() below.
 ```
 
 ### Charging a payment
@@ -54,13 +54,13 @@ res.redirect(payment.gw_url);
 Once the customer completes the payment flow and returns to your site, charge the payment using the instrument they provided:
 
 ```ts
-// Card token (obtained via sdk.cards.createToken())
+// Card token (obtained via sdk.cards.mountCardForm() — returns an object, use .token)
 const charge = await sdk.payments.charge(payment.id, {
   payment_instrument: {
     payment_instrument: 'PAYMENT_CARD',
     input: {
       input_type: 'CARD_TOKEN',
-      card_token: cardToken,
+      card_token: cardToken.token,
       challenge_preferrence: 'AUTO',
     },
   },
@@ -193,8 +193,8 @@ const sdk = new GoPaySDK({
 | `create(goid, params)` | Create a new payment session (`POST /eshops/{goid}/payments`). |
 | `charge(paymentId, params)` | Charge a payment using a payment instrument (`POST /payments/{paymentId}/charge`). |
 | `getGooglePayInfo(paymentId)` | Retrieve Google Pay configuration for a payment. |
-| `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment (`applepayVersion`, `merchantIdentifier`, `applePayPaymentRequest`). |
-| `startApplePaySession(paymentId, session, origin?)` | Wire merchant validation onto an `ApplePaySession` and call `begin()`. Handles `onvalidatemerchant` automatically; `origin` defaults to `window.location.origin`. |
+| `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment. Returns `applepayVersion`, `merchantIdentifier`, and `applePayPaymentRequest` needed to construct an `ApplePaySession`. |
+| `startApplePaySession(paymentId, session, origin?)` | Wire merchant validation onto an `ApplePaySession` and call `begin()`. Handles `onvalidatemerchant` automatically; `origin` defaults to `window.location.origin`. Call `getApplePayInfo` first to obtain the values needed to construct the session. |
 | `getQRPaymentInfo(paymentId, format?)` | Retrieve QR code and recipient info (`GET /payments/{paymentId}/qr-payment/info`). |
 
 ### Google Pay
@@ -216,17 +216,18 @@ const paymentData = await paymentsClient.loadPaymentData(
   googlePayInfo.paymentDataRequest,
 );
 
-// paymentData.paymentMethodData.tokenizationData.token is an opaque string
-// whose internal structure is tokenization-method-dependent (DIRECT tokens
-// follow the { protocolVersion, signature, signedMessage } shape; PAYMENT_GATEWAY
-// tokens are gateway-defined). Do not parse or inspect it — pass it unchanged
-// to google_pay_token and let GoPay's backend handle parsing.
+// tokenizationData.token is a JSON string — parse it to extract the required fields.
+const { protocolVersion, signature, signedMessage } = JSON.parse(
+  paymentData.paymentMethodData.tokenizationData.token,
+);
 const charge = await sdk.payments.charge(payment.id, {
   payment_instrument: {
     payment_instrument: 'PAYMENT_CARD',
     input: {
       input_type: 'GOOGLE_PAY',
-      google_pay_token: paymentData.paymentMethodData.tokenizationData.token,
+      protocolVersion,
+      signature,
+      signedMessage,
     },
   },
   return_url: 'https://yourshop.com/return',
@@ -241,18 +242,15 @@ const charge = await sdk.payments.charge(payment.id, {
 
 ```ts
 // Fetch Apple Pay configuration for this payment.
-// applePayInfo contains:
-//   applepayVersion          — Apple Pay JS API version to pass to ApplePaySession
-//   merchantIdentifier       — your registered Apple Pay merchant ID
-//   applePayPaymentRequest   — pre-filled PaymentRequest object (networks, country,
-//                              currency, total, etc.) ready to pass to ApplePaySession
+// Returns applepayVersion and applePayPaymentRequest (networks, country,
+// currency, total, etc.) needed to construct the ApplePaySession.
+// Must be called before the user-gesture handler that creates the session.
 const applePayInfo = await sdk.payments.getApplePayInfo(payment.id);
 
-// Create the session with the version and request object returned above.
-const session = new ApplePaySession(
-  applePayInfo.applepayVersion,
-  applePayInfo.applePayPaymentRequest,
-);
+// Create the ApplePaySession — must be called synchronously from a user-gesture
+// handler (e.g. button click). Do not await anything between the gesture and
+// this call or the browser will block it.
+const session = new ApplePaySession(applePayInfo.applepayVersion, applePayInfo.applePayPaymentRequest);
 
 // Step 1 — Payment authorisation.
 // Fires after the user authenticates with Face ID / Touch ID.
@@ -313,13 +311,41 @@ document.body.appendChild(img);
 
 | Method | Description |
 |---|---|
-| `createToken(params)` | Tokenize encrypted card data (`POST /cards/tokens`). |
+| `mountCardForm(container, iframeSrc)` | Mount the GoPay card encryption iframe into `container` and return the card token once the user submits the form. Handles iframe creation, `postMessage` communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
 
-### Card data encryption
+### Card Pay
 
-`GET /encryption/public-key` and the JWE construction it enables are **intentionally not part of this SDK's API surface**.
+Card number encryption must never run in publicly reachable JavaScript — doing so would expose the raw PAN to any script on the merchant's page. The SDK uses a GoPay-hosted iframe for this step so that raw card data never touches merchant code.
 
-Card number encryption must never run in publicly reachable JavaScript — doing so would expose the raw PAN to any script on the merchant's page. The correct approach is to use secure iframe supplied by GoPay. Do not use the `sdk/src/iframe/card-encrypt.html` stub in production or testing.
+```ts
+// 1. Create a payment session first (server-side).
+const payment = await sdk.payments.create(goid, params);
+
+// 2. Mount the iframe — awaits the user submitting the card form,
+//    then calls POST /cards/tokens automatically.
+const container = document.getElementById('card-form-container');
+const cardToken = await sdk.cards.mountCardForm(container, GOPAY_CARD_IFRAME_URL);
+
+// 3. Charge the payment with the resulting card token.
+const charge = await sdk.payments.charge(payment.id, {
+  payment_instrument: {
+    payment_instrument: 'PAYMENT_CARD',
+    input: {
+      input_type: 'CARD_TOKEN',
+      card_token: cardToken.token,
+      challenge_preferrence: 'AUTO',
+    },
+  },
+  return_url: 'https://yourshop.com/return',
+});
+
+if (charge.action?.redirect_url) {
+  // 3DS authentication required — redirect the customer.
+  window.location.href = charge.action.redirect_url;
+}
+```
+
+`GET /encryption/public-key` and the JWE construction it enables are **intentionally not part of this SDK's API surface**. Do not use the `sdk/src/iframe/card-encrypt.html` stub in production or testing.
 
 ---
 

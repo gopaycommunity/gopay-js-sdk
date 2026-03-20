@@ -11,10 +11,10 @@ type PaymentChargeResponse =
     components['responses']['Payment-Charge-Response']['content']['application/json'];
 type GooglePayInfoResponse =
     components['responses']['Google-Pay-Info-Response']['content']['application/json'];
-type ApplePayInfoResponse =
-    components['responses']['Apple-Pay-Info-Response']['content']['application/json'];
 type ValidateMerchantResponse =
     components['responses']['Validate-Merchant-Response']['content']['application/json'];
+type ApplePayInfoResponse =
+    components['responses']['Apple-Pay-Info-Response']['content']['application/json'];
 type QRPaymentInfoResponse =
     components['responses']['QR-Payment-Info-Response']['content']['application/json'];
 
@@ -25,6 +25,10 @@ export class PaymentsModule {
      * Create a new payment session.
      *
      * POST /eshops/{goid}/payments
+     *
+     * The response includes a `gw_url` field — **ignore it**. It exists only for
+     * backward compatibility with pre-SDK redirect-based integrations. This SDK's
+     * flow is always: create → charge (via card token, Apple Pay, or Google Pay).
      *
      * @param goid   - Merchant's GoPay ID (eshop identifier)
      * @param params - Payment creation parameters
@@ -78,12 +82,6 @@ export class PaymentsModule {
 
     /**
      * Retrieve Apple Pay configuration for this payment.
-     *
-     * Returns the fields needed to initialise an `ApplePaySession`:
-     * - `applepayVersion` — Apple Pay JS API version number
-     * - `merchantIdentifier` — registered Apple Pay merchant ID
-     * - `applePayPaymentRequest` — pre-filled `PaymentRequest` object (supported
-     *   networks, country/currency codes, total, etc.)
      *
      * GET /payments/{payment_id}/apple-pay/info
      *

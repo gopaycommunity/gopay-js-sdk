@@ -4,12 +4,9 @@ import type { components } from '../../sdk/src/types/generated.js';
 type PaymentCreateResponse =
     components['responses']['Payment-Create-Response']['content']['application/json'];
 
-const PAYMENT_KEYS = [
-    'id',
-    'state',
-    'amount',
-    'gw_url',
-] as const satisfies ReadonlyArray<keyof PaymentCreateResponse>;
+const PAYMENT_KEYS = ['id', 'state', 'amount'] as const satisfies ReadonlyArray<
+    keyof PaymentCreateResponse
+>;
 
 test('auth.issueClientToken() + auth.setClientToken() allows authenticated API calls without client credentials in browser', async ({
     page,

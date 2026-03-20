@@ -132,12 +132,16 @@ function handler(req, res) {
         return;
     }
 
-    // Serve index.html for /, /index.html, and /example/index.html
+    // Redirect /example/index.html → / so relative asset paths resolve correctly
     const urlPath = req.url.split('?')[0];
-    const isIndex =
-        urlPath === '/' ||
-        urlPath === '/index.html' ||
-        urlPath === '/example/index.html';
+    if (urlPath === '/example/index.html') {
+        res.writeHead(301, { Location: '/' });
+        res.end();
+        return;
+    }
+
+    // Serve index.html for / and /index.html
+    const isIndex = urlPath === '/' || urlPath === '/index.html';
     const filePath = isIndex
         ? path.join(ROOT, 'example', 'index.html')
         : path.join(ROOT, urlPath);
@@ -180,32 +184,17 @@ function startServer() {
         fs.accessSync(KEY_FILE);
         certExists = true;
     } catch {
-        // cert files absent — fall back to HTTP
+        // cert files absent — HTTP only
     }
 
-    if (certExists) {
-        if (upstreamBaseUrl)
-            ENV.baseUrl = `https://localhost:${HTTPS_PORT}/proxy`;
-        const tlsOptions = {
-            cert: fs.readFileSync(CERT_FILE),
-            key: fs.readFileSync(KEY_FILE),
-        };
-        const server = https.createServer(tlsOptions, handler);
-        server.once('error', onError);
-        server.listen(HTTPS_PORT, () => {
-            console.log(
-                `Example app running at https://localhost:${HTTPS_PORT}`,
-            );
-            console.log(
-                'Apple Pay (ApplePaySession) is supported on this origin.',
-            );
-        });
-    } else {
-        if (upstreamBaseUrl) ENV.baseUrl = `http://localhost:${PORT}/proxy`;
-        const server = http.createServer(handler);
-        server.once('error', onError);
-        server.listen(PORT, () => {
-            console.log(`Example app running at http://localhost:${PORT}`);
+    // Always start HTTP on PORT (used by Playwright and as a fallback)
+    if (upstreamBaseUrl && !certExists)
+        ENV.baseUrl = `http://localhost:${PORT}/proxy`;
+    const httpServer = http.createServer(handler);
+    httpServer.once('error', onError);
+    httpServer.listen(PORT, () => {
+        console.log(`Example app running at http://localhost:${PORT}`);
+        if (!certExists) {
             console.log('');
             console.log('  Apple Pay requires HTTPS. To enable it:');
             console.log(
@@ -217,6 +206,23 @@ function startServer() {
             console.log(
                 '   3. Restart yarn example script — HTTPS will start automatically on port',
                 HTTPS_PORT,
+            );
+        }
+    });
+
+    // Additionally start HTTPS when certs are present (required for ApplePaySession)
+    if (certExists) {
+        if (upstreamBaseUrl)
+            ENV.baseUrl = `https://localhost:${HTTPS_PORT}/proxy`;
+        const tlsOptions = {
+            cert: fs.readFileSync(CERT_FILE),
+            key: fs.readFileSync(KEY_FILE),
+        };
+        const httpsServer = https.createServer(tlsOptions, handler);
+        httpsServer.once('error', onError);
+        httpsServer.listen(HTTPS_PORT, () => {
+            console.log(
+                `Example app running at https://localhost:${HTTPS_PORT}`,
             );
         });
     }

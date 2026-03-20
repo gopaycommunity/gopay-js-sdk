@@ -5,172 +5,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GoPay JS SDK — Example</title>
+    <link rel="stylesheet" href="example/example.css" />
     <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
     <script src="example/apple-pay-polyfill.js"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #333;
-            color: #2c2c3a;
-        }
-
-        header {
-            background: #ccc;
-            color: #333;
-            padding: 1.25rem 2rem;
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-        }
-
-        header img {
-            height: 28px;
-            width: auto;
-            flex-shrink: 0;
-        }
-
-        header .header-text h1 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #000;
-        }
-
-        header .header-text p {
-            font-size: 0.82rem;
-            color: #9999bb;
-            margin-top: 0.2rem;
-        }
-
-        main {
-            max-width: 860px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-
-        section {
-            background: #bbb;
-            border: 1px solid #d0d0dc;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.25rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, .07);
-        }
-
-        h2 {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            color: #1a1a2e;
-        }
-
-        button {
-            display: inline-block;
-            padding: 0.5rem 1.25rem;
-            border: none;
-            border-radius: 5px;
-            background: #1a1a2e;
-            color: #fff;
-            cursor: pointer;
-            font-size: 0.875rem;
-            margin: 0.25rem 0.25rem 0.25rem 0;
-        }
-
-        button:hover {
-            background: #2e2e5e;
-        }
-
-        pre {
-            background: #1e1e2e;
-            color: #cdd6f4;
-            border-radius: 6px;
-            padding: 1rem;
-            font-size: 0.8rem;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
-            margin-top: 0.75rem;
-            min-height: 2.5rem;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .ok {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .err {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        #status {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        code {
-            font-family: 'SFMono-Regular', Menlo, monospace;
-            font-size: 0.85rem;
-            background: #dcdce8;
-            color: #2c2c3a;
-            padding: 1px 5px;
-            border-radius: 3px;
-        }
-
-        p.note {
-            font-size: 0.8rem;
-            color: #5a5a72;
-            margin-top: 0.5rem;
-        }
-
-        .fields {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .fields label {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-            font-size: 0.8rem;
-            color: #5a5a72;
-            flex: 1;
-            min-width: 180px;
-        }
-
-        .fields input {
-            padding: 0.4rem 0.6rem;
-            border: 1px solid #c0c0cc;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-family: inherit;
-            background: #eaeaf0;
-            color: #2c2c3a;
-        }
-
-        select {
-            background: #eaeaf0;
-            color: #2c2c3a;
-            border-color: #c0c0cc;
-        }
-    </style>
 </head>
 
 <body>
@@ -199,28 +36,19 @@
                 <code>sdk/.env.e2e</code> (<code>GP_GW_JS_SDK_CLIENT_ID</code>,
                 <code>GP_GW_JS_SDK_CLIENT_SECRET</code>, <code>GP_GW_JS_SDK_BASE_URL</code>)
                 and fall back to <code>process.env</code> in CI.
-                Opening via <code>file://</code> still works but env values won't be injected.
                 In production use <code>https://gopaycdn.com/js-sdk/gopay-sdk.min.js</code>.
             </p>
         </section>
 
         <!-- Authentication -->
         <section>
-            <h2>auth.authenticate() <span style="font-size:0.75rem;color:#c00;font-weight:normal;">(server-only — never
-                    call
-                    from a browser)</span></h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /oauth2/token — obtain an access token
-                using
-                client credentials. <strong>Keep <code>client_id</code> and <code>client_secret</code> on the
-                    server.</strong>
-            </p>
+            <h2>auth.authenticate() <span style="font-size:0.75rem;color:#c00;font-weight:normal;">(server-only — never call from a browser)</span></h2>
+            <p class="desc">POST /oauth2/token — obtain an access token using client credentials. <strong>Keep <code>client_id</code> and <code>client_secret</code> on the server.</strong></p>
             <div class="fields">
                 <label>Client ID<input id="auth-client-id" type="text" placeholder="your-client-id" /></label>
-                <label>Client Secret<input id="auth-client-secret" type="password"
-                        placeholder="your-client-secret" /></label>
+                <label>Client Secret<input id="auth-client-secret" type="password" placeholder="your-client-secret" /></label>
                 <label>Scope (⌘/Ctrl+click to select multiple)
-                    <select id="auth-scope" multiple size="4"
-                        style="padding:0.3rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
+                    <select id="auth-scope" multiple size="4">
                         <option value="payment:create" selected>payment:create</option>
                         <option value="payment:read" selected>payment:read</option>
                         <option value="card:save" selected>card:save</option>
@@ -236,15 +64,10 @@
         <!-- Issue client token (server side) -->
         <section>
             <h2>auth.issueClientToken() — server side</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
-                Obtain a fresh token pair for a browser client without affecting the server session.
-                Authenticate first, then issue a token with a narrower scope if needed.
-                The result is auto-filled into the browser flow below.
-            </p>
+            <p class="desc">Obtain a fresh token pair for a browser client without affecting the server session. Authenticate first, then issue a token with a narrower scope if needed. The result is auto-filled into the browser flow below.</p>
             <div class="fields">
                 <label>Scope (⌘/Ctrl+click to select multiple)
-                    <select id="issue-client-token-scope" multiple size="4"
-                        style="padding:0.3rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
+                    <select id="issue-client-token-scope" multiple size="4">
                         <option value="payment:create" selected>payment:create</option>
                         <option value="payment:read" selected>payment:read</option>
                         <option value="card:save" selected>card:save</option>
@@ -260,58 +83,39 @@
         <!-- Browser auth flow -->
         <section>
             <h2>auth.setClientToken() — browser flow</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
-                Simulates the browser client pattern: a fresh SDK instance receives both tokens from the server
-                (no credentials in the browser). The <code>client_id</code> is extracted automatically from the JWT.
-            </p>
+            <p class="desc">Simulates the browser client pattern: a fresh SDK instance receives both tokens from the server (no credentials in the browser). The <code>client_id</code> is extracted automatically from the JWT.</p>
             <div class="fields">
                 <label>GoID<input id="set-client-token-goid" type="text" value="8123456789" /></label>
-                <label>Access Token
-                    <input id="set-client-token-access" type="password"
-                        placeholder="auto-filled by issueClientToken()" />
-                </label>
-                <label>Refresh Token
-                    <input id="set-client-token-refresh" type="password"
-                        placeholder="auto-filled by issueClientToken()" />
-                </label>
+                <label>Access Token<input id="set-client-token-access" type="password" placeholder="auto-filled by issueClientToken()" /></label>
+                <label>Refresh Token<input id="set-client-token-refresh" type="password" placeholder="auto-filled by issueClientToken()" /></label>
             </div>
             <button type="button" onclick="runSetClientTokenFlow()">Run</button>
             <pre id="set-client-token-output">—</pre>
-            <p class="note">
-                Client credentials must never leave the server. Run <code>auth.issueClientToken()</code> above
-                to populate the fields, or paste tokens obtained from your own server endpoint.
-            </p>
+            <p class="note">Client credentials must never leave the server. Run <code>auth.issueClientToken()</code> above to populate the fields, or paste tokens obtained from your own server endpoint.</p>
         </section>
 
         <!-- Create payment -->
         <section>
             <h2>payments.create()</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /eshops/{goid}/payments — create a
-                payment
-                session. Authenticate first to obtain a token.</p>
+            <p class="desc">POST /eshops/{goid}/payments — create a payment session. Authenticate first to obtain a token.</p>
             <div class="fields">
                 <label>GoID<input id="create-goid" type="text" value="8123456789" /></label>
                 <label>Amount (cents)<input id="create-amount" type="number" value="1000" /></label>
                 <label>Currency<input id="create-currency" type="text" value="CZK" /></label>
                 <label>Order Number<input id="create-order-number" type="text" value="ORDER-001" /></label>
-                <label>Customer Email<input id="create-customer-email" type="text"
-                        value="customer@example.com" /></label>
-                <label>Notification URL<input id="create-notification-url" type="text"
-                        value="https://yourshop.example.com/notify" /></label>
-                <label>Return URL<input id="create-return-url" type="text"
-                        value="https://yourshop.example.com/return" /></label>
+                <label>Customer Email<input id="create-customer-email" type="text" value="customer@example.com" /></label>
+                <label>Notification URL<input id="create-notification-url" type="text" value="https://yourshop.example.com/notify" /></label>
+                <label>Return URL<input id="create-return-url" type="text" value="https://yourshop.example.com/return" /></label>
             </div>
             <button type="button" onclick="runCreatePayment()">Run</button>
             <pre id="payment-create-output">—</pre>
-            <p class="note">On success, the response includes <code>gw_url</code> — redirect the customer there to
-                complete
-                payment.</p>
+            <p class="note">On success, use the returned <code>id</code> to charge the payment via card token, Apple Pay, Google Pay, etc.</p>
         </section>
 
-        <!-- Google Pay full flow -->
+        <!-- Google Pay -->
         <section>
-            <h2>Google Pay — full flow</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+            <h2>Google Pay</h2>
+            <p class="desc">
                 Step 1: <code>payments.getGooglePayInfo()</code> — fetch config, render Google Pay button.<br>
                 Step 2: Click the Google Pay button — user selects a card. Token is prefilled into <em>payments.charge()</em> below.
             </p>
@@ -321,14 +125,13 @@
             <button type="button" onclick="googlePayLoadInfo()">Load Google Pay Config</button>
             <div id="googlepay-button-container" style="margin:0.5rem 0;"></div>
             <pre id="googlepay-output">—</pre>
-            <p class="note">Requires a payment created with Google Pay as an allowed instrument. In sandbox the
-                Google Pay sheet runs in <code>TEST</code> mode — no real card data is used.</p>
+            <p class="note">Requires a payment created with Google Pay as an allowed instrument. In sandbox the Google Pay sheet runs in <code>TEST</code> mode — no real card data is used.</p>
         </section>
 
-        <!-- Apple Pay full flow -->
+        <!-- Apple Pay -->
         <section>
-            <h2>Apple Pay — full flow</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+            <h2>Apple Pay</h2>
+            <p class="desc">
                 Step 1: <code>payments.getApplePayInfo()</code> — fetch config, render Apple Pay button.<br>
                 Step 2: Click the Apple Pay button — merchant validation runs automatically via <code>payments.startApplePaySession()</code>. Token is prefilled into <em>payments.charge()</em> below.
             </p>
@@ -340,21 +143,17 @@
             <pre id="applepay-output">—</pre>
             <p class="note">Requires a payment created with Apple Pay as an allowed instrument.
                 <strong>ApplePaySession</strong>: native on Safari; simulated by a dev polyfill in other browsers.
-                <strong>PaymentRequest</strong>: shown on Chrome/Edge when the browser supports Apple Pay — triggers
-                a cross-device QR code flow authenticated via iPhone or Apple Watch.</p>
+                <strong>PaymentRequest</strong>: shown on Chrome/Edge when the browser supports Apple Pay — triggers a cross-device QR code flow authenticated via iPhone or Apple Watch.</p>
         </section>
 
         <!-- QR Payment info -->
         <section>
             <h2>payments.getQRPaymentInfo()</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">GET /payments/{id}/qr-payment/info — fetch QR
-                code
-                (base64) and recipient info.</p>
+            <p class="desc">GET /payments/{id}/qr-payment/info — fetch QR code (base64) and recipient info.</p>
             <div class="fields">
                 <label>Payment ID<input id="qr-payment-id" type="text" placeholder="pay_300000001" /></label>
                 <label>Format
-                    <select id="qr-format"
-                        style="padding:0.4rem 0.6rem;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;font-family:inherit;">
+                    <select id="qr-format">
                         <option value="">png (default)</option>
                         <option value="svg">svg</option>
                     </select>
@@ -362,51 +161,35 @@
             </div>
             <button type="button" onclick="runQRPaymentInfo()">Run</button>
             <pre id="qr-output">—</pre>
-            <p class="note">QR codes are returned base64-encoded. The available field depends on currency:
-                <code>spayd</code>
-                (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
+            <p class="note">QR codes are returned base64-encoded. The available field depends on currency: <code>spayd</code> (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
         </section>
 
-
-        <!-- Card tokenization -->
+        <!-- Card Pay -->
         <section>
-            <h2>cards.createToken()</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /cards/tokens — tokenize encrypted card
-                data.
-            </p>
-            <button type="button" onclick="runCreateToken()">Run</button>
-            <pre id="cards-output">—</pre>
-        </section>
-
-        <!-- Card Pay full flow -->
-        <section>
-            <h2>Card Pay — full flow</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+            <h2>Card Pay</h2>
+            <p class="desc">
                 Step 1: <code>payments.create()</code> fills in the Payment ID below.<br>
-                Step 2: Click <em>Open Card Payment</em> — confirm in the iframe.<br>
-                Step 3: <code>cards.createToken()</code> — tokenize. Token is prefilled into <em>payments.charge()</em> below.
+                Step 2: Click <em>Open Card Payment</em> — <code>cards.mountCardForm()</code> mounts the iframe, awaits the user, and tokenizes automatically. Token is prefilled into <em>payments.charge()</em> below.
             </p>
             <div class="fields">
                 <label>Payment ID<input id="cardpay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
             </div>
             <button type="button" onclick="cardPayOpenIframe()">Open Card Payment</button>
-            <div id="cardpay-iframe-container" style="display:none;margin:0.75rem 0;border:1px solid #c0c0cc;border-radius:6px;overflow:hidden;height:60px;">
-                <iframe id="cardpay-iframe" src="/sdk/src/iframe/card-encrypt.html" style="width:100%;height:100%;border:none;" title="Card payment"></iframe>
-            </div>
+            <div id="cardpay-iframe-container" style="display:none;margin:0.75rem 0;border:1px solid #c0c0cc;border-radius:6px;overflow:hidden;height:60px;"></div>
             <pre id="cardpay-output">—</pre>
         </section>
 
         <!-- Charge payment -->
         <section>
             <h2>payments.charge()</h2>
-            <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">POST /payments/{id}/charge — submit the payment instrument token obtained from Google Pay, Apple Pay, or Card Pay above.</p>
+            <p class="desc">POST /payments/{id}/charge — submit the payment instrument token obtained from Google Pay, Apple Pay, or Card Pay above.</p>
             <div class="fields">
                 <label>Payment ID<input id="charge-payment-id" type="text" placeholder="pay_300000001" /></label>
                 <label>Return URL<input id="charge-return-url" type="text" value="https://yourshop.example.com/return" /></label>
             </div>
             <pre id="charge-instrument-info" style="margin-bottom:0.5rem;font-size:0.78rem;">No instrument prefilled — complete a payment flow above, or enter a card token manually.</pre>
             <div class="fields" id="charge-token-fields">
-                <label>Card Token<input id="charge-card-token" type="text" placeholder="card token from cards.createToken()" /></label>
+                <label>Card Token<input id="charge-card-token" type="text" placeholder="card token from cards.mountCardForm()" /></label>
             </div>
             <button type="button" onclick="runCharge()">Run</button>
             <pre id="payment-charge-output">—</pre>
@@ -419,540 +202,7 @@
   DEVELOPMENT: load the local build below
 -->
     <script src="../sdk/dist/gopay-sdk.min.js"></script>
-    <script>
-        // -----------------------------------------------------------------------
-        // Initialise
-        // -----------------------------------------------------------------------
-        const badge = document.getElementById('sdk-badge');
-        const sdkInfo = document.getElementById('sdk-info');
-
-        let sdk;
-
-        // Pre-populate auth fields from injected env (serve.js) — fall back to empty
-        const _env = window.__ENV__ || {};
-        if (_env.clientId) document.getElementById('auth-client-id').value = _env.clientId;
-        if (_env.clientSecret) document.getElementById('auth-client-secret').value = _env.clientSecret;
-        if (_env.goid) {
-            document.getElementById('create-goid').value = _env.goid;
-            document.getElementById('set-client-token-goid').value = _env.goid;
-        }
-
-        const sdkConfig = _env.baseUrl
-            ? { baseUrl: _env.baseUrl }
-            : { environment: 'sandbox' };
-
-        if (typeof GoPaySDK === 'undefined' || typeof GoPaySDK.GoPaySDK === 'undefined') {
-            badge.textContent = 'NOT LOADED';
-            badge.className = 'badge err';
-            sdkInfo.textContent =
-                'GoPaySDK not found on window.\n\n' +
-                'Build the SDK first:\n  cd sdk && yarn build\n\n' +
-                'Then serve via:  node example/serve.js\n' +
-                '  (or open this file directly, but env values will not be injected)';
-        } else {
-            sdk = new GoPaySDK.GoPaySDK(sdkConfig);
-            badge.textContent = 'LOADED';
-            badge.className = 'badge ok';
-            sdkInfo.textContent = JSON.stringify(
-                {
-                    class: sdk.constructor.name,
-                    baseUrl: _env.baseUrl ?? '(sandbox default)',
-                    modules: ['auth', 'payments', 'cards'].map(m => ({
-                        name: m,
-                        methods: Object.getOwnPropertyNames(Object.getPrototypeOf(sdk[m]))
-                            .filter(n => n !== 'constructor'),
-                    })),
-                },
-                null,
-                2,
-            );
-        }
-
-        // -----------------------------------------------------------------------
-        // Auth badge
-        // -----------------------------------------------------------------------
-        const authBadge = document.getElementById('auth-badge');
-
-        function updateAuthBadge() {
-            if (!sdk) return;
-            const ok = sdk.auth.isAuthenticated();
-            authBadge.textContent = ok ? 'authenticated' : 'not authenticated';
-            authBadge.style.background = ok ? '#d4edda' : '#e2e3e5';
-            authBadge.style.color = ok ? '#155724' : '#383d41';
-        }
-
-        // -----------------------------------------------------------------------
-        // Helper
-        // -----------------------------------------------------------------------
-        function show3dsPrompt(pre, redirectUrl) {
-            if (pre.nextElementSibling?.dataset.tds) pre.nextElementSibling.remove();
-            if (!redirectUrl) return;
-            const div = document.createElement('div');
-            div.dataset.tds = '1';
-            Object.assign(div.style, {
-                marginTop: '0.6rem', padding: '0.75rem 1rem',
-                background: '#fff8e1', border: '1px solid #e0b840',
-                borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '1rem',
-            });
-            const msg = document.createElement('span');
-            Object.assign(msg.style, { fontSize: '0.82rem', flex: '1', color: '#5a4200' });
-            msg.textContent = '3DS authentication required — redirect the customer to complete verification.';
-            const btn = document.createElement('a');
-            btn.href = redirectUrl;
-            btn.target = '_blank';
-            btn.rel = 'noopener';
-            btn.textContent = 'Open 3DS verification →';
-            Object.assign(btn.style, {
-                padding: '0.4rem 0.9rem', background: '#1a1a2e', color: '#fff',
-                borderRadius: '5px', fontSize: '0.82rem', textDecoration: 'none', whiteSpace: 'nowrap',
-            });
-            div.appendChild(msg);
-            div.appendChild(btn);
-            pre.insertAdjacentElement('afterend', div);
-        }
-
-        async function run(outputId, fn, onSuccess) {
-            const pre = document.getElementById(outputId);
-            pre.textContent = 'Running…';
-            try {
-                const result = await fn();
-                pre.textContent = JSON.stringify(result, null, 2);
-                if (onSuccess) onSuccess(result);
-            } catch (err) {
-                if (err instanceof GoPaySDK.GoPayHTTPError) {
-                    pre.textContent = `[GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`;
-                } else if (err instanceof GoPaySDK.GoPaySDKError) {
-                    pre.textContent = `[GoPaySDKError] ${err.errorCode ? `(${err.errorCode}) ` : ''}${err.message}`;
-                } else if (err instanceof Error) {
-                    pre.textContent = `[${err.constructor.name}] ${err.message}`;
-                } else if (err === null || err === undefined) {
-                    pre.textContent = `[${typeof err}] ${String(err)}`;
-                } else {
-                    let msg;
-                    try { msg = JSON.stringify(err); } catch { msg = String(err); }
-                    pre.textContent = `[${typeof err}] ${msg}`;
-                }
-            }
-        }
-
-        // -----------------------------------------------------------------------
-        // Demo calls
-        // -----------------------------------------------------------------------
-        function getSelectedScopes() {
-            const el = document.getElementById('auth-scope');
-            return Array.from(el.selectedOptions).map(o => o.value).join(' ') || 'payment:create';
-        }
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runAuthenticate() {
-            const client_id = document.getElementById('auth-client-id').value.trim();
-            const client_secret = document.getElementById('auth-client-secret').value.trim();
-            const scope = getSelectedScopes();
-
-            run('auth-output', () =>
-                sdk.auth.authenticate({ grant_type: 'client_credentials', client_id, client_secret, scope }),
-                () => updateAuthBadge(),
-            );
-        }
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runLogout() {
-            sdk.auth.logout();
-            updateAuthBadge();
-            document.getElementById('auth-output').textContent = 'Logged out.';
-        }
-
-        function getSelectedBrowserScopes() {
-            const el = document.getElementById('issue-client-token-scope');
-            return Array.from(el.selectedOptions).map(o => o.value).join(' ') || 'payment:create';
-        }
-
-        // Stores the full ClientToken (including expires_in) from the last issueClientToken() call.
-        let _lastClientToken = null;
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runIssueClientToken() {
-            const scope = getSelectedBrowserScopes();
-            run('issue-client-token-output', async () => {
-                const token = await sdk.auth.issueClientToken(scope || undefined);
-                _lastClientToken = token;
-                document.getElementById('set-client-token-access').value = token.access_token;
-                document.getElementById('set-client-token-refresh').value = token.refresh_token;
-                return token;
-            });
-        }
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runSetClientTokenFlow() {
-            const goid = document.getElementById('set-client-token-goid').value.trim();
-            const accessToken = document.getElementById('set-client-token-access').value.trim();
-            const refreshToken = document.getElementById('set-client-token-refresh').value.trim();
-
-            run('set-client-token-output', async () => {
-                const browserSdk = new GoPaySDK.GoPaySDK(sdkConfig);
-                // Use full ClientToken if available (preserves expires_in from server response),
-                // otherwise fall back to defaults so manually pasted tokens still work.
-                const clientToken = (_lastClientToken?.access_token === accessToken && _lastClientToken)
-                    ? _lastClientToken
-                    : { access_token: accessToken, refresh_token: refreshToken, expires_in: 900, refresh_expires_in: 86400 };
-                browserSdk.auth.setClientToken(clientToken);
-                updateAuthBadge();
-
-                return browserSdk.payments.create(goid, {
-                    amount: 1000,
-                    currency: 'CZK',
-                    order_number: 'ORDER-CT-TEST',
-                    customer: { email: 'test@example.com' },
-                    callback: {
-                        notification_url: 'https://yourshop.example.com/notify',
-                        return_url: 'https://yourshop.example.com/return',
-                    },
-                });
-            });
-        }
-
-        function prefillPaymentId(result) {
-            const id = result?.id;
-            if (!id) return;
-            ['charge-payment-id', 'googlepay-payment-id', 'applepay-payment-id', 'qr-payment-id', 'cardpay-payment-id']
-                .forEach(fieldId => {
-                    const el = document.getElementById(fieldId);
-                    if (el && !el.value) el.value = id;
-                });
-        }
-
-        // Instrument prefilled by Google Pay / Apple Pay / Card Pay flows
-        let _pendingInstrument = null;
-
-        function prefillCharge(paymentId, instrument) {
-            _pendingInstrument = instrument;
-            if (paymentId) document.getElementById('charge-payment-id').value = paymentId;
-            document.getElementById('charge-instrument-info').textContent = JSON.stringify(instrument, null, 2);
-            document.getElementById('charge-token-fields').style.display = 'none';
-        }
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runCreatePayment() {
-            const goid = document.getElementById('create-goid').value.trim();
-            const amount = parseInt(document.getElementById('create-amount').value, 10);
-            const currency = document.getElementById('create-currency').value.trim() || 'CZK';
-            const order_number = document.getElementById('create-order-number').value.trim();
-            const email = document.getElementById('create-customer-email').value.trim();
-            const notification_url = document.getElementById('create-notification-url').value.trim();
-            const return_url = document.getElementById('create-return-url').value.trim();
-
-            run('payment-create-output', () =>
-                sdk.payments.create(goid, {
-                    amount,
-                    currency,
-                    order_number,
-                    customer: { email },
-                    callback: { notification_url, return_url },
-                }),
-                prefillPaymentId,
-            );
-        }
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runCharge() {
-            const paymentId = document.getElementById('charge-payment-id').value.trim();
-            const return_url = document.getElementById('charge-return-url').value.trim();
-            const instrument = _pendingInstrument ?? {
-                payment_instrument: 'PAYMENT_CARD',
-                input: { input_type: 'CARD_TOKEN', card_token: document.getElementById('charge-card-token').value.trim() },
-            };
-
-            run('payment-charge-output', () =>
-                sdk.payments.charge(paymentId, { payment_instrument: instrument, return_url }),
-                (result) => show3dsPrompt(document.getElementById('payment-charge-output'), result.action?.redirect_url),
-            );
-        }
-
-        // Holds the config fetched in step 1, consumed in step 2
-        let _googlePayInfo = null;
-        let _googlePaymentId = null;
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        async function googlePayLoadInfo() {
-            const paymentId = document.getElementById('googlepay-payment-id').value.trim();
-            const pre = document.getElementById('googlepay-output');
-            const container = document.getElementById('googlepay-button-container');
-            container.innerHTML = '';
-            _googlePayInfo = null;
-            _googlePaymentId = null;
-
-            if (!window.google) {
-                pre.textContent = 'Google Pay script not loaded yet — please wait a moment and try again.';
-                return;
-            }
-
-            pre.textContent = 'Step 1: Fetching Google Pay info…';
-            try {
-                _googlePayInfo = await sdk.payments.getGooglePayInfo(paymentId);
-                _googlePaymentId = paymentId;
-                pre.textContent = `── API response (getGooglePayInfo) ──\n${JSON.stringify(_googlePayInfo, null, 2)}\n\nClick the Google Pay button to proceed.`;
-            } catch (err) {
-                pre.textContent = `[Step 1 failed] ${err?.message ?? String(err)}`;
-                return;
-            }
-
-            // Render the Google Pay button — loadPaymentData must be called directly from its click
-            const paymentsClient = new google.payments.api.PaymentsClient({ environment: _googlePayInfo.environment });
-            const btn = paymentsClient.createButton({ onClick: googlePayOpenSheet });
-            container.appendChild(btn);
-        }
-
-        async function googlePayOpenSheet() {
-            const pre = document.getElementById('googlepay-output');
-            if (!_googlePayInfo || !_googlePaymentId) return;
-
-            const paymentsClient = new google.payments.api.PaymentsClient({ environment: _googlePayInfo.environment });
-
-            let paymentData;
-            try {
-                pre.textContent += `\n\nOpening Google Pay sheet…`;
-                paymentData = await paymentsClient.loadPaymentData(_googlePayInfo.paymentDataRequest);
-            } catch (err) {
-                pre.textContent += `\n\nGoogle Pay sheet closed.\n${err?.statusCode === 'CANCELED' ? 'User cancelled.' : String(err?.message ?? err)}`;
-                return;
-            }
-
-            // tokenizationData.token is a JSON string: { protocolVersion, signature, signedMessage, ... }
-            const tokenData = JSON.parse(paymentData.paymentMethodData.tokenizationData.token);
-            prefillCharge(
-                _googlePaymentId,
-                {
-                    payment_instrument: 'PAYMENT_CARD',
-                    input: {
-                        input_type: 'GOOGLE_PAY',
-                        protocolVersion: tokenData.protocolVersion,
-                        signature: tokenData.signature,
-                        signedMessage: tokenData.signedMessage,
-                    },
-                },
-            );
-            pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
-        }
-
-        // Holds the config fetched in step 1, consumed in step 2
-        let _applePayInfo = null;
-        let _applePaymentId = null;
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        async function applePayLoadInfo() {
-            const paymentId = document.getElementById('applepay-payment-id').value.trim();
-            const pre = document.getElementById('applepay-output');
-            const container = document.getElementById('applepay-button-container');
-            container.innerHTML = '';
-            _applePayInfo = null;
-            _applePaymentId = null;
-
-            pre.textContent = 'Step 1: Fetching Apple Pay info…';
-            try {
-                _applePayInfo = await sdk.payments.getApplePayInfo(paymentId);
-                _applePaymentId = paymentId;
-                pre.textContent = `── API response (getApplePayInfo) ──\n${JSON.stringify(_applePayInfo, null, 2)}\n\nClick a button below to proceed.`;
-            } catch (err) {
-                pre.textContent = `[Step 1 failed] ${err?.message ?? String(err)}`;
-                return;
-            }
-
-            // Mock button — always shown, uses the polyfill stub
-            if (window.MockApplePaySession) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.textContent = ' Pay (Mock — dev only)';
-                Object.assign(btn.style, {
-                    background: '#856404', color: '#fff', borderRadius: '6px',
-                    padding: '0.5rem 1.5rem', fontSize: '1rem', fontWeight: '600',
-                    letterSpacing: '-0.3px', border: '2px dashed #ffc107', cursor: 'pointer',
-                });
-                btn.onclick = () => applePayBeginSession(window.MockApplePaySession);
-                container.appendChild(btn);
-            }
-
-            // Native Safari ApplePaySession button
-            const hasNativeSession = window.ApplePaySession && !window.ApplePaySession.__isPolyfill;
-            if (hasNativeSession) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.textContent = ' Pay (Safari native)';
-                Object.assign(btn.style, {
-                    background: '#000', color: '#fff', borderRadius: '6px',
-                    padding: '0.5rem 1.5rem', fontSize: '1rem', fontWeight: '600',
-                    letterSpacing: '-0.3px', border: 'none', cursor: 'pointer',
-                });
-                btn.onclick = () => applePayBeginSession(window.ApplePaySession);
-                container.appendChild(btn);
-            }
-
-            // PaymentRequest (cross-device QR) button — only on non-Apple browsers.
-            // On Safari/WebKit, PaymentRequest just opens the same native sheet as ApplePaySession.
-            if (!hasNativeSession && await supportsPaymentRequestApplePay(_applePayInfo)) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.textContent = ' Pay (QR code)';
-                Object.assign(btn.style, {
-                    background: '#1a1a2e', color: '#fff', borderRadius: '6px',
-                    padding: '0.5rem 1.5rem', fontSize: '1rem', fontWeight: '600',
-                    letterSpacing: '-0.3px', border: 'none', cursor: 'pointer',
-                });
-                btn.onclick = applePayPaymentRequestFlow;
-                container.appendChild(btn);
-            }
-        }
-
-        function buildApplePayPaymentMethod(info) {
-            const pr = info.applePayPaymentRequest;
-            return {
-                supportedMethods: 'https://apple.com/apple-pay',
-                data: {
-                    version: info.applepayVersion,
-                    merchantIdentifier: info.merchantIdentifier,
-                    merchantCapabilities: pr.merchantCapabilities,
-                    supportedNetworks: pr.supportedNetworks,
-                    countryCode: pr.countryCode,
-                },
-            };
-        }
-
-        function buildPaymentDetails(info) {
-            const pr = info.applePayPaymentRequest;
-            return {
-                total: {
-                    label: pr.total.label,
-                    amount: { currency: pr.currencyCode, value: String(pr.total.amount) },
-                },
-            };
-        }
-
-        async function supportsPaymentRequestApplePay(info) {
-            if (!window.PaymentRequest) return false;
-            try {
-                const req = new PaymentRequest([buildApplePayPaymentMethod(info)], buildPaymentDetails(info));
-                return await req.canMakePayment();
-            } catch {
-                return false;
-            }
-        }
-
-        async function applePayPaymentRequestFlow() {
-            const pre = document.getElementById('applepay-output');
-            if (!_applePayInfo || !_applePaymentId) return;
-
-            pre.textContent += '\n\n── Step 2: PaymentRequest (cross-device QR) ──';
-            let paymentResponse;
-            try {
-                const request = new PaymentRequest(
-                    [buildApplePayPaymentMethod(_applePayInfo)],
-                    buildPaymentDetails(_applePayInfo),
-                );
-                paymentResponse = await request.show();
-            } catch (err) {
-                pre.textContent += `\nCancelled or failed: ${err?.message ?? String(err)}`;
-                return;
-            }
-
-            const { data, signature, version, header } = paymentResponse.details.token.paymentData;
-            await paymentResponse.complete('success');
-            prefillCharge(
-                _applePaymentId,
-                {
-                    payment_instrument: 'PAYMENT_CARD',
-                    input: { input_type: 'APPLE_PAY', data, signature, version, header },
-                },
-            );
-            pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
-        }
-
-        function applePayBeginSession(SessionClass = window.ApplePaySession) {
-            const pre = document.getElementById('applepay-output');
-            if (!_applePayInfo || !_applePaymentId) return;
-
-            const session = new SessionClass(_applePayInfo.applepayVersion, _applePayInfo.applePayPaymentRequest);
-
-            session.onpaymentauthorized = (event) => {
-                const { data, signature, version, header } = event.payment.token.paymentData;
-                session.completePayment(SessionClass.STATUS_SUCCESS);
-                prefillCharge(
-                    _applePaymentId,
-                    {
-                        payment_instrument: 'PAYMENT_CARD',
-                        input: { input_type: 'APPLE_PAY', data, signature, version, header },
-                    },
-                    'Apple Pay token received — scroll down and click Run to charge.',
-                );
-                pre.textContent += '\n\nApple Pay token received. Charge section prefilled — scroll down to run.';
-            };
-
-            session.oncancel = () => {
-                pre.textContent += '\n\nApple Pay sheet closed. User cancelled.';
-            };
-
-            sdk.payments.startApplePaySession(_applePaymentId, session);
-        }
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runQRPaymentInfo() {
-            const paymentId = document.getElementById('qr-payment-id').value.trim();
-            const format = document.getElementById('qr-format').value || undefined;
-            run('qr-output', () => sdk.payments.getQRPaymentInfo(paymentId, format));
-        }
-
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function runCreateToken() {
-            run('cards-output', () =>
-                sdk.cards.createToken({ payload: 'JWE_ENCRYPTED_CARD_DATA', permanent: false })
-            );
-        }
-
-        // biome-ignore lint/correctness/noUnusedVariables: called from HTML onclick
-        function cardPayOpenIframe() {
-            const paymentId = document.getElementById('cardpay-payment-id').value.trim();
-            const pre = document.getElementById('cardpay-output');
-            document.getElementById('cardpay-iframe-container').style.display = 'block';
-            pre.textContent = `── Step 1: iframe opened ──\nPayment ID: ${paymentId || '(none)'}\n\nStep 2: Waiting for card confirmation in iframe…`;
-        }
-
-        window.addEventListener('message', async (event) => {
-            if (!event.data) return;
-
-            const pre = document.getElementById('cardpay-output');
-
-            if (event.data.type === 'GOPAY_CARD_ENCRYPT_READY') {
-                pre.textContent += '\n\niframe ready — waiting for Pay button click.';
-                return;
-            }
-
-            if (event.data.type !== 'GOPAY_CARD_ENCRYPT_RESULT') return;
-
-            document.getElementById('cardpay-iframe-container').style.display = 'none';
-
-            const paymentId = document.getElementById('cardpay-payment-id').value.trim();
-
-            pre.textContent += `\n\n── Step 2: received from iframe ──\ncard_token: ${event.data.card_token}`;
-
-            // Step 3 — create card token
-            pre.textContent += '\n\nStep 3: Creating card token…';
-            try {
-                const tokenResult = await sdk.cards.createToken({ payload: event.data.card_token });
-                pre.textContent += `\n\n── Step 3: createToken ──\n${JSON.stringify(tokenResult, null, 2)}`;
-                prefillCharge(
-                    paymentId,
-                    {
-                        payment_instrument: 'PAYMENT_CARD',
-                        input: { input_type: 'CARD_TOKEN', card_token: tokenResult.token },
-                    },
-                );
-                pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
-            } catch (err) {
-                pre.textContent += err instanceof GoPaySDK.GoPayHTTPError
-                    ? `\n\n[Step 3 failed — GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`
-                    : `\n\n[Step 3 failed] ${err?.message ?? String(err)}`;
-            }
-        });
-    </script>
+    <script src="example/example.js"></script>
 </body>
 
 </html>

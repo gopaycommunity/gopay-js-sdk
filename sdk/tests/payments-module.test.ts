@@ -170,9 +170,6 @@ describe('PaymentsModule', () => {
 
             expect(result).toEqual(mockPaymentResponse);
             expect(result.id).toBe('pay_300000001');
-            expect(result.gw_url).toBe(
-                'https://gw.gopay.com/gw/v3/bCcvmwTKK5hrJx2aGG8ZnFyBJhAvF',
-            );
         });
     });
 

@@ -16,12 +16,16 @@
 
     const STUB_CARD_TOKEN = 'eyJalgIjoiUlNBLU9BRVAtMjU2IiwiZW5jIjoiQTI1NkdDTSIsImtpZCI6ImtleV8yMDI1MDQwNl8wMDEifQ.aG93ZGlkYmFzZTY0.dGhpc2lzdGhlaXY.ZW5jcnlwdGVkY2FyZGhvbGRlcmRhdGE.YXV0aHRhZw';
 
+    const parentOrigin = document.referrer ? new URL(document.referrer).origin : null;
+
     document.getElementById('btn').addEventListener('click', () => {
-      window.parent.postMessage({ type: 'GOPAY_CARD_ENCRYPT_RESULT', card_token: STUB_CARD_TOKEN }, '*');
+      if (parentOrigin) {
+        window.parent.postMessage({ type: 'GOPAY_CARD_ENCRYPT_RESULT', card_token: STUB_CARD_TOKEN }, parentOrigin);
+      }
     });
 
-    if (window.parent !== window) {
-      window.parent.postMessage({ type: 'GOPAY_CARD_ENCRYPT_READY' }, '*');
+    if (window.parent !== window && parentOrigin) {
+      window.parent.postMessage({ type: 'GOPAY_CARD_ENCRYPT_READY' }, parentOrigin);
     }
   </script>
 </body>
