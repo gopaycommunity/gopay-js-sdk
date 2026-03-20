@@ -8,16 +8,25 @@ describe('auth.authenticate() — E2E', () => {
 
     beforeAll(() => {
         const baseUrl = process.env.GP_GW_JS_SDK_BASE_URL;
+        const environment = process.env.GP_GW_JS_SDK_ENVIRONMENT as
+            | 'sandbox'
+            | 'production'
+            | undefined;
         clientId = process.env.GP_GW_JS_SDK_CLIENT_ID ?? '';
         clientSecret = process.env.GP_GW_JS_SDK_CLIENT_SECRET ?? '';
 
-        if (!baseUrl || !clientId || !clientSecret) {
+        if (!baseUrl && !environment) {
             throw new Error(
-                'Missing required environment variables: GP_GW_JS_SDK_BASE_URL, GP_GW_JS_SDK_CLIENT_ID, GP_GW_JS_SDK_CLIENT_SECRET',
+                'Missing required environment variables: set GP_GW_JS_SDK_ENVIRONMENT (sandbox|production) or GP_GW_JS_SDK_BASE_URL for a custom endpoint',
+            );
+        }
+        if (!clientId || !clientSecret) {
+            throw new Error(
+                'Missing required environment variables: GP_GW_JS_SDK_CLIENT_ID, GP_GW_JS_SDK_CLIENT_SECRET',
             );
         }
 
-        sdk = new GoPaySDK({ baseUrl });
+        sdk = new GoPaySDK(baseUrl ? { baseUrl } : { environment });
     });
 
     it('returns a token pair for client_credentials grant', async () => {
