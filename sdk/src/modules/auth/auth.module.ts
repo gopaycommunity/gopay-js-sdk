@@ -16,9 +16,13 @@ export class AuthModule {
      * will attach the Bearer token automatically, and the SDK will refresh
      * it transparently before expiry.
      *
+     * The token pair is intentionally **not** returned — tokens must remain
+     * server-side only and must never be exposed to callers or logged.
+     * Use `isAuthenticated()` to confirm the SDK is ready.
+     *
      * POST /oauth2/token (`client_credentials` grant)
      */
-    async authenticate(params: AuthenticateRequest): Promise<TokenPair> {
+    async authenticate(params: AuthenticateRequest): Promise<void> {
         const form: Record<string, string> = {
             grant_type: params.grant_type,
             scope: params.scope,
@@ -58,8 +62,6 @@ export class AuthModule {
             refresh_expires_in: tokenPair.refresh_expires_in,
             token_type: 'bearer',
         });
-
-        return tokenPair;
     }
 
     /**

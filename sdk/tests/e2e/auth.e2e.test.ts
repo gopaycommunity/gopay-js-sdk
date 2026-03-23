@@ -41,18 +41,15 @@ describe('auth.authenticate() — E2E', () => {
         sdk = new GoPaySDK(baseUrl ? { baseUrl } : { environment });
     });
 
-    it('returns a token pair for client_credentials grant', async () => {
-        const result = await sdk.auth.authenticate({
+    it('authenticates and marks the SDK instance as authenticated', async () => {
+        await sdk.auth.authenticate({
             grant_type: 'client_credentials',
             client_id: clientId,
             client_secret: clientSecret,
             scope: 'payment:create',
         });
 
-        expect(result.token_type).toBe('bearer');
-        expect(result.access_token).toBeTruthy();
-        expect(result.refresh_token).toBeTruthy();
-        expect(typeof result.expires_in).toBe('number');
-        expect(typeof result.refresh_expires_in).toBe('number');
+        // Token pair is stored internally only — never returned to callers.
+        expect(sdk.auth.isAuthenticated()).toBe(true);
     });
 });

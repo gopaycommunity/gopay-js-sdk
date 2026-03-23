@@ -139,14 +139,14 @@ describe('GoPaySDK', () => {
             );
 
             const sdk = new GoPaySDK({ environment: 'sandbox' });
-            const result = await sdk.auth.authenticate({
+            await sdk.auth.authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'my-client',
                 client_secret: 'my-secret',
                 scope: 'payment:create',
             });
 
-            expect(result).toEqual(mockTokenPair);
+            expect(sdk.auth.isAuthenticated()).toBe(true);
             expect(capturedReq.url).toBe(
                 'https://api.sandbox.gopay.com/api/merchant/payments/4.0/oauth2/token',
             );
