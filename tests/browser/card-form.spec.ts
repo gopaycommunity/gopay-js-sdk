@@ -1,13 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.js';
 
 test('cards.mountCardForm() mounts iframe and the container becomes visible', async ({
     page,
 }) => {
-    await page.route(
-        (url) => url.hostname !== 'localhost',
-        async (route) => route.fulfill({ response: await route.fetch() }),
-    );
-
     await page.goto('/');
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
 

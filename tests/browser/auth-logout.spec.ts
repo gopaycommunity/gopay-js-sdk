@@ -1,11 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.js';
 
 test('auth.logout() clears authenticated state', async ({ page }) => {
-    await page.route(
-        (url) => url.hostname !== 'localhost',
-        async (route) => route.fulfill({ response: await route.fetch() }),
-    );
-
     await page.goto('/');
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
 

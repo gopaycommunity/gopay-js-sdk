@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
 import type { components } from '../../sdk/src/types/generated.js';
+import { expect, test } from './fixtures.js';
 
 type PaymentCreateResponse =
     components['responses']['Payment-Create-Response']['content']['application/json'];
@@ -11,11 +11,6 @@ const PAYMENT_KEYS = ['id', 'state', 'amount'] as const satisfies ReadonlyArray<
 test('payments.create() returns a payment with all expected keys', async ({
     page,
 }) => {
-    await page.route(
-        (url) => url.hostname !== 'localhost',
-        async (route) => route.fulfill({ response: await route.fetch() }),
-    );
-
     await page.goto('/');
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
 

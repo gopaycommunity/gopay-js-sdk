@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
 import type { components } from '../../sdk/src/types/generated.js';
+import { expect, test } from './fixtures.js';
 
 type PaymentCreateResponse =
     components['responses']['Payment-Create-Response']['content']['application/json'];
@@ -11,13 +11,6 @@ const PAYMENT_KEYS = ['id', 'state', 'amount'] as const satisfies ReadonlyArray<
 test('auth.issueClientToken() + auth.setClientToken() allows authenticated API calls without client credentials in browser', async ({
     page,
 }) => {
-    // Proxy all cross-origin requests through Playwright's Node.js fetch to
-    // avoid CORS restrictions in the browser (mock server has no CORS headers).
-    await page.route(
-        (url) => url.hostname !== 'localhost',
-        async (route) => route.fulfill({ response: await route.fetch() }),
-    );
-
     await page.goto('/');
 
     // Confirm the SDK loaded before interacting

@@ -1,30 +1,8 @@
-import { expect, test } from '@playwright/test';
-import type { components } from '../../sdk/src/types/generated.js';
+import { expect, test } from './fixtures.js';
 
-type TokenPair =
-    components['responses']['Token-Pair-Response']['content']['application/json'];
-
-// `satisfies` validates the keys against the generated type at compile time;
-// it is erased at runtime so there is no dependency on the SDK source.
-const TOKEN_KEYS = [
-    'token_type',
-    'access_token',
-    'refresh_token',
-    'scope',
-    'expires_in',
-    'refresh_expires_in',
-] as const satisfies ReadonlyArray<keyof TokenPair>;
-
-test('auth.authenticate() returns a token response with all expected keys', async ({
+test('auth.authenticate() authenticates the SDK without exposing tokens', async ({
     page,
 }) => {
-    // Proxy all cross-origin requests through Playwright's Node.js fetch to
-    // avoid CORS restrictions in the browser (mock server has no CORS headers).
-    await page.route(
-        (url) => url.hostname !== 'localhost',
-        async (route) => route.fulfill({ response: await route.fetch() }),
-    );
-
     await page.goto('/');
 
     // Confirm the SDK loaded before interacting
@@ -49,8 +27,20 @@ test('auth.authenticate() returns a token response with all expected keys', asyn
 
     const json = JSON.parse(text);
 
-    for (const key of TOKEN_KEYS) {
-        expect(json, `key "${key}" should be present`).toHaveProperty(key);
-        expect(String(json[key]), `"${key}" should be non-empty`).not.toBe('');
-    }
+    // authenticate() returns void — tokens are stored internally and must never
+    // be exposed. The demo confirms success with a non-sensitive summary only.
+    expect(json, 'should confirm authentication succeeded').toHaveProperty(
+        'authenticated',
+        true,
+    );
+    expect(json, 'should echo back the requested scope').toHaveProperty(
+        'scope',
+    );
+
+    // Verify no token values leaked into the output
+    expect(text).not.toContain('access_token');
+    expect(text).not.toContain('refresh_token');
+
+    // Verify the auth badge reflects the authenticated state
+    await expect(page.locator('#auth-badge')).toHaveText('authenticated');
 });

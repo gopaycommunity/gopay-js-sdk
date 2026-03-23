@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.js';
 
 // Tests the full mock Apple Pay flow using the polyfill's MockApplePaySession.
 // No real Apple device or Safari required — the mock session stubs merchant
@@ -6,11 +6,6 @@ import { expect, test } from '@playwright/test';
 test('mock Apple Pay flow completes merchant validation and authorises payment', async ({
     page,
 }) => {
-    await page.route(
-        (url) => url.hostname !== 'localhost',
-        async (route) => route.fulfill({ response: await route.fetch() }),
-    );
-
     await page.goto('/');
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
 
