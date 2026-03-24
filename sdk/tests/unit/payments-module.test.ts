@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HttpClient } from '../src/http/client.js';
-import type { TokenStore } from '../src/http/token-store.js';
-import { PaymentsModule } from '../src/modules/payments/payments.module.js';
+import { HttpClient } from '../../src/http/client.js';
+import type { TokenStore } from '../../src/http/token-store.js';
+import { PaymentsModule } from '../../src/modules/payments/payments.module.js';
 
 const tokenStore = (client: HttpClient) =>
     (client as unknown as { tokenStore: TokenStore }).tokenStore;

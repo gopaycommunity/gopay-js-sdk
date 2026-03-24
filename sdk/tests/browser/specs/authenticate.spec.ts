@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures.js';
+import { expect, test } from '../fixtures/fixtures.js';
 
 test('auth.authenticate() authenticates the SDK without exposing tokens', async ({
     page,

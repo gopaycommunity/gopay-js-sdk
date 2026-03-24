@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { defineConfig } from 'vitest/config';
+import { defaultExclude, defineConfig } from 'vitest/config';
 
 const REQUIRED_E2E_ENV_KEYS = [
     'GP_GW_JS_SDK_BASE_URL',
@@ -47,6 +47,7 @@ function loadDotEnv(path: string): Record<string, string> {
 
 export default defineConfig({
     test: {
+        exclude: [...defaultExclude, 'tests/browser/**'],
         pool: 'forks',
         testTimeout: 15_000,
         env: loadDotEnv(resolve(import.meta.dirname, '.env.e2e')),

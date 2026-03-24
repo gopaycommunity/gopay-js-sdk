@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-    testDir: './tests/browser',
+    testDir: './sdk/tests/browser',
     reporter: [
         ['list'],
         ['junit', { outputFile: 'test-results/junit.xml' }],

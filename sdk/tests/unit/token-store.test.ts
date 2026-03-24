@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TokenStore } from '../src/http/token-store.js';
+import { TokenStore } from '../../src/http/token-store.js';
 
 const pair = {
     access_token: 'at',

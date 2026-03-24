@@ -1,5 +1,5 @@
-import type { components } from '../../sdk/src/types/generated.js';
-import { expect, test } from './fixtures.js';
+import type { components } from '../../../src/types/generated.js';
+import { expect, test } from '../fixtures/fixtures.js';
 
 type PaymentCreateResponse =
     components['responses']['Payment-Create-Response']['content']['application/json'];

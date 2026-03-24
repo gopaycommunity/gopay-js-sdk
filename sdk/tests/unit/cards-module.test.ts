@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GoPayHTTPError } from '../src/errors.js';
-import { HttpClient } from '../src/http/client.js';
-import type { TokenStore } from '../src/http/token-store.js';
-import { CardsModule } from '../src/modules/cards/cards.module.js';
+import { GoPayHTTPError } from '../../src/errors.js';
+import { HttpClient } from '../../src/http/client.js';
+import type { TokenStore } from '../../src/http/token-store.js';
+import { CardsModule } from '../../src/modules/cards/cards.module.js';
 
 const tokenStore = (client: HttpClient) =>
     (client as unknown as { tokenStore: TokenStore }).tokenStore;

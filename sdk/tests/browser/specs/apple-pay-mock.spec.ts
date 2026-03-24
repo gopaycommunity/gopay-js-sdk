@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures.js';
+import { expect, test } from '../fixtures/fixtures.js';
 
 // Tests the full mock Apple Pay flow using the polyfill's MockApplePaySession.
 // No real Apple device or Safari required — the mock session stubs merchant

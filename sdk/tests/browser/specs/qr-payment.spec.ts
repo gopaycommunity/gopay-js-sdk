@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures.js';
+import { expect, test } from '../fixtures/fixtures.js';
 
 test('payments.getQRPaymentInfo() returns QR data and recipient info', async ({
     page,

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HttpClient } from '../src/http/client.js';
-import { GoPaySDK } from '../src/index.js';
-import type { components } from '../src/types/generated.js';
+import { HttpClient } from '../../src/http/client.js';
+import { GoPaySDK } from '../../src/index.js';
+import type { components } from '../../src/types/generated.js';
 
 type TokenPair =
     components['responses']['Token-Pair-Response']['content']['application/json'];

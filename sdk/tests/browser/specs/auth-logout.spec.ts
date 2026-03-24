@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures.js';
+import { expect, test } from '../fixtures/fixtures.js';
 
 test('auth.logout() clears authenticated state', async ({ page }) => {
     await page.goto('/');

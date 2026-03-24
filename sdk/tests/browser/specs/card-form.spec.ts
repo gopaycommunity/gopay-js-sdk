@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures.js';
+import { expect, test } from '../fixtures/fixtures.js';
 
 test('cards.mountCardForm() mounts iframe and the container becomes visible', async ({
     page,

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GoPayErrorCodes, GoPaySDKError } from '../src/errors.js';
-import { HttpClient } from '../src/http/client.js';
-import type { TokenStore } from '../src/http/token-store.js';
-import { AuthModule } from '../src/modules/auth/auth.module.js';
-import type { ClientToken } from '../src/types/index.js';
+import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
+import { HttpClient } from '../../src/http/client.js';
+import type { TokenStore } from '../../src/http/token-store.js';
+import { AuthModule } from '../../src/modules/auth/auth.module.js';
+import type { ClientToken } from '../../src/types/index.js';
 
 const tokenStore = (client: HttpClient) =>
     (client as unknown as { tokenStore: TokenStore }).tokenStore;

@@ -1,4 +1,4 @@
-import './main.css';
+import './styles/main.css';
 import { applePayLoadInfo } from './apple-pay.js';
 import {
     runAuthenticate,

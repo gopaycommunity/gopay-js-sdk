@@ -3,9 +3,9 @@ import {
     GoPayErrorCodes,
     GoPayHTTPError,
     GoPaySDKError,
-} from '../src/errors.js';
-import { HttpClient } from '../src/http/client.js';
-import type { TokenStore } from '../src/http/token-store.js';
+} from '../../src/errors.js';
+import { HttpClient } from '../../src/http/client.js';
+import type { TokenStore } from '../../src/http/token-store.js';
 
 const tokenStore = (client: HttpClient) =>
     (client as unknown as { tokenStore: TokenStore }).tokenStore;
