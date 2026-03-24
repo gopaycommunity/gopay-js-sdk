@@ -8,7 +8,7 @@
     ],
     "scripts": {
         "lint": "biome check .",
-        "ci": "yarn biome ci . && yarn workspace gopay-js-sdk run typecheck",
+        "ci": "yarn biome ci . && yarn workspace gopay-js-sdk run typecheck && yarn workspace gopay-js-sdk run check:circular && yarn workspace gopay-js-sdk run check:exports",
         "prepare": "husky",
         "test:browser": "playwright test",
         "example": "yarn workspace gopay-js-sdk run build && yarn workspace gopay-js-sdk-example run dev"
@@ -18,8 +18,7 @@
         "@commitlint/cli": "^20.5.0",
         "@commitlint/config-conventional": "^20.5.0",
         "@playwright/test": "^1.58.2",
-        "husky": "^9.1.7",
-        "serve": "^14.2.6"
+        "husky": "^9.1.7"
     },
     "commitlint": {
         "extends": [
