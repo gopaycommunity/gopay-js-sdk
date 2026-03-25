@@ -54,47 +54,23 @@ export async function applePayLoadInfo() {
         btn.type = 'button';
         btn.id = 'applepay-mock-btn';
         btn.textContent = ' Pay (Mock — dev only)';
-        Object.assign(btn.style, {
-            background: '#856404',
-            color: '#fff',
-            borderRadius: '6px',
-            padding: '0.5rem 1.5rem',
-            fontSize: '1rem',
-            fontWeight: '600',
-            letterSpacing: '-0.3px',
-            border: '2px dashed #ffc107',
-            cursor: 'pointer',
-        });
+        btn.style.background = '#856404';
         btn.onclick = () => applePayBeginSession(window.MockApplePaySession);
         container.appendChild(btn);
-    }
 
-    // Native Safari ApplePaySession button
-    const hasNativeSession =
-        window.ApplePaySession && !window.ApplePaySession.__isPolyfill;
-    if (hasNativeSession) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = ' Pay (Safari native)';
-        Object.assign(btn.style, {
-            background: '#000',
-            color: '#fff',
-            borderRadius: '6px',
-            padding: '0.5rem 1.5rem',
-            fontSize: '1rem',
-            fontWeight: '600',
-            letterSpacing: '-0.3px',
-            border: 'none',
-            cursor: 'pointer',
-        });
-        btn.onclick = () => applePayBeginSession(window.ApplePaySession);
-        container.appendChild(btn);
+        // Official Apple Pay button (Apple Pay JS SDK web component)
+        const appleBtn = document.createElement('apple-pay-button');
+        appleBtn.setAttribute('buttonstyle', 'black');
+        appleBtn.setAttribute('type', 'buy');
+        appleBtn.setAttribute('locale', 'en-US');
+        appleBtn.onclick = () => applePayBeginSession(window.ApplePaySession);
+        container.appendChild(appleBtn);
     }
 
     // PaymentRequest (cross-device QR) button — only on non-Apple browsers.
     // On Safari/WebKit, PaymentRequest just opens the same native sheet as ApplePaySession.
     if (
-        !hasNativeSession &&
+        !window.ApplePaySession &&
         (await supportsPaymentRequestApplePay(_applePayInfo))
     ) {
         const btn = document.createElement('button');

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GoPay JS SDK — Example</title>
     <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
+    <script async src="https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js"></script>
     <script src="./src/apple-pay-polyfill.js"></script>
 </head>
 
@@ -118,8 +119,10 @@
             <div class="fields">
                 <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="pay_300000001" /></label>
             </div>
-            <button type="button" onclick="googlePayLoadInfo()">Load Google Pay Config</button>
-            <div id="googlepay-button-container" class="my-2"></div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="googlePayLoadInfo()">Load Google Pay Config</button>
+                <div id="googlepay-button-container" class="flex items-center gap-2"></div>
+            </div>
             <pre id="googlepay-output">—</pre>
             <p class="note">Requires a payment created with Google Pay as an allowed instrument. In sandbox the Google Pay sheet runs in <code>TEST</code> mode — no real card data is used.</p>
         </section>
@@ -134,8 +137,10 @@
             <div class="fields">
                 <label>Payment ID<input id="applepay-payment-id" type="text" placeholder="pay_300000001" /></label>
             </div>
-            <button type="button" onclick="applePayLoadInfo()">Load Apple Pay Config</button>
-            <div id="applepay-button-container" class="my-2"></div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="applePayLoadInfo()">Load Apple Pay Config</button>
+                <div id="applepay-button-container" class="flex items-center gap-2"></div>
+            </div>
             <pre id="applepay-output">—</pre>
             <p class="note">Requires a payment created with Apple Pay as an allowed instrument.
                 <strong>ApplePaySession</strong>: native on Safari; simulated by a dev polyfill in other browsers.

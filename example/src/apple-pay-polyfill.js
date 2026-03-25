@@ -274,18 +274,9 @@
 
     ApplePaySession.__isPolyfill = true;
 
-    // Always expose as MockApplePaySession so the dev mock button works in any browser
+    // Always expose as MockApplePaySession so the dev mock button works in any browser.
     window.MockApplePaySession = ApplePaySession;
-
-    // Replace ApplePaySession only when no native implementation is present
-    if (!window.ApplePaySession) {
-        window.ApplePaySession = ApplePaySession;
-        console.info(
-            '[apple-pay-polyfill] ApplePaySession stub installed (non-Safari dev mode).',
-        );
-    } else {
-        console.info(
-            '[apple-pay-polyfill] MockApplePaySession available (native ApplePaySession kept).',
-        );
-    }
+    console.info(
+        '[apple-pay-polyfill] MockApplePaySession available (dev mock only).',
+    );
 })();
