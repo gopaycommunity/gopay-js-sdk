@@ -4,7 +4,9 @@
     "type": "module",
     "scripts": {
         "dev": "vite --mode e2e",
-        "build": "vite build --mode e2e"
+        "build": "vite build --mode e2e",
+        "cert:install": "CAROOT=$(TRUST_STORES=system mkcert -CAROOT) && [ ! -f \"$CAROOT/rootCA.pem\" ] && TRUST_STORES=system mkcert -install; sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain \"$CAROOT/rootCA.pem\" 2>/dev/null || true; mkdir -p certs && [ ! -f certs/localhost.pem ] && (cd certs && TRUST_STORES=system mkcert localhost) || true",
+        "cert:check": "mkcert -CAROOT >/dev/null 2>&1 && security find-certificate -c mkcert -a 2>/dev/null | grep -q keychain && echo 'OK' || echo 'NOT INSTALLED'"
     },
     "dependencies": {
         "gopay-js-sdk": "workspace:*"

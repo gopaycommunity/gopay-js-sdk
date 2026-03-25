@@ -15,10 +15,11 @@ Run this whenever `Payments.yaml` is updated to keep the types in sync.
 
 ## Checks
 
-After every edit, run checks with a single command from the repo root:
+After every edit, run checks with from the repo root:
 
 ```bash
-yarn ci
+yarn lint
+yarn typecheck
 ```
 
 This runs lint (Biome) and typecheck in sequence. It is wired up to:

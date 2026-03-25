@@ -46,6 +46,24 @@ yarn test:browser
 yarn example
 ```
 
+## Local HTTPS (mkcert)
+
+The example dev server runs on HTTPS. Without setup it falls back to a self-signed cert (untrusted by browsers). For a properly trusted cert, install [mkcert](https://github.com/FiloSottile/mkcert) and run once:
+
+```bash
+# Install mkcert if not already present
+brew install mkcert
+
+# Generate and trust a localhost cert (requires sudo for Keychain on macOS)
+yarn workspace gopay-js-sdk-example cert:install
+
+# Verify the CA is trusted
+yarn workspace gopay-js-sdk-example cert:check
+# → OK
+```
+
+This generates `example/certs/localhost.pem` and `example/certs/localhost-key.pem` (git-ignored). The dev server picks them up automatically on next `yarn example`.
+
 ## Browser tests
 
 Playwright tests in `tests/browser/` run against the IIFE bundle served from `example/index.html`.

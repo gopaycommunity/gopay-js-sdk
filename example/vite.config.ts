@@ -1,4 +1,4 @@
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
@@ -14,6 +14,10 @@ const MIME: Record<string, string> = {
     '.css': 'text/css',
 };
 
+const certKey = resolve(__dirname, 'certs', 'localhost-key.pem');
+const certFile = resolve(__dirname, 'certs', 'localhost.pem');
+const hasMkcert = existsSync(certKey) && existsSync(certFile);
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, resolve(repoRoot, 'sdk'), 'GP_GW_JS_SDK_');
 
@@ -21,7 +25,7 @@ export default defineConfig(({ mode }) => {
         envDir: resolve(repoRoot, 'sdk'),
         envPrefix: 'GP_GW_JS_SDK_',
         plugins: [
-            basicSsl(),
+            ...(hasMkcert ? [] : [basicSsl()]),
             tailwindcss(),
             {
                 name: 'serve-repo-sdk',
@@ -44,6 +48,14 @@ export default defineConfig(({ mode }) => {
         ],
         server: {
             port: 3000,
+            ...(hasMkcert
+                ? {
+                      https: {
+                          key: readFileSync(certKey),
+                          cert: readFileSync(certFile),
+                      },
+                  }
+                : {}),
             ...(env.GP_GW_JS_SDK_BASE_URL
                 ? {
                       proxy: {
