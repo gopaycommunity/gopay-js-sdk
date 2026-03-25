@@ -79,7 +79,10 @@ export function clearCharge() {
     document.getElementById('charge-instrument-info').textContent =
         'No instrument prefilled — complete a payment flow above, or enter a card token manually.';
     document.getElementById('charge-token-fields').style.display = '';
-    document.getElementById('payment-charge-output').textContent = '—';
+    const output = document.getElementById('payment-charge-output');
+    output.textContent = '—';
+    if (output.nextElementSibling?.dataset.tds)
+        output.nextElementSibling.remove();
 }
 
 // Fetch QR payment info for a payment. Returns image data (base64 PNG or SVG markup).
@@ -90,5 +93,30 @@ export function clearCharge() {
 export function runQRPaymentInfo() {
     const paymentId = document.getElementById('qr-payment-id').value.trim();
     const format = document.getElementById('qr-format').value || undefined;
-    run('qr-output', () => sdk.payments.getQRPaymentInfo(paymentId, format));
+    run(
+        'qr-output',
+        () => sdk.payments.getQRPaymentInfo(paymentId, format),
+        (result) => {
+            const pre = document.getElementById('qr-output');
+            if (pre.nextElementSibling?.dataset.qrImg)
+                pre.nextElementSibling.remove();
+            const data = result?.qr_code;
+            if (!data) return;
+            const b64 =
+                data.spayd ?? data.paybysquare ?? data.sepa ?? data.mnb_qr;
+            if (!b64) return;
+            const isSvg = format === 'svg';
+            const img = document.createElement('img');
+            img.dataset.qrImg = '1';
+            img.src = isSvg
+                ? `data:image/svg+xml;base64,${b64}`
+                : `data:image/png;base64,${b64}`;
+            Object.assign(img.style, {
+                display: 'block',
+                marginTop: '0.6rem',
+                maxWidth: '200px',
+            });
+            pre.insertAdjacentElement('afterend', img);
+        },
+    );
 }
