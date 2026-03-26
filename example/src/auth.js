@@ -96,7 +96,6 @@ export function runIssueClientToken() {
 // and the browser calls sdk.auth.setClientToken(token) once on page load.
 // After setClientToken(), sdk.auth.isAuthenticated() returns true and payment calls will work.
 export function runSetClientTokenFlow() {
-    const goid = document.getElementById('set-client-token-goid').value.trim();
     const accessToken = document
         .getElementById('set-client-token-access')
         .value.trim();
@@ -120,15 +119,6 @@ export function runSetClientTokenFlow() {
                   };
         browserSdk.auth.setClientToken(clientToken);
         updateAuthBadge();
-        return browserSdk.payments.create(goid, {
-            amount: 1000,
-            currency: 'CZK',
-            order_number: 'ORDER-CT-TEST',
-            customer: { email: 'test@example.com' },
-            callback: {
-                notification_url: 'https://yourshop.example.com/notify',
-                return_url: 'https://yourshop.example.com/return',
-            },
-        });
+        return { authenticated: true };
     });
 }
