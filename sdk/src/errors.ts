@@ -36,6 +36,9 @@ export const GoPayErrorCodes = {
     NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',
     /** Network-level failure (no response received) */
     NETWORK_ERROR: 'NETWORK_ERROR',
+    // Card form errors
+    /** The GoPay card encryption iframe reported an error */
+    CARD_FORM_ERROR: 'CARD_FORM_ERROR',
 } as const;
 
 export type GoPayErrorCode =

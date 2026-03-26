@@ -21,6 +21,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/eshops/{goid}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goid: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a payment */
+        post: operations["post-eshops-goid-payments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payments/{payment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        /** Payment Status */
+        get: operations["get-payments-payment_id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payments/{payment_id}/charge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        /** Payment charge state */
+        get: operations["get-payments-payment_id-charge"];
+        put?: never;
+        /** Charge payment (preview) */
+        post: operations["post-payments-payment_id-charge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/encryption/public-key": {
         parameters: {
             query?: never;
@@ -54,44 +112,6 @@ export interface paths {
         put?: never;
         /** Create card token */
         post: operations["post-cards-tokens"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/payments/{payment_id}/charge": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                payment_id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Charge payment (preview) */
-        post: operations["post-payments-payment_id-charge"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/eshops/{goid}/payments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                goid: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create a payment */
-        post: operations["post-eshops-goid-payments"];
         delete?: never;
         options?: never;
         head?: never;
@@ -240,14 +260,14 @@ export interface components {
         /**
          * JWT-header
          * @example {
-         *       "alg": "HS256",
+         *       "alg": "RS256",
          *       "typ": "JWT",
          *       "kid": "key-2025-04"
          *     }
          */
         "JWT-header": {
             /**
-             * @example HS256
+             * @example RS256
              * @constant
              */
             alg: "HS256";
@@ -505,7 +525,19 @@ export interface components {
          *           "challenge_preferrence": "AUTO"
          *         }
          *       },
-         *       "return_url": "https://example.com/return"
+         *       "return_url": "https://example.com/return",
+         *       "browser_data": {
+         *         "ip": "198.51.100.1",
+         *         "language": "cs-CZ",
+         *         "timezone": -60,
+         *         "screen_width": 434,
+         *         "screen_height": 965,
+         *         "color_depth": 24,
+         *         "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36",
+         *         "accept_header": "{\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, *\/*\"}",
+         *         "javascript_enabled": true,
+         *         "java_enabled": false
+         *       }
          *     }
          * @example {
          *       "payment_instrument": {
@@ -525,6 +557,28 @@ export interface components {
              * @example https://example.com/return
              */
             return_url?: string;
+            browser_data?: {
+                /** @example 198.51.100.1 */
+                ip?: string;
+                /** @example cs-CZ */
+                language?: string;
+                /** @example -60 */
+                timezone?: number;
+                /** @example 434 */
+                screen_width?: number;
+                /** @example 965 */
+                screen_height?: number;
+                /** @example 24 */
+                color_depth?: number;
+                /** @example Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 */
+                user_agent?: string;
+                /** @example {\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, *\/*\"} */
+                accept_header?: string;
+                /** @example true */
+                javascript_enabled?: boolean;
+                /** @example false */
+                java_enabled?: boolean;
+            };
         };
         /**
          * Payment-Charge-Data
@@ -1122,7 +1176,7 @@ export interface components {
         "Payment-Group": "CARD_PAYMENT" | "BANK_TRANSFER" | "DIGITAL_WALLET" | "BNPL" | "OTHERS";
     };
     responses: {
-        /** @description Example response */
+        /** @description Successful authentication */
         "Token-Pair-Response": {
             headers: {
                 "Content-Type"?: "application/json";
@@ -1185,7 +1239,6 @@ export interface components {
         /** @description Example response */
         "Payment-Create-Response": {
             headers: {
-                "Content-Type"?: string;
                 [name: string]: unknown;
             };
             content: {
@@ -1220,32 +1273,47 @@ export interface components {
             };
             content: {
                 "application/json": {
-                    environment?: string;
+                    /**
+                     * @example TEST
+                     * @enum {unknown}
+                     */
+                    environment?: "TEST" | "PRODUCTION";
                     paymentDataRequest?: {
+                        /** @example 2 */
                         apiVersion?: number;
+                        /** @example 0 */
                         apiVersionMinor?: number;
                         allowedPaymentMethods?: {
+                            /** @example CARD */
                             type?: string;
                             parameters?: {
                                 allowedAuthMethods?: ("PAN_ONLY" | "CRYPTOGRAM_3DS")[];
                                 allowedCardNetworks?: ("VISA" | "MASTERCARD")[];
                             };
                             tokenizationSpecification?: {
+                                /** @example PAYMENT_GATEWAY */
                                 type?: string;
                                 parameters?: {
+                                    /** @example gopay */
                                     gateway?: string;
+                                    /** @example 26046768005768011132 */
                                     gatewayMerchantId?: string;
                                 };
                             };
                         }[];
                         transactionInfo?: {
                             currencyCode?: components["schemas"]["Currency"];
+                            /** @example CZ */
                             countryCode?: string;
+                            /** @example FINAL */
                             totalPriceStatus?: string;
+                            /** @example 5.00 */
                             totalPrice?: string;
                         };
                         merchantInfo?: {
+                            /** @example GoPay Czech */
                             merchantName?: string;
+                            /** @example 14846034534970557458 */
                             merchantId?: string;
                         };
                         emailRequired?: boolean;
@@ -1403,7 +1471,7 @@ export interface components {
                     qr_code: {
                         /**
                          * @description Czech payment QR code (SPAYD) - only available for the CZK currency
-                         * @example {QR code in base64}
+                         * @example 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
                          */
                         spayd?: string;
                         /**
@@ -1423,6 +1491,325 @@ export interface components {
                         mnb_qr?: string;
                     };
                 };
+            };
+        };
+        /** @description Bad Request */
+        "Bad-Request-400-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /**
+                     * Format: int32
+                     * @description HTTP status code
+                     * @example 400
+                     * @constant
+                     */
+                    code: 400;
+                    /**
+                     * @description Error type
+                     * @example BAD_REQUEST
+                     * @constant
+                     */
+                    error: "BAD_REQUEST";
+                    /**
+                     * @description Error message
+                     * @example Invalid request parameter
+                     */
+                    message: string;
+                    /**
+                     * @description Detailed error description
+                     * @example Error Details
+                     */
+                    detail: string;
+                    /**
+                     * @description Request path
+                     * @example /payments/123/charge
+                     */
+                    path: string;
+                    /**
+                     * Format: date-time
+                     * @description Error timestamp
+                     * @example 2025-12-10T10:30:00Z
+                     */
+                    timestamp: string;
+                };
+            };
+        };
+        /** @description Unauthorized */
+        "Unauthorized-401-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /**
+                     * Format: int32
+                     * @description HTTP status code
+                     * @example 401
+                     * @constant
+                     */
+                    code: 401;
+                    /**
+                     * @description Error type
+                     * @example UNAUTHORIZED
+                     * @constant
+                     */
+                    error: "UNAUTHORIZED";
+                    /**
+                     * @description Error message
+                     * @example Wrong credentials
+                     */
+                    message: string;
+                    /**
+                     * @description Detailed error description
+                     * @example Error Details
+                     */
+                    detail: string;
+                    /**
+                     * @description Request path
+                     * @example /payments/123/charge
+                     */
+                    path: string;
+                    /**
+                     * Format: date-time
+                     * @description Error timestamp
+                     * @example 2025-12-10T10:30:00Z
+                     */
+                    timestamp: string;
+                };
+            };
+        };
+        /** @description Example response */
+        "Forbidden-403-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /**
+                     * Format: int32
+                     * @description HTTP status code
+                     * @example 403
+                     * @constant
+                     */
+                    code: 403;
+                    /**
+                     * @description Error type
+                     * @example FORBIDDEN
+                     * @constant
+                     */
+                    error: "FORBIDDEN";
+                    /**
+                     * @description Error message
+                     * @example Missing token scope
+                     */
+                    message: string;
+                    /**
+                     * @description Detailed error description
+                     * @example Error Details
+                     */
+                    detail: string;
+                    /**
+                     * @description Request path
+                     * @example /payments/123/charge
+                     */
+                    path: string;
+                    /**
+                     * Format: date-time
+                     * @description Error timestamp
+                     * @example 2025-12-10T10:30:00Z
+                     */
+                    timestamp: string;
+                };
+            };
+        };
+        /** @description Example response */
+        "Not-Found-404-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /**
+                     * Format: int32
+                     * @description HTTP status code
+                     * @example 404
+                     * @constant
+                     */
+                    code: 404;
+                    /**
+                     * @description Error type
+                     * @example NOT_FOUND
+                     * @constant
+                     */
+                    error: "NOT_FOUND";
+                    /**
+                     * @description Error message
+                     * @example Resource not found
+                     */
+                    message: string;
+                    /**
+                     * @description Detailed error description
+                     * @example Error Details
+                     */
+                    detail: string;
+                    /**
+                     * @description Request path
+                     * @example /payments/123/charge
+                     */
+                    path: string;
+                    /**
+                     * Format: date-time
+                     * @description Error timestamp
+                     * @example 2025-12-10T10:30:00Z
+                     */
+                    timestamp: string;
+                };
+            };
+        };
+        /** @description Example response */
+        "Conflict-409-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /**
+                     * Format: int32
+                     * @description HTTP status code
+                     * @example 409
+                     * @constant
+                     */
+                    code: 409;
+                    /**
+                     * @description Error type
+                     * @example CONFLICT
+                     * @constant
+                     */
+                    error: "CONFLICT";
+                    /**
+                     * @description Error message
+                     * @example Wrong resource state
+                     */
+                    message: string;
+                    /**
+                     * @description Detailed error description
+                     * @example Error Details
+                     */
+                    detail: string;
+                    /**
+                     * @description Request path
+                     * @example /payments/123/charge
+                     */
+                    path: string;
+                    /**
+                     * Format: date-time
+                     * @description Error timestamp
+                     * @example 2025-12-10T10:30:00Z
+                     */
+                    timestamp: string;
+                };
+            };
+        };
+        /** @description Internal Server Error */
+        "Internal-Server-Error-500-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /**
+                     * Format: int32
+                     * @description HTTP status code
+                     * @example 500
+                     * @constant
+                     */
+                    code: 500;
+                    /**
+                     * @description Error type
+                     * @example INTERNAL_SERVER_ERROR
+                     * @constant
+                     */
+                    error: "INTERNAL_SERVER_ERROR";
+                    /**
+                     * @description Error message
+                     * @example Unexpected error occurred
+                     */
+                    message: string;
+                    /**
+                     * @description Detailed error description
+                     * @example Error Details
+                     */
+                    detail: string;
+                    /**
+                     * @description Request path
+                     * @example /payments/123/charge
+                     */
+                    path: string;
+                    /**
+                     * Format: date-time
+                     * @description Error timestamp
+                     * @example 2025-12-10T10:30:00Z
+                     */
+                    timestamp: string;
+                };
+            };
+        };
+        "Error-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
+        };
+        /** @description Example response */
+        "Payment-Status-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /**
+                     * @description Payment session ID
+                     * @example 300000001
+                     */
+                    id: string;
+                    /**
+                     * @description Order ID forwarded from the payment request
+                     * @example 2025010199
+                     */
+                    order_number: string;
+                    /** @description Payment state */
+                    state: components["schemas"]["Payment-State"];
+                    /** @description Total amount in cents */
+                    amount: number;
+                    /** @description Payment currency */
+                    currency: components["schemas"]["Currency"];
+                    /** @description Customer data */
+                    customer: components["schemas"]["Customer"];
+                    /** @description URL of the hosted payment gateway */
+                    gw_url: string;
+                    charge?: {
+                        /** @example 9123456789 */
+                        id: string;
+                        state: components["schemas"]["Charge-State"];
+                        /**
+                         * Format: uri
+                         * @example https://api.gopay.com/api/4.0/payments/9123456789/charge
+                         */
+                        href: string;
+                    };
+                };
+            };
+        };
+        /** @description Example response */
+        "Payment-Charge-State-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Payment-Charge-Response-Data"];
             };
         };
     };
@@ -1512,50 +1899,51 @@ export interface operations {
         requestBody?: components["requestBodies"]["Access-Token-Request"];
         responses: {
             200: components["responses"]["Token-Pair-Response"];
-        };
-    };
-    "get-encryption-public-key": {
-        parameters: {
-            query?: never;
-            header: {
-                Accept: components["parameters"]["Accept-Json"];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: int32
+                         * @description HTTP status code
+                         * @example 500
+                         */
+                        code: number;
+                        /**
+                         * @description Error type
+                         * @example INTERNAL_SERVER_ERROR
+                         */
+                        error: string;
+                        /**
+                         * @description Error message
+                         * @example Unexpected server error
+                         */
+                        message: string;
+                        /**
+                         * @description Detailed error description
+                         * @example Error Details
+                         */
+                        detail: string;
+                        /**
+                         * @description Request path
+                         * @example /oauth2/token
+                         */
+                        path: string;
+                        /**
+                         * Format: date-time
+                         * @description Error timestamp
+                         * @example 2025-12-10T10:30:00Z
+                         */
+                        timestamp: string;
+                    };
+                };
             };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["JWK-Response"];
-        };
-    };
-    "post-cards-tokens": {
-        parameters: {
-            query?: never;
-            header: {
-                Accept: components["parameters"]["Accept-Json"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: components["requestBodies"]["Card-Token-Request"];
-        responses: {
-            201: components["responses"]["Card-Token-Response"];
-        };
-    };
-    "post-payments-payment_id-charge": {
-        parameters: {
-            query?: never;
-            header: {
-                Accept: components["parameters"]["Accept-Json"];
-            };
-            path: {
-                payment_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: components["requestBodies"]["Payment-Charge-Request"];
-        responses: {
-            201: components["responses"]["Payment-Charge-Response"];
         };
     };
     "post-eshops-goid-payments": {
@@ -1572,6 +1960,124 @@ export interface operations {
         requestBody?: components["requestBodies"]["Payment-Create-Request"];
         responses: {
             201: components["responses"]["Payment-Create-Response"];
+            400: components["responses"]["Bad-Request-400-Response"];
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-payments-payment_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Payment-Status-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-payments-payment_id-charge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Payment-Charge-State-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-payments-payment_id-charge": {
+        parameters: {
+            query?: never;
+            header: {
+                Accept: components["parameters"]["Accept-Json"];
+            };
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: components["requestBodies"]["Payment-Charge-Request"];
+        responses: {
+            201: components["responses"]["Payment-Charge-Response"];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "get-encryption-public-key": {
+        parameters: {
+            query?: never;
+            header: {
+                Accept: components["parameters"]["Accept-Json"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["JWK-Response"];
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden-403-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-cards-tokens": {
+        parameters: {
+            query?: never;
+            header: {
+                Accept: components["parameters"]["Accept-Json"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: components["requestBodies"]["Card-Token-Request"];
+        responses: {
+            201: components["responses"]["Card-Token-Response"];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
     "get-payments-payment_id-qr-payment-info": {
@@ -1592,6 +2098,11 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: components["responses"]["QR-Payment-Info-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
     "get-payments-payment_id-info-google-pay": {
@@ -1609,6 +2120,11 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: components["responses"]["Google-Pay-Info-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
     "get-payments-payment_id-info-apple-pay": {
@@ -1626,6 +2142,11 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: components["responses"]["Apple-Pay-Info-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
     "post-payments-payment_id-apple-pay-validate": {
@@ -1643,6 +2164,18 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: components["responses"]["Validate-Merchant-Response"];
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
 }

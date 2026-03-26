@@ -48,6 +48,14 @@ export class HttpClient {
         return this.tokenStore.hasAccessToken();
     }
 
+    getTokens(): StoredTokenPair | null {
+        return this.tokenStore.get();
+    }
+
+    getEnvironment(): NonNullable<GoPayConfig['environment']> {
+        return this.config.environment ?? 'sandbox';
+    }
+
     clearTokens(): void {
         this.tokenStore.clear();
     }

@@ -1,3 +1,4 @@
+import { GoPayErrorCodes, GoPaySDKError } from '../../errors.js';
 import type { HttpClient } from '../../http/client.js';
 import type { components } from '../../types/generated.js';
 
@@ -8,6 +9,18 @@ type CardTokenResponse =
 
 export class CardsModule {
     constructor(private readonly client: HttpClient) {}
+
+    /**
+     * Fetch the URL of the GoPay-hosted card encryption iframe.
+     * TODO: change to real endpoint once available; for now this is hardcoded in the example app.
+     * Requires the `card:save` OAuth2 scope.
+     */
+    async getCardFormUrl(): Promise<string> {
+        const result = await this.client.get<{ url: string }>(
+            '/cards/form-url',
+        );
+        return result.url;
+    }
 
     /**
      * Mount the GoPay card encryption iframe into `container` and return the
@@ -32,6 +45,17 @@ export class CardsModule {
         iframeSrc: string,
     ): Promise<CardTokenResponse> {
         return new Promise((resolve, reject) => {
+            const tokens = this.client.getTokens();
+            if (!tokens) {
+                reject(
+                    new GoPaySDKError(
+                        '[GoPaySDK] No access token available. Call setClientToken() before mounting the card form.',
+                        { errorCode: GoPayErrorCodes.AUTH_TOKEN_MISSING },
+                    ),
+                );
+                return;
+            }
+
             container.replaceChildren();
 
             const iframe = document.createElement('iframe');
@@ -41,15 +65,56 @@ export class CardsModule {
 
             const expectedOrigin = new URL(iframeSrc, globalThis.location?.href)
                 .origin;
+            const environment = this.client.getEnvironment();
+            const elapsedSeconds = Math.floor(
+                (Date.now() - tokens.issued_at) / 1000,
+            );
 
             const cleanup = () => {
                 window.removeEventListener('message', onMessage);
                 iframe.remove();
             };
 
+            iframe.onload = () => {
+                iframe.contentWindow?.postMessage(
+                    {
+                        type: 'GOPAY_CARD_FORM_INIT',
+                        environment,
+                        access_token: tokens.access_token,
+                        refresh_token: tokens.refresh_token,
+                        expires_in: Math.max(
+                            0,
+                            tokens.expires_in - elapsedSeconds,
+                        ),
+                        refresh_expires_in: Math.max(
+                            0,
+                            tokens.refresh_expires_in - elapsedSeconds,
+                        ),
+                    },
+                    expectedOrigin,
+                );
+            };
+
             const onMessage = async (event: MessageEvent) => {
                 if (event.origin !== expectedOrigin) return;
                 if (event.source !== iframe.contentWindow) return;
+
+                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') {
+                    // Form is rendered and interactive — nothing to do here.
+                    return;
+                }
+
+                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_ERROR') {
+                    cleanup();
+                    reject(
+                        new GoPaySDKError(
+                            `[GoPaySDK] Card form error: ${event.data.error}`,
+                            { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                        ),
+                    );
+                    return;
+                }
+
                 if (event.data?.type !== 'GOPAY_CARD_ENCRYPT_RESULT') return;
 
                 cleanup();

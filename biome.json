@@ -43,7 +43,8 @@
             "!**/coverage",
             "!**/playwright-report",
             "!**/test-results",
-            "!sdk/src/types/generated.ts"
+            "!sdk/src/types/generated.ts",
+            "!example/iframe/index.html"
         ]
     }
 }

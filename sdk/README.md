@@ -345,7 +345,7 @@ if (charge.action?.redirect_url) {
 }
 ```
 
-`GET /encryption/public-key` and the JWE construction it enables are **intentionally not part of this SDK's API surface**. Do not use the `sdk/src/iframe/card-encrypt.html` stub in production or testing.
+`GET /encryption/public-key` and the JWE construction it enables are **intentionally not part of this SDK's API surface**. Do not use the `sdk/src/iframe/index.html` stub in production or testing.
 
 ---
 

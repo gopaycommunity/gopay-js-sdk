@@ -19,9 +19,6 @@ paths:
     post:
       summary: Authenticate
       tags: []
-      responses:
-        '200':
-          $ref: '#/components/responses/Token-Pair-Response'
       operationId: post-oauth2-token
       x-stoplight:
         id: 76hckee4qpnkr
@@ -38,6 +35,181 @@ paths:
           example: 'Basic {username:password in base64}'
       requestBody:
         $ref: '#/components/requestBodies/Access-Token-Request'
+      responses:
+        '200':
+          $ref: '#/components/responses/Token-Pair-Response'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - error
+                  - message
+                  - detail
+                  - path
+                  - timestamp
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                    example: 500
+                    description: HTTP status code
+                  error:
+                    type: string
+                    example: INTERNAL_SERVER_ERROR
+                    description: Error type
+                  message:
+                    type: string
+                    example: Unexpected server error
+                    description: Error message
+                  detail:
+                    type: string
+                    example: Error Details
+                    description: Detailed error description
+                  path:
+                    type: string
+                    example: /oauth2/token
+                    description: Request path
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2025-12-10T10:30:00Z'
+                    description: Error timestamp
+              examples:
+                Example 1:
+                  value:
+                    code: 500
+                    error: INTERNAL_SERVER_ERROR
+                    message: Unexpected server error
+                    detail: Error Details
+                    path: /oauth2/token
+                    timestamp: '2025-12-10T10:30:00Z'
+  '/eshops/{goid}/payments':
+    parameters:
+      - schema:
+          type: string
+        name: goid
+        in: path
+        required: true
+    post:
+      summary: Create a payment
+      tags: []
+      responses:
+        '201':
+          $ref: '#/components/responses/Payment-Create-Response'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          description: Unauthorized
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: post-eshops-goid-payments
+      x-stoplight:
+        id: ho0hek857ajwi
+      parameters:
+        - $ref: '#/components/parameters/Accept-Json'
+      requestBody:
+        $ref: '#/components/requestBodies/Payment-Create-Request'
+      security:
+        - clientCredentials:
+            - 'payment:create'
+  '/payments/{payment_id}':
+    get:
+      summary: Payment Status
+      tags: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Payment-Status-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: get-payments-payment_id
+      x-stoplight:
+        id: uopz86vn777hk
+      security:
+        - clientCredentials:
+            - 'payment:read'
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+  '/payments/{payment_id}/charge':
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+    post:
+      summary: Charge payment (preview)
+      tags: []
+      responses:
+        '201':
+          $ref: '#/components/responses/Payment-Charge-Response'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          description: Internal Server Error
+      operationId: post-payments-payment_id-charge
+      x-stoplight:
+        id: eusfzuq09tokk
+      security:
+        - clientCredentials:
+            - 'payment:create'
+      requestBody:
+        $ref: '#/components/requestBodies/Payment-Charge-Request'
+      parameters:
+        - $ref: '#/components/parameters/Accept-Json'
+    get:
+      summary: Payment charge state
+      tags: []
+      responses:
+        '200':
+          $ref: '#/components/responses/Payment-Charge-State-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: get-payments-payment_id-charge
+      x-stoplight:
+        id: iq1t885ia1tlh
+      security:
+        - clientCredentials:
+            - 'payment:read'
   /encryption/public-key:
     get:
       summary: Fetch public key
@@ -45,6 +217,12 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/JWK-Response'
+        '401':
+          description: Unauthorized
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: get-encryption-public-key
       x-stoplight:
         id: fzmjk8f7jgxx5
@@ -64,6 +242,16 @@ paths:
       responses:
         '201':
           $ref: '#/components/responses/Card-Token-Response'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: post-cards-tokens
       x-stoplight:
         id: z527w3pj6p22i
@@ -74,49 +262,6 @@ paths:
         - $ref: '#/components/parameters/Accept-Json'
       requestBody:
         $ref: '#/components/requestBodies/Card-Token-Request'
-  '/payments/{payment_id}/charge':
-    parameters:
-      - schema:
-          type: string
-        name: payment_id
-        in: path
-        required: true
-    post:
-      summary: Charge payment (preview)
-      tags: []
-      responses:
-        '201':
-          $ref: '#/components/responses/Payment-Charge-Response'
-      operationId: post-payments-payment_id-charge
-      x-stoplight:
-        id: eusfzuq09tokk
-      security:
-        - clientCredentials:
-            - 'payment:create'
-      requestBody:
-        $ref: '#/components/requestBodies/Payment-Charge-Request'
-      parameters:
-        - $ref: '#/components/parameters/Accept-Json'
-  '/eshops/{goid}/payments':
-    parameters:
-      - schema:
-          type: string
-        name: goid
-        in: path
-        required: true
-    post:
-      summary: Create a payment
-      tags: []
-      responses:
-        '201':
-          $ref: '#/components/responses/Payment-Create-Response'
-      operationId: post-eshops-goid-payments
-      x-stoplight:
-        id: ho0hek857ajwi
-      parameters:
-        - $ref: '#/components/parameters/Accept-Json'
-      requestBody:
-        $ref: '#/components/requestBodies/Payment-Create-Request'
   '/payments/{payment_id}/qr-payment/info':
     parameters:
       - schema:
@@ -130,6 +275,16 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/QR-Payment-Info-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: get-payments-payment_id-qr-payment-info
       parameters:
         - schema:
@@ -151,6 +306,9 @@ paths:
           description: File format of the generated base64
       x-stoplight:
         id: dvab3szgjw238
+      security:
+        - clientCredentials:
+            - 'payment:read'
   '/payments/{payment_id}/google-pay/info':
     parameters:
       - schema:
@@ -164,6 +322,16 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/Google-Pay-Info-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: get-payments-payment_id-info-google-pay
       x-stoplight:
         id: o935ttq3967v5
@@ -175,6 +343,9 @@ paths:
           in: header
           name: Accept
           description: application/json
+      security:
+        - clientCredentials:
+            - 'payment:read'
   '/payments/{payment_id}/apple-pay/info':
     parameters:
       - schema:
@@ -188,6 +359,16 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/Apple-Pay-Info-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: get-payments-payment_id-info-apple-pay
       parameters:
         - schema:
@@ -199,6 +380,9 @@ paths:
           description: application/json
       x-stoplight:
         id: ewnyiw719coe8
+      security:
+        - clientCredentials:
+            - 'payment:read'
   '/payments/{payment_id}/apple-pay/validate':
     parameters:
       - schema:
@@ -212,6 +396,18 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/Validate-Merchant-Response'
+        '400':
+          description: Bad Request
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: post-payments-payment_id-apple-pay-validate
       x-stoplight:
         id: gb1p7yi5l70cd
@@ -222,6 +418,9 @@ paths:
           name: Origin
           description: The origin of the document where the payment button is displayed (added automatically in AJAX)
           required: true
+      security:
+        - clientCredentials:
+            - 'payment:create'
 components:
   schemas:
     Token-Scope:
@@ -310,7 +509,7 @@ components:
         id: q132gwiib06ov
       type: object
       examples:
-        - alg: HS256
+        - alg: RS256
           typ: JWT
           kid: key-2025-04
       required:
@@ -321,7 +520,7 @@ components:
         alg:
           type: string
           const: HS256
-          example: HS256
+          example: RS256
           x-stoplight:
             id: 29g0cs0uih4bl
         typ:
@@ -699,6 +898,31 @@ components:
       x-stoplight:
         id: ypcfdisbe5uuc
       type: object
+      examples:
+        - payment_instrument:
+            payment_instrument: PAYMENT_CARD
+            input:
+              input_type: CARD_TOKEN
+              card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
+              challenge_preferrence: AUTO
+          return_url: 'https://example.com/return'
+          browser_data:
+            ip: 198.51.100.1
+            language: cs-CZ
+            timezone: -60
+            screen_width: 434
+            screen_height: 965
+            color_depth: 24
+            user_agent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
+            accept_header: '{"accept-language":"cs;q\u003d0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, */*"}'
+            javascript_enabled: true
+            java_enabled: false
+        - payment_instrument:
+            payment_instrument: BANK_ACCOUNT
+            input:
+              input_type: ACCOUNT_TOKEN
+              account_token: f14e5acc2d86480fb50e254c8a3c3164
+          return_url: 'https://example.com/return'
       properties:
         payment_instrument:
           $ref: '#/components/schemas/Payment-Charge-Data'
@@ -710,20 +934,64 @@ components:
             id: lbhlhia9jkabu
           format: url
           example: 'https://example.com/return'
-      examples:
-        - payment_instrument:
-            payment_instrument: PAYMENT_CARD
-            input:
-              input_type: CARD_TOKEN
-              card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
-              challenge_preferrence: AUTO
-          return_url: 'https://example.com/return'
-        - payment_instrument:
-            payment_instrument: BANK_ACCOUNT
-            input:
-              input_type: ACCOUNT_TOKEN
-              account_token: f14e5acc2d86480fb50e254c8a3c3164
-          return_url: 'https://example.com/return'
+        browser_data:
+          type: object
+          x-stoplight:
+            id: mxan664lsthya
+          properties:
+            ip:
+              type: string
+              x-stoplight:
+                id: hxwdggpgwq3jd
+              example: 198.51.100.1
+            language:
+              type: string
+              x-stoplight:
+                id: 0bnzeu4avcksd
+              example: cs-CZ
+            timezone:
+              type: number
+              x-stoplight:
+                id: y1xfy6e7w4ax8
+              example: -60
+            screen_width:
+              type: number
+              x-stoplight:
+                id: 8y9irynkl4w2q
+              example: 434
+              minimum: 0
+            screen_height:
+              type: number
+              x-stoplight:
+                id: cugqzdox11fpy
+              minimum: 0
+              example: 965
+            color_depth:
+              type: number
+              x-stoplight:
+                id: 0istfyhbtigmz
+              example: 24
+              minimum: 0
+            user_agent:
+              type: string
+              x-stoplight:
+                id: enlgaa92iessu
+              example: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
+            accept_header:
+              type: string
+              x-stoplight:
+                id: oswbxjw6ji8jq
+              example: '{\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, */*\"}'
+            javascript_enabled:
+              type: boolean
+              example: true
+              x-stoplight:
+                id: 3wtselnd700bl
+            java_enabled:
+              type: boolean
+              example: false
+              x-stoplight:
+                id: 3fi2y6kls4usm
     Payment-Charge-Data:
       title: Payment-Charge-Data
       required:
@@ -1703,6 +1971,17 @@ components:
                     card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
                     challenge_preferrence: AUTO
                 return_url: 'https://example.com/return'
+                browser_data:
+                  ip: 198.51.100.1
+                  language: cs-CZ
+                  timezone: -60
+                  screen_width: 434
+                  screen_height: 965
+                  color_depth: 24
+                  user_agent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
+                  accept_header: '{"accept-language":"cs;q\u003d0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, */*"}'
+                  javascript_enabled: true
+                  java_enabled: false
             Example 2:
               value:
                 payment_instrument:
@@ -1795,7 +2074,7 @@ components:
                     example: 'https://example.com/return'
   responses:
     Token-Pair-Response:
-      description: Example response
+      description: Successful authentication
       content:
         application/json:
           schema:
@@ -1861,7 +2140,7 @@ components:
                 kid: key_20250406
                 use: enc
                 alg: RSA-OAEP-256
-                'n': y7WkT3qvY...
+                'n': oR79tj1xAaqr1TfmkGS03EfEZjU_5DMomKJXGK8cnmtGivG5XnFodcbztzSOrlrKmhoxrKRR0LiRRjYJIgTP3dGK9KOv7JRH4adnDClckQkxupwoz1dcm6cLDzjuVS1a4et8lQlwYKm5r52fG9VShckwNZgvmK0uYcE7717wLkX3JM2vA_F_-2oRCjG3l2E4cjhQzzstTFPkW35ZjuKut4If8LOnKH0h9tdblUOSB_VtZBNY6PCXeUTDfbCb85-eGrwWXEajq4uegPDbV2oSnTLxOXR8ctWURZ8XjS1PgsoDD4go9BQchv-9Q2m0NbS5s71WVJ9LOW7Xt-Napsoftw
                 e: AQAB
       headers: {}
     Card-Token-Response:
@@ -2002,11 +2281,7 @@ components:
               gw_url:
                 type: string
                 description: URL of the hosted payment gateway
-      headers:
-        Content-Type:
-          schema:
-            type: string
-            example: application/json
+      headers: {}
     Google-Pay-Info-Response:
       description: Google Pay Payment Request object consumed by the Google Payment button
       content:
@@ -2045,14 +2320,19 @@ components:
                   emailRequired: true
             properties:
               environment:
-                type: string
+                example: TEST
+                enum:
+                  - TEST
+                  - PRODUCTION
               paymentDataRequest:
                 type: object
                 properties:
                   apiVersion:
                     type: integer
+                    example: 2
                   apiVersionMinor:
                     type: integer
+                    example: 0
                   allowedPaymentMethods:
                     type: array
                     items:
@@ -2060,6 +2340,7 @@ components:
                       properties:
                         type:
                           type: string
+                          example: CARD
                         parameters:
                           type: object
                           properties:
@@ -2080,13 +2361,16 @@ components:
                           properties:
                             type:
                               type: string
+                              example: PAYMENT_GATEWAY
                             parameters:
                               type: object
                               properties:
                                 gateway:
                                   type: string
+                                  example: gopay
                                 gatewayMerchantId:
                                   type: string
+                                  example: '26046768005768011132'
                   transactionInfo:
                     type: object
                     properties:
@@ -2094,19 +2378,54 @@ components:
                         $ref: '#/components/schemas/Currency'
                       countryCode:
                         type: string
+                        example: CZ
                       totalPriceStatus:
                         type: string
+                        example: FINAL
                       totalPrice:
                         type: string
+                        example: '5.00'
                   merchantInfo:
                     type: object
                     properties:
                       merchantName:
                         type: string
+                        example: GoPay Czech
                       merchantId:
                         type: string
+                        example: '14846034534970557458'
                   emailRequired:
                     type: boolean
+          examples:
+            Example 1:
+              value:
+                environment: TEST
+                paymentDataRequest:
+                  apiVersion: 2
+                  apiVersionMinor: 0
+                  allowedPaymentMethods:
+                    - type: CARD
+                      parameters:
+                        allowedAuthMethods:
+                          - PAN_ONLY
+                          - CRYPTOGRAM_3DS
+                        allowedCardNetworks:
+                          - VISA
+                          - MASTERCARD
+                      tokenizationSpecification:
+                        type: PAYMENT_GATEWAY
+                        parameters:
+                          gateway: gopay
+                          gatewayMerchantId: '26046768005768011132'
+                  transactionInfo:
+                    currencyCode: CZK
+                    countryCode: CZ
+                    totalPriceStatus: FINAL
+                    totalPrice: '5.00'
+                  merchantInfo:
+                    merchantName: GoPay Czech
+                    merchantId: '14846034534970557458'
+                  emailRequired: true
       headers: {}
     Apple-Pay-Info-Response:
       description: Example response
@@ -2397,7 +2716,7 @@ components:
                 properties:
                   spayd:
                     type: string
-                    example: '{QR code in base64}'
+                    example: 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
                     description: Czech payment QR code (SPAYD) - only available for the CZK currency
                   paybysquare:
                     type: string
@@ -2411,7 +2730,489 @@ components:
                     type: string
                     example: '{QR code in base64}'
                     description: Hungarian payment QR code (specified by MNB) - only available for the HUF currency
-          examples: {}
+          examples:
+            Example 1:
+              value:
+                amount: 10000
+                currency: CZK
+                recipient:
+                  name: GoPay Czech
+                  bank_account:
+                    local:
+                      prefix: '000000'
+                      account_number: '9878039'
+                      bank_code: '2010'
+                      variable_symbol: '3123456789'
+                    international:
+                      bic: FIOBCZPP
+                      iban: CZ5120100000000009878039
+                      reference: '3123456789'
+                  address:
+                    street: Senovazne nam. 1736
+                    city: Ceske Budejovice
+                    zip_code: '37001'
+                    country: Czech Republic
+                qr_code:
+                  spayd: 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
+    Bad-Request-400-Response:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            type: object
+            x-examples:
+              Example 1:
+                code: 400
+                error: BAD_REQUEST
+                message: Invalid request parameters
+                detail: string
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+            required:
+              - code
+              - error
+              - message
+              - detail
+              - path
+              - timestamp
+            properties:
+              code:
+                type: integer
+                const: 400
+                format: int32
+                example: 400
+                description: HTTP status code
+              error:
+                example: BAD_REQUEST
+                description: Error type
+                type: string
+                const: BAD_REQUEST
+              message:
+                type: string
+                example: Invalid request parameter
+                description: Error message
+              detail:
+                type: string
+                example: Error Details
+                description: Detailed error description
+              path:
+                type: string
+                example: /payments/123/charge
+                description: Request path
+              timestamp:
+                type: string
+                format: date-time
+                example: '2025-12-10T10:30:00Z'
+                description: Error timestamp
+          examples:
+            Example 1:
+              value:
+                code: 400
+                error: BAD_REQUEST
+                message: Invalid request parameter
+                detail: Error Details
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+    Unauthorized-401-Response:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            x-examples:
+              Example 1:
+                code: 401
+                error: UNAUTHORIZED
+                message: Wrong credentials
+                detail: Detailed error description
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+            required:
+              - code
+              - error
+              - message
+              - detail
+              - path
+              - timestamp
+            properties:
+              code:
+                type: integer
+                const: 401
+                format: int32
+                example: 401
+                description: HTTP status code
+              error:
+                example: UNAUTHORIZED
+                description: Error type
+                type: string
+                const: UNAUTHORIZED
+              message:
+                type: string
+                example: Wrong credentials
+                description: Error message
+              detail:
+                type: string
+                example: Error Details
+                description: Detailed error description
+              path:
+                type: string
+                example: /payments/123/charge
+                description: Request path
+              timestamp:
+                type: string
+                format: date-time
+                example: '2025-12-10T10:30:00Z'
+                description: Error timestamp
+          examples:
+            Example 1:
+              value:
+                code: 401
+                error: UNAUTHORIZED
+                message: Wrong credentials
+                detail: Error Details
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+    Forbidden-403-Response:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            type: object
+            x-examples:
+              Example 1:
+                code: 403
+                error: FORBIDDEN
+                message: Missing token scope
+                detail: Error Details
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+            required:
+              - code
+              - error
+              - message
+              - detail
+              - path
+              - timestamp
+            properties:
+              code:
+                type: integer
+                const: 403
+                format: int32
+                example: 403
+                description: HTTP status code
+              error:
+                example: FORBIDDEN
+                description: Error type
+                type: string
+                const: FORBIDDEN
+              message:
+                type: string
+                example: Missing token scope
+                description: Error message
+              detail:
+                type: string
+                example: Error Details
+                description: Detailed error description
+              path:
+                type: string
+                example: /payments/123/charge
+                description: Request path
+              timestamp:
+                type: string
+                format: date-time
+                example: '2025-12-10T10:30:00Z'
+                description: Error timestamp
+          examples:
+            Example 1:
+              value:
+                code: 403
+                error: FORBIDDEN
+                message: Missing token scope
+                detail: Error Details
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+    Not-Found-404-Response:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            type: object
+            x-examples:
+              Example 1:
+                code: 404
+                error: NOT_FOUND
+                message: Resource not found
+                detail: Error Details
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+            required:
+              - code
+              - error
+              - message
+              - detail
+              - path
+              - timestamp
+            properties:
+              code:
+                type: integer
+                const: 404
+                format: int32
+                example: 404
+                description: HTTP status code
+              error:
+                example: NOT_FOUND
+                description: Error type
+                type: string
+                const: NOT_FOUND
+              message:
+                type: string
+                example: Resource not found
+                description: Error message
+              detail:
+                type: string
+                example: Error Details
+                description: Detailed error description
+              path:
+                type: string
+                example: /payments/123/charge
+                description: Request path
+              timestamp:
+                type: string
+                format: date-time
+                example: '2025-12-10T10:30:00Z'
+                description: Error timestamp
+          examples:
+            Example 1:
+              value:
+                code: 404
+                error: NOT_FOUND
+                message: Resource not found
+                detail: Error Details
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+    Conflict-409-Response:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - code
+              - error
+              - message
+              - detail
+              - path
+              - timestamp
+            properties:
+              code:
+                type: integer
+                const: 409
+                format: int32
+                example: 409
+                description: HTTP status code
+              error:
+                example: CONFLICT
+                description: Error type
+                type: string
+                const: CONFLICT
+              message:
+                type: string
+                example: Wrong resource state
+                description: Error message
+              detail:
+                type: string
+                example: Error Details
+                description: Detailed error description
+              path:
+                type: string
+                example: /payments/123/charge
+                description: Request path
+              timestamp:
+                type: string
+                format: date-time
+                example: '2025-12-10T10:30:00Z'
+                description: Error timestamp
+          examples:
+            Example 1:
+              value:
+                code: 409
+                error: CONFLICT
+                message: Wrong resource state
+                detail: Error Details
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+    Internal-Server-Error-500-Response:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            type: object
+            x-examples:
+              Example 1:
+                code: 500
+                error: INTERNAL_SERVER_ERROR
+                message: Unexpected error occurred
+                detail: Error Details
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+            required:
+              - code
+              - error
+              - message
+              - detail
+              - path
+              - timestamp
+            properties:
+              code:
+                type: integer
+                const: 500
+                format: int32
+                example: 500
+                description: HTTP status code
+              error:
+                example: INTERNAL_SERVER_ERROR
+                description: Error type
+                type: string
+                const: INTERNAL_SERVER_ERROR
+              message:
+                type: string
+                example: Unexpected error occurred
+                description: Error message
+              detail:
+                type: string
+                example: Error Details
+                description: Detailed error description
+              path:
+                type: string
+                example: /payments/123/charge
+                description: Request path
+              timestamp:
+                type: string
+                format: date-time
+                example: '2025-12-10T10:30:00Z'
+                description: Error timestamp
+          examples:
+            Example 1:
+              value:
+                code: 500
+                error: INTERNAL_SERVER_ERROR
+                message: Unexpected error occurred
+                detail: Error Details
+                path: /payments/123/charge
+                timestamp: '2025-12-10T10:30:00Z'
+    Error-Response:
+      description: ''
+    Payment-Status-Response:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            type: object
+            x-examples:
+              Example 1:
+                id: string
+                order_number: string
+                state: string
+                amount: 0
+                currency: string
+                customer:
+                  email: user@example.com
+                  first_name: string
+                  last_name: string
+                  phone_number: string
+                  city: string
+                  street: string
+                  postal_code: string
+                  country_code: string
+                  customer_id: string
+                gw_url: string
+            required:
+              - id
+              - order_number
+              - state
+              - amount
+              - currency
+              - customer
+              - gw_url
+            properties:
+              id:
+                type: string
+                description: Payment session ID
+                example: '300000001'
+              order_number:
+                type: string
+                description: Order ID forwarded from the payment request
+                example: '2025010199'
+              state:
+                $ref: '#/components/schemas/Payment-State'
+                description: Payment state
+              amount:
+                type: integer
+                description: |
+                  Total amount in cents
+              currency:
+                $ref: '#/components/schemas/Currency'
+                description: |
+                  Payment currency
+              customer:
+                $ref: '#/components/schemas/Customer'
+                description: Customer data
+              gw_url:
+                type: string
+                description: URL of the hosted payment gateway
+              charge:
+                type: object
+                x-stoplight:
+                  id: g0uec97fr0tv3
+                required:
+                  - id
+                  - state
+                  - href
+                properties:
+                  id:
+                    type: string
+                    x-stoplight:
+                      id: acvul1t46mtfa
+                    example: '9123456789'
+                  state:
+                    $ref: '#/components/schemas/Charge-State'
+                    x-stoplight:
+                      id: chmb77imsj32i
+                  href:
+                    type: string
+                    x-stoplight:
+                      id: 915p52uy1tw3k
+                    format: uri
+                    example: 'https://api.gopay.com/api/4.0/payments/9123456789/charge'
+          examples:
+            Example 1:
+              value:
+                id: '300000001'
+                order_number: '2025010199'
+                state: CREATED
+                amount: 500
+                currency: CZK
+                customer:
+                  email: john.doe@example.com
+                  first_name: John
+                  last_name: Doe
+                  phone_number: '+420123456789'
+                  city: Testington
+                  street: Example st. 10
+                  postal_code: '10000'
+                  country_code: CZE
+                  customer_id: customer420
+                gw_url: string
+                charge:
+                  id: '9123456789'
+                  state: REQUESTED
+                  href: 'https://api.gopay.com/api/4.0/payments/9123456789/charge'
+    Payment-Charge-State-Response:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Payment-Charge-Response-Data'
   parameters:
     Accept-Json:
       name: Accept
