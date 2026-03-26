@@ -577,7 +577,7 @@ components:
           kid: key_20250406
           use: enc
           alg: RSA-OAEP-256
-          'n': y7WkT3qvY...
+          'n': oR79tj1xAaqr1TfmkGS03EfEZjU_5DMomKJXGK8cnmtGivG5XnFodcbztzSOrlrKmhoxrKRR0LiRRjYJIgTP3dGK9KOv7JRH4adnDClckQkxupwoz1dcm6cLDzjuVS1a4et8lQlwYKm5r52fG9VShckwNZgvmK0uYcE7717wLkX3JM2vA_F_-2oRCjG3l2E4cjhQzzstTFPkW35ZjuKut4If8LOnKH0h9tdblUOSB_VtZBNY6PCXeUTDfbCb85-eGrwWXEajq4uegPDbV2oSnTLxOXR8ctWURZ8XjS1PgsoDD4go9BQchv-9Q2m0NbS5s71WVJ9LOW7Xt-Napsoftw
           e: AQAB
       required:
         - kty
@@ -617,7 +617,7 @@ components:
           x-stoplight:
             id: oob2wtthc6z3f
           description: The `RSA` public key modulus part.
-          example: y7WkT3qvY...
+          example: oR79tj1xAaqr1TfmkGS03EfEZjU_5DMomKJXGK8cnmtGivG5XnFodcbztzSOrlrKmhoxrKRR0LiRRjYJIgTP3dGK9KOv7JRH4adnDClckQkxupwoz1dcm6cLDzjuVS1a4et8lQlwYKm5r52fG9VShckwNZgvmK0uYcE7717wLkX3JM2vA_F_-2oRCjG3l2E4cjhQzzstTFPkW35ZjuKut4If8LOnKH0h9tdblUOSB_VtZBNY6PCXeUTDfbCb85-eGrwWXEajq4uegPDbV2oSnTLxOXR8ctWURZ8XjS1PgsoDD4go9BQchv-9Q2m0NbS5s71WVJ9LOW7Xt-Napsoftw
         e:
           type: string
           x-stoplight:

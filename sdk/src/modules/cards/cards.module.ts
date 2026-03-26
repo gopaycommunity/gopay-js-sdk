@@ -70,6 +70,8 @@ export class CardsModule {
                 (Date.now() - tokens.issued_at) / 1000,
             );
 
+            const clientId = this.extractClientId(tokens.access_token);
+
             const cleanup = () => {
                 window.removeEventListener('message', onMessage);
                 iframe.remove();
@@ -80,6 +82,7 @@ export class CardsModule {
                     {
                         type: 'GOPAY_CARD_FORM_INIT',
                         environment,
+                        client_id: clientId,
                         access_token: tokens.access_token,
                         refresh_token: tokens.refresh_token,
                         expires_in: Math.max(
@@ -98,6 +101,13 @@ export class CardsModule {
             const onMessage = async (event: MessageEvent) => {
                 if (event.origin !== expectedOrigin) return;
                 if (event.source !== iframe.contentWindow) return;
+
+                if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
+                    if (typeof event.data.height === 'number') {
+                        iframe.style.height = `${event.data.height}px`;
+                    }
+                    return;
+                }
 
                 if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') {
                     // Form is rendered and interactive — nothing to do here.
@@ -131,6 +141,17 @@ export class CardsModule {
 
             window.addEventListener('message', onMessage);
         });
+    }
+
+    private extractClientId(accessToken: string): string | null {
+        try {
+            const payload = JSON.parse(
+                globalThis.atob(accessToken.split('.')[1]),
+            ) as Record<string, unknown>;
+            return typeof payload.sub === 'string' ? payload.sub : null;
+        } catch {
+            return null;
+        }
     }
 
     private async createToken(

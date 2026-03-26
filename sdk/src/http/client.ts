@@ -37,6 +37,10 @@ export class HttpClient {
         this.tokenStore.setClientSecret(clientId, clientSecret);
     }
 
+    getClientId(): string | null {
+        return this.tokenStore.getClientId();
+    }
+
     getClientCredentials(): { clientId: string; clientSecret: string } | null {
         const clientId = this.tokenStore.getClientId();
         const clientSecret = this.tokenStore.getClientSecret();
