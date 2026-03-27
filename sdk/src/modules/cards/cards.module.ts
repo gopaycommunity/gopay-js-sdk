@@ -1,6 +1,7 @@
 import { GoPayErrorCodes, GoPaySDKError } from '../../errors.js';
 import type { HttpClient } from '../../http/client.js';
 import type { components } from '../../types/generated.js';
+import { DEFAULT_CARD_FORM_STYLES } from './card-form-styles.js';
 
 type CardTokenRequest =
     components['requestBodies']['Card-Token-Request']['content']['application/json'];
@@ -43,6 +44,7 @@ export class CardsModule {
     mountCardForm(
         container: HTMLElement,
         iframeSrc: string,
+        options?: { styles?: string },
     ): Promise<CardTokenResponse> {
         return new Promise((resolve, reject) => {
             const tokens = this.client.getTokens();
@@ -77,7 +79,13 @@ export class CardsModule {
                 iframe.remove();
             };
 
+            const styles = options?.styles ?? DEFAULT_CARD_FORM_STYLES;
+
             iframe.onload = () => {
+                iframe.contentWindow?.postMessage(
+                    { type: 'GOPAY_CARD_SET_STYLES', styles },
+                    expectedOrigin,
+                );
                 iframe.contentWindow?.postMessage(
                     {
                         type: 'GOPAY_CARD_FORM_INIT',

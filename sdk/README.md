@@ -311,7 +311,39 @@ document.body.appendChild(img);
 
 | Method | Description |
 |---|---|
-| `mountCardForm(container, iframeSrc)` | Mount the GoPay card encryption iframe into `container` and return the card token once the user submits the form. Handles iframe creation, `postMessage` communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
+| `mountCardForm(container, iframeSrc, options?)` | Mount the GoPay card encryption iframe into `container` and return the card token once the user submits the form. Handles iframe creation, `postMessage` communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
+
+#### `mountCardForm` options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `styles` | `string` | `DEFAULT_CARD_FORM_STYLES` | CSS string injected into the card form iframe via `GOPAY_CARD_SET_STYLES` postMessage. Sent before `GOPAY_CARD_FORM_INIT` to avoid redraws. Can be re-sent at any time after mounting. |
+
+The SDK sends styles into the iframe before initialising the form to prevent a flash of unstyled content. The same message can also be sent manually at any time — for example to switch themes dynamically.
+
+**Use the SDK default styles as-is** (no options needed):
+
+```ts
+const cardToken = await sdk.cards.mountCardForm(container, GOPAY_CARD_IFRAME_URL);
+```
+
+**Extend or replace the defaults** — import `DEFAULT_CARD_FORM_STYLES` to use it as a base, or pass a fully custom CSS string:
+
+```ts
+import { GoPaySDK, DEFAULT_CARD_FORM_STYLES } from 'gopay-js-sdk';
+
+// Extend: append overrides on top of the defaults
+const cardToken = await sdk.cards.mountCardForm(container, GOPAY_CARD_IFRAME_URL, {
+  styles: DEFAULT_CARD_FORM_STYLES + `.gp-submit { background: #your-brand-color; }`,
+});
+
+// Replace: pass your own full CSS string
+const cardToken = await sdk.cards.mountCardForm(container, GOPAY_CARD_IFRAME_URL, {
+  styles: myCustomStyles,
+});
+```
+
+The CSS class names used by the iframe are documented in `DEFAULT_CARD_FORM_STYLES` (exported from `gopay-js-sdk`). Use that as the reference — class names may change between iframe versions.
 
 ### Card Pay
 
