@@ -19,8 +19,8 @@
 import {
     CARD_FORM_LABELS_CS,
     CARD_FORM_LABELS_EN,
-    DARK_CARD_FORM_STYLES,
-    DEFAULT_CARD_FORM_STYLES,
+    DARK_CARD_FORM_THEME,
+    DEFAULT_CARD_FORM_THEME,
     GoPayHTTPError,
 } from 'gopay-js-sdk';
 import { prefillCharge } from './helpers.js';
@@ -92,9 +92,9 @@ export function cardPaySetTheme(theme) {
 
     const iframe = getMountedIframe();
     if (iframe) {
-        const styles =
-            theme === 'dark' ? DARK_CARD_FORM_STYLES : DEFAULT_CARD_FORM_STYLES;
-        postToIframe(iframe, { type: 'GOPAY_CARD_SET_STYLES', styles });
+        const theme2 =
+            theme === 'dark' ? DARK_CARD_FORM_THEME : DEFAULT_CARD_FORM_THEME;
+        postToIframe(iframe, { type: 'GOPAY_CARD_SET_THEME', theme: theme2 });
     }
 }
 
@@ -110,10 +110,10 @@ export async function cardPayOpenIframe() {
     container.style.display = 'block';
     pre.textContent = `── Step 1: iframe mounted ──\nPayment ID: ${paymentId || '(none)'}\n\nWaiting for card confirmation in iframe…`;
 
-    const styles =
+    const theme =
         currentTheme === 'dark'
-            ? DARK_CARD_FORM_STYLES
-            : DEFAULT_CARD_FORM_STYLES;
+            ? DARK_CARD_FORM_THEME
+            : DEFAULT_CARD_FORM_THEME;
     const labels =
         currentLang === 'cs' ? CARD_FORM_LABELS_CS : CARD_FORM_LABELS_EN;
 
@@ -124,7 +124,7 @@ export async function cardPayOpenIframe() {
             container,
             iframeSrc,
             {
-                styles,
+                theme,
                 labels,
             },
         );

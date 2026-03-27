@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayHTTPError } from '../../src/errors.js';
 import { HttpClient } from '../../src/http/client.js';
 import type { TokenStore } from '../../src/http/token-store.js';
+import { DEFAULT_CARD_FORM_THEME } from '../../src/modules/cards/card-form-themes.js';
 import { CardsModule } from '../../src/modules/cards/cards.module.js';
+import type { CardFormTheme } from '../../src/modules/cards/iframe-protocol.js';
 
 const tokenStore = (client: HttpClient) =>
     (client as unknown as { tokenStore: TokenStore }).tokenStore;
@@ -189,6 +191,55 @@ describe('CardsModule', () => {
             const err = await promise.catch((e: unknown) => e);
             expect(err).toBeInstanceOf(GoPayHTTPError);
             expect((err as GoPayHTTPError).status).toBe(403);
+        });
+
+        describe('theme postMessage', () => {
+            function mountWithPostMessageSpy(theme?: CardFormTheme) {
+                const postMessageSpy = vi.fn();
+                const realCreate = document.createElement.bind(document);
+                vi.spyOn(document, 'createElement').mockImplementation(
+                    (tag: string) => {
+                        const node = realCreate(tag);
+                        if (tag === 'iframe') {
+                            Object.defineProperty(node, 'contentWindow', {
+                                get: () => ({ postMessage: postMessageSpy }),
+                            });
+                        }
+                        return node;
+                    },
+                );
+                cards.mountCardForm(
+                    container,
+                    IFRAME_SRC,
+                    theme ? { theme } : undefined,
+                );
+                const iframe = getIframe();
+                iframe.onload?.(new Event('load'));
+                return postMessageSpy;
+            }
+
+            it('sends GOPAY_CARD_SET_THEME with DEFAULT_CARD_FORM_THEME when no options given', () => {
+                const spy = mountWithPostMessageSpy();
+                expect(spy).toHaveBeenCalledWith(
+                    {
+                        type: 'GOPAY_CARD_SET_THEME',
+                        theme: DEFAULT_CARD_FORM_THEME,
+                    },
+                    IFRAME_ORIGIN,
+                );
+            });
+
+            it('sends GOPAY_CARD_SET_THEME with the provided custom theme', () => {
+                const customTheme: CardFormTheme = {
+                    labelColor: '#ff0000',
+                    submitBorderRadius: 8,
+                };
+                const spy = mountWithPostMessageSpy(customTheme);
+                expect(spy).toHaveBeenCalledWith(
+                    { type: 'GOPAY_CARD_SET_THEME', theme: customTheme },
+                    IFRAME_ORIGIN,
+                );
+            });
         });
     });
 });

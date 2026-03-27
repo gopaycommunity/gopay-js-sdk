@@ -7,11 +7,12 @@ export {
     CARD_FORM_LABELS_EN,
 } from './modules/cards/card-form-labels.js';
 export {
-    DARK_CARD_FORM_STYLES,
-    DEFAULT_CARD_FORM_STYLES,
-} from './modules/cards/card-form-styles.js';
+    DARK_CARD_FORM_THEME,
+    DEFAULT_CARD_FORM_THEME,
+} from './modules/cards/card-form-themes.js';
 export type {
     CardFormLabels,
+    CardFormTheme,
     EncryptErrorCode,
     Environment,
     InboundMessage,

@@ -21,9 +21,86 @@ export interface CardFormConfig {
     client_id: string;
 }
 
-export interface CardSetStyles {
-    type: 'GOPAY_CARD_SET_STYLES';
-    styles: string;
+/**
+ * Structured theme sent from the SDK to the GoPay-hosted card form iframe via
+ * the `GOPAY_CARD_SET_THEME` postMessage. All fields are optional; the iframe
+ * applies built-in defaults for any omitted field.
+ *
+ * CSS generation happens exclusively inside the iframe — never in the SDK.
+ */
+export interface CardFormTheme {
+    // ── Labels ───────────────────────────────────────────────────────────────
+    /** Color of field labels. Default: #4b5e68 */
+    labelColor?: string;
+    /** Font size of field labels in px. Default: 11 */
+    labelFontSize?: number;
+    /** Font weight of field labels. Default: 600 */
+    labelFontWeight?: number | string;
+    /** Whether field labels are uppercased. Default: true */
+    labelUppercase?: boolean;
+
+    // ── Input text ───────────────────────────────────────────────────────────
+    /** Color of input text. Default: #4b5e68 */
+    inputTextColor?: string;
+    /** Font size of input text in px. Default: 14 */
+    inputFontSize?: number;
+
+    // ── Input border ─────────────────────────────────────────────────────────
+    /** Bottom border color of unfocused, valid inputs. Default: #698492 */
+    inputBorderColor?: string;
+    /** Border width in px. Default: 1 (underline style) */
+    inputBorderWidth?: number;
+    /** Background color of the input area. Default: transparent */
+    inputBackgroundColor?: string;
+    /** Vertical padding inside inputs in px. Default: 6 */
+    inputPaddingVertical?: number;
+    /** Border radius of inputs in px. Default: 0 (underline style) */
+    inputBorderRadius?: number;
+
+    // ── Focus underline gradient ──────────────────────────────────────────────
+    /** Start color (left) of the animated focus underline gradient. Default: #19C7D6 */
+    focusGradientStart?: string;
+    /** End color (right) of the animated focus underline gradient. Default: #1899D6 */
+    focusGradientEnd?: string;
+
+    // ── Validation errors ────────────────────────────────────────────────────
+    /** Border color of inputs in error state. Default: #ea3c55 */
+    inputErrorBorderColor?: string;
+    /** Color of error text below inputs. Default: #cc0000 */
+    errorTextColor?: string;
+    /** Font size of error text in px. Default: 11 */
+    errorFontSize?: number;
+
+    // ── Layout ───────────────────────────────────────────────────────────────
+    /** Gap between field groups (e.g. card row vs expiry+cvv row) in px. Default: 16 */
+    groupSpacing?: number;
+    /** Gap between the label and input within a single field in px. Default: 4 */
+    fieldSpacing?: number;
+    /** Padding around the entire form in px. Default: 16 */
+    formPadding?: number;
+    /** Background color of the form container. Default: transparent */
+    formBackgroundColor?: string;
+
+    // ── Submit button ─────────────────────────────────────────────────────────
+    /** Background color of the submit button. Default: #1899d6 */
+    submitBackgroundColor?: string;
+    /** Background color of the submit button on hover. Default: #1482ba */
+    submitHoverBackgroundColor?: string;
+    /** Background color of the submit button when disabled. Default: #a8b6bd */
+    submitDisabledBackgroundColor?: string;
+    /** Text color of the submit button. Default: #ffffff */
+    submitTextColor?: string;
+    /** Text color of the submit button when disabled. Default: #ffffff */
+    submitDisabledTextColor?: string;
+    /** Border radius of the submit button in px. Default: 4 */
+    submitBorderRadius?: number;
+    /** Font size of the submit button in px. Default: 14 */
+    submitFontSize?: number;
+}
+
+export interface CardSetTheme {
+    type: 'GOPAY_CARD_SET_THEME';
+    theme: CardFormTheme;
 }
 
 export interface CardFormLabels {
@@ -44,7 +121,7 @@ export interface CardSetLabels {
     labels: CardFormLabels;
 }
 
-export type InboundMessage = CardFormConfig | CardSetStyles | CardSetLabels;
+export type InboundMessage = CardFormConfig | CardSetTheme | CardSetLabels;
 
 export type EncryptErrorCode =
     | 'PUBLIC_KEY_FETCH_FAILED'
