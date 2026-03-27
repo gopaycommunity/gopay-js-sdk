@@ -177,6 +177,15 @@
                 <label>Payment ID<input id="cardpay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
                 <label>Iframe URL override<input id="cardpay-iframe-override" type="text" value="/iframe/index.html" placeholder="leave blank to use sdk.cards.getCardFormUrl()" /></label>
             </div>
+            <p class="note">Test card: <code>4111 1111 1111 1111</code> — any future expiry (e.g. <code>12/30</code>), any 3-digit CVV.</p>
+            <div class="flex items-center gap-2 flex-wrap mb-3">
+                <span class="text-xs text-[#6B7280] font-medium">Language:</span>
+                <button type="button" id="cardpay-lang-en" onclick="cardPaySetLang('en')" class="!text-xs !py-1 !px-3">EN</button>
+                <button type="button" id="cardpay-lang-cs" onclick="cardPaySetLang('cs')" class="!text-xs !py-1 !px-3 !bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">CS</button>
+                <span class="text-xs text-[#6B7280] font-medium ml-3">Theme:</span>
+                <button type="button" id="cardpay-theme-default" onclick="cardPaySetTheme('default')" class="!text-xs !py-1 !px-3">Default</button>
+                <button type="button" id="cardpay-theme-dark" onclick="cardPaySetTheme('dark')" class="!text-xs !py-1 !px-3 !bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">Dark</button>
+            </div>
             <button type="button" onclick="cardPayOpenIframe()">Open Card Payment</button>
             <div id="cardpay-iframe-container" class="hidden my-3 border border-[#E1E5EB] rounded-2xl overflow-hidden"></div>
             <pre id="cardpay-output">—</pre>

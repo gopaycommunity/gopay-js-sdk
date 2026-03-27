@@ -16,9 +16,87 @@
 //     return_url: 'https://yourshop.example.com/return',
 //   });
 
-import { GoPayHTTPError } from 'gopay-js-sdk';
+import {
+    CARD_FORM_LABELS_CS,
+    CARD_FORM_LABELS_EN,
+    DARK_CARD_FORM_STYLES,
+    DEFAULT_CARD_FORM_STYLES,
+    GoPayHTTPError,
+} from 'gopay-js-sdk';
 import { prefillCharge } from './helpers.js';
 import { sdk } from './sdk.js';
+
+let currentLang = 'en';
+let currentTheme = 'default';
+
+function getMountedIframe() {
+    return document
+        .getElementById('cardpay-iframe-container')
+        ?.querySelector('iframe');
+}
+
+function postToIframe(iframe, data) {
+    const origin = new URL(iframe.src, location.href).origin;
+    iframe.contentWindow?.postMessage(data, origin);
+}
+
+export function cardPaySetLang(lang) {
+    currentLang = lang;
+    document
+        .getElementById('cardpay-lang-en')
+        .classList.toggle('!bg-[#F2F4F7]', lang !== 'en');
+    document
+        .getElementById('cardpay-lang-en')
+        .classList.toggle('!text-[#2D3643]', lang !== 'en');
+    document
+        .getElementById('cardpay-lang-en')
+        .classList.toggle('![box-shadow:none]', lang !== 'en');
+    document
+        .getElementById('cardpay-lang-cs')
+        .classList.toggle('!bg-[#F2F4F7]', lang !== 'cs');
+    document
+        .getElementById('cardpay-lang-cs')
+        .classList.toggle('!text-[#2D3643]', lang !== 'cs');
+    document
+        .getElementById('cardpay-lang-cs')
+        .classList.toggle('![box-shadow:none]', lang !== 'cs');
+
+    const iframe = getMountedIframe();
+    if (iframe) {
+        const labels =
+            lang === 'cs' ? CARD_FORM_LABELS_CS : CARD_FORM_LABELS_EN;
+        postToIframe(iframe, { type: 'GOPAY_CARD_SET_LABELS', labels });
+    }
+}
+
+export function cardPaySetTheme(theme) {
+    currentTheme = theme;
+    document
+        .getElementById('cardpay-theme-default')
+        .classList.toggle('!bg-[#F2F4F7]', theme !== 'default');
+    document
+        .getElementById('cardpay-theme-default')
+        .classList.toggle('!text-[#2D3643]', theme !== 'default');
+    document
+        .getElementById('cardpay-theme-default')
+        .classList.toggle('![box-shadow:none]', theme !== 'default');
+    document
+        .getElementById('cardpay-theme-dark')
+        .classList.toggle('!bg-[#F2F4F7]', theme !== 'dark');
+    document
+        .getElementById('cardpay-theme-dark')
+        .classList.toggle('!text-[#2D3643]', theme !== 'dark');
+    document
+        .getElementById('cardpay-theme-dark')
+        .classList.toggle('![box-shadow:none]', theme !== 'dark');
+
+    const iframe = getMountedIframe();
+    if (iframe) {
+        const styles =
+            theme === 'dark' ? DARK_CARD_FORM_STYLES : DEFAULT_CARD_FORM_STYLES;
+        postToIframe(iframe, { type: 'GOPAY_CARD_SET_STYLES', styles });
+    }
+}
 
 export async function cardPayOpenIframe() {
     const paymentId = document
@@ -32,10 +110,24 @@ export async function cardPayOpenIframe() {
     container.style.display = 'block';
     pre.textContent = `── Step 1: iframe mounted ──\nPayment ID: ${paymentId || '(none)'}\n\nWaiting for card confirmation in iframe…`;
 
+    const styles =
+        currentTheme === 'dark'
+            ? DARK_CARD_FORM_STYLES
+            : DEFAULT_CARD_FORM_STYLES;
+    const labels =
+        currentLang === 'cs' ? CARD_FORM_LABELS_CS : CARD_FORM_LABELS_EN;
+
     try {
         const iframeSrc = iframeOverride || '/iframe/index.html';
 
-        const tokenResult = await sdk.cards.mountCardForm(container, iframeSrc);
+        const tokenResult = await sdk.cards.mountCardForm(
+            container,
+            iframeSrc,
+            {
+                styles,
+                labels,
+            },
+        );
         container.style.display = 'none';
         pre.textContent += `\n\n── Step 2: card tokenized ──\n${JSON.stringify(tokenResult, null, 2)}`;
         prefillCharge(paymentId, {

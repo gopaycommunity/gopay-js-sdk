@@ -7,7 +7,11 @@ import {
     runSetClientTokenFlow,
     updateAuthBadge,
 } from './auth.js';
-import { cardPayOpenIframe } from './card-pay.js';
+import {
+    cardPayOpenIframe,
+    cardPaySetLang,
+    cardPaySetTheme,
+} from './card-pay.js';
 import { googlePayLoadInfo } from './google-pay.js';
 import {
     clearCharge,
@@ -116,3 +120,5 @@ window.runQRPaymentInfo = runQRPaymentInfo;
 window.googlePayLoadInfo = googlePayLoadInfo;
 window.applePayLoadInfo = applePayLoadInfo;
 window.cardPayOpenIframe = cardPayOpenIframe;
+window.cardPaySetLang = cardPaySetLang;
+window.cardPaySetTheme = cardPaySetTheme;

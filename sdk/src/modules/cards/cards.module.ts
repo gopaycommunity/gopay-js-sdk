@@ -1,7 +1,15 @@
 import { GoPayErrorCodes, GoPaySDKError } from '../../errors.js';
 import type { HttpClient } from '../../http/client.js';
 import type { components } from '../../types/generated.js';
+import { CARD_FORM_LABELS_EN } from './card-form-labels.js';
 import { DEFAULT_CARD_FORM_STYLES } from './card-form-styles.js';
+import type {
+    CardFormConfig,
+    CardFormLabels,
+    CardSetLabels,
+    CardSetStyles,
+    OutboundMessage,
+} from './iframe-protocol.js';
 
 type CardTokenRequest =
     components['requestBodies']['Card-Token-Request']['content']['application/json'];
@@ -44,7 +52,7 @@ export class CardsModule {
     mountCardForm(
         container: HTMLElement,
         iframeSrc: string,
-        options?: { styles?: string },
+        options?: { styles?: string; labels?: CardFormLabels },
     ): Promise<CardTokenResponse> {
         return new Promise((resolve, reject) => {
             const tokens = this.client.getTokens();
@@ -80,17 +88,28 @@ export class CardsModule {
             };
 
             const styles = options?.styles ?? DEFAULT_CARD_FORM_STYLES;
+            const labels = options?.labels ?? CARD_FORM_LABELS_EN;
 
             iframe.onload = () => {
                 iframe.contentWindow?.postMessage(
-                    { type: 'GOPAY_CARD_SET_STYLES', styles },
+                    {
+                        type: 'GOPAY_CARD_SET_STYLES',
+                        styles,
+                    } satisfies CardSetStyles,
+                    expectedOrigin,
+                );
+                iframe.contentWindow?.postMessage(
+                    {
+                        type: 'GOPAY_CARD_SET_LABELS',
+                        labels,
+                    } satisfies CardSetLabels,
                     expectedOrigin,
                 );
                 iframe.contentWindow?.postMessage(
                     {
                         type: 'GOPAY_CARD_FORM_INIT',
                         environment,
-                        client_id: clientId,
+                        client_id: clientId ?? '',
                         access_token: tokens.access_token,
                         refresh_token: tokens.refresh_token,
                         expires_in: Math.max(
@@ -101,12 +120,12 @@ export class CardsModule {
                             0,
                             tokens.refresh_expires_in - elapsedSeconds,
                         ),
-                    },
+                    } satisfies CardFormConfig,
                     expectedOrigin,
                 );
             };
 
-            const onMessage = async (event: MessageEvent) => {
+            const onMessage = async (event: MessageEvent<OutboundMessage>) => {
                 if (event.origin !== expectedOrigin) return;
                 if (event.source !== iframe.contentWindow) return;
 
