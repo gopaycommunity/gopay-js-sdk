@@ -1,5 +1,6 @@
 import type { HttpClient } from '../../http/client.js';
 import type { components } from '../../types/generated.js';
+import { collectBrowserData } from './browser-data.js';
 
 type PaymentCreateRequest =
     components['requestBodies']['Payment-Create-Request']['content']['application/json'];
@@ -47,6 +48,10 @@ export class PaymentsModule {
      * Charge a payment using a payment instrument.
      * Requires the `payment:create` OAuth2 scope.
      *
+     * Browser context (`browser_data`) is collected automatically via
+     * {@link collectBrowserData} and merged into the request. Any fields
+     * supplied in `params.browser_data` take precedence over the collected values.
+     *
      * POST /payments/{payment_id}/charge
      *
      * @param paymentId - Payment session ID returned by {@link create}
@@ -56,9 +61,13 @@ export class PaymentsModule {
         paymentId: string,
         params: PaymentChargeRequest,
     ): Promise<PaymentChargeResponse> {
+        const mergedParams = {
+            ...params,
+            browser_data: { ...collectBrowserData(), ...params.browser_data },
+        };
         return this.client.post<PaymentChargeResponse>(
             `/payments/${paymentId}/charge`,
-            params,
+            mergedParams,
         );
     }
 

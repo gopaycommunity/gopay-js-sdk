@@ -17,8 +17,10 @@ export type {
     Environment,
     InboundMessage,
 } from './modules/cards/iframe-protocol.js';
+export { collectBrowserData } from './modules/payments/browser-data.js';
 export type {
     AuthenticateRequest,
+    BrowserData,
     ClientCredentialsRequest,
     ClientToken,
     GoPayEnvironment,

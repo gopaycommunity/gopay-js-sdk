@@ -1,3 +1,11 @@
+import type { components } from './generated.js';
+
+type PaymentChargeBody =
+    components['requestBodies']['Payment-Charge-Request']['content']['application/json'];
+
+/** Browser context data collected by {@link collectBrowserData} for 3DS / fraud detection. */
+export type BrowserData = NonNullable<PaymentChargeBody['browser_data']>;
+
 export type GoPayEnvironment = 'sandbox' | 'production';
 
 /**

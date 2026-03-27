@@ -176,6 +176,15 @@ describe('PaymentsModule', () => {
     describe('charge()', () => {
         beforeEach(() => {
             fetchMock.mockResolvedValue(makeResponse(mockChargeResponse, 201));
+            vi.stubGlobal('navigator', {
+                language: 'en-US',
+                userAgent: 'test-agent',
+            });
+            vi.stubGlobal('screen', {
+                width: 1920,
+                height: 1080,
+                colorDepth: 24,
+            });
         });
 
         it('sends POST to /payments/{paymentId}/charge', async () => {
@@ -216,7 +225,7 @@ describe('PaymentsModule', () => {
 
             await payments.charge('pay_300000001', chargeParams);
 
-            expect(JSON.parse(capturedBody)).toEqual(chargeParams);
+            expect(JSON.parse(capturedBody)).toMatchObject(chargeParams);
         });
 
         it('sends Content-Type: application/json', async () => {
@@ -255,6 +264,46 @@ describe('PaymentsModule', () => {
             expect(result).toEqual(mockChargeResponse);
             expect(result.id).toBe('pay_300000001');
             expect(result.state).toBe('REQUESTED');
+        });
+
+        it('auto-injects browser_data into charge request body', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(mockChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', chargeParams);
+
+            const body = JSON.parse(capturedBody);
+            expect(body.browser_data).toMatchObject({
+                language: 'en-US',
+                user_agent: 'test-agent',
+                screen_width: 1920,
+                screen_height: 1080,
+                color_depth: 24,
+                javascript_enabled: true,
+                java_enabled: false,
+            });
+        });
+
+        it('caller-supplied browser_data fields override auto-collected values', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(mockChargeResponse, 201);
+            });
+
+            await payments.charge('pay_300000001', {
+                ...chargeParams,
+                browser_data: { language: 'fr-FR', ip: '1.2.3.4' },
+            });
+
+            const body = JSON.parse(capturedBody);
+            expect(body.browser_data.language).toBe('fr-FR');
+            expect(body.browser_data.ip).toBe('1.2.3.4');
+            // auto-collected fields still present for non-overridden keys
+            expect(body.browser_data.user_agent).toBe('test-agent');
         });
     });
 
