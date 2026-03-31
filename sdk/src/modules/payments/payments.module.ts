@@ -19,6 +19,12 @@ type ApplePayInfoResponse =
 type QRPaymentInfoResponse =
     components['responses']['QR-Payment-Info-Response']['content']['application/json'];
 
+function requirePaymentId(paymentId: string): void {
+    if (!paymentId) {
+        throw new Error('paymentId is required');
+    }
+}
+
 export class PaymentsModule {
     constructor(private readonly client: HttpClient) {}
 
@@ -61,6 +67,7 @@ export class PaymentsModule {
         paymentId: string,
         params: PaymentChargeRequest,
     ): Promise<PaymentChargeResponse> {
+        requirePaymentId(paymentId);
         const mergedParams = {
             ...params,
             browser_data: { ...collectBrowserData(), ...params.browser_data },
@@ -84,6 +91,7 @@ export class PaymentsModule {
      * @param paymentId - Payment session ID
      */
     async getGooglePayInfo(paymentId: string): Promise<GooglePayInfoResponse> {
+        requirePaymentId(paymentId);
         return this.client.get<GooglePayInfoResponse>(
             `/payments/${paymentId}/google-pay/info`,
         );
@@ -97,6 +105,7 @@ export class PaymentsModule {
      * @param paymentId - Payment session ID
      */
     async getApplePayInfo(paymentId: string): Promise<ApplePayInfoResponse> {
+        requirePaymentId(paymentId);
         return this.client.get<ApplePayInfoResponse>(
             `/payments/${paymentId}/apple-pay/info`,
         );
@@ -106,6 +115,7 @@ export class PaymentsModule {
         paymentId: string,
         origin: string,
     ): Promise<ValidateMerchantResponse> {
+        requirePaymentId(paymentId);
         return this.client.post<ValidateMerchantResponse>(
             `/payments/${paymentId}/apple-pay/validate`,
             undefined,
@@ -120,30 +130,42 @@ export class PaymentsModule {
      * calls `validateApplePayMerchant`, passes the result to
      * `session.completeMerchantValidation`, and aborts the session on failure.
      *
+     * Also wires `oncancel` — if the user dismisses the Apple Pay sheet,
+     * `callbacks.oncancel` is called with the cancel event.
+     *
      * The caller is still responsible for creating the session (must happen
      * synchronously from a user-gesture handler) and for handling
-     * `onpaymentauthorized` and `oncancel`.
+     * `onpaymentauthorized`.
      *
      * @param paymentId - Payment session ID
      * @param session   - `ApplePaySession` instance created by the caller
      * @param origin    - Origin of the page; defaults to `window.location.origin`
+     * @param callbacks - Optional event callbacks (`oncancel`)
      */
     startApplePaySession(
         paymentId: string,
         session: {
             onvalidatemerchant: ((event: unknown) => void) | null;
+            oncancel: ((event: unknown) => void) | null;
             completeMerchantValidation(merchantSession: unknown): void;
             abort(): void;
             begin(): void;
         },
         origin: string = globalThis.location?.origin ?? '',
+        callbacks?: {
+            oncancel?: (event: unknown) => void;
+        },
     ): void {
+        requirePaymentId(paymentId);
         session.onvalidatemerchant = () => {
             this.validateApplePayMerchant(paymentId, origin)
                 .then((merchantSession) =>
                     session.completeMerchantValidation(merchantSession),
                 )
                 .catch(() => session.abort());
+        };
+        session.oncancel = (event) => {
+            callbacks?.oncancel?.(event);
         };
         session.begin();
     }
@@ -161,6 +183,7 @@ export class PaymentsModule {
         paymentId: string,
         format?: 'png' | 'svg',
     ): Promise<QRPaymentInfoResponse> {
+        requirePaymentId(paymentId);
         const path = format
             ? `/payments/${paymentId}/qr-payment/info?format=${format}`
             : `/payments/${paymentId}/qr-payment/info`;
