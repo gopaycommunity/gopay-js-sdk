@@ -103,25 +103,13 @@ export interface CardSetTheme {
     theme: CardFormTheme;
 }
 
-export interface CardFormLabels {
-    cardNumber: string;
-    expiry: string;
-    cvv: string;
-    cardNumberPlaceholder: string;
-    expiryPlaceholder: string;
-    cvvPlaceholder: string;
-    pay: string;
-    invalidCardNumber: string;
-    invalidExpiry: string;
-    invalidCvv: string;
+export interface CardSetLocale {
+    type: 'GOPAY_CARD_SET_LOCALE';
+    /** BCP 47 language tag, e.g. "cs-CZ" or "en". Unknown locales fall back to English. */
+    locale: string;
 }
 
-export interface CardSetLabels {
-    type: 'GOPAY_CARD_SET_LABELS';
-    labels: CardFormLabels;
-}
-
-export type InboundMessage = CardFormConfig | CardSetTheme | CardSetLabels;
+export type InboundMessage = CardFormConfig | CardSetTheme | CardSetLocale;
 
 export type EncryptErrorCode =
     | 'PUBLIC_KEY_FETCH_FAILED'

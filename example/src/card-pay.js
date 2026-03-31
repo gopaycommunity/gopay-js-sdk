@@ -16,12 +16,7 @@
 //     return_url: 'https://yourshop.example.com/return',
 //   });
 
-import {
-    CARD_FORM_LABELS_CS,
-    CARD_FORM_LABELS_EN,
-    DARK_CARD_FORM_THEME,
-    DEFAULT_CARD_FORM_THEME,
-} from 'gopay-js-sdk';
+import { DARK_CARD_FORM_THEME, DEFAULT_CARD_FORM_THEME } from 'gopay-js-sdk';
 import { formatError, prefillCharge } from './helpers.js';
 import { sdk } from './sdk.js';
 
@@ -62,9 +57,7 @@ export function cardPaySetLang(lang) {
 
     const iframe = getMountedIframe();
     if (iframe) {
-        const labels =
-            lang === 'cs' ? CARD_FORM_LABELS_CS : CARD_FORM_LABELS_EN;
-        postToIframe(iframe, { type: 'GOPAY_CARD_SET_LABELS', labels });
+        postToIframe(iframe, { type: 'GOPAY_CARD_SET_LOCALE', locale: lang });
     }
 }
 
@@ -113,8 +106,6 @@ export async function cardPayOpenIframe() {
         currentTheme === 'dark'
             ? DARK_CARD_FORM_THEME
             : DEFAULT_CARD_FORM_THEME;
-    const labels =
-        currentLang === 'cs' ? CARD_FORM_LABELS_CS : CARD_FORM_LABELS_EN;
 
     try {
         const iframeSrc = iframeOverride || '/iframe/index.html';
@@ -124,7 +115,7 @@ export async function cardPayOpenIframe() {
             iframeSrc,
             {
                 theme,
-                labels,
+                locale: currentLang,
             },
         );
         container.style.display = 'none';

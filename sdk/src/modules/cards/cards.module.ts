@@ -1,13 +1,11 @@
 import { GoPayErrorCodes, GoPaySDKError } from '../../errors.js';
 import type { HttpClient } from '../../http/client.js';
 import type { components } from '../../types/generated.js';
-import { CARD_FORM_LABELS_EN } from './card-form-labels.js';
 import { DEFAULT_CARD_FORM_THEME } from './card-form-themes.js';
 import type {
     CardFormConfig,
-    CardFormLabels,
     CardFormTheme,
-    CardSetLabels,
+    CardSetLocale,
     CardSetTheme,
     OutboundMessage,
 } from './iframe-protocol.js';
@@ -53,7 +51,7 @@ export class CardsModule {
     mountCardForm(
         container: HTMLElement,
         iframeSrc: string,
-        options?: { theme?: CardFormTheme; labels?: CardFormLabels },
+        options?: { theme?: CardFormTheme; locale?: string },
     ): Promise<CardTokenResponse> {
         return new Promise((resolve, reject) => {
             const tokens = this.client.getTokens();
@@ -89,7 +87,8 @@ export class CardsModule {
             };
 
             const theme = options?.theme ?? DEFAULT_CARD_FORM_THEME;
-            const labels = options?.labels ?? CARD_FORM_LABELS_EN;
+            const locale =
+                options?.locale ?? globalThis.navigator?.language ?? 'en';
 
             iframe.onload = () => {
                 iframe.contentWindow?.postMessage(
@@ -101,9 +100,9 @@ export class CardsModule {
                 );
                 iframe.contentWindow?.postMessage(
                     {
-                        type: 'GOPAY_CARD_SET_LABELS',
-                        labels,
-                    } satisfies CardSetLabels,
+                        type: 'GOPAY_CARD_SET_LOCALE',
+                        locale,
+                    } satisfies CardSetLocale,
                     expectedOrigin,
                 );
                 iframe.contentWindow?.postMessage(

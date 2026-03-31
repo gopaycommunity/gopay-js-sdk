@@ -193,31 +193,30 @@ describe('CardsModule', () => {
             expect((err as GoPayHTTPError).status).toBe(403);
         });
 
-        describe('theme postMessage', () => {
-            function mountWithPostMessageSpy(theme?: CardFormTheme) {
-                const postMessageSpy = vi.fn();
-                const realCreate = document.createElement.bind(document);
-                vi.spyOn(document, 'createElement').mockImplementation(
-                    (tag: string) => {
-                        const node = realCreate(tag);
-                        if (tag === 'iframe') {
-                            Object.defineProperty(node, 'contentWindow', {
-                                get: () => ({ postMessage: postMessageSpy }),
-                            });
-                        }
-                        return node;
-                    },
-                );
-                cards.mountCardForm(
-                    container,
-                    IFRAME_SRC,
-                    theme ? { theme } : undefined,
-                );
-                const iframe = getIframe();
-                iframe.onload?.(new Event('load'));
-                return postMessageSpy;
-            }
+        function mountWithPostMessageSpy(options?: {
+            theme?: CardFormTheme;
+            locale?: string;
+        }) {
+            const postMessageSpy = vi.fn();
+            const realCreate = document.createElement.bind(document);
+            vi.spyOn(document, 'createElement').mockImplementation(
+                (tag: string) => {
+                    const node = realCreate(tag);
+                    if (tag === 'iframe') {
+                        Object.defineProperty(node, 'contentWindow', {
+                            get: () => ({ postMessage: postMessageSpy }),
+                        });
+                    }
+                    return node;
+                },
+            );
+            cards.mountCardForm(container, IFRAME_SRC, options);
+            const iframe = getIframe();
+            iframe.onload?.(new Event('load'));
+            return postMessageSpy;
+        }
 
+        describe('theme postMessage', () => {
             it('sends GOPAY_CARD_SET_THEME with DEFAULT_CARD_FORM_THEME when no options given', () => {
                 const spy = mountWithPostMessageSpy();
                 expect(spy).toHaveBeenCalledWith(
@@ -234,9 +233,29 @@ describe('CardsModule', () => {
                     labelColor: '#ff0000',
                     submitBorderRadius: 8,
                 };
-                const spy = mountWithPostMessageSpy(customTheme);
+                const spy = mountWithPostMessageSpy({ theme: customTheme });
                 expect(spy).toHaveBeenCalledWith(
                     { type: 'GOPAY_CARD_SET_THEME', theme: customTheme },
+                    IFRAME_ORIGIN,
+                );
+            });
+        });
+
+        describe('locale postMessage', () => {
+            it('sends GOPAY_CARD_SET_LOCALE with navigator.language when no options given', () => {
+                vi.stubGlobal('navigator', { language: 'cs-CZ' });
+                const spy = mountWithPostMessageSpy();
+                expect(spy).toHaveBeenCalledWith(
+                    { type: 'GOPAY_CARD_SET_LOCALE', locale: 'cs-CZ' },
+                    IFRAME_ORIGIN,
+                );
+                vi.unstubAllGlobals();
+            });
+
+            it('sends GOPAY_CARD_SET_LOCALE with the provided locale override', () => {
+                const spy = mountWithPostMessageSpy({ locale: 'de-DE' });
+                expect(spy).toHaveBeenCalledWith(
+                    { type: 'GOPAY_CARD_SET_LOCALE', locale: 'de-DE' },
                     IFRAME_ORIGIN,
                 );
             });
