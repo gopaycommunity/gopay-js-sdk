@@ -350,39 +350,47 @@ document.body.appendChild(img);
 
 | Method | Description |
 |---|---|
-| `mountCardForm(container, iframeSrc, options?)` | Mount the GoPay card encryption iframe into `container` and return the card token once the user submits the form. Handles iframe creation, `postMessage` communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
+| `mountCardForm(container, iframeSrc, options?)` | Mount the GoPay card encryption iframe into `container`. Returns a `CardFormController` with a `result` promise (resolves to the card token on submit), `setTheme()`, and `setLocale()` for runtime updates. Handles iframe creation, internal communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
 
 #### `mountCardForm` options
 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `theme` | `CardFormTheme` | `DEFAULT_CARD_FORM_THEME` | Visual theme (colors, font sizes, spacing, button styles). All fields are optional — the iframe applies built-in defaults for any omitted field. |
-| `labels` | `CardFormLabels` | `CARD_FORM_LABELS_EN` | Localised field labels and placeholder text. Use `CARD_FORM_LABELS_CS` for Czech or supply your own object matching the `CardFormLabels` type. |
+| `locale` | `string` | `navigator.language` | BCP 47 language tag for form labels and placeholders. The region subtag is ignored (`'cs-CZ'` → `'cs'`). Unknown locales fall back to English. Supported: `bg` `cs` `de` `en` `es` `et` `fr` `hr` `hu` `it` `lt` `lv` `nl` `pl` `pt` `ro` `ru` `sk` `sl` `uk`. |
 
-Both `CardFormTheme` and `CardFormLabels` are fully typed — hover in your editor to see every available field. Presets are exported from the package:
+> **Send theme and locale at init time.** Both options are applied before the form is first painted, avoiding a flash of unstyled content. Use `cardForm.setTheme()` and `cardForm.setLocale()` on the returned controller if you need to update them after mounting.
+
+`CardFormTheme` is fully typed — hover in your editor to see every available field. Theme presets are exported from the package:
 
 ```ts
 import {
   GoPaySDK,
   DEFAULT_CARD_FORM_THEME,
   DARK_CARD_FORM_THEME,
-  CARD_FORM_LABELS_EN,
-  CARD_FORM_LABELS_CS,
 } from 'gopay-js-sdk';
 
-// Default theme and English labels (both are the built-in defaults — options can be omitted)
-const cardToken = await sdk.cards.mountCardForm(container, iframeSrc);
+// Default theme, locale from navigator.language (options can be omitted entirely)
+const cardForm = sdk.cards.mountCardForm(container, iframeSrc);
+const cardToken = await cardForm.result;
 
-// Dark theme with Czech labels
-const cardToken = await sdk.cards.mountCardForm(container, iframeSrc, {
+// Dark theme with Czech locale
+const cardForm = sdk.cards.mountCardForm(container, iframeSrc, {
   theme: DARK_CARD_FORM_THEME,
-  labels: CARD_FORM_LABELS_CS,
+  locale: 'cs',
 });
+const cardToken = await cardForm.result;
 
 // Custom theme — override individual fields, keep the rest as defaults
-const cardToken = await sdk.cards.mountCardForm(container, iframeSrc, {
+const cardForm = sdk.cards.mountCardForm(container, iframeSrc, {
   theme: { ...DEFAULT_CARD_FORM_THEME, submitBackgroundColor: '#your-brand-color' },
 });
+
+// Update theme or locale at runtime (e.g. user toggles dark mode or language)
+darkModeToggle.addEventListener('change', () => cardForm.setTheme(DARK_CARD_FORM_THEME));
+langSelect.addEventListener('change', e => cardForm.setLocale(e.target.value));
+
+const cardToken = await cardForm.result;
 ```
 
 ### Card Pay
@@ -396,7 +404,8 @@ const payment = await sdk.payments.create(goid, params);
 // 2. Mount the iframe — awaits the user submitting the card form,
 //    then calls POST /cards/tokens automatically.
 const container = document.getElementById('card-form-container');
-const cardToken = await sdk.cards.mountCardForm(container, GOPAY_CARD_IFRAME_URL);
+const cardForm = sdk.cards.mountCardForm(container, GOPAY_CARD_IFRAME_URL);
+const cardToken = await cardForm.result;
 
 // 3. Charge the payment with the resulting card token.
 const charge = await sdk.payments.charge(payment.id, {

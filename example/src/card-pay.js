@@ -22,17 +22,7 @@ import { sdk } from './sdk.js';
 
 let currentLang = 'en';
 let currentTheme = 'default';
-
-function getMountedIframe() {
-    return document
-        .getElementById('cardpay-iframe-container')
-        ?.querySelector('iframe');
-}
-
-function postToIframe(iframe, data) {
-    const origin = new URL(iframe.src, location.href).origin;
-    iframe.contentWindow?.postMessage(data, origin);
-}
+let cardFormController = null;
 
 export function cardPaySetLang(lang) {
     currentLang = lang;
@@ -55,10 +45,7 @@ export function cardPaySetLang(lang) {
         .getElementById('cardpay-lang-cs')
         .classList.toggle('![box-shadow:none]', lang !== 'cs');
 
-    const iframe = getMountedIframe();
-    if (iframe) {
-        postToIframe(iframe, { type: 'GOPAY_CARD_SET_LOCALE', locale: lang });
-    }
+    cardFormController?.setLocale(lang);
 }
 
 export function cardPaySetTheme(theme) {
@@ -82,12 +69,9 @@ export function cardPaySetTheme(theme) {
         .getElementById('cardpay-theme-dark')
         .classList.toggle('![box-shadow:none]', theme !== 'dark');
 
-    const iframe = getMountedIframe();
-    if (iframe) {
-        const theme2 =
-            theme === 'dark' ? DARK_CARD_FORM_THEME : DEFAULT_CARD_FORM_THEME;
-        postToIframe(iframe, { type: 'GOPAY_CARD_SET_THEME', theme: theme2 });
-    }
+    cardFormController?.setTheme(
+        theme === 'dark' ? DARK_CARD_FORM_THEME : DEFAULT_CARD_FORM_THEME,
+    );
 }
 
 export async function cardPayOpenIframe() {
@@ -110,14 +94,12 @@ export async function cardPayOpenIframe() {
     try {
         const iframeSrc = iframeOverride || '/iframe/index.html';
 
-        const tokenResult = await sdk.cards.mountCardForm(
-            container,
-            iframeSrc,
-            {
-                theme,
-                locale: currentLang,
-            },
-        );
+        cardFormController = sdk.cards.mountCardForm(container, iframeSrc, {
+            theme,
+            locale: currentLang,
+        });
+        const tokenResult = await cardFormController.result;
+        cardFormController = null;
         container.style.display = 'none';
         pre.textContent += `\n\n── onSuccess (mountCardForm) ──\n${JSON.stringify(tokenResult, null, 2)}`;
         prefillCharge(paymentId, {
@@ -126,6 +108,7 @@ export async function cardPayOpenIframe() {
         });
         pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
     } catch (err) {
+        cardFormController = null;
         container.style.display = 'none';
         pre.textContent += `\n\n── onError (mountCardForm) ──\n${formatError(err)}`;
     }

@@ -15,6 +15,15 @@ type CardTokenRequest =
 type CardTokenResponse =
     components['responses']['Card-Token-Response']['content']['application/json'];
 
+export interface CardFormController {
+    /** Resolves with the card token when the user submits the form; rejects on error or cancellation. */
+    result: Promise<CardTokenResponse>;
+    /** Send an updated theme to the mounted iframe. No-op if the form is no longer mounted. */
+    setTheme: (theme: CardFormTheme) => void;
+    /** Send an updated locale to the mounted iframe. No-op if the form is no longer mounted. */
+    setLocale: (locale: string) => void;
+}
+
 export class CardsModule {
     constructor(private readonly client: HttpClient) {}
 
@@ -31,8 +40,9 @@ export class CardsModule {
     }
 
     /**
-     * Mount the GoPay card encryption iframe into `container` and return the
-     * resulting card token once the user submits the form.
+     * Mount the GoPay card encryption iframe into `container` and return a
+     * {@link CardFormController} that exposes the token promise and runtime
+     * controls for updating the theme and locale after mounting.
      *
      * The iframe must be the GoPay-hosted card encryption page (never a
      * merchant-controlled origin). It communicates via `postMessage`:
@@ -40,8 +50,8 @@ export class CardsModule {
      * - `GOPAY_CARD_ENCRYPT_RESULT` — user submitted; carries the JWE payload
      *
      * The SDK listens for the result, calls `POST /cards/tokens` internally,
-     * and resolves with the tokenization response. The message listener is
-     * removed automatically on completion.
+     * and resolves `result` with the tokenization response. The message
+     * listener is removed automatically on completion.
      *
      * Requires the `card:save` OAuth2 scope.
      *
@@ -52,122 +62,142 @@ export class CardsModule {
         container: HTMLElement,
         iframeSrc: string,
         options?: { theme?: CardFormTheme; locale?: string },
-    ): Promise<CardTokenResponse> {
-        return new Promise((resolve, reject) => {
-            const tokens = this.client.getTokens();
-            if (!tokens) {
-                reject(
+    ): CardFormController {
+        const tokens = this.client.getTokens();
+        if (!tokens) {
+            const result = Promise.reject<CardTokenResponse>(
+                new GoPaySDKError(
+                    '[GoPaySDK] No access token available. Call setClientToken() before mounting the card form.',
+                    { errorCode: GoPayErrorCodes.AUTH_TOKEN_MISSING },
+                ),
+            );
+            result.catch(() => {}); // prevent unhandled-rejection warnings
+            return { result, setTheme: () => {}, setLocale: () => {} };
+        }
+
+        container.replaceChildren();
+
+        const iframe = document.createElement('iframe');
+        iframe.src = iframeSrc;
+        iframe.style.cssText = 'width:100%;height:100%;border:none;';
+        container.appendChild(iframe);
+
+        const expectedOrigin = new URL(iframeSrc, globalThis.location?.href)
+            .origin;
+        const environment = this.client.getEnvironment();
+        const elapsedSeconds = Math.floor(
+            (Date.now() - tokens.issued_at) / 1000,
+        );
+        const clientId = this.extractClientId(tokens.access_token);
+        const theme = options?.theme ?? DEFAULT_CARD_FORM_THEME;
+        const locale =
+            options?.locale ?? globalThis.navigator?.language ?? 'en';
+
+        let active = true;
+        let onMessage:
+            | ((e: MessageEvent<OutboundMessage>) => Promise<void>)
+            | undefined;
+
+        const cleanup = () => {
+            active = false;
+            if (onMessage) window.removeEventListener('message', onMessage);
+            iframe.remove();
+        };
+
+        let resolveResult!: (value: CardTokenResponse) => void;
+        let rejectResult!: (reason: unknown) => void;
+        const result = new Promise<CardTokenResponse>((res, rej) => {
+            resolveResult = res;
+            rejectResult = rej;
+        });
+
+        iframe.onload = () => {
+            iframe.contentWindow?.postMessage(
+                {
+                    type: 'GOPAY_CARD_FORM_INIT',
+                    environment,
+                    client_id: clientId ?? '',
+                    access_token: tokens.access_token,
+                    refresh_token: tokens.refresh_token,
+                    expires_in: Math.max(0, tokens.expires_in - elapsedSeconds),
+                    refresh_expires_in: Math.max(
+                        0,
+                        tokens.refresh_expires_in - elapsedSeconds,
+                    ),
+                    theme,
+                    locale,
+                } satisfies CardFormConfig,
+                expectedOrigin,
+            );
+        };
+
+        onMessage = async (event: MessageEvent<OutboundMessage>) => {
+            if (event.origin !== expectedOrigin) return;
+            if (event.source !== iframe.contentWindow) return;
+
+            if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
+                if (typeof event.data.height === 'number') {
+                    iframe.style.height = `${event.data.height}px`;
+                }
+                return;
+            }
+
+            if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') {
+                return;
+            }
+
+            if (event.data?.type === 'GOPAY_CARD_ENCRYPT_ERROR') {
+                cleanup();
+                rejectResult(
                     new GoPaySDKError(
-                        '[GoPaySDK] No access token available. Call setClientToken() before mounting the card form.',
-                        { errorCode: GoPayErrorCodes.AUTH_TOKEN_MISSING },
+                        `[GoPaySDK] Card form error: ${event.data.error}`,
+                        { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
                     ),
                 );
                 return;
             }
 
-            container.replaceChildren();
+            if (event.data?.type !== 'GOPAY_CARD_ENCRYPT_RESULT') return;
 
-            const iframe = document.createElement('iframe');
-            iframe.src = iframeSrc;
-            iframe.style.cssText = 'width:100%;height:100%;border:none;';
-            container.appendChild(iframe);
-
-            const expectedOrigin = new URL(iframeSrc, globalThis.location?.href)
-                .origin;
-            const environment = this.client.getEnvironment();
-            const elapsedSeconds = Math.floor(
-                (Date.now() - tokens.issued_at) / 1000,
-            );
-
-            const clientId = this.extractClientId(tokens.access_token);
-
-            const cleanup = () => {
-                window.removeEventListener('message', onMessage);
-                iframe.remove();
-            };
-
-            const theme = options?.theme ?? DEFAULT_CARD_FORM_THEME;
-            const locale =
-                options?.locale ?? globalThis.navigator?.language ?? 'en';
-
-            iframe.onload = () => {
-                iframe.contentWindow?.postMessage(
-                    {
-                        type: 'GOPAY_CARD_SET_THEME',
-                        theme,
-                    } satisfies CardSetTheme,
-                    expectedOrigin,
+            cleanup();
+            try {
+                resolveResult(
+                    await this.createToken({
+                        payload: event.data.card_token,
+                    }),
                 );
-                iframe.contentWindow?.postMessage(
-                    {
-                        type: 'GOPAY_CARD_SET_LOCALE',
-                        locale,
-                    } satisfies CardSetLocale,
-                    expectedOrigin,
-                );
-                iframe.contentWindow?.postMessage(
-                    {
-                        type: 'GOPAY_CARD_FORM_INIT',
-                        environment,
-                        client_id: clientId ?? '',
-                        access_token: tokens.access_token,
-                        refresh_token: tokens.refresh_token,
-                        expires_in: Math.max(
-                            0,
-                            tokens.expires_in - elapsedSeconds,
-                        ),
-                        refresh_expires_in: Math.max(
-                            0,
-                            tokens.refresh_expires_in - elapsedSeconds,
-                        ),
-                    } satisfies CardFormConfig,
-                    expectedOrigin,
-                );
-            };
+            } catch (err) {
+                rejectResult(err);
+            }
+        };
 
-            const onMessage = async (event: MessageEvent<OutboundMessage>) => {
-                if (event.origin !== expectedOrigin) return;
-                if (event.source !== iframe.contentWindow) return;
+        window.addEventListener('message', onMessage);
 
-                if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
-                    if (typeof event.data.height === 'number') {
-                        iframe.style.height = `${event.data.height}px`;
-                    }
-                    return;
-                }
-
-                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') {
-                    // Form is rendered and interactive — nothing to do here.
-                    return;
-                }
-
-                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_ERROR') {
-                    cleanup();
-                    reject(
-                        new GoPaySDKError(
-                            `[GoPaySDK] Card form error: ${event.data.error}`,
-                            { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
-                        ),
+        return {
+            result,
+            setTheme: (t: CardFormTheme) => {
+                if (active) {
+                    iframe.contentWindow?.postMessage(
+                        {
+                            type: 'GOPAY_CARD_SET_THEME',
+                            theme: t,
+                        } satisfies CardSetTheme,
+                        expectedOrigin,
                     );
-                    return;
                 }
-
-                if (event.data?.type !== 'GOPAY_CARD_ENCRYPT_RESULT') return;
-
-                cleanup();
-                try {
-                    resolve(
-                        await this.createToken({
-                            payload: event.data.card_token,
-                        }),
+            },
+            setLocale: (l: string) => {
+                if (active) {
+                    iframe.contentWindow?.postMessage(
+                        {
+                            type: 'GOPAY_CARD_SET_LOCALE',
+                            locale: l,
+                        } satisfies CardSetLocale,
+                        expectedOrigin,
                     );
-                } catch (err) {
-                    reject(err);
                 }
-            };
-
-            window.addEventListener('message', onMessage);
-        });
+            },
+        };
     }
 
     private extractClientId(accessToken: string): string | null {

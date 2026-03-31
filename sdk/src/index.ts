@@ -6,6 +6,7 @@ export {
     DARK_CARD_FORM_THEME,
     DEFAULT_CARD_FORM_THEME,
 } from './modules/cards/card-form-themes.js';
+export type { CardFormController } from './modules/cards/cards.module.js';
 export type {
     CardFormTheme,
     EncryptErrorCode,

@@ -19,6 +19,10 @@ export interface CardFormConfig {
     /** Seconds until refresh_token expires */
     refresh_expires_in: number;
     client_id: string;
+    /** Initial theme applied before the form is first painted. */
+    theme?: CardFormTheme;
+    /** BCP 47 locale for the initial form labels. */
+    locale?: string;
 }
 
 /**
