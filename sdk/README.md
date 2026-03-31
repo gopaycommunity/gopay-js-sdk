@@ -174,6 +174,27 @@ const sdk = new GoPaySDK({
 
 ---
 
+## Promise-based API
+
+All SDK methods return Promises. Use `async/await` or `.then()/.catch()` — there are no `onSuccess` / `onError` callback parameters on individual calls.
+
+Handle errors with `try/catch`. The SDK throws two typed error classes (`GoPaySDKError`, `GoPayHTTPError`) that you can import and `instanceof`-check — see [Errors](#errors). TypeScript types for all request and response shapes are exported from the package; your editor will show them inline.
+
+```ts
+try {
+  const payment = await sdk.payments.create(goid, params);
+} catch (err) {
+  if (err instanceof GoPayHTTPError) { /* API error — check err.status and err.body */ }
+  if (err instanceof GoPaySDKError)  { /* SDK lifecycle error — check err.errorCode */ }
+}
+```
+
+The `onError` config option (see [Configuration](#configuration)) intercepts every error centrally — useful for logging — but does not replace `try/catch`.
+
+The one exception is `startApplePaySession`: it returns `void` instead of a Promise and accepts an optional `callbacks.oncancel`, because the Apple Pay cancel event fires natively on the `ApplePaySession` object rather than through promise rejection.
+
+---
+
 ## API
 
 ### `sdk.auth`
@@ -194,10 +215,24 @@ const sdk = new GoPaySDK({
 | `charge(paymentId, params)` | Charge a payment using a payment instrument (`POST /payments/{paymentId}/charge`). |
 | `getGooglePayInfo(paymentId)` | Retrieve Google Pay configuration for a payment. |
 | `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment. Returns `applepayVersion`, `merchantIdentifier`, and `applePayPaymentRequest` needed to construct an `ApplePaySession`. |
-| `startApplePaySession(paymentId, session, origin?)` | Wire merchant validation onto an `ApplePaySession` and call `begin()`. Handles `onvalidatemerchant` automatically; `origin` defaults to `window.location.origin`. Call `getApplePayInfo` first to obtain the values needed to construct the session. |
+| `startApplePaySession(paymentId, session, origin?, callbacks?)` | Wire merchant validation onto an `ApplePaySession` and call `begin()`. Handles `onvalidatemerchant` automatically; `origin` defaults to `window.location.origin`. Pass `{ oncancel }` in `callbacks` to be notified when the user dismisses the sheet. You must still wire `session.onpaymentauthorized` yourself. |
 | `getQRPaymentInfo(paymentId, format?)` | Retrieve QR code and recipient info (`GET /payments/{paymentId}/qr-payment/info`). |
 
 ### Google Pay
+
+**SDK handles:** fetching the pre-filled `paymentDataRequest` config from the GoPay API.
+
+**You must wire up:** creating the `PaymentsClient`, rendering the button via `paymentsClient.createButton()` (Google's UX requirement), calling `paymentsClient.loadPaymentData()`, and handling cancellation. When the user dismisses the sheet, `loadPaymentData` rejects with either `{ statusCode: 'CANCELED' }` (Google Pay JS SDK) or a `DOMException` with `name === 'AbortError'` (PaymentRequest API path in some browsers). Check both:
+
+```ts
+} catch (err) {
+  const isCancel =
+    (err as any)?.statusCode === 'CANCELED' ||
+    (err instanceof DOMException && err.name === 'AbortError');
+  if (isCancel) { /* user dismissed — update your UI */ }
+  else { /* actual error */ }
+}
+```
 
 ```ts
 // Fetch Google Pay configuration for this payment.
@@ -239,6 +274,10 @@ const charge = await sdk.payments.charge(payment.id, {
 > **Safari only.** `ApplePaySession` is available exclusively in Safari on Apple
 > devices. In other browsers the example page loads `apple-pay-polyfill.js`
 > (a dev-only stub) so the flow can be exercised without a real device.
+
+**SDK handles:** merchant validation (`onvalidatemerchant`) and `session.begin()`.
+
+**You must wire up:** `session.onpaymentauthorized` — call `charge()` and then `session.completePayment(STATUS_SUCCESS / STATUS_FAILURE)`. Optionally pass `{ oncancel }` to `startApplePaySession` to update your UI when the user dismisses the sheet.
 
 ```ts
 // Fetch Apple Pay configuration for this payment.
@@ -317,33 +356,34 @@ document.body.appendChild(img);
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `styles` | `string` | `DEFAULT_CARD_FORM_STYLES` | CSS string injected into the card form iframe via `GOPAY_CARD_SET_STYLES` postMessage. Sent before `GOPAY_CARD_FORM_INIT` to avoid redraws. Can be re-sent at any time after mounting. |
+| `theme` | `CardFormTheme` | `DEFAULT_CARD_FORM_THEME` | Visual theme (colors, font sizes, spacing, button styles). All fields are optional — the iframe applies built-in defaults for any omitted field. |
+| `labels` | `CardFormLabels` | `CARD_FORM_LABELS_EN` | Localised field labels and placeholder text. Use `CARD_FORM_LABELS_CS` for Czech or supply your own object matching the `CardFormLabels` type. |
 
-The SDK sends styles into the iframe before initialising the form to prevent a flash of unstyled content. The same message can also be sent manually at any time — for example to switch themes dynamically.
-
-**Use the SDK default styles as-is** (no options needed):
-
-```ts
-const cardToken = await sdk.cards.mountCardForm(container, GOPAY_CARD_IFRAME_URL);
-```
-
-**Extend or replace the defaults** — import `DEFAULT_CARD_FORM_STYLES` to use it as a base, or pass a fully custom CSS string:
+Both `CardFormTheme` and `CardFormLabels` are fully typed — hover in your editor to see every available field. Presets are exported from the package:
 
 ```ts
-import { GoPaySDK, DEFAULT_CARD_FORM_STYLES } from 'gopay-js-sdk';
+import {
+  GoPaySDK,
+  DEFAULT_CARD_FORM_THEME,
+  DARK_CARD_FORM_THEME,
+  CARD_FORM_LABELS_EN,
+  CARD_FORM_LABELS_CS,
+} from 'gopay-js-sdk';
 
-// Extend: append overrides on top of the defaults
-const cardToken = await sdk.cards.mountCardForm(container, GOPAY_CARD_IFRAME_URL, {
-  styles: DEFAULT_CARD_FORM_STYLES + `.gp-submit { background: #your-brand-color; }`,
+// Default theme and English labels (both are the built-in defaults — options can be omitted)
+const cardToken = await sdk.cards.mountCardForm(container, iframeSrc);
+
+// Dark theme with Czech labels
+const cardToken = await sdk.cards.mountCardForm(container, iframeSrc, {
+  theme: DARK_CARD_FORM_THEME,
+  labels: CARD_FORM_LABELS_CS,
 });
 
-// Replace: pass your own full CSS string
-const cardToken = await sdk.cards.mountCardForm(container, GOPAY_CARD_IFRAME_URL, {
-  styles: myCustomStyles,
+// Custom theme — override individual fields, keep the rest as defaults
+const cardToken = await sdk.cards.mountCardForm(container, iframeSrc, {
+  theme: { ...DEFAULT_CARD_FORM_THEME, submitBackgroundColor: '#your-brand-color' },
 });
 ```
-
-The CSS class names used by the iframe are documented in `DEFAULT_CARD_FORM_STYLES` (exported from `gopay-js-sdk`). Use that as the reference — class names may change between iframe versions.
 
 ### Card Pay
 

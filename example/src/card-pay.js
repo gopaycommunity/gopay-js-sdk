@@ -21,9 +21,8 @@ import {
     CARD_FORM_LABELS_EN,
     DARK_CARD_FORM_THEME,
     DEFAULT_CARD_FORM_THEME,
-    GoPayHTTPError,
 } from 'gopay-js-sdk';
-import { prefillCharge } from './helpers.js';
+import { formatError, prefillCharge } from './helpers.js';
 import { sdk } from './sdk.js';
 
 let currentLang = 'en';
@@ -129,7 +128,7 @@ export async function cardPayOpenIframe() {
             },
         );
         container.style.display = 'none';
-        pre.textContent += `\n\n── Step 2: card tokenized ──\n${JSON.stringify(tokenResult, null, 2)}`;
+        pre.textContent += `\n\n── onSuccess (mountCardForm) ──\n${JSON.stringify(tokenResult, null, 2)}`;
         prefillCharge(paymentId, {
             payment_instrument: 'PAYMENT_CARD',
             input: { input_type: 'CARD_TOKEN', card_token: tokenResult.token },
@@ -137,9 +136,6 @@ export async function cardPayOpenIframe() {
         pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
     } catch (err) {
         container.style.display = 'none';
-        pre.textContent +=
-            err instanceof GoPayHTTPError
-                ? `\n\n[GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`
-                : `\n\n[Error] ${err?.message ?? String(err)}`;
+        pre.textContent += `\n\n── onError (mountCardForm) ──\n${formatError(err)}`;
     }
 }

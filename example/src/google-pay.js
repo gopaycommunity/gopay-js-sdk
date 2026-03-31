@@ -13,7 +13,7 @@
 // Note: load the Google Pay script in your HTML:
 //   <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
 
-import { prefillCharge } from './helpers.js';
+import { formatError, prefillCharge } from './helpers.js';
 import { sdk } from './sdk.js';
 
 // Holds the config fetched in step 1, consumed in step 2
@@ -40,9 +40,9 @@ export async function googlePayLoadInfo() {
     try {
         _googlePayInfo = await sdk.payments.getGooglePayInfo(paymentId);
         _googlePaymentId = paymentId;
-        pre.textContent = `── API response (getGooglePayInfo) ──\n${JSON.stringify(_googlePayInfo, null, 2)}\n\nClick the Google Pay button to proceed.`;
+        pre.textContent = `── onSuccess (getGooglePayInfo) ──\n${JSON.stringify(_googlePayInfo, null, 2)}\n\nClick the Google Pay button to proceed.`;
     } catch (err) {
-        pre.textContent = `[Step 1 failed] ${err?.message ?? String(err)}`;
+        pre.textContent = `── onError (getGooglePayInfo) ──\n${formatError(err)}`;
         return;
     }
 
@@ -69,10 +69,15 @@ async function googlePayOpenSheet() {
             _googlePayInfo.paymentDataRequest,
         );
     } catch (err) {
-        pre.textContent += `\n\nGoogle Pay sheet closed.\n${err?.statusCode === 'CANCELED' ? 'User cancelled.' : String(err?.message ?? err)}`;
+        const isCancel =
+            err?.statusCode === 'CANCELED' ||
+            (err instanceof DOMException && err.name === 'AbortError');
+        const label = isCancel ? 'onCancel' : 'onError';
+        pre.textContent += `\n\n── ${label} (loadPaymentData) ──\n${formatError(err)}`;
         return;
     }
 
+    pre.textContent += '\n\n── onSuccess (loadPaymentData) ──';
     // tokenizationData.token is a JSON string: { protocolVersion, signature, signedMessage, ... }
     const tokenData = JSON.parse(
         paymentData.paymentMethodData.tokenizationData.token,

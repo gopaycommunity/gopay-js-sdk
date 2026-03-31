@@ -21,7 +21,7 @@
 //     A polyfill replaces ApplePaySession in non-Safari browsers for local testing.
 //     It simulates the full session lifecycle with a stub token.
 
-import { prefillCharge } from './helpers.js';
+import { formatError, prefillCharge } from './helpers.js';
 import { sdk } from './sdk.js';
 
 // Holds the config fetched in step 1, consumed in step 2
@@ -42,9 +42,9 @@ export async function applePayLoadInfo() {
     try {
         _applePayInfo = await sdk.payments.getApplePayInfo(paymentId);
         _applePaymentId = paymentId;
-        pre.textContent = `── API response (getApplePayInfo) ──\n${JSON.stringify(_applePayInfo, null, 2)}\n\nClick a button below to proceed.`;
+        pre.textContent = `── onSuccess (getApplePayInfo) ──\n${JSON.stringify(_applePayInfo, null, 2)}\n\nClick a button below to proceed.`;
     } catch (err) {
-        pre.textContent = `[Step 1 failed] ${err?.message ?? String(err)}`;
+        pre.textContent = `── onError (getApplePayInfo) ──\n${formatError(err)}`;
         return;
     }
 
@@ -145,7 +145,7 @@ async function applePayPaymentRequestFlow() {
         );
         paymentResponse = await request.show();
     } catch (err) {
-        pre.textContent += `\nCancelled or failed: ${err?.message ?? String(err)}`;
+        pre.textContent += `\n\n── onCancel / onError (PaymentRequest) ──\n${formatError(err)}`;
         return;
     }
 
@@ -163,13 +163,13 @@ async function applePayPaymentRequestFlow() {
             return_url: returnUrl,
         });
         await paymentResponse.complete('success');
-        pre.textContent += `\n\nCharge result:\n${JSON.stringify(charge, null, 2)}`;
+        pre.textContent += `\n\n── onSuccess (charge) ──\n${JSON.stringify(charge, null, 2)}`;
         if (charge.action?.redirect_url) {
             pre.textContent += `\n\nRedirect to: ${charge.action.redirect_url}`;
         }
     } catch (err) {
         await paymentResponse.complete('fail');
-        pre.textContent += `\nCharge failed: ${err?.message ?? String(err)}`;
+        pre.textContent += `\n\n── onError (charge) ──\n${formatError(err)}`;
     }
 }
 
@@ -183,6 +183,7 @@ function applePayBeginSession(SessionClass = window.ApplePaySession) {
     );
 
     session.onpaymentauthorized = async (event) => {
+        pre.textContent += '\n\n── onpaymentauthorized ──';
         const { data, signature, version, header } =
             event.payment.token.paymentData;
         const returnUrl = document
@@ -205,19 +206,23 @@ function applePayBeginSession(SessionClass = window.ApplePaySession) {
                 return_url: returnUrl,
             });
             session.completePayment(SessionClass.STATUS_SUCCESS);
-            pre.textContent += `\n\nCharge result:\n${JSON.stringify(charge, null, 2)}`;
+            pre.textContent += `\n\n── onSuccess (charge) ──\n${JSON.stringify(charge, null, 2)}`;
             if (charge.action?.redirect_url) {
                 pre.textContent += `\n\nRedirect to: ${charge.action.redirect_url}`;
             }
         } catch (err) {
             session.completePayment(SessionClass.STATUS_FAILURE);
-            pre.textContent += `\nCharge failed: ${err?.message ?? String(err)}`;
+            pre.textContent += `\n\n── onError (charge) ──\n${formatError(err)}`;
         }
     };
 
-    session.oncancel = () => {
-        pre.textContent += '\n\nApple Pay sheet closed. User cancelled.';
-    };
-
-    sdk.payments.startApplePaySession(_applePaymentId, session);
+    sdk.payments.startApplePaySession(_applePaymentId, session, undefined, {
+        oncancel: (event) => {
+            const detail =
+                event !== undefined
+                    ? JSON.stringify(event, null, 2)
+                    : '(no event data — session cancelled by browser)';
+            pre.textContent += `\n\n── onCancel ──\n${detail}`;
+        },
+    });
 }

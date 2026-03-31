@@ -53,26 +53,30 @@ export async function run(outputId, fn, onSuccess) {
     pre.textContent = 'Running…';
     try {
         const result = await fn();
-        pre.textContent = JSON.stringify(result, null, 2);
+        pre.textContent = `── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
         if (onSuccess) onSuccess(result);
     } catch (err) {
-        if (err instanceof GoPayHTTPError) {
-            pre.textContent = `[GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`;
-        } else if (err instanceof GoPaySDKError) {
-            pre.textContent = `[GoPaySDKError] ${err.errorCode ? `(${err.errorCode}) ` : ''}${err.message}`;
-        } else if (err instanceof Error) {
-            pre.textContent = `[${err.constructor.name}] ${err.message}`;
-        } else if (err === null || err === undefined) {
-            pre.textContent = `[${typeof err}] ${String(err)}`;
-        } else {
-            let msg;
-            try {
-                msg = JSON.stringify(err);
-            } catch {
-                msg = String(err);
-            }
-            pre.textContent = `[${typeof err}] ${msg}`;
-        }
+        pre.textContent = `── onError ──\n${formatError(err)}`;
+    }
+}
+
+export function formatError(err) {
+    if (err instanceof GoPayHTTPError) {
+        return `[GoPayHTTPError] HTTP ${err.status}\n${JSON.stringify(err.body, null, 2)}`;
+    }
+    if (err instanceof GoPaySDKError) {
+        return `[GoPaySDKError] ${err.errorCode ? `(${err.errorCode}) ` : ''}${err.message}`;
+    }
+    if (err instanceof Error) {
+        return `[${err.constructor.name}] ${err.message}`;
+    }
+    if (err === null || err === undefined) {
+        return `[${typeof err}] ${String(err)}`;
+    }
+    try {
+        return `[${typeof err}] ${JSON.stringify(err)}`;
+    } catch {
+        return `[${typeof err}] ${String(err)}`;
     }
 }
 
