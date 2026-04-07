@@ -71,47 +71,8 @@ export interface paths {
         /** Payment charge state */
         get: operations["get-payments-payment_id-charge"];
         put?: never;
-        /** Charge payment (preview) */
+        /** Charge a payment */
         post: operations["post-payments-payment_id-charge"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/encryption/public-key": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Fetch public key
-         * @description Returns the public encryption key to be used for encrypting card data.
-         *
-         *     It is structured as a JWK described by [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517)
-         */
-        get: operations["get-encryption-public-key"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/cards/tokens": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create card token */
-        post: operations["post-cards-tokens"];
         delete?: never;
         options?: never;
         head?: never;
@@ -194,17 +155,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cards/tokens/{card_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                card_id: string;
+            };
+            cookie?: never;
+        };
+        /** Card details */
+        get: operations["get-cards-tokens-card_id"];
+        put?: never;
+        post?: never;
+        /** Delete a card */
+        delete: operations["delete-cards-tokens-card_id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cards/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create card token */
+        post: operations["post-cards-tokens"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/encryption/public-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch public key
+         * @description Returns the public encryption key to be used for encrypting card data.
+         *
+         *     It is structured as a JWK described by [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517)
+         */
+        get: operations["get-encryption-public-key"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/encryption/card-form-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Card Form URL
+         * @description Returns the URL of the hosted card input form
+         */
+        get: operations["get-card-form-url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
          * Token Scope
+         * @description Supported token scopes
+         * @example payment:create
          * @enum {unknown}
          */
         "Token-Scope": "card:save" | "card:read" | "payment:create" | "payment:read";
         /**
          * Client Credentials Request
+         * @description Request the token pair using the `client_credentials` grant type
          * @example {
          *       "grant_type": "client_credentials",
          *       "scope": "payment:create payment:read"
@@ -225,6 +268,7 @@ export interface components {
         };
         /**
          * Refresh Token Request
+         * @description Request the token pair using the `refresh_token` grant type
          * @example {
          *       "grant_type": "refresh_token",
          *       "refresh_token": "2f53a04d4dd749f6a2a81285da72f67a",
@@ -243,13 +287,48 @@ export interface components {
             client_id: string;
         };
         /**
+         * Token-Pair
+         * @description The access token and refresh token alongside useful meta information.
+         */
+        "Token-Pair": {
+            /**
+             * @description Always `bearer`
+             * @default bearer
+             * @example bearer
+             * @constant
+             */
+            token_type: "bearer";
+            /** @description Access JWT */
+            access_token?: components["schemas"]["JWT"];
+            /**
+             * @description Refresh token value
+             * @example f14e5acc2d86480fb50e254c8a3c3164
+             */
+            refresh_token?: string;
+            /**
+             * @description Space-separated list of token scopes, see Token Scope
+             * @example payment:create payment:read
+             */
+            scope?: string;
+            /**
+             * @description The expiration of the access JWT in seconds
+             * @example 900
+             */
+            expires_in?: number;
+            /**
+             * @description The expiration of the refresh token in seconds
+             * @example 86400
+             */
+            refresh_expires_in?: number;
+        };
+        /**
          * JWT
          * Format: jwt
          * @description The JWT string as described by [RFC 7519: JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)
          *
          *     The JWT has 3 parts:
-         *     1. `header` -> JSON serialized [JWT header](#jwt-header)
-         *     2. `claims` -> Contains the main part of the token - see [JWT Claims](#jwt-claims) for details
+         *     1. `header` -> JSON serialized [JWT header](./q132gwiib06ov-jwt-header)
+         *     2. `claims` -> Contains the main part of the token - see [JWT Claims](./1t7u4tgwic485-jwt-claims) for details
          *     3. `signature` -> Contains the cryptographic signature of the token
          *
          *     Each of these parts is Base64URL-encoded and concatenated using dots so the overall structure is:
@@ -302,6 +381,1044 @@ export interface components {
             exp?: number;
         };
         /**
+         * Payment-Create-Request
+         * @description Representation of a request for a new payment
+         * @example {
+         *       "amount": 100,
+         *       "currency": "CZK",
+         *       "order_number": "2025010199",
+         *       "order_description": "Test order",
+         *       "additional_params": [
+         *         {
+         *           "name": "Custom param",
+         *           "value": "Custom value"
+         *         }
+         *       ],
+         *       "customer": {
+         *         "email": "john.doe@example.com",
+         *         "first_name": "John",
+         *         "last_name": "Doe",
+         *         "phone_number": "+420123456789",
+         *         "city": "Testington",
+         *         "street": "Example st. 10",
+         *         "postal_code": "10000",
+         *         "country_code": "CZE",
+         *         "customer_id": "customer420"
+         *       },
+         *       "callback": {
+         *         "notification_url": "https://example.com/notify",
+         *         "return_url": "https://example.com/return"
+         *       }
+         *     }
+         */
+        "Payment-Create-Request": {
+            /**
+             * @description Total amount in cents
+             * @example 100
+             */
+            amount: number;
+            /** @description Payment currency */
+            currency: components["schemas"]["Currency"];
+            /**
+             * @description Order identification for the online shop, alphanumeric characters
+             * @example 2025010199
+             */
+            order_number: string;
+            /**
+             * @description Order description, alphanumeric characters
+             * @example Test order
+             */
+            order_description?: string;
+            /** @description Additional parameters for the payment */
+            additional_params?: components["schemas"]["Additional-Param"][];
+            /** @description Information about the customer */
+            customer: components["schemas"]["Customer"];
+            /** @description Callback urls */
+            callback: components["schemas"]["Payment-Callback"];
+        };
+        /**
+         * Payment-Details
+         * @description Representation of an existing payment
+         * @example {
+         *       "id": "300000001",
+         *       "order_number": "2025010199",
+         *       "state": "CREATED",
+         *       "amount": 100,
+         *       "currency": "CZK",
+         *       "customer": {
+         *         "email": "john.doe@example.com",
+         *         "first_name": "John",
+         *         "last_name": "Doe",
+         *         "phone_number": "+420123456789",
+         *         "city": "Testington",
+         *         "street": "Example st. 10",
+         *         "postal_code": "10000",
+         *         "country_code": "CZE",
+         *         "customer_id": "customer420"
+         *       },
+         *       "gw_url": "string",
+         *       "charge": {
+         *         "id": "9123456789",
+         *         "state": "REQUESTED",
+         *         "href": "https://api.gopay.com/api/4.0/payments/9123456789/charge"
+         *       }
+         *     }
+         */
+        "Payment-Details": {
+            /**
+             * @description Payment session ID
+             * @example 300000001
+             */
+            id: string;
+            /**
+             * @description Order ID forwarded from the payment request
+             * @example 2025010199
+             */
+            order_number: string;
+            /** @description Payment state */
+            state: components["schemas"]["Payment-State"];
+            /**
+             * @description Total amount in cents
+             * @example 100
+             */
+            amount: number;
+            /** @description Payment currency */
+            currency: components["schemas"]["Currency"];
+            /** @description Customer data */
+            customer: components["schemas"]["Customer"];
+            /** @description URL of the hosted payment gateway */
+            gw_url: string;
+            charge?: components["schemas"]["Payment-Charge-Ref"];
+        };
+        /**
+         * @description List of available currencies
+         * @example CZK
+         * @enum {string}
+         */
+        Currency: "CZK" | "EUR" | "PLN" | "USD" | "GBP" | "HUF" | "RON";
+        /**
+         * Additional-Param
+         * @description Additional payment parameters
+         * @example {
+         *       "name": "Custom param",
+         *       "value": "Custom value"
+         *     }
+         */
+        "Additional-Param": {
+            /**
+             * @description Parameter name
+             * @example Custom param
+             */
+            name: string;
+            /**
+             * @description Parameter value
+             * @example Custom value
+             */
+            value: string;
+        };
+        /**
+         * @description List of possible payment statuses
+         * @example CREATED
+         * @enum {string}
+         */
+        "Payment-State": "CREATED" | "PAID" | "CANCELED" | "PAYMENT_METHOD_CHOSEN" | "TIMEOUTED" | "AUTHORIZED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+        /**
+         * @description Object representing the customer details. The email is required for authentication purposes.
+         * @example {
+         *       "email": "john.doe@example.com",
+         *       "first_name": "John",
+         *       "last_name": "Doe",
+         *       "phone_number": "+420123456789",
+         *       "city": "Testington",
+         *       "street": "Example st. 10",
+         *       "postal_code": "10000",
+         *       "country_code": "CZE",
+         *       "customer_id": "customer420"
+         *     }
+         */
+        Customer: {
+            /**
+             * Format: email
+             * @description Customer email.
+             * @example john.doe@example.com
+             */
+            email: string;
+            /**
+             * @description Customer first name
+             * @example John
+             */
+            first_name?: string;
+            /**
+             * @description Customer last name
+             * @example Doe
+             */
+            last_name?: string;
+            /**
+             * @description Customer phone number (home or mobile)
+             * @example +420123456789
+             */
+            phone_number?: string;
+            /**
+             * @description Customer address city
+             * @example Testington
+             */
+            city?: string;
+            /**
+             * @description Customer address street
+             * @example Example st. 10
+             */
+            street?: string;
+            /**
+             * @description Customer address ZIP (postal code)
+             * @example 10000
+             */
+            postal_code?: string;
+            /**
+             * @description Customer country code in respect to [ISO 3166-1 alpha-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)
+             * @example CZE
+             */
+            country_code?: string;
+            /**
+             * @description Unique customer ID (used to customise the checkout experience)
+             * @example customer420
+             */
+            customer_id?: string;
+        };
+        /**
+         * Payment-Callback
+         * @description Object holding URLs for callback purposes related to a payment
+         * @example {
+         *       "notification_url": "https://example.com/notify",
+         *       "return_url": "https://example.com/return"
+         *     }
+         */
+        "Payment-Callback": {
+            /**
+             * @description URL used to deliver the HTTP notifications
+             * @example https://example.com/notify
+             */
+            notification_url: string;
+            /**
+             * @description URL used to redirect the customer from the gateway back to the shop
+             * @example https://example.com/return
+             */
+            return_url: string;
+        };
+        /**
+         * Payment-Charge-Ref
+         * @description A reference to a payment charge associated with the payment
+         * @example {
+         *       "id": "9123456789",
+         *       "state": "REQUESTED",
+         *       "href": "https://api.gopay.com/api/4.0/payments/9123456789/charge"
+         *     }
+         */
+        "Payment-Charge-Ref": {
+            /**
+             * @description Charge ID
+             * @example 9123456789
+             */
+            id: string;
+            /** @description Charge state */
+            state: components["schemas"]["Charge-State"];
+            /**
+             * Format: uri
+             * @description Reference to the related charge endpoint
+             * @example https://api.gopay.com/api/4.0/payments/9123456789/charge
+             */
+            href: string;
+        };
+        /**
+         * Payment Charge Input
+         * @description Model holding all data necessary to perform a payment charge
+         * @example {
+         *       "payment_instrument": {
+         *         "payment_instrument": "PAYMENT_CARD",
+         *         "input": {
+         *           "input_type": "CARD_TOKEN",
+         *           "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
+         *           "challenge_preferrence": "AUTO"
+         *         }
+         *       },
+         *       "return_url": "https://example.com/return",
+         *       "browser_data": {
+         *         "ip": "198.51.100.1",
+         *         "language": "cs-CZ",
+         *         "timezone": -60,
+         *         "screen_width": 434,
+         *         "screen_height": 965,
+         *         "color_depth": 24,
+         *         "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36",
+         *         "accept_header": "{\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, *\/*\"}",
+         *         "javascript_enabled": true,
+         *         "java_enabled": false
+         *       }
+         *     }
+         * @example {
+         *       "payment_instrument": {
+         *         "payment_instrument": "BANK_ACCOUNT",
+         *         "input": {
+         *           "input_type": "ACCOUNT_TOKEN",
+         *           "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
+         *         }
+         *       },
+         *       "return_url": "https://example.com/return"
+         *     }
+         */
+        "Payment-Charge-Input": {
+            payment_instrument?: components["schemas"]["Payment-Charge-Data"];
+            /**
+             * Format: url
+             * @example https://example.com/return
+             */
+            return_url?: string;
+            browser_data?: components["schemas"]["Browser-Data"];
+        };
+        /**
+         * Browser-Data
+         * @description Customer browser data used for authentication purposes
+         * @example {
+         *       "language": "cs-CZ",
+         *       "timezone": -60,
+         *       "screen_width": 434,
+         *       "screen_height": 965,
+         *       "color_depth": 24,
+         *       "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36",
+         *       "accept_header": "{\\\"accept-language\\\":\\\"cs;q\\\\u003d0.5\\\",\\\"accept-encoding\\\":\\\"gzip, deflate, br, zstd\\\",\\\"accept\\\":\\\"application/json, text/plain, *\/*\\\"}",
+         *       "javascript_enabled": true
+         *     }
+         */
+        "Browser-Data": {
+            /**
+             * @description Language or locale of the customer environment
+             * @example cs-CZ
+             */
+            language: string;
+            /**
+             * @description Timezone of the customer environment
+             * @example -60
+             */
+            timezone: number;
+            /**
+             * @description Width of customer viewport
+             * @example 434
+             */
+            screen_width: number;
+            /**
+             * @description Height of customer viewport
+             * @example 965
+             */
+            screen_height: number;
+            /**
+             * @description Color depth of customer screen
+             * @example 24
+             */
+            color_depth: number;
+            /**
+             * @description User agent of customer browser
+             * @example Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36
+             */
+            user_agent?: string;
+            /**
+             * @description Accept header received by customer browser
+             * @example {\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, *\/*\"}
+             */
+            accept_header?: string;
+            /**
+             * @description Whether Javascript is enabled in customer environment
+             * @example true
+             */
+            javascript_enabled?: boolean;
+        };
+        /**
+         * Payment-Charge-Data
+         * @description Discriminated union of the possible payment charges. Discrimantor is the `payment_instrument` field gaining values from the [Payment-Instrument](./x3xyv4fy5blzy-payment-instrument) enum
+         * @example {
+         *       "payment_instrument": "PAYMENT_CARD",
+         *       "input": {
+         *         "input_type": "CARD_TOKEN",
+         *         "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
+         *         "challenge_preferrence": "AUTO"
+         *       }
+         *     }
+         * @example {
+         *       "payment_instrument": "BANK_ACCOUNT",
+         *       "input": {
+         *         "input_type": "ACCOUNT_TOKEN",
+         *         "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
+         *       }
+         *     }
+         */
+        "Payment-Charge-Data": components["schemas"]["Payment-Card-Charge-Data"] | components["schemas"]["Bank-Account-Charge-Data"];
+        /**
+         * Payment Instrument
+         * @description Discriminator for the cases of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union
+         * @enum {string}
+         */
+        "Payment-Instrument": "PAYMENT_CARD" | "BANK_ACCOUNT";
+        /**
+         * Payment Card Charge Data
+         * @description The `PAYMENT_CARD` variant of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union. Holds the discriminator as well as the input for a card payment.
+         * @example {
+         *       "payment_instrument": "PAYMENT_CARD",
+         *       "input": {
+         *         "input_type": "CARD_TOKEN",
+         *         "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
+         *         "challenge_preferrence": "AUTO"
+         *       }
+         *     }
+         */
+        "Payment-Card-Charge-Data": {
+            /**
+             * @description Always `PAYMENT_CARD` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            payment_instrument: "PAYMENT_CARD";
+            /** @description One of the possible inputs for a card payment */
+            input: components["schemas"]["Payment-Card-Input"];
+        };
+        /**
+         * Payment Card Input
+         * @description Discriminated union of the possible card payment inputs. Discrimantor is the `input_type` field gaining values from the [Payment Card Input Type](./n7rgf81mgdw30-payment-card-input-type) enum
+         * @example {
+         *       "input_type": "CARD_TOKEN",
+         *       "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
+         *       "challenge_preferrence": "AUTO"
+         *     }
+         * @example {
+         *       "input_type": "GOOGLE_PAY",
+         *       "signature": "EUCIQDhTxhHqwY8pXB9hpYxaSK5jFgsqpG2...",
+         *       "protocolVersion": "ECv1",
+         *       "signedMessage": "{\"encryptedMessage\":\"...\"}"
+         *     }
+         * @example {
+         *       "input_type": "APPLE_PAY",
+         *       "data": "V7OcjttPJnUJaQH7x7OjbIeZSINuc...",
+         *       "signature": "MIAGCSqGSIb3DQEHAqCAM...",
+         *       "version": "EC_v1",
+         *       "header": {
+         *         "ephemeralPublicKey": "MFkwEwYHKoZIzj...",
+         *         "publicKeyHash": "L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=",
+         *         "transactionId": "4f4fac7a1...a6a8ba2c0e8c5"
+         *       }
+         *     }
+         */
+        "Payment-Card-Input": components["schemas"]["Card-Token-Input"] | components["schemas"]["Google-Pay-Input"] | components["schemas"]["Apple-Pay-Input"];
+        /**
+         * Payment Card Input Type
+         * @description Discriminator for the cases of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union
+         * @enum {unknown}
+         */
+        "Payment-Card-Input-Type": "CARD_TOKEN" | "APPLE_PAY" | "GOOGLE_PAY";
+        /**
+         * Card Token Input
+         * @description The `CARD_TOKEN` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the token input and 3DS challenge preference
+         * @example {
+         *       "input_type": "CARD_TOKEN",
+         *       "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
+         *       "challenge_preferrence": "AUTO"
+         *     }
+         */
+        "Card-Token-Input": {
+            /**
+             * @description Always `CARD_TOKEN` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            input_type: "CARD_TOKEN";
+            /**
+             * @description Either a single use or permanent card token acquired using the [Create Card Token](z527w3pj6p22i-create-card-token) API call
+             * @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
+             */
+            card_token: string;
+            /** @description Preference whether to require or try to skip 3DS authentication. */
+            challenge_preferrence?: components["schemas"]["Payment-Card-Challenge-Preference"];
+        };
+        /**
+         * Payment Card Challenge Preference
+         * @description An indication from the merchant about the 3DS authentication of card payments.
+         *     - `AUTO` - let GoPay decide
+         *     - `CHALLENGE_PREFERRED` - try to enforce a 3DS challenge on the user for stronger authentication
+         *     - `NO_CHALLENGE_PREFERRED` - try to skip 3DS authentication for a simpler checkout experience
+         * @example AUTO
+         * @enum {string}
+         */
+        "Payment-Card-Challenge-Preference": "CHALLENGE_PREFERRED" | "NO_CHALLENGE_PREFERRED" | "AUTO";
+        /**
+         * @description The `GOOGLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Google Pay.
+         *     See [Payment Data Cryptography](https://developers.google.com/pay/api/web/guides/resources/payment-data-cryptography) in Google Pay documentation for details
+         * @example {
+         *       "input_type": "GOOGLE_PAY",
+         *       "protocolVersion": "ECv2",
+         *       "signature": "MEQCIH6Q4OwQ0jAceFEkGF0JID6sJNXxOEi4r+mA7biRxqBQAiAondqoUpU/bdsrAOpZIsrHQS9nwiiNwOrr24RyPeHA0Q\\u003d\\u003d",
+         *       "intermediateSigningKey": {
+         *         "signedKey": "{\"keyExpiration\":\"1542323393147\",\"keyValue\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw\\u003d\\u003d\"}",
+         *         "signatures": [
+         *           "\"MEYCIQCO2EIi48s8VTH+ilMEpoXLFfkxAwHjfPSCVED/QDSHmQIhALLJmrUlNAY8hDQRV/y1iKZGsWpeNmIP+z+tCQHQxP0v\""
+         *         ]
+         *       },
+         *       "signedMessage": "{\"tag\":\"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\\u003d\",\"ephemeralPublicKey\":\"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\\u003d\",\"encryptedMessage\":\"mKOoXwi8OavZ\"}"
+         *     }
+         */
+        "Google-Pay-Input": {
+            /**
+             * @description Always `GOOGLE_PAY` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            input_type: "GOOGLE_PAY";
+            /** @example ECv2 */
+            protocolVersion?: string;
+            /** @example MEQCIH6Q4OwQ0jAceFEkGF0JID6sJNXxOEi4r+mA7biRxqBQAiAondqoUpU/bdsrAOpZIsrHQS9nwiiNwOrr24RyPeHA0Q\u003d\u003d */
+            signature?: string;
+            intermediateSigningKey?: {
+                /** @example {\"keyExpiration\":\"1542323393147\",\"keyValue\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw\\u003d\\u003d\"} */
+                signedKey?: string;
+                signatures?: string[];
+            };
+            /** @example {\"tag\":\"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\\u003d\",\"ephemeralPublicKey\":\"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\\u003d\",\"encryptedMessage\":\"mKOoXwi8OavZ\"} */
+            signedMessage?: string;
+        };
+        /**
+         * Apple Pay Input
+         * @description The `APPLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Google Pay.
+         *     See [Payment Data Cryptography](https://developer.apple.com/documentation/passkit/payment-token-format-reference) in Apple Pay documentation for details
+         * @example {
+         *       "input_type": "APPLE_PAY",
+         *       "data": "V7OcjttPJnUJaQH7x7OjbIeZSINuc...",
+         *       "signature": "MIAGCSqGSIb3DQEHAqCAM...",
+         *       "version": "EC_v1",
+         *       "header": {
+         *         "ephemeralPublicKey": "MFkwEwYHKoZIzj...",
+         *         "publicKeyHash": "L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=",
+         *         "transactionId": "4f4fac7a1...a6a8ba2c0e8c5"
+         *       }
+         *     }
+         */
+        "Apple-Pay-Input": {
+            /**
+             * @description Always `APPLE_PAY` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            input_type: "APPLE_PAY";
+            /** @example V7OcjttPJnUJaQH7x7OjbIeZSINuc... */
+            data: string;
+            /** @example MIAGCSqGSIb3DQEHAqCAM... */
+            signature: string;
+            /** @example EC_v1 */
+            version: string;
+            header: {
+                /** @example MFkwEwYHKoZIzj... */
+                ephemeralPublicKey: string;
+                /** @example L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo= */
+                publicKeyHash: string;
+                /** @example 4f4fac7a1...a6a8ba2c0e8c5 */
+                transactionId: string;
+            };
+        };
+        /**
+         * Bank Account Charge Data
+         * @description The `BANK_ACCOUNT` variant of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union. Holds the discriminator as well as the input for a card payment.
+         * @example {
+         *       "payment_instrument": "BANK_ACCOUNT",
+         *       "input": {
+         *         "input_type": "ACCOUNT_TOKEN",
+         *         "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
+         *       }
+         *     }
+         */
+        "Bank-Account-Charge-Data": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            payment_instrument: "BANK_ACCOUNT";
+            input: components["schemas"]["Bank-Account-Input"];
+        };
+        /**
+         * Bank-Account-Input
+         * @example {
+         *       "input_type": "ACCOUNT_TOKEN",
+         *       "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
+         *     }
+         * @example {
+         *       "input_type": "IBAN",
+         *       "iban": "CZ5120100000000009878039",
+         *       "swift": "GIBACZPX",
+         *       "account_holder_name": "John Doe"
+         *     }
+         * @example {
+         *       "input_type": "SWIFT",
+         *       "swift": "GIBACZPX",
+         *       "bank_payment_type": "PSD2"
+         *     }
+         */
+        "Bank-Account-Input": components["schemas"]["Bank-Account-Token-Input"] | components["schemas"]["Bank-Account-Iban-Input"] | components["schemas"]["Bank-Account-Swift-Input"];
+        /**
+         * Bank Account Input Type
+         * @enum {unknown}
+         */
+        "Bank-Account-Input-Type": "ACCOUNT_TOKEN" | "IBAN" | "SWIFT";
+        /**
+         * Bank Account Token Input
+         * @example {
+         *       "input_type": "ACCOUNT_TOKEN",
+         *       "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
+         *     }
+         */
+        "Bank-Account-Token-Input": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            input_type: "ACCOUNT_TOKEN";
+            /** @example f14e5acc2d86480fb50e254c8a3c3164 */
+            account_token: string;
+        };
+        /**
+         * Bank Account Iban Input
+         * @example {
+         *       "input_type": "IBAN",
+         *       "iban": "CZ5120100000000009878039",
+         *       "swift": "GIBACZPX",
+         *       "account_holder_name": "John Doe"
+         *     }
+         */
+        "Bank-Account-Iban-Input": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            input_type: "IBAN";
+            /** @example CZ5120100000000009878039 */
+            iban: string;
+            swift?: components["schemas"]["Bank-Swift"];
+            /** @example John Doe */
+            account_holder_name?: string;
+        };
+        /**
+         * Bank Account Swift Input
+         * @example {
+         *       "input_type": "SWIFT",
+         *       "swift": "GIBACZPX",
+         *       "bank_payment_type": "PSD2"
+         *     }
+         */
+        "Bank-Account-Swift-Input": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            input_type: "SWIFT";
+            swift: components["schemas"]["Bank-Swift"];
+            bank_payment_type?: components["schemas"]["Bank-Payment-Type"];
+        };
+        /**
+         * Bank Swift
+         * @enum {unknown}
+         */
+        "Bank-Swift": "GIBACZPX" | "KOMBCZPP" | "SUBASKBX" | "GIBASKBX" | "OTHERS";
+        /**
+         * Bank Payment Type
+         * @enum {unknown}
+         */
+        "Bank-Payment-Type": "PSD2" | "ONLINE" | "QRPAYMENT" | "OFFLINE";
+        /**
+         * Payment Charge Response Data
+         * @example {
+         *       "id": "string",
+         *       "state": "REQUESTED",
+         *       "payment_instrument": {
+         *         "payment_instrument": "PAYMENT_CARD",
+         *         "details": {
+         *           "input_type": "CARD_TOKEN",
+         *           "masked_pan": "406821******1234",
+         *           "expiration_month": "01",
+         *           "expiration_year": "30",
+         *           "scheme": "VISA",
+         *           "fingerprint": "73c8d0a48d91def89761..."
+         *         }
+         *       },
+         *       "return_url": "https://example.com/return",
+         *       "action": {
+         *         "action_type": "EMV3DS",
+         *         "state": "CREATED",
+         *         "redirect_url": "https://gate.gopay.com/redirect"
+         *       }
+         *     }
+         * @example {
+         *       "id": "string",
+         *       "state": "REQUESTED",
+         *       "payment_instrument": {
+         *         "payment_instrument": "BANK_ACCOUNT",
+         *         "details": {
+         *           "input_type": "ACCOUNT_TOKEN",
+         *           "iban": "CZ5120100000000009878039",
+         *           "swift": "GIBACZPX",
+         *           "account_holder_name": "John Doe"
+         *         }
+         *       },
+         *       "return_url": "https://example.com/return",
+         *       "action": {
+         *         "action_type": "PSD2",
+         *         "state": "REQUESTED",
+         *         "redirect_url": "https://gate.gopay.com/redirect"
+         *       }
+         *     }
+         */
+        "Payment-Charge-Response-Data": {
+            id: string;
+            state: components["schemas"]["Charge-State"];
+            payment_instrument: components["schemas"]["Payment-Instrument-Data"];
+            /**
+             * Format: url
+             * @example https://example.com/return
+             */
+            return_url: string;
+            action?: components["schemas"]["Payment-Charge-Action"];
+        };
+        /**
+         * Charge State
+         * @enum {unknown}
+         */
+        "Charge-State": "REQUESTED" | "PROCESSING" | "ACTION_REQUIRED" | "SUCCEEDED" | "FAILED";
+        /**
+         * Payment Instrument Data
+         * @example {
+         *       "payment_instrument": "PAYMENT_CARD",
+         *       "details": {
+         *         "input_type": "CARD_TOKEN",
+         *         "masked_pan": "406821******1234",
+         *         "expiration_month": "01",
+         *         "expiration_year": "30",
+         *         "scheme": "VISA",
+         *         "fingerprint": "73c8d0a48d91def89761..."
+         *       }
+         *     }
+         * @example {
+         *       "payment_instrument": "BANK_ACCOUNT",
+         *       "details": {
+         *         "input_type": "ACCOUNT_TOKEN",
+         *         "iban": "CZ5120100000000009878039",
+         *         "swift": "GIBACZPX",
+         *         "account_holder_name": "John Doe"
+         *       }
+         *     }
+         */
+        "Payment-Instrument-Data": components["schemas"]["Payment-Card-Instrument-Out"] | components["schemas"]["Bank-Account-Instrument-Out"];
+        /**
+         * Payment Card Instrument Out
+         * @example {
+         *       "payment_instrument": "PAYMENT_CARD",
+         *       "details": {
+         *         "input_type": "CARD_TOKEN",
+         *         "masked_pan": "406821******1234",
+         *         "expiration_month": "01",
+         *         "expiration_year": "30",
+         *         "scheme": "VISA",
+         *         "fingerprint": "73c8d0a48d91def89761..."
+         *       }
+         *     }
+         */
+        "Payment-Card-Instrument-Out": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            payment_instrument: "PAYMENT_CARD";
+            details: components["schemas"]["Payment-Card-Charge-Out"];
+        };
+        /**
+         * Payment Card Data Out
+         * @example {
+         *       "input_type": "CARD_TOKEN",
+         *       "masked_pan": "406821******1234",
+         *       "expiration_month": "01",
+         *       "expiration_year": "30",
+         *       "scheme": "VISA",
+         *       "fingerprint": "73c8d0a48d91def89761..."
+         *     }
+         */
+        "Payment-Card-Charge-Out": {
+            input_type?: components["schemas"]["Payment-Card-Input-Type"];
+            /** @example 406821******1234 */
+            masked_pan?: string;
+            /** @example 01 */
+            expiration_month?: string;
+            /** @example 30 */
+            expiration_year?: string;
+            scheme?: components["schemas"]["Card-scheme"];
+            /** @example 73c8d0a48d91def89761... */
+            fingerprint?: string;
+        };
+        /**
+         * Card scheme
+         * @enum {unknown}
+         */
+        "Card-scheme": "VISA" | "MASTERCARD";
+        /**
+         * Bank Account Instrument Data
+         * @example {
+         *       "payment_instrument": "BANK_ACCOUNT",
+         *       "details": {
+         *         "input_type": "ACCOUNT_TOKEN",
+         *         "iban": "CZ5120100000000009878039",
+         *         "swift": "GIBACZPX",
+         *         "account_holder_name": "John Doe"
+         *       }
+         *     }
+         */
+        "Bank-Account-Instrument-Out": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            payment_instrument: "BANK_ACCOUNT";
+            details: components["schemas"]["Bank-Account-Charge-Out"];
+        };
+        /**
+         * Bank Account Data Details
+         * @example {
+         *       "input_type": "ACCOUNT_TOKEN",
+         *       "iban": "CZ5120100000000009878039",
+         *       "swift": "GIBACZPX",
+         *       "account_holder_name": "John Doe"
+         *     }
+         */
+        "Bank-Account-Charge-Out": {
+            input_type: components["schemas"]["Bank-Account-Input-Type"];
+            /**
+             * Format: iban
+             * @example CZ5120100000000009878039
+             */
+            iban?: string;
+            swift?: components["schemas"]["Bank-Swift"];
+            /** @example John Doe */
+            account_holder_name?: string;
+        };
+        /**
+         * Payment Charge Action
+         * @example {
+         *       "action_type": "EMV3DS",
+         *       "state": "CREATED",
+         *       "redirect_url": "https://gate.gopay.com/redirect"
+         *     }
+         * @example {
+         *       "action_type": "PSD2",
+         *       "state": "REQUESTED",
+         *       "redirect_url": "https://gate.gopay.com/redirect"
+         *     }
+         * @example {
+         *       "action_type": "BANK_ACCOUNT",
+         *       "state": "REQUESTED",
+         *       "redirect_url": "https://gate.gopay.com/redirect"
+         *     }
+         */
+        "Payment-Charge-Action": components["schemas"]["Emv-3DS-Action"] | components["schemas"]["Bank-Account-Action"];
+        /**
+         * Payment Charge Action Type
+         * @enum {unknown}
+         */
+        "Payment-Charge-Action-Type": "EMV3DS" | "PSD2" | "BANK_ACCOUNT";
+        /**
+         * Emv 3DS Action
+         * @example {
+         *       "action_type": "EMV3DS",
+         *       "state": "CREATED",
+         *       "redirect_url": "https://gate.gopay.com/redirect"
+         *     }
+         */
+        "Emv-3DS-Action": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action_type: "EMV3DS";
+            state: components["schemas"]["Emv-3DS-State"];
+            /**
+             * Format: url
+             * @example https://gate.gopay.com/redirect
+             */
+            redirect_url?: string;
+        };
+        /**
+         * Emv 3DS State
+         * @enum {unknown}
+         */
+        "Emv-3DS-State": "CREATED" | "CHALLENGE_REQUIRED" | "AUTHENTICATED_CHALLENGE" | "AUTHENTICATED_FRICTIONLESS" | "NOT_AUTHENTICATED" | "FAILED";
+        /**
+         * Bank Account Action
+         * @example {
+         *       "action_type": "BANK_ACCOUNT",
+         *       "state": "REQUESTED",
+         *       "redirect_url": "https://gate.gopay.com/redirect"
+         *     }
+         */
+        "Bank-Account-Action": {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action_type: "BANK_ACCOUNT";
+            state: components["schemas"]["Bank-Account-State"];
+            /**
+             * Format: url
+             * @example https://gate.gopay.com/redirect
+             */
+            redirect_url?: string;
+        };
+        /**
+         * Bank Account State
+         * @enum {unknown}
+         */
+        "Bank-Account-State": "REQUESTED" | "PROCESSED" | "CANCELED" | "TIMEOUT";
+        /** QR-Payment-Details */
+        "QR-Payment-Details": {
+            /**
+             * @description Payment amount in cents
+             * @example 10000
+             */
+            amount: number;
+            /** @description Payment currency */
+            currency: components["schemas"]["Currency"];
+            /** @description Information about the recipient */
+            recipient: components["schemas"]["Bank-Transfer-Recipient"];
+            qr_code: components["schemas"]["QR-Code-List"];
+        };
+        /** Bank-Transfer-Recipient */
+        "Bank-Transfer-Recipient": {
+            name?: string;
+            bank_account?: components["schemas"]["Recipient-Bank-Account"];
+            address?: components["schemas"]["Recipient-Address"];
+        };
+        /** Recipient-Bank-Account */
+        "Recipient-Bank-Account": {
+            local?: components["schemas"]["Bank-Account-Local-Details"];
+            international?: components["schemas"]["Bank-Account-International-Details"];
+        };
+        "Bank-Account-Local-Details": {
+            prefix: string;
+            account_number: string;
+            bank_code: string;
+            variable_symbol: string;
+        };
+        "Bank-Account-International-Details": {
+            bic?: string;
+            iban?: string;
+            reference?: string;
+        };
+        "Recipient-Address": {
+            street?: string;
+            city?: string;
+            zip_code?: string;
+            country?: string;
+        };
+        /** QR-Code-List */
+        "QR-Code-List": {
+            /** @example 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 */
+            spayd?: string;
+            /** @example {QR code in base64} */
+            paybysquare?: string;
+            /** @example {QR code in base64} */
+            sepa?: string;
+            /** @example {QR code in base64} */
+            mnb_qr?: string;
+        };
+        /**
+         * Onetime Card Token Details
+         * @example {
+         *       "masked_pan": "406821******1234",
+         *       "expiration_month": "01",
+         *       "expiration_year": "30",
+         *       "scheme": "VISA",
+         *       "corporate": false,
+         *       "fingerprint": "73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b",
+         *       "token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=",
+         *       "expires_in": "3600",
+         *       "brand": "GOLD",
+         *       "service_type": "DEBIT"
+         *     }
+         */
+        "Onetime-Card-Token-Details": {
+            /** @example 406821******1234 */
+            masked_pan: string;
+            /** @example 01 */
+            expiration_month: string;
+            /** @example 30 */
+            expiration_year: string;
+            scheme: components["schemas"]["Card-scheme"];
+            /** @default false */
+            corporate: boolean;
+            /** @example 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b */
+            fingerprint: string;
+            /** @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0= */
+            token: string;
+            /** @example 3600 */
+            expires_in?: string;
+            /** @example GOLD */
+            brand?: string;
+            service_type?: components["schemas"]["Card-Service-Type"];
+        };
+        /**
+         * Permanent Card Token Details
+         * @example {
+         *       "card_id": "8007127320",
+         *       "masked_pan": "406821******1234",
+         *       "masked_virtual_pan": "489537******6287",
+         *       "expiration_month": "01",
+         *       "expiration_year": "30",
+         *       "scheme": "VISA",
+         *       "corporate": false,
+         *       "fingerprint": "73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b",
+         *       "token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=",
+         *       "card_art_url": "https://card.art/pic.png",
+         *       "brand": "GOLD",
+         *       "service_type": "DEBIT"
+         *     }
+         */
+        "Permanent-Card-Token-Details": {
+            /** @example 8007127320 */
+            card_id: string;
+            /** @example 406821******1234 */
+            masked_pan: string;
+            /** @example 489537******6287 */
+            masked_virtual_pan: string;
+            /** @example 01 */
+            expiration_month: string;
+            /** @example 30 */
+            expiration_year: string;
+            scheme: components["schemas"]["Card-scheme"];
+            /** @default false */
+            corporate: boolean;
+            /** @example 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b */
+            fingerprint: string;
+            /** @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0= */
+            token: string;
+            /**
+             * Format: uri
+             * @example https://card.art/pic.png
+             */
+            card_art_url: string;
+            /** @example GOLD */
+            brand?: string;
+            service_type?: components["schemas"]["Card-Service-Type"];
+            status?: components["schemas"]["Card-Token-Status"];
+        };
+        /**
+         * Card Service Type
+         * @enum {unknown}
+         */
+        "Card-Service-Type": "DEBIT" | "CREDIT";
+        /**
+         * Card-Token-Status
+         * @enum {unknown}
+         */
+        "Card-Token-Status": "ACTIVE" | "SUSPENDED" | "DELETED";
+        /** Card-Token-Request */
+        "Card-Token-Request": {
+            payload: components["schemas"]["JWE"];
+            /** @default false */
+            permanent: boolean;
+        };
+        /**
          * JWK
          * @description The structure of the public encryption key. It is formatted according to RFC 7515: JSON Web Key (JWK)
          * @example {
@@ -309,7 +1426,7 @@ export interface components {
          *       "kid": "key_20250406",
          *       "use": "enc",
          *       "alg": "RSA-OAEP-256",
-         *       "n": "y7WkT3qvY...",
+         *       "n": "oR79tj1xAaqr1TfmkGS03EfEZjU_5DMomKJXGK8cnmtGivG5XnFodcbztzSOrlrKmhoxrKRR0LiRRjYJIgTP3dGK9KOv7JRH4adnDClckQkxupwoz1dcm6cLDzjuVS1a4et8lQlwYKm5r52fG9VShckwNZgvmK0uYcE7717wLkX3JM2vA_F_-2oRCjG3l2E4cjhQzzstTFPkW35ZjuKut4If8LOnKH0h9tdblUOSB_VtZBNY6PCXeUTDfbCb85-eGrwWXEajq4uegPDbV2oSnTLxOXR8ctWURZ8XjS1PgsoDD4go9BQchv-9Q2m0NbS5s71WVJ9LOW7Xt-Napsoftw",
          *       "e": "AQAB"
          *     }
          */
@@ -337,7 +1454,7 @@ export interface components {
             alg: string;
             /**
              * @description The `RSA` public key modulus part.
-             * @example y7WkT3qvY...
+             * @example oR79tj1xAaqr1TfmkGS03EfEZjU_5DMomKJXGK8cnmtGivG5XnFodcbztzSOrlrKmhoxrKRR0LiRRjYJIgTP3dGK9KOv7JRH4adnDClckQkxupwoz1dcm6cLDzjuVS1a4et8lQlwYKm5r52fG9VShckwNZgvmK0uYcE7717wLkX3JM2vA_F_-2oRCjG3l2E4cjhQzzstTFPkW35ZjuKut4If8LOnKH0h9tdblUOSB_VtZBNY6PCXeUTDfbCb85-eGrwWXEajq4uegPDbV2oSnTLxOXR8ctWURZ8XjS1PgsoDD4go9BQchv-9Q2m0NbS5s71WVJ9LOW7Xt-Napsoftw
              */
             n: string;
             /**
@@ -426,754 +1543,52 @@ export interface components {
             cvv: string;
         };
         /**
-         * Onetime Card Token Response
-         * @example {
-         *       "masked_pan": "406821******1234",
-         *       "expiration_month": "01",
-         *       "expiration_year": "30",
-         *       "scheme": "VISA",
-         *       "corporate": false,
-         *       "fingerprint": "73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b",
-         *       "token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=",
-         *       "expires_in": "3600",
-         *       "brand": "GOLD",
-         *       "service_type": "DEBIT"
-         *     }
-         */
-        "Onetime-Card-Token-Response": {
-            /** @example 406821******1234 */
-            masked_pan: string;
-            /** @example 01 */
-            expiration_month: string;
-            /** @example 30 */
-            expiration_year: string;
-            scheme: components["schemas"]["Card-scheme"];
-            /** @default false */
-            corporate: boolean;
-            /** @example 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b */
-            fingerprint: string;
-            /** @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0= */
-            token: string;
-            /** @example 3600 */
-            expires_in?: string;
-            /** @example GOLD */
-            brand?: string;
-            service_type?: components["schemas"]["Card-Service-Type"];
-        };
-        /**
-         * Permanent Card Token Response
-         * @example {
-         *       "card_id": "8007127320",
-         *       "masked_pan": "406821******1234",
-         *       "masked_virtual_pan": "489537******6287",
-         *       "expiration_month": "01",
-         *       "expiration_year": "30",
-         *       "scheme": "VISA",
-         *       "corporate": false,
-         *       "fingerprint": "73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b",
-         *       "token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=",
-         *       "card_art_url": "https://card.art/pic.png",
-         *       "brand": "GOLD",
-         *       "service_type": "DEBIT"
-         *     }
-         */
-        "Permanent-Card-Token-Response": {
-            /** @example 8007127320 */
-            card_id: string;
-            /** @example 406821******1234 */
-            masked_pan: string;
-            /** @example 489537******6287 */
-            masked_virtual_pan: string;
-            /** @example 01 */
-            expiration_month: string;
-            /** @example 30 */
-            expiration_year: string;
-            scheme: components["schemas"]["Card-scheme"];
-            /** @default false */
-            corporate: boolean;
-            /** @example 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b */
-            fingerprint: string;
-            /** @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0= */
-            token: string;
-            /**
-             * Format: uri
-             * @example https://card.art/pic.png
-             */
-            card_art_url: string;
-            /** @example GOLD */
-            brand?: string;
-            service_type?: components["schemas"]["Card-Service-Type"];
-        };
-        /**
-         * Card scheme
-         * @enum {unknown}
-         */
-        "Card-scheme": "VISA" | "MASTERCARD";
-        /**
-         * Card Service Type
-         * @enum {unknown}
-         */
-        "Card-Service-Type": "DEBIT" | "CREDIT";
-        /**
-         * Payment Charge Input
-         * @example {
-         *       "payment_instrument": {
-         *         "payment_instrument": "PAYMENT_CARD",
-         *         "input": {
-         *           "input_type": "CARD_TOKEN",
-         *           "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
-         *           "challenge_preferrence": "AUTO"
-         *         }
-         *       },
-         *       "return_url": "https://example.com/return",
-         *       "browser_data": {
-         *         "ip": "198.51.100.1",
-         *         "language": "cs-CZ",
-         *         "timezone": -60,
-         *         "screen_width": 434,
-         *         "screen_height": 965,
-         *         "color_depth": 24,
-         *         "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36",
-         *         "accept_header": "{\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, *\/*\"}",
-         *         "javascript_enabled": true,
-         *         "java_enabled": false
-         *       }
-         *     }
-         * @example {
-         *       "payment_instrument": {
-         *         "payment_instrument": "BANK_ACCOUNT",
-         *         "input": {
-         *           "input_type": "ACCOUNT_TOKEN",
-         *           "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
-         *         }
-         *       },
-         *       "return_url": "https://example.com/return"
-         *     }
-         */
-        "Payment-Charge-Input": {
-            payment_instrument?: components["schemas"]["Payment-Charge-Data"];
-            /**
-             * Format: url
-             * @example https://example.com/return
-             */
-            return_url?: string;
-            browser_data?: {
-                /** @example 198.51.100.1 */
-                ip?: string;
-                /** @example cs-CZ */
-                language?: string;
-                /** @example -60 */
-                timezone?: number;
-                /** @example 434 */
-                screen_width?: number;
-                /** @example 965 */
-                screen_height?: number;
-                /** @example 24 */
-                color_depth?: number;
-                /** @example Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36 */
-                user_agent?: string;
-                /** @example {\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, *\/*\"} */
-                accept_header?: string;
-                /** @example true */
-                javascript_enabled?: boolean;
-                /** @example false */
-                java_enabled?: boolean;
-            };
-        };
-        /**
-         * Payment-Charge-Data
-         * @example {
-         *       "payment_instrument": "PAYMENT_CARD",
-         *       "input": {
-         *         "input_type": "CARD_TOKEN",
-         *         "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
-         *         "challenge_preferrence": "AUTO"
-         *       }
-         *     }
-         * @example {
-         *       "payment_instrument": "BANK_ACCOUNT",
-         *       "input": {
-         *         "input_type": "ACCOUNT_TOKEN",
-         *         "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
-         *       }
-         *     }
-         */
-        "Payment-Charge-Data": components["schemas"]["Payment-Card-Charge-Data"] | components["schemas"]["Bank-Account-Charge-Data"];
-        /**
-         * Payment Instrument
-         * @enum {unknown}
-         */
-        "Payment-Instrument": "PAYMENT_CARD" | "BANK_ACCOUNT";
-        /**
-         * Payment Card Charge Data
-         * @example {
-         *       "payment_instrument": "PAYMENT_CARD",
-         *       "input": {
-         *         "input_type": "CARD_TOKEN",
-         *         "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
-         *         "challenge_preferrence": "AUTO"
-         *       }
-         *     }
-         */
-        "Payment-Card-Charge-Data": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            payment_instrument: "PAYMENT_CARD";
-            input: components["schemas"]["Payment-Card-Input"];
-        };
-        /**
-         * Payment Card Input
-         * @example {
-         *       "input_type": "CARD_TOKEN",
-         *       "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
-         *       "challenge_preferrence": "AUTO"
-         *     }
-         * @example {
-         *       "input_type": "GOOGLE_PAY",
-         *       "signature": "EUCIQDhTxhHqwY8pXB9hpYxaSK5jFgsqpG2...",
-         *       "protocolVersion": "ECv1",
-         *       "signedMessage": "{\"encryptedMessage\":\"...\"}"
-         *     }
-         * @example {
-         *       "input_type": "APPLE_PAY",
-         *       "data": "V7OcjttPJnUJaQH7x7OjbIeZSINuc...",
-         *       "signature": "MIAGCSqGSIb3DQEHAqCAM...",
-         *       "version": "EC_v1",
-         *       "header": {
-         *         "ephemeralPublicKey": "MFkwEwYHKoZIzj...",
-         *         "publicKeyHash": "L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=",
-         *         "transactionId": "4f4fac7a1...a6a8ba2c0e8c5"
-         *       }
-         *     }
-         */
-        "Payment-Card-Input": components["schemas"]["Card-Token-Input"] | components["schemas"]["Google-Pay-Input"] | components["schemas"]["Apple-Pay-Input"];
-        /**
-         * Payment Card Input Type
-         * @enum {unknown}
-         */
-        "Payment-Card-Input-Type": "CARD_TOKEN" | "APPLE_PAY" | "GOOGLE_PAY";
-        /**
-         * Card Token Input
-         * @example {
-         *       "input_type": "CARD_TOKEN",
-         *       "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
-         *       "challenge_preferrence": "AUTO"
-         *     }
-         */
-        "Card-Token-Input": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            input_type: "CARD_TOKEN";
-            /** @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG... */
-            card_token: string;
-            challenge_preferrence?: components["schemas"]["Payment-Card-Challenge-Preference"];
-        };
-        /**
-         * Payment Card Challenge Preference
-         * @enum {unknown}
-         */
-        "Payment-Card-Challenge-Preference": "CHALLENGE_PREFERRED" | "NO_CHALLENGE_PREFERRED" | "AUTO";
-        /**
-         * Google Pay Input
-         * @example {
-         *       "input_type": "GOOGLE_PAY",
-         *       "signature": "EUCIQDhTxhHqwY8pXB9hpYxaSK5jFgsqpG2...",
-         *       "protocolVersion": "ECv1",
-         *       "signedMessage": "{\"encryptedMessage\":\"...\"}"
-         *     }
-         */
-        "Google-Pay-Input": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            input_type: "GOOGLE_PAY";
-            /** @example EUCIQDhTxhHqwY8pXB9hpYxaSK5jFgsqpG2... */
-            signature: string;
-            /** @example ECv1 */
-            protocolVersion: string;
-            signedMessage: string;
-        };
-        /**
-         * Apple Pay Input
-         * @example {
-         *       "input_type": "APPLE_PAY",
-         *       "data": "V7OcjttPJnUJaQH7x7OjbIeZSINuc...",
-         *       "signature": "MIAGCSqGSIb3DQEHAqCAM...",
-         *       "version": "EC_v1",
-         *       "header": {
-         *         "ephemeralPublicKey": "MFkwEwYHKoZIzj...",
-         *         "publicKeyHash": "L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=",
-         *         "transactionId": "4f4fac7a1...a6a8ba2c0e8c5"
-         *       }
-         *     }
-         */
-        "Apple-Pay-Input": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            input_type: "APPLE_PAY";
-            /** @example V7OcjttPJnUJaQH7x7OjbIeZSINuc... */
-            data: string;
-            /** @example MIAGCSqGSIb3DQEHAqCAM... */
-            signature: string;
-            /** @example EC_v1 */
-            version: string;
-            header: {
-                /** @example MFkwEwYHKoZIzj... */
-                ephemeralPublicKey: string;
-                /** @example L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo= */
-                publicKeyHash: string;
-                /** @example 4f4fac7a1...a6a8ba2c0e8c5 */
-                transactionId: string;
-            };
-        };
-        /**
-         * Bank Account Charge Data
-         * @example {
-         *       "payment_instrument": "BANK_ACCOUNT",
-         *       "input": {
-         *         "input_type": "ACCOUNT_TOKEN",
-         *         "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
-         *       }
-         *     }
-         */
-        "Bank-Account-Charge-Data": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            payment_instrument: "BANK_ACCOUNT";
-            input: components["schemas"]["Bank-Account-Input"];
-        };
-        /**
-         * Bank-Account-Input
-         * @example {
-         *       "input_type": "ACCOUNT_TOKEN",
-         *       "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
-         *     }
-         * @example {
-         *       "input_type": "IBAN",
-         *       "iban": "CZ5120100000000009878039",
-         *       "swift": "GIBACZPX",
-         *       "account_holder_name": "John Doe"
-         *     }
-         * @example {
-         *       "input_type": "SWIFT",
-         *       "swift": "GIBACZPX",
-         *       "bank_payment_type": "PSD2"
-         *     }
-         */
-        "Bank-Account-Input": components["schemas"]["Bank-Account-Token-Input"] | components["schemas"]["Bank-Account-Iban-Input"] | components["schemas"]["Bank-Account-Swift-Input"];
-        /**
-         * Bank Account Input Type
-         * @enum {unknown}
-         */
-        "Bank-Account-Input-Type": "ACCOUNT_TOKEN" | "IBAN" | "SWIFT";
-        /**
-         * Bank Account Token Input
-         * @example {
-         *       "input_type": "ACCOUNT_TOKEN",
-         *       "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
-         *     }
-         */
-        "Bank-Account-Token-Input": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            input_type: "ACCOUNT_TOKEN";
-            /** @example f14e5acc2d86480fb50e254c8a3c3164 */
-            account_token: string;
-        };
-        /**
-         * Bank Account Iban Input
-         * @example {
-         *       "input_type": "IBAN",
-         *       "iban": "CZ5120100000000009878039",
-         *       "swift": "GIBACZPX",
-         *       "account_holder_name": "John Doe"
-         *     }
-         */
-        "Bank-Account-Iban-Input": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            input_type: "IBAN";
-            /** @example CZ5120100000000009878039 */
-            iban: string;
-            swift?: components["schemas"]["Bank-Swift"];
-            /** @example John Doe */
-            account_holder_name?: string;
-        };
-        /**
-         * Bank Swift
-         * @enum {unknown}
-         */
-        "Bank-Swift": "GIBACZPX" | "KOMBCZPP" | "SUBASKBX" | "GIBASKBX" | "OTHERS";
-        /**
-         * Bank Account Swift Input
-         * @example {
-         *       "input_type": "SWIFT",
-         *       "swift": "GIBACZPX",
-         *       "bank_payment_type": "PSD2"
-         *     }
-         */
-        "Bank-Account-Swift-Input": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            input_type: "SWIFT";
-            swift: components["schemas"]["Bank-Swift"];
-            bank_payment_type?: components["schemas"]["Bank-Payment-Type"];
-        };
-        /**
-         * Bank Payment Type
-         * @enum {unknown}
-         */
-        "Bank-Payment-Type": "PSD2" | "ONLINE" | "QRPAYMENT" | "OFFLINE";
-        /**
-         * Payment Charge Action
-         * @example {
-         *       "action_type": "EMV3DS",
-         *       "state": "CREATED",
-         *       "redirect_url": "https://gate.gopay.com/redirect"
-         *     }
-         * @example {
-         *       "action_type": "PSD2",
-         *       "state": "REQUESTED",
-         *       "redirect_url": "https://gate.gopay.com/redirect"
-         *     }
-         * @example {
-         *       "action_type": "BANK_ACCOUNT",
-         *       "state": "REQUESTED",
-         *       "redirect_url": "https://gate.gopay.com/redirect"
-         *     }
-         */
-        "Payment-Charge-Action": components["schemas"]["Emv-3DS-Action"] | components["schemas"]["PSD2-Action"] | components["schemas"]["Bank-Account-Action"];
-        /**
-         * Payment Charge Action Type
-         * @enum {unknown}
-         */
-        "Payment-Charge-Action-Type": "EMV3DS" | "PSD2" | "BANK_ACCOUNT";
-        /**
-         * Emv 3DS Action
-         * @example {
-         *       "action_type": "EMV3DS",
-         *       "state": "CREATED",
-         *       "redirect_url": "https://gate.gopay.com/redirect"
-         *     }
-         */
-        "Emv-3DS-Action": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            action_type: "EMV3DS";
-            state: components["schemas"]["Emv-3DS-State"];
-            /**
-             * Format: url
-             * @example https://gate.gopay.com/redirect
-             */
-            redirect_url?: string;
-        };
-        /**
-         * Emv 3DS State
-         * @enum {unknown}
-         */
-        "Emv-3DS-State": "CREATED" | "CHALLENGE_REQUIRED" | "AUTHENTICATED_CHALLENGE" | "AUTHENTICATED_FRICTIONLESS" | "NOT_AUTHENTICATED" | "FAILED";
-        /**
-         * PSD2 Action
-         * @example {
-         *       "action_type": "PSD2",
-         *       "state": "REQUESTED",
-         *       "redirect_url": "https://gate.gopay.com/redirect"
-         *     }
-         */
-        "PSD2-Action": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            action_type: "PSD2";
-            state: components["schemas"]["PSD2-State"];
-            /**
-             * Format: url
-             * @example https://gate.gopay.com/redirect
-             */
-            redirect_url?: string;
-        };
-        /**
-         * PSD2-State
-         * @enum {unknown}
-         */
-        "PSD2-State": "REQUESTED" | "APPLIED" | "CONSENT" | "AUTHORIZED" | "SUCCESS" | "FAILED" | "CANCELED" | "TIMEOUT";
-        /**
-         * Bank Account Action
-         * @example {
-         *       "action_type": "BANK_ACCOUNT",
-         *       "state": "REQUESTED",
-         *       "redirect_url": "https://gate.gopay.com/redirect"
-         *     }
-         */
-        "Bank-Account-Action": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            action_type: "BANK_ACCOUNT";
-            state: components["schemas"]["Bank-Account-State"];
-            /**
-             * Format: url
-             * @example https://gate.gopay.com/redirect
-             */
-            redirect_url?: string;
-        };
-        /**
-         * Bank Account State
-         * @enum {unknown}
-         */
-        "Bank-Account-State": "REQUESTED" | "PROCESSED" | "CANCELED" | "TIMEOUT";
-        /**
-         * Payment Instrument Data
-         * @example {
-         *       "payment_instrument": "PAYMENT_CARD",
-         *       "details": {
-         *         "input_type": "CARD_TOKEN",
-         *         "masked_pan": "406821******1234",
-         *         "expiration_month": "01",
-         *         "expiration_year": "30",
-         *         "scheme": "VISA",
-         *         "fingerprint": "73c8d0a48d91def89761..."
-         *       }
-         *     }
-         * @example {
-         *       "payment_instrument": "BANK_ACCOUNT",
-         *       "details": {
-         *         "input_type": "ACCOUNT_TOKEN",
-         *         "iban": "CZ5120100000000009878039",
-         *         "swift": "GIBACZPX",
-         *         "account_holder_name": "John Doe"
-         *       }
-         *     }
-         */
-        "Payment-Instrument-Data": components["schemas"]["Payment-Card-Instrument-Data"] | components["schemas"]["Bank-Account-Instrument-Data"];
-        /**
-         * Payment Card Instrument Data
-         * @example {
-         *       "payment_instrument": "PAYMENT_CARD",
-         *       "details": {
-         *         "input_type": "CARD_TOKEN",
-         *         "masked_pan": "406821******1234",
-         *         "expiration_month": "01",
-         *         "expiration_year": "30",
-         *         "scheme": "VISA",
-         *         "fingerprint": "73c8d0a48d91def89761..."
-         *       }
-         *     }
-         */
-        "Payment-Card-Instrument-Data": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            payment_instrument: "PAYMENT_CARD";
-            details: components["schemas"]["Payment-Card-Data-Details"];
-        };
-        /**
-         * Payment Card Data Details
-         * @example {
-         *       "input_type": "CARD_TOKEN",
-         *       "masked_pan": "406821******1234",
-         *       "expiration_month": "01",
-         *       "expiration_year": "30",
-         *       "scheme": "VISA",
-         *       "fingerprint": "73c8d0a48d91def89761..."
-         *     }
-         */
-        "Payment-Card-Data-Details": {
-            input_type?: components["schemas"]["Payment-Card-Input-Type"];
-            /** @example 406821******1234 */
-            masked_pan?: string;
-            /** @example 01 */
-            expiration_month?: string;
-            /** @example 30 */
-            expiration_year?: string;
-            scheme?: components["schemas"]["Card-scheme"];
-            /** @example 73c8d0a48d91def89761... */
-            fingerprint?: string;
-        };
-        /**
-         * Bank Account Instrument Data
-         * @example {
-         *       "payment_instrument": "BANK_ACCOUNT",
-         *       "details": {
-         *         "input_type": "ACCOUNT_TOKEN",
-         *         "iban": "CZ5120100000000009878039",
-         *         "swift": "GIBACZPX",
-         *         "account_holder_name": "John Doe"
-         *       }
-         *     }
-         */
-        "Bank-Account-Instrument-Data": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            payment_instrument: "BANK_ACCOUNT";
-            details: components["schemas"]["Bank-Account-Data-Details"];
-        };
-        /**
-         * Bank Account Data Details
-         * @example {
-         *       "input_type": "ACCOUNT_TOKEN",
-         *       "iban": "CZ5120100000000009878039",
-         *       "swift": "GIBACZPX",
-         *       "account_holder_name": "John Doe"
-         *     }
-         */
-        "Bank-Account-Data-Details": {
-            input_type: components["schemas"]["Bank-Account-Input-Type"];
-            /**
-             * Format: iban
-             * @example CZ5120100000000009878039
-             */
-            iban?: string;
-            swift?: components["schemas"]["Bank-Swift"];
-            /** @example John Doe */
-            account_holder_name?: string;
-        };
-        /**
-         * Payment Charge Response Data
-         * @example {
-         *       "id": "string",
-         *       "state": "REQUESTED",
-         *       "payment_instrument": {
-         *         "payment_instrument": "PAYMENT_CARD",
-         *         "details": {
-         *           "input_type": "CARD_TOKEN",
-         *           "masked_pan": "406821******1234",
-         *           "expiration_month": "01",
-         *           "expiration_year": "30",
-         *           "scheme": "VISA",
-         *           "fingerprint": "73c8d0a48d91def89761..."
-         *         }
-         *       },
-         *       "return_url": "https://example.com/return",
-         *       "action": {
-         *         "action_type": "EMV3DS",
-         *         "state": "CREATED",
-         *         "redirect_url": "https://gate.gopay.com/redirect"
-         *       }
-         *     }
-         * @example {
-         *       "id": "string",
-         *       "state": "REQUESTED",
-         *       "payment_instrument": {
-         *         "payment_instrument": "BANK_ACCOUNT",
-         *         "details": {
-         *           "input_type": "ACCOUNT_TOKEN",
-         *           "iban": "CZ5120100000000009878039",
-         *           "swift": "GIBACZPX",
-         *           "account_holder_name": "John Doe"
-         *         }
-         *       },
-         *       "return_url": "https://example.com/return",
-         *       "action": {
-         *         "action_type": "PSD2",
-         *         "state": "REQUESTED",
-         *         "redirect_url": "https://gate.gopay.com/redirect"
-         *       }
-         *     }
-         */
-        "Payment-Charge-Response-Data": {
-            id: string;
-            state: components["schemas"]["Charge-State"];
-            payment_instrument: components["schemas"]["Payment-Instrument-Data"];
-            /**
-             * Format: url
-             * @example https://example.com/return
-             */
-            return_url: string;
-            action?: components["schemas"]["Payment-Charge-Action"];
-        };
-        /**
-         * Charge State
-         * @enum {unknown}
-         */
-        "Charge-State": "REQUESTED" | "PROCESSING" | "ACTION_REQUIRED" | "SUCCEEDED" | "FAILED";
-        /**
-         * Additional-Param
-         * @description Additional payment parameters
-         */
-        "Additional-Param": {
-            /** @example Custom param */
-            name?: string;
-            /** @example Custom value */
-            value?: string;
-        };
-        /**
-         * @description Object representing the customer details
-         * @example {
-         *       "email": "john.doe@example.com",
-         *       "first_name": "John",
-         *       "last_name": "Doe",
-         *       "phone_number": "+420123456789",
-         *       "city": "Testington",
-         *       "street": "Example st. 10",
-         *       "postal_code": "10000",
-         *       "country_code": "CZE",
-         *       "customer_id": "customer420"
-         *     }
-         */
-        Customer: {
-            /**
-             * Format: email
-             * @example john.doe@example.com
-             */
-            email: string;
-            /** @example John */
-            first_name?: string;
-            /** @example Doe */
-            last_name?: string;
-            /** @example +420123456789 */
-            phone_number?: string;
-            /** @example Testington */
-            city?: string;
-            /** @example Example st. 10 */
-            street?: string;
-            /** @example 10000 */
-            postal_code?: string;
-            /** @example CZE */
-            country_code?: string;
-            /** @example customer420 */
-            customer_id?: string;
-        };
-        /**
-         * @description List of available currencies
-         * @example CZK
-         * @enum {string}
-         */
-        Currency: "CZK" | "EUR" | "PLN" | "USD" | "GBP" | "HUF" | "RON";
-        /**
-         * @description List of possible payment statuses
-         * @example CREATED
-         * @enum {string}
-         */
-        "Payment-State": "CREATED" | "PAID" | "CANCELED" | "PAYMENT_METHOD_CHOSEN" | "TIMEOUTED" | "AUTHORIZED" | "REFUNDED" | "PARTIALLY_REFUNDED";
-        /**
          * @description Payment method groups
          * @example CARD_PAYMENT
          * @enum {string}
          */
         "Payment-Group": "CARD_PAYMENT" | "BANK_TRANSFER" | "DIGITAL_WALLET" | "BNPL" | "OTHERS";
+        /** Error-Response-Body */
+        "Error-Response-Body": {
+            /**
+             * Format: int32
+             * @description HTTP status code
+             * @example 400
+             * @constant
+             */
+            code: 400;
+            /**
+             * @description Error type
+             * @example BAD_REQUEST
+             * @constant
+             */
+            error: "BAD_REQUEST";
+            /**
+             * @description Error message
+             * @example Invalid request parameter
+             */
+            message: string;
+            /**
+             * @description Detailed error description
+             * @example Error Details
+             */
+            detail: string;
+            /**
+             * @description Request path
+             * @example /payments/123/charge
+             */
+            path: string;
+            /**
+             * Format: date-time
+             * @description Error timestamp
+             * @example 2025-12-10T10:30:00Z
+             */
+            timestamp: string;
+        };
+        "Card-Form-URL": {
+            /** @example https://secure.gopay.com/gp-card-comm/q/form */
+            card_form_url?: string;
+        };
     };
     responses: {
         /** @description Successful authentication */
@@ -1183,30 +1598,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /**
-                     * @default bearer
-                     * @example bearer
-                     * @constant
-                     */
-                    token_type: "bearer";
-                    /** @description Access JWT */
-                    access_token?: components["schemas"]["JWT"];
-                    /**
-                     * @description Refresh token value
-                     * @example f14e5acc2d86480fb50e254c8a3c3164
-                     */
-                    refresh_token?: string;
-                    /**
-                     * @description Space-separated list of token scopes, see Token Scope
-                     * @example payment:create payment:read
-                     */
-                    scope?: string;
-                    /** @example 900 */
-                    expires_in?: number;
-                    /** @example 86400 */
-                    refresh_expires_in?: number;
-                };
+                "application/json": components["schemas"]["Token-Pair"];
             };
         };
         /** @description Example response */
@@ -1224,7 +1616,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": components["schemas"]["Onetime-Card-Token-Response"] | components["schemas"]["Permanent-Card-Token-Response"];
+                "application/json": components["schemas"]["Onetime-Card-Token-Details"] | components["schemas"]["Permanent-Card-Token-Details"];
             };
         };
         /** @description Example response */
@@ -1234,36 +1626,6 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["Payment-Charge-Response-Data"];
-            };
-        };
-        /** @description Example response */
-        "Payment-Create-Response": {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": {
-                    /**
-                     * @description Payment session ID
-                     * @example 300000001
-                     */
-                    id: string;
-                    /**
-                     * @description Order ID forwarded from the payment request
-                     * @example 2025010199
-                     */
-                    order_number: string;
-                    /** @description Payment state */
-                    state: components["schemas"]["Payment-State"];
-                    /** @description Total amount in cents */
-                    amount: number;
-                    /** @description Payment currency */
-                    currency: components["schemas"]["Currency"];
-                    /** @description Customer data */
-                    customer: components["schemas"]["Customer"];
-                    /** @description URL of the hosted payment gateway */
-                    gw_url: string;
-                };
             };
         };
         /** @description Google Pay Payment Request object consumed by the Google Payment button */
@@ -1385,112 +1747,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /**
-                     * @description Payment amount in cents
-                     * @example 10000
-                     */
-                    amount: number;
-                    /** @description Payment currency */
-                    currency: components["schemas"]["Currency"];
-                    /** @description Information about the recipient */
-                    recipient: {
-                        /**
-                         * @description Recipient name
-                         * @example GoPay Czech
-                         */
-                        name: string;
-                        /** @description Recipient's bank account information */
-                        bank_account: {
-                            /** @description Recipient bank account information in local format */
-                            local?: {
-                                /**
-                                 * @description Account prefix
-                                 * @example 000000
-                                 */
-                                prefix: string;
-                                /**
-                                 * @description Account number in local format
-                                 * @example 9878039
-                                 */
-                                account_number: string;
-                                /**
-                                 * @description Local bank code
-                                 * @example 2010
-                                 */
-                                bank_code: string;
-                                /**
-                                 * @description Payment identifier
-                                 * @example 3123456789
-                                 */
-                                variable_symbol: string;
-                            };
-                            /** @description Recipient information in international format */
-                            international: {
-                                /**
-                                 * @description Recipient BIC/SWIFT
-                                 * @example FIOBCZPP
-                                 */
-                                bic: string;
-                                /**
-                                 * @description Recipient IBAN
-                                 * @example CZ5120100000000009878039
-                                 */
-                                iban: string;
-                                /**
-                                 * @description Payment identifier
-                                 * @example 3123456789
-                                 */
-                                reference: string;
-                            };
-                        };
-                        /** @description Recipient address */
-                        address?: {
-                            /**
-                             * @description Recipient address street
-                             * @example Senovazne nam. 1736
-                             */
-                            street: string;
-                            /**
-                             * @description Recipient address city
-                             * @example Ceske Budejovice
-                             */
-                            city: string;
-                            /**
-                             * @description Recipient address ZIP code
-                             * @example 37001
-                             */
-                            zip_code: string;
-                            /**
-                             * @description Recipient address country
-                             * @example Czech Republic
-                             */
-                            country: string;
-                        };
-                    };
-                    qr_code: {
-                        /**
-                         * @description Czech payment QR code (SPAYD) - only available for the CZK currency
-                         * @example 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
-                         */
-                        spayd?: string;
-                        /**
-                         * @description Slovak payment QR code (PayBySquare) - only available for the EUR currency
-                         * @example {QR code in base64}
-                         */
-                        paybysquare?: string;
-                        /**
-                         * @description SEPA payment QR code (specified by EPC) - only available for the EUR currency
-                         * @example {QR code in base64}
-                         */
-                        sepa?: string;
-                        /**
-                         * @description Hungarian payment QR code (specified by MNB) - only available for the HUF currency
-                         * @example {QR code in base64}
-                         */
-                        mnb_qr?: string;
-                    };
-                };
+                "application/json": components["schemas"]["QR-Payment-Details"];
             };
         };
         /** @description Bad Request */
@@ -1499,42 +1756,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /**
-                     * Format: int32
-                     * @description HTTP status code
-                     * @example 400
-                     * @constant
-                     */
-                    code: 400;
-                    /**
-                     * @description Error type
-                     * @example BAD_REQUEST
-                     * @constant
-                     */
-                    error: "BAD_REQUEST";
-                    /**
-                     * @description Error message
-                     * @example Invalid request parameter
-                     */
-                    message: string;
-                    /**
-                     * @description Detailed error description
-                     * @example Error Details
-                     */
-                    detail: string;
-                    /**
-                     * @description Request path
-                     * @example /payments/123/charge
-                     */
-                    path: string;
-                    /**
-                     * Format: date-time
-                     * @description Error timestamp
-                     * @example 2025-12-10T10:30:00Z
-                     */
-                    timestamp: string;
-                };
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Unauthorized */
@@ -1543,42 +1765,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /**
-                     * Format: int32
-                     * @description HTTP status code
-                     * @example 401
-                     * @constant
-                     */
-                    code: 401;
-                    /**
-                     * @description Error type
-                     * @example UNAUTHORIZED
-                     * @constant
-                     */
-                    error: "UNAUTHORIZED";
-                    /**
-                     * @description Error message
-                     * @example Wrong credentials
-                     */
-                    message: string;
-                    /**
-                     * @description Detailed error description
-                     * @example Error Details
-                     */
-                    detail: string;
-                    /**
-                     * @description Request path
-                     * @example /payments/123/charge
-                     */
-                    path: string;
-                    /**
-                     * Format: date-time
-                     * @description Error timestamp
-                     * @example 2025-12-10T10:30:00Z
-                     */
-                    timestamp: string;
-                };
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Example response */
@@ -1587,42 +1774,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /**
-                     * Format: int32
-                     * @description HTTP status code
-                     * @example 403
-                     * @constant
-                     */
-                    code: 403;
-                    /**
-                     * @description Error type
-                     * @example FORBIDDEN
-                     * @constant
-                     */
-                    error: "FORBIDDEN";
-                    /**
-                     * @description Error message
-                     * @example Missing token scope
-                     */
-                    message: string;
-                    /**
-                     * @description Detailed error description
-                     * @example Error Details
-                     */
-                    detail: string;
-                    /**
-                     * @description Request path
-                     * @example /payments/123/charge
-                     */
-                    path: string;
-                    /**
-                     * Format: date-time
-                     * @description Error timestamp
-                     * @example 2025-12-10T10:30:00Z
-                     */
-                    timestamp: string;
-                };
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Example response */
@@ -1631,42 +1783,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /**
-                     * Format: int32
-                     * @description HTTP status code
-                     * @example 404
-                     * @constant
-                     */
-                    code: 404;
-                    /**
-                     * @description Error type
-                     * @example NOT_FOUND
-                     * @constant
-                     */
-                    error: "NOT_FOUND";
-                    /**
-                     * @description Error message
-                     * @example Resource not found
-                     */
-                    message: string;
-                    /**
-                     * @description Detailed error description
-                     * @example Error Details
-                     */
-                    detail: string;
-                    /**
-                     * @description Request path
-                     * @example /payments/123/charge
-                     */
-                    path: string;
-                    /**
-                     * Format: date-time
-                     * @description Error timestamp
-                     * @example 2025-12-10T10:30:00Z
-                     */
-                    timestamp: string;
-                };
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Example response */
@@ -1675,42 +1792,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /**
-                     * Format: int32
-                     * @description HTTP status code
-                     * @example 409
-                     * @constant
-                     */
-                    code: 409;
-                    /**
-                     * @description Error type
-                     * @example CONFLICT
-                     * @constant
-                     */
-                    error: "CONFLICT";
-                    /**
-                     * @description Error message
-                     * @example Wrong resource state
-                     */
-                    message: string;
-                    /**
-                     * @description Detailed error description
-                     * @example Error Details
-                     */
-                    detail: string;
-                    /**
-                     * @description Request path
-                     * @example /payments/123/charge
-                     */
-                    path: string;
-                    /**
-                     * Format: date-time
-                     * @description Error timestamp
-                     * @example 2025-12-10T10:30:00Z
-                     */
-                    timestamp: string;
-                };
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Internal Server Error */
@@ -1719,42 +1801,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /**
-                     * Format: int32
-                     * @description HTTP status code
-                     * @example 500
-                     * @constant
-                     */
-                    code: 500;
-                    /**
-                     * @description Error type
-                     * @example INTERNAL_SERVER_ERROR
-                     * @constant
-                     */
-                    error: "INTERNAL_SERVER_ERROR";
-                    /**
-                     * @description Error message
-                     * @example Unexpected error occurred
-                     */
-                    message: string;
-                    /**
-                     * @description Detailed error description
-                     * @example Error Details
-                     */
-                    detail: string;
-                    /**
-                     * @description Request path
-                     * @example /payments/123/charge
-                     */
-                    path: string;
-                    /**
-                     * Format: date-time
-                     * @description Error timestamp
-                     * @example 2025-12-10T10:30:00Z
-                     */
-                    timestamp: string;
-                };
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         "Error-Response": {
@@ -1769,38 +1816,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /**
-                     * @description Payment session ID
-                     * @example 300000001
-                     */
-                    id: string;
-                    /**
-                     * @description Order ID forwarded from the payment request
-                     * @example 2025010199
-                     */
-                    order_number: string;
-                    /** @description Payment state */
-                    state: components["schemas"]["Payment-State"];
-                    /** @description Total amount in cents */
-                    amount: number;
-                    /** @description Payment currency */
-                    currency: components["schemas"]["Currency"];
-                    /** @description Customer data */
-                    customer: components["schemas"]["Customer"];
-                    /** @description URL of the hosted payment gateway */
-                    gw_url: string;
-                    charge?: {
-                        /** @example 9123456789 */
-                        id: string;
-                        state: components["schemas"]["Charge-State"];
-                        /**
-                         * Format: uri
-                         * @example https://api.gopay.com/api/4.0/payments/9123456789/charge
-                         */
-                        href: string;
-                    };
-                };
+                "application/json": components["schemas"]["Payment-Details"];
             };
         };
         /** @description Example response */
@@ -1811,6 +1827,36 @@ export interface components {
             content: {
                 "application/json": components["schemas"]["Payment-Charge-Response-Data"];
             };
+        };
+        /** @description Example response */
+        "Card-Form-URL-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Card-Form-URL"];
+            };
+        };
+        "Card-Token-Create-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
+        };
+        /** @description Example response */
+        "Card-Token-Details-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Permanent-Card-Token-Details"];
+            };
+        };
+        "Payment-Create-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
         };
     };
     parameters: {
@@ -1824,11 +1870,7 @@ export interface components {
         };
         "Card-Token-Request": {
             content: {
-                "application/json": {
-                    payload: components["schemas"]["JWE"];
-                    /** @default false */
-                    permanent?: boolean;
-                };
+                "application/json": components["schemas"]["Card-Token-Request"];
             };
         };
         "Payment-Charge-Request": {
@@ -1838,42 +1880,7 @@ export interface components {
         };
         "Payment-Create-Request": {
             content: {
-                "application/json": {
-                    /**
-                     * @description Total amount in cents
-                     * @example 10000
-                     */
-                    amount: number;
-                    /** @description Payment currency */
-                    currency: components["schemas"]["Currency"];
-                    /**
-                     * @description Order identification for the online shop, alphanumeric characters
-                     * @example 2025010199
-                     */
-                    order_number: string;
-                    /**
-                     * @description Order description, alphanumeric characters
-                     * @example Test order
-                     */
-                    order_description?: string;
-                    /** @description Additional parameters for the payment */
-                    additional_params?: components["schemas"]["Additional-Param"][];
-                    /** @description Information about the customer */
-                    customer: components["schemas"]["Customer"];
-                    /** @description Callback urls */
-                    callback: {
-                        /**
-                         * @description URL used to deliver the HTTP notifications
-                         * @example https://example.com/notify
-                         */
-                        notification_url: string;
-                        /**
-                         * @description URL used to redirect the customer from the gateway back to the shop
-                         * @example https://example.com/return
-                         */
-                        return_url: string;
-                    };
-                };
+                "application/json": components["schemas"]["Payment-Create-Request"];
             };
         };
     };
@@ -1959,7 +1966,7 @@ export interface operations {
         };
         requestBody?: components["requestBodies"]["Payment-Create-Request"];
         responses: {
-            201: components["responses"]["Payment-Create-Response"];
+            201: components["responses"]["Payment-Status-Response"];
             400: components["responses"]["Bad-Request-400-Response"];
             /** @description Unauthorized */
             401: {
@@ -2036,48 +2043,6 @@ export interface operations {
                 };
                 content?: never;
             };
-        };
-    };
-    "get-encryption-public-key": {
-        parameters: {
-            query?: never;
-            header: {
-                Accept: components["parameters"]["Accept-Json"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["JWK-Response"];
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            403: components["responses"]["Forbidden-403-Response"];
-            500: components["responses"]["Internal-Server-Error-500-Response"];
-        };
-    };
-    "post-cards-tokens": {
-        parameters: {
-            query?: never;
-            header: {
-                Accept: components["parameters"]["Accept-Json"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: components["requestBodies"]["Card-Token-Request"];
-        responses: {
-            201: components["responses"]["Card-Token-Response"];
-            400: components["responses"]["Bad-Request-400-Response"];
-            401: components["responses"]["Unauthorized-401-Response"];
-            403: components["responses"]["Forbidden-403-Response"];
-            409: components["responses"]["Conflict-409-Response"];
-            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
     "get-payments-payment_id-qr-payment-info": {
@@ -2175,6 +2140,113 @@ export interface operations {
             403: components["responses"]["Forbidden-403-Response"];
             404: components["responses"]["Not-Found-404-Response"];
             409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-cards-tokens-card_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                card_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Card-Token-Details-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "delete-cards-tokens-card_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                card_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-cards-tokens": {
+        parameters: {
+            query?: never;
+            header: {
+                Accept: components["parameters"]["Accept-Json"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: components["requestBodies"]["Card-Token-Request"];
+        responses: {
+            201: components["responses"]["Card-Token-Response"];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-encryption-public-key": {
+        parameters: {
+            query?: never;
+            header: {
+                Accept: components["parameters"]["Accept-Json"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["JWK-Response"];
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden-403-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-card-form-url": {
+        parameters: {
+            query?: never;
+            header: {
+                Accept: components["parameters"]["Accept-Json"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Card-Form-URL-Response"];
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden-403-Response"];
             500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };

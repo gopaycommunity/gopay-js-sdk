@@ -171,7 +171,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">Card Pay</h2>
             <p class="desc">
                 Step 1: <code>payments.create()</code> fills in the Payment ID below.<br>
-                Step 2: Click <em>Open Card Payment</em> — <code>cards.mountCardForm()</code> mounts the iframe, awaits the user, and tokenizes automatically. Token is prefilled into <em>payments.charge()</em> below.
+                Step 2: Click <em>Open Card Payment</em> — <code>cards.mountCardForm()</code> mounts the iframe and tokenizes. Token is prefilled into <em>payments.charge()</em> below.
             </p>
             <div class="fields">
                 <label>Payment ID<input id="cardpay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
@@ -185,8 +185,15 @@
                 <span class="text-xs text-[#6B7280] font-medium ml-3">Theme:</span>
                 <button type="button" id="cardpay-theme-default" onclick="cardPaySetTheme('default')" class="!text-xs !py-1 !px-3">Default</button>
                 <button type="button" id="cardpay-theme-dark" onclick="cardPaySetTheme('dark')" class="!text-xs !py-1 !px-3 !bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">Dark</button>
+                <span class="text-xs text-[#6B7280] font-medium ml-3">Submit:</span>
+                <button type="button" id="cardpay-submit-internal" onclick="cardPaySetSubmitMode('internal')" class="!text-xs !py-1 !px-3">Internal</button>
+                <button type="button" id="cardpay-submit-external" onclick="cardPaySetSubmitMode('external')" class="!text-xs !py-1 !px-3 !bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">External</button>
             </div>
-            <button type="button" onclick="cardPayOpenIframe()">Open Card Payment</button>
+            <div class="flex items-center gap-3 flex-wrap mb-3">
+                <button type="button" onclick="cardPayOpenIframe()">Open Card Payment</button>
+                <button type="button" id="cardpay-ext-submit" disabled onclick="cardPayExtSubmit()" class="hidden opacity-50 cursor-not-allowed">Pay Now</button>
+                <span id="cardpay-ext-valid-row" class="hidden text-xs text-[#6B7280]">Valid: <span id="cardpay-ext-valid">false</span></span>
+            </div>
             <div id="cardpay-iframe-container" class="hidden my-3 border border-[#E1E5EB] rounded-2xl overflow-hidden"></div>
             <pre id="cardpay-output">—</pre>
         </section>

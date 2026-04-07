@@ -23,6 +23,13 @@ export interface CardFormConfig {
     theme?: CardFormTheme;
     /** BCP 47 locale for the initial form labels. */
     locale?: string;
+    /**
+     * 'internal' (default) — iframe renders its own submit button.
+     * 'external' — iframe hides the submit button; the parent controls
+     *   submission via `GOPAY_CARD_REQUEST_SUBMIT` and receives validity
+     *   state via `GOPAY_CARD_FORM_VALIDITY`.
+     */
+    submitMode?: 'internal' | 'external';
 }
 
 /**
@@ -113,7 +120,16 @@ export interface CardSetLocale {
     locale: string;
 }
 
-export type InboundMessage = CardFormConfig | CardSetTheme | CardSetLocale;
+/** Sent by the parent to trigger form submission in external submit mode. */
+export interface CardRequestSubmit {
+    type: 'GOPAY_CARD_REQUEST_SUBMIT';
+}
+
+export type InboundMessage =
+    | CardFormConfig
+    | CardSetTheme
+    | CardSetLocale
+    | CardRequestSubmit;
 
 export type EncryptErrorCode =
     | 'PUBLIC_KEY_FETCH_FAILED'
@@ -129,4 +145,6 @@ export type OutboundMessage =
           error: string;
           code: EncryptErrorCode;
       }
-    | { type: 'GOPAY_CARD_FORM_HEIGHT'; height: number };
+    | { type: 'GOPAY_CARD_FORM_HEIGHT'; height: number }
+    /** Sent in external submit mode whenever the form's overall validity changes. */
+    | { type: 'GOPAY_CARD_FORM_VALIDITY'; isValid: boolean };

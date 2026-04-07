@@ -18,7 +18,8 @@ paths:
   /oauth2/token:
     post:
       summary: Authenticate
-      tags: []
+      tags:
+        - Authentication
       operationId: post-oauth2-token
       x-stoplight:
         id: 76hckee4qpnkr
@@ -102,10 +103,11 @@ paths:
         required: true
     post:
       summary: Create a payment
-      tags: []
+      tags:
+        - Payments
       responses:
         '201':
-          $ref: '#/components/responses/Payment-Create-Response'
+          $ref: '#/components/responses/Payment-Status-Response'
         '400':
           $ref: '#/components/responses/Bad-Request-400-Response'
         '401':
@@ -131,7 +133,8 @@ paths:
   '/payments/{payment_id}':
     get:
       summary: Payment Status
-      tags: []
+      tags:
+        - Payments
       responses:
         '200':
           $ref: '#/components/responses/Payment-Status-Response'
@@ -163,8 +166,9 @@ paths:
         in: path
         required: true
     post:
-      summary: Charge payment (preview)
-      tags: []
+      summary: Charge a payment
+      tags:
+        - Payments
       responses:
         '201':
           $ref: '#/components/responses/Payment-Charge-Response'
@@ -192,7 +196,8 @@ paths:
         - $ref: '#/components/parameters/Accept-Json'
     get:
       summary: Payment charge state
-      tags: []
+      tags:
+        - Payments
       responses:
         '200':
           $ref: '#/components/responses/Payment-Charge-State-Response'
@@ -210,58 +215,6 @@ paths:
       security:
         - clientCredentials:
             - 'payment:read'
-  /encryption/public-key:
-    get:
-      summary: Fetch public key
-      tags: []
-      responses:
-        '200':
-          $ref: '#/components/responses/JWK-Response'
-        '401':
-          description: Unauthorized
-        '403':
-          $ref: '#/components/responses/Forbidden-403-Response'
-        '500':
-          $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      operationId: get-encryption-public-key
-      x-stoplight:
-        id: fzmjk8f7jgxx5
-      description: |-
-        Returns the public encryption key to be used for encrypting card data.
-
-        It is structured as a JWK described by [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517)
-      security:
-        - clientCredentials:
-            - 'card:save'
-      parameters:
-        - $ref: '#/components/parameters/Accept-Json'
-  /cards/tokens:
-    post:
-      summary: Create card token
-      tags: []
-      responses:
-        '201':
-          $ref: '#/components/responses/Card-Token-Response'
-        '400':
-          $ref: '#/components/responses/Bad-Request-400-Response'
-        '401':
-          $ref: '#/components/responses/Unauthorized-401-Response'
-        '403':
-          $ref: '#/components/responses/Forbidden-403-Response'
-        '409':
-          $ref: '#/components/responses/Conflict-409-Response'
-        '500':
-          $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      operationId: post-cards-tokens
-      x-stoplight:
-        id: z527w3pj6p22i
-      security:
-        - clientCredentials:
-            - 'card:save'
-      parameters:
-        - $ref: '#/components/parameters/Accept-Json'
-      requestBody:
-        $ref: '#/components/requestBodies/Card-Token-Request'
   '/payments/{payment_id}/qr-payment/info':
     parameters:
       - schema:
@@ -271,7 +224,6 @@ paths:
         required: true
     get:
       summary: QR Payment Info
-      tags: []
       responses:
         '200':
           $ref: '#/components/responses/QR-Payment-Info-Response'
@@ -309,6 +261,8 @@ paths:
       security:
         - clientCredentials:
             - 'payment:read'
+      tags:
+        - Payments
   '/payments/{payment_id}/google-pay/info':
     parameters:
       - schema:
@@ -318,7 +272,8 @@ paths:
         required: true
     get:
       summary: Google Pay Payment Info
-      tags: []
+      tags:
+        - Payments
       responses:
         '200':
           $ref: '#/components/responses/Google-Pay-Info-Response'
@@ -355,7 +310,8 @@ paths:
         required: true
     get:
       summary: Apple Pay Payment Info
-      tags: []
+      tags:
+        - Payments
       responses:
         '200':
           $ref: '#/components/responses/Apple-Pay-Info-Response'
@@ -392,7 +348,8 @@ paths:
         required: true
     post:
       summary: Validate Merchant
-      tags: []
+      tags:
+        - Payments
       responses:
         '200':
           $ref: '#/components/responses/Validate-Merchant-Response'
@@ -421,6 +378,130 @@ paths:
       security:
         - clientCredentials:
             - 'payment:create'
+  '/cards/tokens/{card_id}':
+    parameters:
+      - schema:
+          type: string
+        name: card_id
+        in: path
+        required: true
+    get:
+      summary: Card details
+      tags:
+        - Cards
+      responses:
+        '200':
+          $ref: '#/components/responses/Card-Token-Details-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: get-cards-tokens-card_id
+      x-stoplight:
+        id: ifuuio45fka6d
+      security:
+        - clientCredentials:
+            - 'card:read'
+    delete:
+      summary: Delete a card
+      tags:
+        - Cards
+      responses:
+        '204':
+          description: No Content
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: delete-cards-tokens-card_id
+      x-stoplight:
+        id: 9u6vv704glfad
+  /cards/tokens:
+    post:
+      summary: Create card token
+      tags:
+        - Cards
+      responses:
+        '201':
+          $ref: '#/components/responses/Card-Token-Response'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: post-cards-tokens
+      x-stoplight:
+        id: z527w3pj6p22i
+      security:
+        - clientCredentials:
+            - 'card:save'
+      parameters:
+        - $ref: '#/components/parameters/Accept-Json'
+      requestBody:
+        $ref: '#/components/requestBodies/Card-Token-Request'
+  /encryption/public-key:
+    get:
+      summary: Fetch public key
+      tags:
+        - Cards
+      responses:
+        '200':
+          $ref: '#/components/responses/JWK-Response'
+        '401':
+          description: Unauthorized
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: get-encryption-public-key
+      x-stoplight:
+        id: fzmjk8f7jgxx5
+      description: |-
+        Returns the public encryption key to be used for encrypting card data.
+
+        It is structured as a JWK described by [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517)
+      security:
+        - clientCredentials:
+            - 'card:save'
+      parameters:
+        - $ref: '#/components/parameters/Accept-Json'
+  /encryption/card-form-url:
+    get:
+      summary: Card Form URL
+      tags:
+        - Cards
+      responses:
+        '200':
+          $ref: '#/components/responses/Card-Form-URL-Response'
+        '401':
+          description: Unauthorized
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: get-card-form-url
+      description: Returns the URL of the hosted card input form
+      security:
+        - clientCredentials:
+            - 'card:save'
+      parameters:
+        - $ref: '#/components/parameters/Accept-Json'
+      x-stoplight:
+        id: ki9gktw5912l0
+    parameters: []
 components:
   schemas:
     Token-Scope:
@@ -432,6 +513,9 @@ components:
         - 'card:read'
         - 'payment:create'
         - 'payment:read'
+      examples:
+        - 'payment:create'
+      description: Supported token scopes
     Client-Credentials-Request:
       title: Client Credentials Request
       x-stoplight:
@@ -457,6 +541,7 @@ components:
           type: string
           example: 'payment:create payment:read'
           description: 'List of required token scopes, separated with a space. See Token Scope schema for possible values.'
+      description: Request the token pair using the `client_credentials` grant type
     Refresh-Token-Request:
       title: Refresh Token Request
       x-stoplight:
@@ -485,6 +570,41 @@ components:
           x-stoplight:
             id: x78lboi99jhfe
           description: Client ID associated with the refresh token. This can be extracted from the JWT.
+      description: Request the token pair using the `refresh_token` grant type
+    Token-Pair:
+      title: Token-Pair
+      x-stoplight:
+        id: 5tjecoeucmkul
+      type: object
+      description: The access token and refresh token alongside useful meta information.
+      properties:
+        token_type:
+          type: string
+          example: bearer
+          const: bearer
+          default: bearer
+          description: Always `bearer`
+        access_token:
+          $ref: '#/components/schemas/JWT'
+          description: Access JWT
+        refresh_token:
+          type: string
+          description: Refresh token value
+          example: f14e5acc2d86480fb50e254c8a3c3164
+        scope:
+          type: string
+          description: 'Space-separated list of token scopes, see Token Scope'
+          example: 'payment:create payment:read'
+        expires_in:
+          type: integer
+          minimum: 0
+          example: 900
+          description: The expiration of the access JWT in seconds
+        refresh_expires_in:
+          type: integer
+          minimum: 0
+          example: 86400
+          description: The expiration of the refresh token in seconds
     JWT:
       title: JWT
       x-stoplight:
@@ -494,8 +614,8 @@ components:
         The JWT string as described by [RFC 7519: JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)
 
         The JWT has 3 parts:
-        1. `header` -> JSON serialized [JWT header](#jwt-header)
-        2. `claims` -> Contains the main part of the token - see [JWT Claims](#jwt-claims) for details
+        1. `header` -> JSON serialized [JWT header](./q132gwiib06ov-jwt-header)
+        2. `claims` -> Contains the main part of the token - see [JWT Claims](./1t7u4tgwic485-jwt-claims) for details
         3. `signature` -> Contains the cryptographic signature of the token
 
         Each of these parts is Base64URL-encoded and concatenated using dots so the overall structure is:
@@ -566,6 +686,1546 @@ components:
           scope: 'payments:read payments:write'
           iat: 1712640000
           exp: 1712643600
+    Payment-Create-Request:
+      title: Payment-Create-Request
+      x-stoplight:
+        id: 7milp4c7iiygl
+      type: object
+      required:
+        - amount
+        - currency
+        - order_number
+        - customer
+        - callback
+      properties:
+        amount:
+          type: integer
+          minimum: 0
+          example: 100
+          description: Total amount in cents
+        currency:
+          $ref: '#/components/schemas/Currency'
+          description: Payment currency
+        order_number:
+          type: string
+          maxLength: 128
+          example: '2025010199'
+          description: 'Order identification for the online shop, alphanumeric characters'
+        order_description:
+          type: string
+          description: 'Order description, alphanumeric characters'
+          example: Test order
+        additional_params:
+          type: array
+          maxItems: 4
+          description: Additional parameters for the payment
+          items:
+            $ref: '#/components/schemas/Additional-Param'
+        customer:
+          $ref: '#/components/schemas/Customer'
+          x-stoplight:
+            id: den7ms6tfaazd
+          description: Information about the customer
+        callback:
+          $ref: '#/components/schemas/Payment-Callback'
+          x-stoplight:
+            id: sv4s1flynjcv9
+          description: Callback urls
+      examples:
+        - amount: 100
+          currency: CZK
+          order_number: '2025010199'
+          order_description: Test order
+          additional_params:
+            - name: Custom param
+              value: Custom value
+          customer:
+            email: john.doe@example.com
+            first_name: John
+            last_name: Doe
+            phone_number: '+420123456789'
+            city: Testington
+            street: Example st. 10
+            postal_code: '10000'
+            country_code: CZE
+            customer_id: customer420
+          callback:
+            notification_url: 'https://example.com/notify'
+            return_url: 'https://example.com/return'
+      description: Representation of a request for a new payment
+    Payment-Details:
+      title: Payment-Details
+      x-stoplight:
+        id: y80x95j15qtwv
+      type: object
+      examples:
+        - id: '300000001'
+          order_number: '2025010199'
+          state: CREATED
+          amount: 100
+          currency: CZK
+          customer:
+            email: john.doe@example.com
+            first_name: John
+            last_name: Doe
+            phone_number: '+420123456789'
+            city: Testington
+            street: Example st. 10
+            postal_code: '10000'
+            country_code: CZE
+            customer_id: customer420
+          gw_url: string
+          charge:
+            id: '9123456789'
+            state: REQUESTED
+            href: 'https://api.gopay.com/api/4.0/payments/9123456789/charge'
+      description: Representation of an existing payment
+      required:
+        - id
+        - order_number
+        - state
+        - amount
+        - currency
+        - customer
+        - gw_url
+      properties:
+        id:
+          type: string
+          description: Payment session ID
+          example: '300000001'
+        order_number:
+          type: string
+          description: Order ID forwarded from the payment request
+          example: '2025010199'
+        state:
+          $ref: '#/components/schemas/Payment-State'
+          description: Payment state
+        amount:
+          type: integer
+          description: |
+            Total amount in cents
+          example: 100
+        currency:
+          $ref: '#/components/schemas/Currency'
+          description: |
+            Payment currency
+        customer:
+          $ref: '#/components/schemas/Customer'
+          description: Customer data
+        gw_url:
+          type: string
+          description: URL of the hosted payment gateway
+        charge:
+          $ref: '#/components/schemas/Payment-Charge-Ref'
+          x-stoplight:
+            id: e1eoaglqtmgrk
+    Currency:
+      type: string
+      x-stoplight:
+        id: dd38a2e540f2b
+      description: List of available currencies
+      enum:
+        - CZK
+        - EUR
+        - PLN
+        - USD
+        - GBP
+        - HUF
+        - RON
+      examples:
+        - CZK
+    Additional-Param:
+      title: Additional-Param
+      x-stoplight:
+        id: jwscxcuj92tkp
+      type: object
+      description: Additional payment parameters
+      examples:
+        - name: Custom param
+          value: Custom value
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          example: Custom param
+          x-stoplight:
+            id: 7ja6w4inp4odb
+          description: Parameter name
+        value:
+          type: string
+          example: Custom value
+          description: Parameter value
+    Payment-State:
+      type: string
+      x-stoplight:
+        id: f05bf19f19b1f
+      description: List of possible payment statuses
+      enum:
+        - CREATED
+        - PAID
+        - CANCELED
+        - PAYMENT_METHOD_CHOSEN
+        - TIMEOUTED
+        - AUTHORIZED
+        - REFUNDED
+        - PARTIALLY_REFUNDED
+      examples:
+        - CREATED
+    Customer:
+      type: object
+      x-examples:
+        Example 1:
+          first_name: John
+          last_name: Doe
+          email: john.doe@example.com
+          phone_number: '+420123456789'
+          city: Test city
+          street: Test street 10
+          postal_code: '10000'
+          country_code: CZE
+          customer_id: custom21321
+      description: Object representing the customer details. The email is required for authentication purposes.
+      examples:
+        - email: john.doe@example.com
+          first_name: John
+          last_name: Doe
+          phone_number: '+420123456789'
+          city: Testington
+          street: Example st. 10
+          postal_code: '10000'
+          country_code: CZE
+          customer_id: customer420
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 128
+          example: john.doe@example.com
+          description: Customer email.
+        first_name:
+          type: string
+          maxLength: 256
+          example: John
+          description: Customer first name
+        last_name:
+          type: string
+          maxLength: 256
+          example: Doe
+          description: Customer last name
+        phone_number:
+          type: string
+          maxLength: 128
+          example: '+420123456789'
+          description: Customer phone number (home or mobile)
+        city:
+          type: string
+          maxLength: 128
+          example: Testington
+          description: Customer address city
+        street:
+          type: string
+          maxLength: 128
+          example: Example st. 10
+          description: Customer address street
+        postal_code:
+          type: string
+          maxLength: 128
+          example: '10000'
+          description: Customer address ZIP (postal code)
+        country_code:
+          type: string
+          maxLength: 128
+          example: CZE
+          description: 'Customer country code in respect to [ISO 3166-1 alpha-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)'
+        customer_id:
+          type: string
+          maxLength: 128
+          example: customer420
+          description: Unique customer ID (used to customise the checkout experience)
+    Payment-Callback:
+      title: Payment-Callback
+      x-stoplight:
+        id: somgf7cgtzf8g
+      type: object
+      required:
+        - notification_url
+        - return_url
+      properties:
+        notification_url:
+          type: string
+          x-stoplight:
+            id: 8g47v96xx91hg
+          description: URL used to deliver the HTTP notifications
+          example: 'https://example.com/notify'
+        return_url:
+          type: string
+          x-stoplight:
+            id: 1ong668kwravj
+          description: URL used to redirect the customer from the gateway back to the shop
+          example: 'https://example.com/return'
+      description: Object holding URLs for callback purposes related to a payment
+      examples:
+        - notification_url: 'https://example.com/notify'
+          return_url: 'https://example.com/return'
+    Payment-Charge-Ref:
+      title: Payment-Charge-Ref
+      x-stoplight:
+        id: 35r425fyrk18s
+      type: object
+      description: A reference to a payment charge associated with the payment
+      required:
+        - id
+        - state
+        - href
+      properties:
+        id:
+          type: string
+          x-stoplight:
+            id: acvul1t46mtfa
+          example: '9123456789'
+          description: Charge ID
+        state:
+          $ref: '#/components/schemas/Charge-State'
+          x-stoplight:
+            id: chmb77imsj32i
+          description: Charge state
+        href:
+          type: string
+          x-stoplight:
+            id: 915p52uy1tw3k
+          format: uri
+          example: 'https://api.gopay.com/api/4.0/payments/9123456789/charge'
+          description: Reference to the related charge endpoint
+      examples:
+        - id: '9123456789'
+          state: REQUESTED
+          href: 'https://api.gopay.com/api/4.0/payments/9123456789/charge'
+    Payment-Charge-Input:
+      title: Payment Charge Input
+      x-stoplight:
+        id: ypcfdisbe5uuc
+      type: object
+      examples:
+        - payment_instrument:
+            payment_instrument: PAYMENT_CARD
+            input:
+              input_type: CARD_TOKEN
+              card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
+              challenge_preferrence: AUTO
+          return_url: 'https://example.com/return'
+          browser_data:
+            ip: 198.51.100.1
+            language: cs-CZ
+            timezone: -60
+            screen_width: 434
+            screen_height: 965
+            color_depth: 24
+            user_agent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
+            accept_header: '{"accept-language":"cs;q\u003d0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, */*"}'
+            javascript_enabled: true
+            java_enabled: false
+        - payment_instrument:
+            payment_instrument: BANK_ACCOUNT
+            input:
+              input_type: ACCOUNT_TOKEN
+              account_token: f14e5acc2d86480fb50e254c8a3c3164
+          return_url: 'https://example.com/return'
+      properties:
+        payment_instrument:
+          $ref: '#/components/schemas/Payment-Charge-Data'
+          x-stoplight:
+            id: n2cxqwltyyixz
+        return_url:
+          type: string
+          x-stoplight:
+            id: lbhlhia9jkabu
+          format: url
+          example: 'https://example.com/return'
+        browser_data:
+          $ref: '#/components/schemas/Browser-Data'
+          x-stoplight:
+            id: mxan664lsthya
+      description: Model holding all data necessary to perform a payment charge
+    Browser-Data:
+      title: Browser-Data
+      x-stoplight:
+        id: xl93er9d9iywj
+      type: object
+      description: Customer browser data used for authentication purposes
+      required:
+        - language
+        - timezone
+        - screen_width
+        - screen_height
+        - color_depth
+      properties:
+        language:
+          type: string
+          x-stoplight:
+            id: 0bnzeu4avcksd
+          example: cs-CZ
+          description: Language or locale of the customer environment
+        timezone:
+          type: number
+          x-stoplight:
+            id: y1xfy6e7w4ax8
+          example: -60
+          description: Timezone of the customer environment
+        screen_width:
+          type: number
+          x-stoplight:
+            id: 8y9irynkl4w2q
+          example: 434
+          minimum: 0
+          description: Width of customer viewport
+        screen_height:
+          type: number
+          x-stoplight:
+            id: cugqzdox11fpy
+          minimum: 0
+          example: 965
+          description: Height of customer viewport
+        color_depth:
+          type: number
+          x-stoplight:
+            id: 0istfyhbtigmz
+          example: 24
+          minimum: 0
+          description: Color depth of customer screen
+        user_agent:
+          type: string
+          x-stoplight:
+            id: enlgaa92iessu
+          example: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
+          description: User agent of customer browser
+        accept_header:
+          type: string
+          x-stoplight:
+            id: oswbxjw6ji8jq
+          example: '{\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, */*\"}'
+          description: Accept header received by customer browser
+        javascript_enabled:
+          type: boolean
+          example: true
+          x-stoplight:
+            id: 3wtselnd700bl
+          description: Whether Javascript is enabled in customer environment
+      examples:
+        - language: cs-CZ
+          timezone: -60
+          screen_width: 434
+          screen_height: 965
+          color_depth: 24
+          user_agent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
+          accept_header: '{\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, */*\"}'
+          javascript_enabled: true
+    Payment-Charge-Data:
+      title: Payment-Charge-Data
+      required:
+        - payment_instrument
+      discriminator:
+        propertyName: payment_instrument
+        mapping:
+          PAYMENT_CARD: '#/components/schemas/Payment-Card-Charge-Data'
+          BANK_ACCOUNT: '#/components/schemas/Bank-Account-Charge-Data'
+      x-stoplight:
+        id: tpeorakie6tae
+      oneOf:
+        - $ref: '#/components/schemas/Payment-Card-Charge-Data'
+        - $ref: '#/components/schemas/Bank-Account-Charge-Data'
+          x-stoplight:
+            id: 1c1y81pkrhval
+      examples:
+        - payment_instrument: PAYMENT_CARD
+          input:
+            input_type: CARD_TOKEN
+            card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
+            challenge_preferrence: AUTO
+        - payment_instrument: BANK_ACCOUNT
+          input:
+            input_type: ACCOUNT_TOKEN
+            account_token: f14e5acc2d86480fb50e254c8a3c3164
+      description: 'Discriminated union of the possible payment charges. Discrimantor is the `payment_instrument` field gaining values from the [Payment-Instrument](./x3xyv4fy5blzy-payment-instrument) enum'
+    Payment-Instrument:
+      title: Payment Instrument
+      type: string
+      x-stoplight:
+        id: x3xyv4fy5blzy
+      enum:
+        - PAYMENT_CARD
+        - BANK_ACCOUNT
+      description: 'Discriminator for the cases of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union'
+    Payment-Card-Charge-Data:
+      title: Payment Card Charge Data
+      x-stoplight:
+        id: ngpor8q7ykq07
+      type: object
+      examples:
+        - payment_instrument: PAYMENT_CARD
+          input:
+            input_type: CARD_TOKEN
+            card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
+            challenge_preferrence: AUTO
+      description: 'The `PAYMENT_CARD` variant of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union. Holds the discriminator as well as the input for a card payment.'
+      required:
+        - payment_instrument
+        - input
+      properties:
+        payment_instrument:
+          type: string
+          const: PAYMENT_CARD
+          x-stoplight:
+            id: lbabjq8y8hsxu
+          description: Always `PAYMENT_CARD`
+        input:
+          $ref: '#/components/schemas/Payment-Card-Input'
+          x-stoplight:
+            id: 1k6e7g40lw5cc
+          description: One of the possible inputs for a card payment
+    Payment-Card-Input:
+      title: Payment Card Input
+      required:
+        - input_type
+      x-stoplight:
+        id: jq603a1vywo3a
+      discriminator:
+        propertyName: input_type
+        mapping:
+          CARD_TOKEN: '#/components/schemas/Card-Token-Input'
+          GOOGLE_PAY: '#/components/schemas/Google-Pay-Input'
+          APPLE_PAY: '#/components/schemas/Apple-Pay-Input'
+      oneOf:
+        - $ref: '#/components/schemas/Card-Token-Input'
+        - $ref: '#/components/schemas/Google-Pay-Input'
+          x-stoplight:
+            id: ckcynoewxqpsh
+        - $ref: '#/components/schemas/Apple-Pay-Input'
+          x-stoplight:
+            id: mj5fqb234cgjx
+      examples:
+        - input_type: CARD_TOKEN
+          card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
+          challenge_preferrence: AUTO
+        - input_type: GOOGLE_PAY
+          signature: EUCIQDhTxhHqwY8pXB9hpYxaSK5jFgsqpG2...
+          protocolVersion: ECv1
+          signedMessage: '{"encryptedMessage":"..."}'
+        - input_type: APPLE_PAY
+          data: V7OcjttPJnUJaQH7x7OjbIeZSINuc...
+          signature: MIAGCSqGSIb3DQEHAqCAM...
+          version: EC_v1
+          header:
+            ephemeralPublicKey: MFkwEwYHKoZIzj...
+            publicKeyHash: L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=
+            transactionId: 4f4fac7a1...a6a8ba2c0e8c5
+      description: 'Discriminated union of the possible card payment inputs. Discrimantor is the `input_type` field gaining values from the [Payment Card Input Type](./n7rgf81mgdw30-payment-card-input-type) enum'
+    Payment-Card-Input-Type:
+      title: Payment Card Input Type
+      x-stoplight:
+        id: n7rgf81mgdw30
+      enum:
+        - CARD_TOKEN
+        - APPLE_PAY
+        - GOOGLE_PAY
+      description: 'Discriminator for the cases of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union'
+    Card-Token-Input:
+      title: Card Token Input
+      x-stoplight:
+        id: 9qymub17qilsr
+      type: object
+      examples:
+        - input_type: CARD_TOKEN
+          card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
+          challenge_preferrence: AUTO
+      description: 'The `CARD_TOKEN` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the token input and 3DS challenge preference'
+      required:
+        - input_type
+        - card_token
+      properties:
+        input_type:
+          type: string
+          const: CARD_TOKEN
+          x-stoplight:
+            id: auluzg9nymqiw
+          description: Always `CARD_TOKEN`
+        card_token:
+          type: string
+          x-stoplight:
+            id: 4dtyofu5v7oml
+          example: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
+          description: 'Either a single use or permanent card token acquired using the [Create Card Token](z527w3pj6p22i-create-card-token) API call'
+        challenge_preferrence:
+          $ref: '#/components/schemas/Payment-Card-Challenge-Preference'
+          x-stoplight:
+            id: 37hhyf052xwtd
+          description: Preference whether to require or try to skip 3DS authentication.
+    Payment-Card-Challenge-Preference:
+      title: Payment Card Challenge Preference
+      type: string
+      x-stoplight:
+        id: 9xwgh0u8r7xc2
+      enum:
+        - CHALLENGE_PREFERRED
+        - NO_CHALLENGE_PREFERRED
+        - AUTO
+      examples:
+        - AUTO
+      description: |-
+        An indication from the merchant about the 3DS authentication of card payments.
+        - `AUTO` - let GoPay decide
+        - `CHALLENGE_PREFERRED` - try to enforce a 3DS challenge on the user for stronger authentication
+        - `NO_CHALLENGE_PREFERRED` - try to skip 3DS authentication for a simpler checkout experience
+    Google-Pay-Input:
+      type: object
+      x-examples:
+        Example 1:
+          input_type: GOOGLE_PAY
+          protocolVersion: ECv2
+          signature: MEQCIH6Q4OwQ0jAceFEkGF0JID6sJNXxOEi4r+mA7biRxqBQAiAondqoUpU/bdsrAOpZIsrHQS9nwiiNwOrr24RyPeHA0Q==
+          intermediateSigningKey:
+            signedKey: '{"keyExpiration":"1542323393147","keyValue":"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw\u003d\u003d"}'
+            signatures:
+              - MEYCIQCO2EIi48s8VTH+ilMEpoXLFfkxAwHjfPSCVED/QDSHmQIhALLJmrUlNAY8hDQRV/y1iKZGsWpeNmIP+z+tCQHQxP0v
+          signedMessage: '{"tag":"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\u003d","ephemeralPublicKey":"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\u003d","encryptedMessage":"mKOoXwi8OavZ"}'
+      description: |-
+        The `GOOGLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Google Pay.
+        See [Payment Data Cryptography](https://developers.google.com/pay/api/web/guides/resources/payment-data-cryptography) in Google Pay documentation for details
+      examples:
+        - input_type: GOOGLE_PAY
+          protocolVersion: ECv2
+          signature: MEQCIH6Q4OwQ0jAceFEkGF0JID6sJNXxOEi4r+mA7biRxqBQAiAondqoUpU/bdsrAOpZIsrHQS9nwiiNwOrr24RyPeHA0Q\u003d\u003d
+          intermediateSigningKey:
+            signedKey: '{"keyExpiration":"1542323393147","keyValue":"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw\u003d\u003d"}'
+            signatures:
+              - '"MEYCIQCO2EIi48s8VTH+ilMEpoXLFfkxAwHjfPSCVED/QDSHmQIhALLJmrUlNAY8hDQRV/y1iKZGsWpeNmIP+z+tCQHQxP0v"'
+          signedMessage: '{"tag":"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\u003d","ephemeralPublicKey":"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\u003d","encryptedMessage":"mKOoXwi8OavZ"}'
+      properties:
+        input_type:
+          type: string
+          const: GOOGLE_PAY
+          example: GOOGLE_PAY
+          description: Always `GOOGLE_PAY`
+        protocolVersion:
+          type: string
+          example: ECv2
+        signature:
+          type: string
+          example: MEQCIH6Q4OwQ0jAceFEkGF0JID6sJNXxOEi4r+mA7biRxqBQAiAondqoUpU/bdsrAOpZIsrHQS9nwiiNwOrr24RyPeHA0Q\u003d\u003d
+        intermediateSigningKey:
+          type: object
+          properties:
+            signedKey:
+              type: string
+              example: '{\"keyExpiration\":\"1542323393147\",\"keyValue\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw\\u003d\\u003d\"}'
+            signatures:
+              type: array
+              items:
+                type: string
+                example: '"MEYCIQCO2EIi48s8VTH+ilMEpoXLFfkxAwHjfPSCVED/QDSHmQIhALLJmrUlNAY8hDQRV/y1iKZGsWpeNmIP+z+tCQHQxP0v"'
+        signedMessage:
+          type: string
+          example: '{\"tag\":\"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\\u003d\",\"ephemeralPublicKey\":\"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\\u003d\",\"encryptedMessage\":\"mKOoXwi8OavZ\"}'
+    Apple-Pay-Input:
+      title: Apple Pay Input
+      x-stoplight:
+        id: 94n5nt2uipb1g
+      type: object
+      examples:
+        - input_type: APPLE_PAY
+          data: V7OcjttPJnUJaQH7x7OjbIeZSINuc...
+          signature: MIAGCSqGSIb3DQEHAqCAM...
+          version: EC_v1
+          header:
+            ephemeralPublicKey: MFkwEwYHKoZIzj...
+            publicKeyHash: L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=
+            transactionId: 4f4fac7a1...a6a8ba2c0e8c5
+      description: |-
+        The `APPLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Google Pay.
+        See [Payment Data Cryptography](https://developer.apple.com/documentation/passkit/payment-token-format-reference) in Apple Pay documentation for details
+      required:
+        - input_type
+        - data
+        - signature
+        - version
+        - header
+      properties:
+        input_type:
+          type: string
+          const: APPLE_PAY
+          x-stoplight:
+            id: wrrn3j6prfavu
+          example: APPLE_PAY
+          description: Always `APPLE_PAY`
+        data:
+          type: string
+          x-stoplight:
+            id: gwt5lg8h109lv
+          example: V7OcjttPJnUJaQH7x7OjbIeZSINuc...
+        signature:
+          type: string
+          x-stoplight:
+            id: ogjquv79ruor2
+          example: MIAGCSqGSIb3DQEHAqCAM...
+        version:
+          type: string
+          x-stoplight:
+            id: yo04fxuketdzc
+          example: EC_v1
+        header:
+          type: object
+          x-stoplight:
+            id: 5hrbbdsmxakhg
+          required:
+            - ephemeralPublicKey
+            - publicKeyHash
+            - transactionId
+          properties:
+            ephemeralPublicKey:
+              type: string
+              x-stoplight:
+                id: 6z3w0g5964hgq
+              example: MFkwEwYHKoZIzj...
+            publicKeyHash:
+              type: string
+              x-stoplight:
+                id: 44ndeputeeuoz
+              example: L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=
+            transactionId:
+              type: string
+              x-stoplight:
+                id: f73q9zntcblhr
+              example: 4f4fac7a1...a6a8ba2c0e8c5
+    Bank-Account-Charge-Data:
+      title: Bank Account Charge Data
+      x-stoplight:
+        id: sg7w84m1z1lgv
+      type: object
+      examples:
+        - payment_instrument: BANK_ACCOUNT
+          input:
+            input_type: ACCOUNT_TOKEN
+            account_token: f14e5acc2d86480fb50e254c8a3c3164
+      required:
+        - payment_instrument
+        - input
+      properties:
+        payment_instrument:
+          type: string
+          const: BANK_ACCOUNT
+          x-stoplight:
+            id: pb3jzmagqv5pq
+        input:
+          $ref: '#/components/schemas/Bank-Account-Input'
+          x-stoplight:
+            id: 7u0hlqowp7qak
+      description: 'The `BANK_ACCOUNT` variant of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union. Holds the discriminator as well as the input for a card payment.'
+    Bank-Account-Input:
+      title: Bank-Account-Input
+      required:
+        - input_type
+      discriminator:
+        propertyName: input_type
+        mapping:
+          ACCOUNT_TOKEN: '#/components/schemas/Bank-Account-Token-Input'
+          IBAN: '#/components/schemas/Bank-Account-Iban-Input'
+          SWIFT: '#/components/schemas/Bank-Account-Swift-Input'
+      x-stoplight:
+        id: 5i1h3pabcw97d
+      oneOf:
+        - $ref: '#/components/schemas/Bank-Account-Token-Input'
+        - $ref: '#/components/schemas/Bank-Account-Iban-Input'
+          x-stoplight:
+            id: 3ap003tcmpish
+        - $ref: '#/components/schemas/Bank-Account-Swift-Input'
+          x-stoplight:
+            id: l01a4nxmvbei1
+      examples:
+        - input_type: ACCOUNT_TOKEN
+          account_token: f14e5acc2d86480fb50e254c8a3c3164
+        - input_type: IBAN
+          iban: CZ5120100000000009878039
+          swift: GIBACZPX
+          account_holder_name: John Doe
+        - input_type: SWIFT
+          swift: GIBACZPX
+          bank_payment_type: PSD2
+    Bank-Account-Input-Type:
+      title: Bank Account Input Type
+      x-stoplight:
+        id: 4sistrtcmzpiw
+      enum:
+        - ACCOUNT_TOKEN
+        - IBAN
+        - SWIFT
+    Bank-Account-Token-Input:
+      title: Bank Account Token Input
+      x-stoplight:
+        id: 3okv7b8s8c8x5
+      type: object
+      examples:
+        - input_type: ACCOUNT_TOKEN
+          account_token: f14e5acc2d86480fb50e254c8a3c3164
+      required:
+        - input_type
+        - account_token
+      properties:
+        input_type:
+          type: string
+          const: ACCOUNT_TOKEN
+          x-stoplight:
+            id: p91c6ikx94k82
+        account_token:
+          type: string
+          x-stoplight:
+            id: 9qswzcp8nireb
+          example: f14e5acc2d86480fb50e254c8a3c3164
+    Bank-Account-Iban-Input:
+      title: Bank Account Iban Input
+      x-stoplight:
+        id: nuamub36ppjy9
+      type: object
+      examples:
+        - input_type: IBAN
+          iban: CZ5120100000000009878039
+          swift: GIBACZPX
+          account_holder_name: John Doe
+      required:
+        - input_type
+        - iban
+      properties:
+        input_type:
+          type: string
+          const: IBAN
+          x-stoplight:
+            id: 553zoumulz1i8
+        iban:
+          type: string
+          x-stoplight:
+            id: d1jy3vndo3qn2
+          example: CZ5120100000000009878039
+        swift:
+          $ref: '#/components/schemas/Bank-Swift'
+          x-stoplight:
+            id: x7a0gqyftlh8g
+        account_holder_name:
+          type: string
+          x-stoplight:
+            id: 0gtwx4q520ufu
+          example: John Doe
+    Bank-Account-Swift-Input:
+      title: Bank Account Swift Input
+      x-stoplight:
+        id: 8v51vqpl0n8yq
+      type: object
+      examples:
+        - input_type: SWIFT
+          swift: GIBACZPX
+          bank_payment_type: PSD2
+      required:
+        - input_type
+        - swift
+      properties:
+        input_type:
+          type: string
+          const: SWIFT
+          x-stoplight:
+            id: tczbtf6wa57mf
+        swift:
+          $ref: '#/components/schemas/Bank-Swift'
+          x-stoplight:
+            id: ts5d8izwd7329
+        bank_payment_type:
+          $ref: '#/components/schemas/Bank-Payment-Type'
+          x-stoplight:
+            id: mvewf5syy7pvn
+    Bank-Swift:
+      title: Bank Swift
+      x-stoplight:
+        id: cb6oq8ot95qb1
+      enum:
+        - GIBACZPX
+        - KOMBCZPP
+        - SUBASKBX
+        - GIBASKBX
+        - OTHERS
+    Bank-Payment-Type:
+      title: Bank Payment Type
+      x-stoplight:
+        id: g2w0t5m42vahn
+      enum:
+        - PSD2
+        - ONLINE
+        - QRPAYMENT
+        - OFFLINE
+    Payment-Charge-Response-Data:
+      title: Payment Charge Response Data
+      x-stoplight:
+        id: q4h4xhs5lehkr
+      type: object
+      required:
+        - id
+        - state
+        - payment_instrument
+        - return_url
+      properties:
+        id:
+          type: string
+          x-stoplight:
+            id: mkpyxki6gxr99
+        state:
+          $ref: '#/components/schemas/Charge-State'
+          x-stoplight:
+            id: 0ku79q4l1fiq1
+        payment_instrument:
+          $ref: '#/components/schemas/Payment-Instrument-Data'
+          x-stoplight:
+            id: 51arxhx1w4cp3
+        return_url:
+          type: string
+          x-stoplight:
+            id: h2fvxav6rgr3r
+          format: url
+          example: 'https://example.com/return'
+        action:
+          $ref: '#/components/schemas/Payment-Charge-Action'
+          x-stoplight:
+            id: z21ueo6ixyv0d
+      examples:
+        - id: string
+          state: REQUESTED
+          payment_instrument:
+            payment_instrument: PAYMENT_CARD
+            details:
+              input_type: CARD_TOKEN
+              masked_pan: 406821******1234
+              expiration_month: '01'
+              expiration_year: '30'
+              scheme: VISA
+              fingerprint: 73c8d0a48d91def89761...
+          return_url: 'https://example.com/return'
+          action:
+            action_type: EMV3DS
+            state: CREATED
+            redirect_url: 'https://gate.gopay.com/redirect'
+        - id: string
+          state: REQUESTED
+          payment_instrument:
+            payment_instrument: BANK_ACCOUNT
+            details:
+              input_type: ACCOUNT_TOKEN
+              iban: CZ5120100000000009878039
+              swift: GIBACZPX
+              account_holder_name: John Doe
+          return_url: 'https://example.com/return'
+          action:
+            action_type: PSD2
+            state: REQUESTED
+            redirect_url: 'https://gate.gopay.com/redirect'
+    Charge-State:
+      title: Charge State
+      x-stoplight:
+        id: 371d8dz8gi2nr
+      enum:
+        - REQUESTED
+        - PROCESSING
+        - ACTION_REQUIRED
+        - SUCCEEDED
+        - FAILED
+    Payment-Instrument-Data:
+      title: Payment Instrument Data
+      required:
+        - payment_instrument
+      discriminator:
+        propertyName: payment_instrument
+        mapping:
+          PAYMENT_CARD: '#/components/schemas/Payment-Card-Instrument-Out'
+          BANK_ACCOUNT: '#/components/schemas/Bank-Account-Instrument-Out'
+      x-stoplight:
+        id: 0m7k4q0slqkxj
+      oneOf:
+        - $ref: '#/components/schemas/Payment-Card-Instrument-Out'
+        - $ref: '#/components/schemas/Bank-Account-Instrument-Out'
+          x-stoplight:
+            id: ypoa72vouhlwf
+      examples:
+        - payment_instrument: PAYMENT_CARD
+          details:
+            input_type: CARD_TOKEN
+            masked_pan: 406821******1234
+            expiration_month: '01'
+            expiration_year: '30'
+            scheme: VISA
+            fingerprint: 73c8d0a48d91def89761...
+        - payment_instrument: BANK_ACCOUNT
+          details:
+            input_type: ACCOUNT_TOKEN
+            iban: CZ5120100000000009878039
+            swift: GIBACZPX
+            account_holder_name: John Doe
+    Payment-Card-Instrument-Out:
+      title: Payment Card Instrument Out
+      x-stoplight:
+        id: l7pvf6odjuu4z
+      type: object
+      examples:
+        - payment_instrument: PAYMENT_CARD
+          details:
+            input_type: CARD_TOKEN
+            masked_pan: 406821******1234
+            expiration_month: '01'
+            expiration_year: '30'
+            scheme: VISA
+            fingerprint: 73c8d0a48d91def89761...
+      required:
+        - payment_instrument
+        - details
+      properties:
+        payment_instrument:
+          $ref: '#/components/schemas/Payment-Instrument'
+          x-stoplight:
+            id: wjzeemqsa6d8u
+        details:
+          $ref: '#/components/schemas/Payment-Card-Charge-Out'
+          x-stoplight:
+            id: jd3j6gauhlvg0
+    Payment-Card-Charge-Out:
+      title: Payment Card Data Out
+      x-stoplight:
+        id: bskevah9h5bxt
+      type: object
+      properties:
+        input_type:
+          $ref: '#/components/schemas/Payment-Card-Input-Type'
+          x-stoplight:
+            id: b7mgg9ce4ywnr
+        masked_pan:
+          type: string
+          x-stoplight:
+            id: vrchqj2qoenwx
+          example: 406821******1234
+        expiration_month:
+          type: string
+          x-stoplight:
+            id: 1c0261jafbkj2
+          pattern: '^(?:0[0-9]|1[0-2])$'
+          example: '01'
+        expiration_year:
+          type: string
+          x-stoplight:
+            id: g5p98sneeycq3
+          pattern: '^[0-9]{2}$'
+          example: '30'
+        scheme:
+          $ref: '#/components/schemas/Card-scheme'
+          x-stoplight:
+            id: qtz2ebrm6bwv2
+        fingerprint:
+          type: string
+          x-stoplight:
+            id: vu6tr189goc30
+          example: 73c8d0a48d91def89761...
+      examples:
+        - input_type: CARD_TOKEN
+          masked_pan: 406821******1234
+          expiration_month: '01'
+          expiration_year: '30'
+          scheme: VISA
+          fingerprint: 73c8d0a48d91def89761...
+    Card-scheme:
+      title: Card scheme
+      x-stoplight:
+        id: w4wi43hnlhl6r
+      enum:
+        - VISA
+        - MASTERCARD
+    Bank-Account-Instrument-Out:
+      title: Bank Account Instrument Data
+      x-stoplight:
+        id: 4ztzmfwcsuvdm
+      type: object
+      examples:
+        - payment_instrument: BANK_ACCOUNT
+          details:
+            input_type: ACCOUNT_TOKEN
+            iban: CZ5120100000000009878039
+            swift: GIBACZPX
+            account_holder_name: John Doe
+      required:
+        - payment_instrument
+        - details
+      properties:
+        payment_instrument:
+          $ref: '#/components/schemas/Payment-Instrument'
+          x-stoplight:
+            id: i1jcpd2r7n6ut
+        details:
+          $ref: '#/components/schemas/Bank-Account-Charge-Out'
+          x-stoplight:
+            id: 7td558oaq8nrc
+    Bank-Account-Charge-Out:
+      title: Bank Account Data Details
+      x-stoplight:
+        id: 258x6jjami0kl
+      type: object
+      required:
+        - input_type
+      properties:
+        input_type:
+          $ref: '#/components/schemas/Bank-Account-Input-Type'
+          x-stoplight:
+            id: 8pjsuwh04xdko
+        iban:
+          type: string
+          x-stoplight:
+            id: 42zbnh70nmny4
+          format: iban
+          example: CZ5120100000000009878039
+        swift:
+          $ref: '#/components/schemas/Bank-Swift'
+          x-stoplight:
+            id: bo2h10g5toj6d
+        account_holder_name:
+          type: string
+          x-stoplight:
+            id: 0pss43wuallhs
+          example: John Doe
+      examples:
+        - input_type: ACCOUNT_TOKEN
+          iban: CZ5120100000000009878039
+          swift: GIBACZPX
+          account_holder_name: John Doe
+    Payment-Charge-Action:
+      title: Payment Charge Action
+      required:
+        - action_type
+      discriminator:
+        propertyName: action_type
+        mapping:
+          EMV3DS: '#/components/schemas/Emv-3DS-Action'
+          BANK_ACCOUNT: '#/components/schemas/Bank-Account-Action'
+      x-stoplight:
+        id: 2e4g5jjtygbb8
+      oneOf:
+        - $ref: '#/components/schemas/Emv-3DS-Action'
+        - $ref: '#/components/schemas/Bank-Account-Action'
+          x-stoplight:
+            id: ymb9eaqobnge9
+      examples:
+        - action_type: EMV3DS
+          state: CREATED
+          redirect_url: 'https://gate.gopay.com/redirect'
+        - action_type: PSD2
+          state: REQUESTED
+          redirect_url: 'https://gate.gopay.com/redirect'
+        - action_type: BANK_ACCOUNT
+          state: REQUESTED
+          redirect_url: 'https://gate.gopay.com/redirect'
+    Payment-Charge-Action-Type:
+      title: Payment Charge Action Type
+      x-stoplight:
+        id: c7fv3422tve4g
+      enum:
+        - EMV3DS
+        - PSD2
+        - BANK_ACCOUNT
+    Emv-3DS-Action:
+      title: Emv 3DS Action
+      x-stoplight:
+        id: g2s9981sy80ca
+      type: object
+      required:
+        - action_type
+        - state
+      properties:
+        action_type:
+          $ref: '#/components/schemas/Payment-Charge-Action-Type'
+          x-stoplight:
+            id: jdumiln3yg09e
+        state:
+          $ref: '#/components/schemas/Emv-3DS-State'
+          x-stoplight:
+            id: uetxyvjp9aw9m
+        redirect_url:
+          type: string
+          x-stoplight:
+            id: 9hjy4xb8wyuf5
+          format: url
+          example: 'https://gate.gopay.com/redirect'
+      examples:
+        - action_type: EMV3DS
+          state: CREATED
+          redirect_url: 'https://gate.gopay.com/redirect'
+    Emv-3DS-State:
+      title: Emv 3DS State
+      x-stoplight:
+        id: i9awrzzegrqyh
+      enum:
+        - CREATED
+        - CHALLENGE_REQUIRED
+        - AUTHENTICATED_CHALLENGE
+        - AUTHENTICATED_FRICTIONLESS
+        - NOT_AUTHENTICATED
+        - FAILED
+    Bank-Account-Action:
+      title: Bank Account Action
+      x-stoplight:
+        id: 06z27hdbd6b5l
+      type: object
+      required:
+        - action_type
+        - state
+      properties:
+        action_type:
+          $ref: '#/components/schemas/Payment-Charge-Action-Type'
+          x-stoplight:
+            id: s6q0pido68rdk
+        state:
+          $ref: '#/components/schemas/Bank-Account-State'
+          x-stoplight:
+            id: 2hak9uvjs3xal
+        redirect_url:
+          type: string
+          x-stoplight:
+            id: r4og7ryyvgmqy
+          format: url
+          example: 'https://gate.gopay.com/redirect'
+      examples:
+        - action_type: BANK_ACCOUNT
+          state: REQUESTED
+          redirect_url: 'https://gate.gopay.com/redirect'
+    Bank-Account-State:
+      title: Bank Account State
+      x-stoplight:
+        id: 25huq6ybbna9z
+      enum:
+        - REQUESTED
+        - PROCESSED
+        - CANCELED
+        - TIMEOUT
+    QR-Payment-Details:
+      title: QR-Payment-Details
+      x-stoplight:
+        id: 3xfmlye4w61wi
+      type: object
+      required:
+        - amount
+        - currency
+        - recipient
+        - qr_code
+      properties:
+        amount:
+          type: integer
+          example: 10000
+          description: Payment amount in cents
+        currency:
+          $ref: '#/components/schemas/Currency'
+          description: Payment currency
+        recipient:
+          $ref: '#/components/schemas/Bank-Transfer-Recipient'
+          description: Information about the recipient
+        qr_code:
+          $ref: '#/components/schemas/QR-Code-List'
+    Bank-Transfer-Recipient:
+      title: Bank-Transfer-Recipient
+      x-stoplight:
+        id: 8xuprb4zvwcyn
+      type: object
+      properties:
+        name:
+          type: string
+          x-stoplight:
+            id: ham7wldfx9pqb
+        bank_account:
+          $ref: '#/components/schemas/Recipient-Bank-Account'
+          x-stoplight:
+            id: m6m3nqgw5lpon
+        address:
+          $ref: '#/components/schemas/Recipient-Address'
+          x-stoplight:
+            id: e0ga7c1kmjwf6
+    Recipient-Bank-Account:
+      title: Recipient-Bank-Account
+      x-stoplight:
+        id: 6ugs3heb3s3o6
+      type: object
+      properties:
+        local:
+          $ref: '#/components/schemas/Bank-Account-Local-Details'
+          x-stoplight:
+            id: wazog4u57n1do
+        international:
+          $ref: '#/components/schemas/Bank-Account-International-Details'
+          x-stoplight:
+            id: czzly8k4bub4g
+    Bank-Account-Local-Details:
+      type: object
+      x-examples:
+        Example 1:
+          prefix: '000000'
+          account_number: '9878039'
+          bank_code: '2010'
+          variable_symbol: '3123456789'
+      required:
+        - prefix
+        - account_number
+        - bank_code
+        - variable_symbol
+      properties:
+        prefix:
+          type: string
+        account_number:
+          type: string
+        bank_code:
+          type: string
+        variable_symbol:
+          type: string
+    Bank-Account-International-Details:
+      type: object
+      properties:
+        bic:
+          type: string
+        iban:
+          type: string
+        reference:
+          type: string
+      x-examples:
+        Example 1:
+          bic: FIOBCZPP
+          iban: CZ5120100000000009878039
+          reference: '3123456789'
+    Recipient-Address:
+      type: object
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+        zip_code:
+          type: string
+        country:
+          type: string
+      x-examples:
+        Example 1:
+          street: Senovazne nam. 1736
+          city: Ceske Budejovice
+          zip_code: '37001'
+          country: Czech Republic
+    QR-Code-List:
+      title: QR-Code-List
+      x-stoplight:
+        id: fa3qqjajb4vlb
+      type: object
+      properties:
+        spayd:
+          type: string
+          x-stoplight:
+            id: 75oivansak4p7
+          example: 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
+        paybysquare:
+          type: string
+          x-stoplight:
+            id: u7d4r52vz9qiq
+          example: '{QR code in base64}'
+        sepa:
+          type: string
+          x-stoplight:
+            id: ru407rs8v67a4
+          example: '{QR code in base64}'
+        mnb_qr:
+          type: string
+          x-stoplight:
+            id: uhrdkp91fm1um
+          example: '{QR code in base64}'
+    Onetime-Card-Token-Details:
+      title: Onetime Card Token Details
+      x-stoplight:
+        id: gobcb08shom3z
+      type: object
+      required:
+        - masked_pan
+        - expiration_month
+        - expiration_year
+        - scheme
+        - corporate
+        - fingerprint
+        - token
+      properties:
+        masked_pan:
+          type: string
+          x-stoplight:
+            id: 726dujfuxhzml
+          example: 406821******1234
+        expiration_month:
+          type: string
+          x-stoplight:
+            id: rix34swuiutmj
+          example: '01'
+          pattern: '^(?:0[0-9]|1[0-2])$'
+        expiration_year:
+          type: string
+          x-stoplight:
+            id: k9hm2d6gzzho0
+          pattern: '^[0-9]{2}$'
+          example: '30'
+        scheme:
+          $ref: '#/components/schemas/Card-scheme'
+          x-stoplight:
+            id: hivpyu6wq4f8s
+        corporate:
+          type: boolean
+          x-stoplight:
+            id: dvuarb4nai82y
+          default: false
+        fingerprint:
+          type: string
+          x-stoplight:
+            id: d4gtbzjya55rj
+          example: 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
+        token:
+          type: string
+          x-stoplight:
+            id: hzu43x2sh88zh
+          example: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
+        expires_in:
+          x-stoplight:
+            id: dplhy78wnid3b
+          type: string
+          example: '3600'
+          pattern: '^[0-9]+$'
+        brand:
+          type: string
+          x-stoplight:
+            id: lc27qvipyjsce
+          example: GOLD
+        service_type:
+          $ref: '#/components/schemas/Card-Service-Type'
+          x-stoplight:
+            id: n1kqpdqwt9uhy
+      examples:
+        - masked_pan: 406821******1234
+          expiration_month: '01'
+          expiration_year: '30'
+          scheme: VISA
+          corporate: false
+          fingerprint: 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
+          token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
+          expires_in: '3600'
+          brand: GOLD
+          service_type: DEBIT
+    Permanent-Card-Token-Details:
+      title: Permanent Card Token Details
+      x-stoplight:
+        id: 5xx4ur0wljx8q
+      type: object
+      examples:
+        - card_id: '8007127320'
+          masked_pan: 406821******1234
+          masked_virtual_pan: 489537******6287
+          expiration_month: '01'
+          expiration_year: '30'
+          scheme: VISA
+          corporate: false
+          fingerprint: 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
+          token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
+          card_art_url: 'https://card.art/pic.png'
+          brand: GOLD
+          service_type: DEBIT
+      required:
+        - card_id
+        - masked_pan
+        - masked_virtual_pan
+        - expiration_month
+        - expiration_year
+        - scheme
+        - corporate
+        - fingerprint
+        - token
+        - card_art_url
+      properties:
+        card_id:
+          type: string
+          x-stoplight:
+            id: x70hnh07j1xta
+          example: '8007127320'
+        masked_pan:
+          type: string
+          example: 406821******1234
+        masked_virtual_pan:
+          type: string
+          x-stoplight:
+            id: j5hmnuau49lg8
+          example: 489537******6287
+        expiration_month:
+          type: string
+          example: '01'
+          pattern: '^(?:0[0-9]|1[0-2])$'
+        expiration_year:
+          type: string
+          pattern: '^[0-9]{2}$'
+          example: '30'
+        scheme:
+          $ref: '#/components/schemas/Card-scheme'
+        corporate:
+          type: boolean
+          default: false
+        fingerprint:
+          type: string
+          example: 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
+        token:
+          type: string
+          example: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
+        card_art_url:
+          type: string
+          x-stoplight:
+            id: 57xz64sl6b2cu
+          example: 'https://card.art/pic.png'
+          format: uri
+        brand:
+          type: string
+          example: GOLD
+        service_type:
+          $ref: '#/components/schemas/Card-Service-Type'
+        status:
+          $ref: '#/components/schemas/Card-Token-Status'
+          x-stoplight:
+            id: wz0ut8602uup8
+    Card-Service-Type:
+      title: Card Service Type
+      x-stoplight:
+        id: tuaikp23qvb23
+      enum:
+        - DEBIT
+        - CREDIT
+    Card-Token-Status:
+      title: Card-Token-Status
+      x-stoplight:
+        id: c6tviow04exzh
+      enum:
+        - ACTIVE
+        - SUSPENDED
+        - DELETED
+    Card-Token-Request:
+      title: Card-Token-Request
+      x-stoplight:
+        id: 71n89hqx5ql9l
+      type: object
+      required:
+        - payload
+        - permanent
+      properties:
+        payload:
+          $ref: '#/components/schemas/JWE'
+          x-stoplight:
+            id: u1l55ocr7og5c
+        permanent:
+          type: boolean
+          x-stoplight:
+            id: xvptlz7cuuncp
+          default: false
     JWK:
       title: JWK
       x-stoplight:
@@ -730,1159 +2390,6 @@ components:
           exp_month: '01'
           exp_year: '30'
           cvv: '123'
-    Onetime-Card-Token-Response:
-      title: Onetime Card Token Response
-      x-stoplight:
-        id: gobcb08shom3z
-      type: object
-      required:
-        - masked_pan
-        - expiration_month
-        - expiration_year
-        - scheme
-        - corporate
-        - fingerprint
-        - token
-      properties:
-        masked_pan:
-          type: string
-          x-stoplight:
-            id: 726dujfuxhzml
-          example: 406821******1234
-        expiration_month:
-          type: string
-          x-stoplight:
-            id: rix34swuiutmj
-          example: '01'
-          pattern: '^(?:0[0-9]|1[0-2])$'
-        expiration_year:
-          type: string
-          x-stoplight:
-            id: k9hm2d6gzzho0
-          pattern: '^[0-9]{2}$'
-          example: '30'
-        scheme:
-          $ref: '#/components/schemas/Card-scheme'
-          x-stoplight:
-            id: hivpyu6wq4f8s
-        corporate:
-          type: boolean
-          x-stoplight:
-            id: dvuarb4nai82y
-          default: false
-        fingerprint:
-          type: string
-          x-stoplight:
-            id: d4gtbzjya55rj
-          example: 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
-        token:
-          type: string
-          x-stoplight:
-            id: hzu43x2sh88zh
-          example: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
-        expires_in:
-          x-stoplight:
-            id: dplhy78wnid3b
-          type: string
-          example: '3600'
-          pattern: '^[0-9]+$'
-        brand:
-          type: string
-          x-stoplight:
-            id: lc27qvipyjsce
-          example: GOLD
-        service_type:
-          $ref: '#/components/schemas/Card-Service-Type'
-          x-stoplight:
-            id: n1kqpdqwt9uhy
-      examples:
-        - masked_pan: 406821******1234
-          expiration_month: '01'
-          expiration_year: '30'
-          scheme: VISA
-          corporate: false
-          fingerprint: 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
-          token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
-          expires_in: '3600'
-          brand: GOLD
-          service_type: DEBIT
-    Permanent-Card-Token-Response:
-      title: Permanent Card Token Response
-      x-stoplight:
-        id: 5xx4ur0wljx8q
-      type: object
-      examples:
-        - card_id: '8007127320'
-          masked_pan: 406821******1234
-          masked_virtual_pan: 489537******6287
-          expiration_month: '01'
-          expiration_year: '30'
-          scheme: VISA
-          corporate: false
-          fingerprint: 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
-          token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
-          card_art_url: 'https://card.art/pic.png'
-          brand: GOLD
-          service_type: DEBIT
-      required:
-        - card_id
-        - masked_pan
-        - masked_virtual_pan
-        - expiration_month
-        - expiration_year
-        - scheme
-        - corporate
-        - fingerprint
-        - token
-        - card_art_url
-      properties:
-        card_id:
-          type: string
-          x-stoplight:
-            id: x70hnh07j1xta
-          example: '8007127320'
-        masked_pan:
-          type: string
-          example: 406821******1234
-        masked_virtual_pan:
-          type: string
-          x-stoplight:
-            id: j5hmnuau49lg8
-          example: 489537******6287
-        expiration_month:
-          type: string
-          example: '01'
-          pattern: '^(?:0[0-9]|1[0-2])$'
-        expiration_year:
-          type: string
-          pattern: '^[0-9]{2}$'
-          example: '30'
-        scheme:
-          $ref: '#/components/schemas/Card-scheme'
-        corporate:
-          type: boolean
-          default: false
-        fingerprint:
-          type: string
-          example: 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
-        token:
-          type: string
-          example: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
-        card_art_url:
-          type: string
-          x-stoplight:
-            id: 57xz64sl6b2cu
-          example: 'https://card.art/pic.png'
-          format: uri
-        brand:
-          type: string
-          example: GOLD
-        service_type:
-          $ref: '#/components/schemas/Card-Service-Type'
-    Card-scheme:
-      title: Card scheme
-      x-stoplight:
-        id: w4wi43hnlhl6r
-      enum:
-        - VISA
-        - MASTERCARD
-    Card-Service-Type:
-      title: Card Service Type
-      x-stoplight:
-        id: tuaikp23qvb23
-      enum:
-        - DEBIT
-        - CREDIT
-    Payment-Charge-Input:
-      title: Payment Charge Input
-      x-stoplight:
-        id: ypcfdisbe5uuc
-      type: object
-      examples:
-        - payment_instrument:
-            payment_instrument: PAYMENT_CARD
-            input:
-              input_type: CARD_TOKEN
-              card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
-              challenge_preferrence: AUTO
-          return_url: 'https://example.com/return'
-          browser_data:
-            ip: 198.51.100.1
-            language: cs-CZ
-            timezone: -60
-            screen_width: 434
-            screen_height: 965
-            color_depth: 24
-            user_agent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
-            accept_header: '{"accept-language":"cs;q\u003d0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, */*"}'
-            javascript_enabled: true
-            java_enabled: false
-        - payment_instrument:
-            payment_instrument: BANK_ACCOUNT
-            input:
-              input_type: ACCOUNT_TOKEN
-              account_token: f14e5acc2d86480fb50e254c8a3c3164
-          return_url: 'https://example.com/return'
-      properties:
-        payment_instrument:
-          $ref: '#/components/schemas/Payment-Charge-Data'
-          x-stoplight:
-            id: n2cxqwltyyixz
-        return_url:
-          type: string
-          x-stoplight:
-            id: lbhlhia9jkabu
-          format: url
-          example: 'https://example.com/return'
-        browser_data:
-          type: object
-          x-stoplight:
-            id: mxan664lsthya
-          properties:
-            ip:
-              type: string
-              x-stoplight:
-                id: hxwdggpgwq3jd
-              example: 198.51.100.1
-            language:
-              type: string
-              x-stoplight:
-                id: 0bnzeu4avcksd
-              example: cs-CZ
-            timezone:
-              type: number
-              x-stoplight:
-                id: y1xfy6e7w4ax8
-              example: -60
-            screen_width:
-              type: number
-              x-stoplight:
-                id: 8y9irynkl4w2q
-              example: 434
-              minimum: 0
-            screen_height:
-              type: number
-              x-stoplight:
-                id: cugqzdox11fpy
-              minimum: 0
-              example: 965
-            color_depth:
-              type: number
-              x-stoplight:
-                id: 0istfyhbtigmz
-              example: 24
-              minimum: 0
-            user_agent:
-              type: string
-              x-stoplight:
-                id: enlgaa92iessu
-              example: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
-            accept_header:
-              type: string
-              x-stoplight:
-                id: oswbxjw6ji8jq
-              example: '{\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, */*\"}'
-            javascript_enabled:
-              type: boolean
-              example: true
-              x-stoplight:
-                id: 3wtselnd700bl
-            java_enabled:
-              type: boolean
-              example: false
-              x-stoplight:
-                id: 3fi2y6kls4usm
-    Payment-Charge-Data:
-      title: Payment-Charge-Data
-      required:
-        - payment_instrument
-      discriminator:
-        propertyName: payment_instrument
-        mapping:
-          PAYMENT_CARD: '#/components/schemas/Payment-Card-Charge-Data'
-          BANK_ACCOUNT: '#/components/schemas/Bank-Account-Charge-Data'
-      x-stoplight:
-        id: tpeorakie6tae
-      oneOf:
-        - $ref: '#/components/schemas/Payment-Card-Charge-Data'
-        - $ref: '#/components/schemas/Bank-Account-Charge-Data'
-          x-stoplight:
-            id: 1c1y81pkrhval
-      examples:
-        - payment_instrument: PAYMENT_CARD
-          input:
-            input_type: CARD_TOKEN
-            card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
-            challenge_preferrence: AUTO
-        - payment_instrument: BANK_ACCOUNT
-          input:
-            input_type: ACCOUNT_TOKEN
-            account_token: f14e5acc2d86480fb50e254c8a3c3164
-    Payment-Instrument:
-      title: Payment Instrument
-      x-stoplight:
-        id: x3xyv4fy5blzy
-      enum:
-        - PAYMENT_CARD
-        - BANK_ACCOUNT
-    Payment-Card-Charge-Data:
-      title: Payment Card Charge Data
-      x-stoplight:
-        id: ngpor8q7ykq07
-      type: object
-      required:
-        - payment_instrument
-        - input
-      properties:
-        payment_instrument:
-          type: string
-          const: PAYMENT_CARD
-          x-stoplight:
-            id: lbabjq8y8hsxu
-        input:
-          $ref: '#/components/schemas/Payment-Card-Input'
-          x-stoplight:
-            id: 1k6e7g40lw5cc
-      examples:
-        - payment_instrument: PAYMENT_CARD
-          input:
-            input_type: CARD_TOKEN
-            card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
-            challenge_preferrence: AUTO
-    Payment-Card-Input:
-      title: Payment Card Input
-      required:
-        - input_type
-      x-stoplight:
-        id: jq603a1vywo3a
-      discriminator:
-        propertyName: input_type
-        mapping:
-          CARD_TOKEN: '#/components/schemas/Card-Token-Input'
-          GOOGLE_PAY: '#/components/schemas/Google-Pay-Input'
-          APPLE_PAY: '#/components/schemas/Apple-Pay-Input'
-      oneOf:
-        - $ref: '#/components/schemas/Card-Token-Input'
-        - $ref: '#/components/schemas/Google-Pay-Input'
-          x-stoplight:
-            id: ckcynoewxqpsh
-        - $ref: '#/components/schemas/Apple-Pay-Input'
-          x-stoplight:
-            id: mj5fqb234cgjx
-      examples:
-        - input_type: CARD_TOKEN
-          card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
-          challenge_preferrence: AUTO
-        - input_type: GOOGLE_PAY
-          signature: EUCIQDhTxhHqwY8pXB9hpYxaSK5jFgsqpG2...
-          protocolVersion: ECv1
-          signedMessage: '{"encryptedMessage":"..."}'
-        - input_type: APPLE_PAY
-          data: V7OcjttPJnUJaQH7x7OjbIeZSINuc...
-          signature: MIAGCSqGSIb3DQEHAqCAM...
-          version: EC_v1
-          header:
-            ephemeralPublicKey: MFkwEwYHKoZIzj...
-            publicKeyHash: L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=
-            transactionId: 4f4fac7a1...a6a8ba2c0e8c5
-    Payment-Card-Input-Type:
-      title: Payment Card Input Type
-      x-stoplight:
-        id: n7rgf81mgdw30
-      enum:
-        - CARD_TOKEN
-        - APPLE_PAY
-        - GOOGLE_PAY
-    Card-Token-Input:
-      title: Card Token Input
-      x-stoplight:
-        id: 9qymub17qilsr
-      type: object
-      examples:
-        - input_type: CARD_TOKEN
-          card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
-          challenge_preferrence: AUTO
-      required:
-        - input_type
-        - card_token
-      properties:
-        input_type:
-          type: string
-          const: CARD_TOKEN
-          x-stoplight:
-            id: auluzg9nymqiw
-        card_token:
-          type: string
-          x-stoplight:
-            id: 4dtyofu5v7oml
-          example: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
-        challenge_preferrence:
-          $ref: '#/components/schemas/Payment-Card-Challenge-Preference'
-          x-stoplight:
-            id: 37hhyf052xwtd
-    Payment-Card-Challenge-Preference:
-      title: Payment Card Challenge Preference
-      x-stoplight:
-        id: 9xwgh0u8r7xc2
-      enum:
-        - CHALLENGE_PREFERRED
-        - NO_CHALLENGE_PREFERRED
-        - AUTO
-    Google-Pay-Input:
-      title: Google Pay Input
-      x-stoplight:
-        id: ceetg497f4gt8
-      type: object
-      examples:
-        - input_type: GOOGLE_PAY
-          signature: EUCIQDhTxhHqwY8pXB9hpYxaSK5jFgsqpG2...
-          protocolVersion: ECv1
-          signedMessage: '{"encryptedMessage":"..."}'
-      required:
-        - input_type
-        - signature
-        - protocolVersion
-        - signedMessage
-      properties:
-        input_type:
-          const: GOOGLE_PAY
-          type: string
-          x-stoplight:
-            id: pgavali84n02v
-        signature:
-          type: string
-          x-stoplight:
-            id: 4d1o8siyeu2j3
-          example: EUCIQDhTxhHqwY8pXB9hpYxaSK5jFgsqpG2...
-        protocolVersion:
-          type: string
-          x-stoplight:
-            id: rhixmzgxtgsd6
-          example: ECv1
-        signedMessage:
-          type: string
-          x-stoplight:
-            id: qdqqw14croavm
-    Apple-Pay-Input:
-      title: Apple Pay Input
-      x-stoplight:
-        id: 94n5nt2uipb1g
-      type: object
-      examples:
-        - input_type: APPLE_PAY
-          data: V7OcjttPJnUJaQH7x7OjbIeZSINuc...
-          signature: MIAGCSqGSIb3DQEHAqCAM...
-          version: EC_v1
-          header:
-            ephemeralPublicKey: MFkwEwYHKoZIzj...
-            publicKeyHash: L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=
-            transactionId: 4f4fac7a1...a6a8ba2c0e8c5
-      required:
-        - input_type
-        - data
-        - signature
-        - version
-        - header
-      properties:
-        input_type:
-          type: string
-          const: APPLE_PAY
-          x-stoplight:
-            id: wrrn3j6prfavu
-        data:
-          type: string
-          x-stoplight:
-            id: gwt5lg8h109lv
-          example: V7OcjttPJnUJaQH7x7OjbIeZSINuc...
-        signature:
-          type: string
-          x-stoplight:
-            id: ogjquv79ruor2
-          example: MIAGCSqGSIb3DQEHAqCAM...
-        version:
-          type: string
-          x-stoplight:
-            id: yo04fxuketdzc
-          example: EC_v1
-        header:
-          type: object
-          x-stoplight:
-            id: 5hrbbdsmxakhg
-          required:
-            - ephemeralPublicKey
-            - publicKeyHash
-            - transactionId
-          properties:
-            ephemeralPublicKey:
-              type: string
-              x-stoplight:
-                id: 6z3w0g5964hgq
-              example: MFkwEwYHKoZIzj...
-            publicKeyHash:
-              type: string
-              x-stoplight:
-                id: 44ndeputeeuoz
-              example: L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=
-            transactionId:
-              type: string
-              x-stoplight:
-                id: f73q9zntcblhr
-              example: 4f4fac7a1...a6a8ba2c0e8c5
-    Bank-Account-Charge-Data:
-      title: Bank Account Charge Data
-      x-stoplight:
-        id: sg7w84m1z1lgv
-      type: object
-      examples:
-        - payment_instrument: BANK_ACCOUNT
-          input:
-            input_type: ACCOUNT_TOKEN
-            account_token: f14e5acc2d86480fb50e254c8a3c3164
-      required:
-        - payment_instrument
-        - input
-      properties:
-        payment_instrument:
-          type: string
-          const: BANK_ACCOUNT
-          x-stoplight:
-            id: pb3jzmagqv5pq
-        input:
-          $ref: '#/components/schemas/Bank-Account-Input'
-          x-stoplight:
-            id: 7u0hlqowp7qak
-    Bank-Account-Input:
-      title: Bank-Account-Input
-      required:
-        - input_type
-      discriminator:
-        propertyName: input_type
-        mapping:
-          ACCOUNT_TOKEN: '#/components/schemas/Bank-Account-Token-Input'
-          IBAN: '#/components/schemas/Bank-Account-Iban-Input'
-          SWIFT: '#/components/schemas/Bank-Account-Swift-Input'
-      x-stoplight:
-        id: 5i1h3pabcw97d
-      oneOf:
-        - $ref: '#/components/schemas/Bank-Account-Token-Input'
-        - $ref: '#/components/schemas/Bank-Account-Iban-Input'
-          x-stoplight:
-            id: 3ap003tcmpish
-        - $ref: '#/components/schemas/Bank-Account-Swift-Input'
-          x-stoplight:
-            id: l01a4nxmvbei1
-      examples:
-        - input_type: ACCOUNT_TOKEN
-          account_token: f14e5acc2d86480fb50e254c8a3c3164
-        - input_type: IBAN
-          iban: CZ5120100000000009878039
-          swift: GIBACZPX
-          account_holder_name: John Doe
-        - input_type: SWIFT
-          swift: GIBACZPX
-          bank_payment_type: PSD2
-    Bank-Account-Input-Type:
-      title: Bank Account Input Type
-      x-stoplight:
-        id: 4sistrtcmzpiw
-      enum:
-        - ACCOUNT_TOKEN
-        - IBAN
-        - SWIFT
-    Bank-Account-Token-Input:
-      title: Bank Account Token Input
-      x-stoplight:
-        id: 3okv7b8s8c8x5
-      type: object
-      examples:
-        - input_type: ACCOUNT_TOKEN
-          account_token: f14e5acc2d86480fb50e254c8a3c3164
-      required:
-        - input_type
-        - account_token
-      properties:
-        input_type:
-          type: string
-          const: ACCOUNT_TOKEN
-          x-stoplight:
-            id: p91c6ikx94k82
-        account_token:
-          type: string
-          x-stoplight:
-            id: 9qswzcp8nireb
-          example: f14e5acc2d86480fb50e254c8a3c3164
-    Bank-Account-Iban-Input:
-      title: Bank Account Iban Input
-      x-stoplight:
-        id: nuamub36ppjy9
-      type: object
-      examples:
-        - input_type: IBAN
-          iban: CZ5120100000000009878039
-          swift: GIBACZPX
-          account_holder_name: John Doe
-      required:
-        - input_type
-        - iban
-      properties:
-        input_type:
-          type: string
-          const: IBAN
-          x-stoplight:
-            id: 553zoumulz1i8
-        iban:
-          type: string
-          x-stoplight:
-            id: d1jy3vndo3qn2
-          example: CZ5120100000000009878039
-        swift:
-          $ref: '#/components/schemas/Bank-Swift'
-          x-stoplight:
-            id: x7a0gqyftlh8g
-        account_holder_name:
-          type: string
-          x-stoplight:
-            id: 0gtwx4q520ufu
-          example: John Doe
-    Bank-Swift:
-      title: Bank Swift
-      x-stoplight:
-        id: cb6oq8ot95qb1
-      enum:
-        - GIBACZPX
-        - KOMBCZPP
-        - SUBASKBX
-        - GIBASKBX
-        - OTHERS
-    Bank-Account-Swift-Input:
-      title: Bank Account Swift Input
-      x-stoplight:
-        id: 8v51vqpl0n8yq
-      type: object
-      examples:
-        - input_type: SWIFT
-          swift: GIBACZPX
-          bank_payment_type: PSD2
-      required:
-        - input_type
-        - swift
-      properties:
-        input_type:
-          type: string
-          const: SWIFT
-          x-stoplight:
-            id: tczbtf6wa57mf
-        swift:
-          $ref: '#/components/schemas/Bank-Swift'
-          x-stoplight:
-            id: ts5d8izwd7329
-        bank_payment_type:
-          $ref: '#/components/schemas/Bank-Payment-Type'
-          x-stoplight:
-            id: mvewf5syy7pvn
-    Bank-Payment-Type:
-      title: Bank Payment Type
-      x-stoplight:
-        id: g2w0t5m42vahn
-      enum:
-        - PSD2
-        - ONLINE
-        - QRPAYMENT
-        - OFFLINE
-    Payment-Charge-Action:
-      title: Payment Charge Action
-      required:
-        - action_type
-      discriminator:
-        propertyName: action_type
-        mapping:
-          EMV3DS: '#/components/schemas/Emv-3DS-Action'
-          PSD2: '#/components/schemas/PSD2-Action'
-          BANK_ACCOUNT: '#/components/schemas/Bank-Account-Action'
-      x-stoplight:
-        id: 2e4g5jjtygbb8
-      oneOf:
-        - $ref: '#/components/schemas/Emv-3DS-Action'
-        - $ref: '#/components/schemas/PSD2-Action'
-          x-stoplight:
-            id: xk5595mc8u64s
-        - $ref: '#/components/schemas/Bank-Account-Action'
-          x-stoplight:
-            id: ymb9eaqobnge9
-      examples:
-        - action_type: EMV3DS
-          state: CREATED
-          redirect_url: 'https://gate.gopay.com/redirect'
-        - action_type: PSD2
-          state: REQUESTED
-          redirect_url: 'https://gate.gopay.com/redirect'
-        - action_type: BANK_ACCOUNT
-          state: REQUESTED
-          redirect_url: 'https://gate.gopay.com/redirect'
-    Payment-Charge-Action-Type:
-      title: Payment Charge Action Type
-      x-stoplight:
-        id: c7fv3422tve4g
-      enum:
-        - EMV3DS
-        - PSD2
-        - BANK_ACCOUNT
-    Emv-3DS-Action:
-      title: Emv 3DS Action
-      x-stoplight:
-        id: g2s9981sy80ca
-      type: object
-      required:
-        - action_type
-        - state
-      properties:
-        action_type:
-          $ref: '#/components/schemas/Payment-Charge-Action-Type'
-          x-stoplight:
-            id: jdumiln3yg09e
-        state:
-          $ref: '#/components/schemas/Emv-3DS-State'
-          x-stoplight:
-            id: uetxyvjp9aw9m
-        redirect_url:
-          type: string
-          x-stoplight:
-            id: 9hjy4xb8wyuf5
-          format: url
-          example: 'https://gate.gopay.com/redirect'
-      examples:
-        - action_type: EMV3DS
-          state: CREATED
-          redirect_url: 'https://gate.gopay.com/redirect'
-    Emv-3DS-State:
-      title: Emv 3DS State
-      x-stoplight:
-        id: i9awrzzegrqyh
-      enum:
-        - CREATED
-        - CHALLENGE_REQUIRED
-        - AUTHENTICATED_CHALLENGE
-        - AUTHENTICATED_FRICTIONLESS
-        - NOT_AUTHENTICATED
-        - FAILED
-    PSD2-Action:
-      title: PSD2 Action
-      x-stoplight:
-        id: ol4961u86mri4
-      type: object
-      required:
-        - action_type
-        - state
-      properties:
-        action_type:
-          $ref: '#/components/schemas/Payment-Charge-Action-Type'
-          x-stoplight:
-            id: pwzc2ga4z80gq
-        state:
-          $ref: '#/components/schemas/PSD2-State'
-          x-stoplight:
-            id: tiw7fhs1oe82t
-        redirect_url:
-          type: string
-          x-stoplight:
-            id: zyqhnz15pyndh
-          format: url
-          example: 'https://gate.gopay.com/redirect'
-      examples:
-        - action_type: PSD2
-          state: REQUESTED
-          redirect_url: 'https://gate.gopay.com/redirect'
-    PSD2-State:
-      title: PSD2-State
-      x-stoplight:
-        id: 6eimjza1jtbhb
-      enum:
-        - REQUESTED
-        - APPLIED
-        - CONSENT
-        - AUTHORIZED
-        - SUCCESS
-        - FAILED
-        - CANCELED
-        - TIMEOUT
-    Bank-Account-Action:
-      title: Bank Account Action
-      x-stoplight:
-        id: 06z27hdbd6b5l
-      type: object
-      required:
-        - action_type
-        - state
-      properties:
-        action_type:
-          $ref: '#/components/schemas/Payment-Charge-Action-Type'
-          x-stoplight:
-            id: s6q0pido68rdk
-        state:
-          $ref: '#/components/schemas/Bank-Account-State'
-          x-stoplight:
-            id: 2hak9uvjs3xal
-        redirect_url:
-          type: string
-          x-stoplight:
-            id: r4og7ryyvgmqy
-          format: url
-          example: 'https://gate.gopay.com/redirect'
-      examples:
-        - action_type: BANK_ACCOUNT
-          state: REQUESTED
-          redirect_url: 'https://gate.gopay.com/redirect'
-    Bank-Account-State:
-      title: Bank Account State
-      x-stoplight:
-        id: 25huq6ybbna9z
-      enum:
-        - REQUESTED
-        - PROCESSED
-        - CANCELED
-        - TIMEOUT
-    Payment-Instrument-Data:
-      title: Payment Instrument Data
-      required:
-        - payment_instrument
-      discriminator:
-        propertyName: payment_instrument
-        mapping:
-          PAYMENT_CARD: '#/components/schemas/Payment-Card-Instrument-Data'
-          BANK_ACCOUNT: '#/components/schemas/Bank-Account-Instrument-Data'
-      x-stoplight:
-        id: 0m7k4q0slqkxj
-      oneOf:
-        - $ref: '#/components/schemas/Payment-Card-Instrument-Data'
-        - $ref: '#/components/schemas/Bank-Account-Instrument-Data'
-          x-stoplight:
-            id: ypoa72vouhlwf
-      examples:
-        - payment_instrument: PAYMENT_CARD
-          details:
-            input_type: CARD_TOKEN
-            masked_pan: 406821******1234
-            expiration_month: '01'
-            expiration_year: '30'
-            scheme: VISA
-            fingerprint: 73c8d0a48d91def89761...
-        - payment_instrument: BANK_ACCOUNT
-          details:
-            input_type: ACCOUNT_TOKEN
-            iban: CZ5120100000000009878039
-            swift: GIBACZPX
-            account_holder_name: John Doe
-    Payment-Card-Instrument-Data:
-      title: Payment Card Instrument Data
-      x-stoplight:
-        id: l7pvf6odjuu4z
-      type: object
-      required:
-        - payment_instrument
-        - details
-      properties:
-        payment_instrument:
-          $ref: '#/components/schemas/Payment-Instrument'
-          example: PAYMENT_CARD
-          x-stoplight:
-            id: wjzeemqsa6d8u
-        details:
-          $ref: '#/components/schemas/Payment-Card-Data-Details'
-          x-stoplight:
-            id: jd3j6gauhlvg0
-      examples:
-        - payment_instrument: PAYMENT_CARD
-          details:
-            input_type: CARD_TOKEN
-            masked_pan: 406821******1234
-            expiration_month: '01'
-            expiration_year: '30'
-            scheme: VISA
-            fingerprint: 73c8d0a48d91def89761...
-    Payment-Card-Data-Details:
-      title: Payment Card Data Details
-      x-stoplight:
-        id: bskevah9h5bxt
-      type: object
-      properties:
-        input_type:
-          $ref: '#/components/schemas/Payment-Card-Input-Type'
-          x-stoplight:
-            id: b7mgg9ce4ywnr
-        masked_pan:
-          type: string
-          x-stoplight:
-            id: vrchqj2qoenwx
-          example: 406821******1234
-        expiration_month:
-          type: string
-          x-stoplight:
-            id: 1c0261jafbkj2
-          pattern: '^(?:0[0-9]|1[0-2])$'
-          example: '01'
-        expiration_year:
-          type: string
-          x-stoplight:
-            id: g5p98sneeycq3
-          pattern: '^[0-9]{2}$'
-          example: '30'
-        scheme:
-          $ref: '#/components/schemas/Card-scheme'
-          x-stoplight:
-            id: qtz2ebrm6bwv2
-        fingerprint:
-          type: string
-          x-stoplight:
-            id: vu6tr189goc30
-          example: 73c8d0a48d91def89761...
-      examples:
-        - input_type: CARD_TOKEN
-          masked_pan: 406821******1234
-          expiration_month: '01'
-          expiration_year: '30'
-          scheme: VISA
-          fingerprint: 73c8d0a48d91def89761...
-    Bank-Account-Instrument-Data:
-      title: Bank Account Instrument Data
-      x-stoplight:
-        id: 4ztzmfwcsuvdm
-      type: object
-      required:
-        - payment_instrument
-        - details
-      properties:
-        payment_instrument:
-          $ref: '#/components/schemas/Payment-Instrument'
-          example: BANK_ACCOUNT
-          x-stoplight:
-            id: i1jcpd2r7n6ut
-        details:
-          $ref: '#/components/schemas/Bank-Account-Data-Details'
-          x-stoplight:
-            id: 7td558oaq8nrc
-      examples:
-        - payment_instrument: BANK_ACCOUNT
-          details:
-            input_type: ACCOUNT_TOKEN
-            iban: CZ5120100000000009878039
-            swift: GIBACZPX
-            account_holder_name: John Doe
-    Bank-Account-Data-Details:
-      title: Bank Account Data Details
-      x-stoplight:
-        id: 258x6jjami0kl
-      type: object
-      required:
-        - input_type
-      properties:
-        input_type:
-          $ref: '#/components/schemas/Bank-Account-Input-Type'
-          x-stoplight:
-            id: 8pjsuwh04xdko
-        iban:
-          type: string
-          x-stoplight:
-            id: 42zbnh70nmny4
-          format: iban
-          example: CZ5120100000000009878039
-        swift:
-          $ref: '#/components/schemas/Bank-Swift'
-          x-stoplight:
-            id: bo2h10g5toj6d
-        account_holder_name:
-          type: string
-          x-stoplight:
-            id: 0pss43wuallhs
-          example: John Doe
-      examples:
-        - input_type: ACCOUNT_TOKEN
-          iban: CZ5120100000000009878039
-          swift: GIBACZPX
-          account_holder_name: John Doe
-    Payment-Charge-Response-Data:
-      title: Payment Charge Response Data
-      x-stoplight:
-        id: q4h4xhs5lehkr
-      type: object
-      required:
-        - id
-        - state
-        - payment_instrument
-        - return_url
-      properties:
-        id:
-          type: string
-          x-stoplight:
-            id: mkpyxki6gxr99
-        state:
-          $ref: '#/components/schemas/Charge-State'
-          x-stoplight:
-            id: 0ku79q4l1fiq1
-        payment_instrument:
-          $ref: '#/components/schemas/Payment-Instrument-Data'
-          x-stoplight:
-            id: 51arxhx1w4cp3
-        return_url:
-          type: string
-          x-stoplight:
-            id: h2fvxav6rgr3r
-          format: url
-          example: 'https://example.com/return'
-        action:
-          $ref: '#/components/schemas/Payment-Charge-Action'
-          x-stoplight:
-            id: z21ueo6ixyv0d
-      examples:
-        - id: string
-          state: REQUESTED
-          payment_instrument:
-            payment_instrument: PAYMENT_CARD
-            details:
-              input_type: CARD_TOKEN
-              masked_pan: 406821******1234
-              expiration_month: '01'
-              expiration_year: '30'
-              scheme: VISA
-              fingerprint: 73c8d0a48d91def89761...
-          return_url: 'https://example.com/return'
-          action:
-            action_type: EMV3DS
-            state: CREATED
-            redirect_url: 'https://gate.gopay.com/redirect'
-        - id: string
-          state: REQUESTED
-          payment_instrument:
-            payment_instrument: BANK_ACCOUNT
-            details:
-              input_type: ACCOUNT_TOKEN
-              iban: CZ5120100000000009878039
-              swift: GIBACZPX
-              account_holder_name: John Doe
-          return_url: 'https://example.com/return'
-          action:
-            action_type: PSD2
-            state: REQUESTED
-            redirect_url: 'https://gate.gopay.com/redirect'
-    Charge-State:
-      title: Charge State
-      x-stoplight:
-        id: 371d8dz8gi2nr
-      enum:
-        - REQUESTED
-        - PROCESSING
-        - ACTION_REQUIRED
-        - SUCCEEDED
-        - FAILED
-    Additional-Param:
-      title: Additional-Param
-      x-stoplight:
-        id: jwscxcuj92tkp
-      type: object
-      properties:
-        name:
-          type: string
-          example: Custom param
-          x-stoplight:
-            id: 7ja6w4inp4odb
-        value:
-          type: string
-          example: Custom value
-      description: Additional payment parameters
-    Customer:
-      type: object
-      x-examples:
-        Example 1:
-          first_name: John
-          last_name: Doe
-          email: john.doe@example.com
-          phone_number: '+420123456789'
-          city: Test city
-          street: Test street 10
-          postal_code: '10000'
-          country_code: CZE
-          customer_id: custom21321
-      description: Object representing the customer details
-      required:
-        - email
-      properties:
-        email:
-          type: string
-          format: email
-          maxLength: 128
-          example: john.doe@example.com
-        first_name:
-          type: string
-          maxLength: 256
-          example: John
-        last_name:
-          type: string
-          maxLength: 256
-          example: Doe
-        phone_number:
-          type: string
-          maxLength: 128
-          example: '+420123456789'
-        city:
-          type: string
-          maxLength: 128
-          example: Testington
-        street:
-          type: string
-          maxLength: 128
-          example: Example st. 10
-        postal_code:
-          type: string
-          maxLength: 128
-          example: '10000'
-        country_code:
-          type: string
-          maxLength: 128
-          example: CZE
-        customer_id:
-          type: string
-          maxLength: 128
-          example: customer420
-      examples:
-        - email: john.doe@example.com
-          first_name: John
-          last_name: Doe
-          phone_number: '+420123456789'
-          city: Testington
-          street: Example st. 10
-          postal_code: '10000'
-          country_code: CZE
-          customer_id: customer420
-    Currency:
-      type: string
-      x-stoplight:
-        id: dd38a2e540f2b
-      description: List of available currencies
-      enum:
-        - CZK
-        - EUR
-        - PLN
-        - USD
-        - GBP
-        - HUF
-        - RON
-      examples:
-        - CZK
-    Payment-State:
-      type: string
-      x-stoplight:
-        id: f05bf19f19b1f
-      description: List of possible payment statuses
-      enum:
-        - CREATED
-        - PAID
-        - CANCELED
-        - PAYMENT_METHOD_CHOSEN
-        - TIMEOUTED
-        - AUTHORIZED
-        - REFUNDED
-        - PARTIALLY_REFUNDED
-      examples:
-        - CREATED
     Payment-Group:
       type: string
       x-stoplight:
@@ -1896,6 +2403,56 @@ components:
         - OTHERS
       examples:
         - CARD_PAYMENT
+    Error-Response-Body:
+      title: Error-Response-Body
+      x-stoplight:
+        id: eeiqwr807kzjf
+      type: object
+      required:
+        - code
+        - error
+        - message
+        - detail
+        - path
+        - timestamp
+      properties:
+        code:
+          type: integer
+          const: 400
+          format: int32
+          example: 400
+          description: HTTP status code
+        error:
+          example: BAD_REQUEST
+          description: Error type
+          type: string
+          const: BAD_REQUEST
+        message:
+          type: string
+          example: Invalid request parameter
+          description: Error message
+        detail:
+          type: string
+          example: Error Details
+          description: Detailed error description
+        path:
+          type: string
+          example: /payments/123/charge
+          description: Request path
+        timestamp:
+          type: string
+          format: date-time
+          example: '2025-12-10T10:30:00Z'
+          description: Error timestamp
+    Card-Form-URL:
+      type: object
+      x-examples:
+        Example 1:
+          card_form_url: 'https://secure.gopay.com/gp-card-comm/q/form'
+      properties:
+        card_form_url:
+          type: string
+          example: 'https://secure.gopay.com/gp-card-comm/q/form'
   securitySchemes:
     clientCredentials:
       type: oauth2
@@ -1938,19 +2495,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
-            required:
-              - payload
-            properties:
-              payload:
-                $ref: '#/components/schemas/JWE'
-                x-stoplight:
-                  id: u1l55ocr7og5c
-              permanent:
-                type: boolean
-                x-stoplight:
-                  id: xvptlz7cuuncp
-                default: false
+            $ref: '#/components/schemas/Card-Token-Request'
           examples:
             Example:
               value:
@@ -1994,7 +2539,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
+            $ref: '#/components/schemas/Payment-Create-Request'
             x-examples:
               Example 1:
                 amount: 10000
@@ -2016,69 +2561,13 @@ components:
                 additional_params:
                   - name: Test name
                     value: Test value
-            required:
-              - amount
-              - currency
-              - order_number
-              - customer
-              - callback
-            properties:
-              amount:
-                type: integer
-                minimum: 0
-                example: 10000
-                description: Total amount in cents
-              currency:
-                $ref: '#/components/schemas/Currency'
-                description: Payment currency
-              order_number:
-                type: string
-                maxLength: 128
-                example: '2025010199'
-                description: 'Order identification for the online shop, alphanumeric characters'
-              order_description:
-                type: string
-                description: 'Order description, alphanumeric characters'
-                example: Test order
-              additional_params:
-                type: array
-                maxItems: 4
-                description: Additional parameters for the payment
-                items:
-                  $ref: '#/components/schemas/Additional-Param'
-              customer:
-                $ref: '#/components/schemas/Customer'
-                x-stoplight:
-                  id: den7ms6tfaazd
-                description: Information about the customer
-              callback:
-                type: object
-                x-stoplight:
-                  id: sv4s1flynjcv9
-                required:
-                  - notification_url
-                  - return_url
-                description: Callback urls
-                properties:
-                  notification_url:
-                    type: string
-                    x-stoplight:
-                      id: 8g47v96xx91hg
-                    description: URL used to deliver the HTTP notifications
-                    example: 'https://example.com/notify'
-                  return_url:
-                    type: string
-                    x-stoplight:
-                      id: 1ong668kwravj
-                    description: URL used to redirect the customer from the gateway back to the shop
-                    example: 'https://example.com/return'
   responses:
     Token-Pair-Response:
       description: Successful authentication
       content:
         application/json:
           schema:
-            type: object
+            $ref: '#/components/schemas/Token-Pair'
             x-examples:
               Example response:
                 token_type: bearer
@@ -2087,31 +2576,6 @@ components:
                 access_token: eyJraWQiOiJrZXktMjAyNS0wNyIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJzdWIiOiJTREsiLCJleHAiOjE3NTM4NjM5MDYsImlhdCI6MTc1Mzg2MzAwNiwic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.Ek4N1PCQ_uzwfdG1iT7rzw-xoE2BcpBj-t3xI-rxkAw
                 expires_in: 900
                 refresh_expires_in: 604800
-            properties:
-              token_type:
-                type: string
-                example: bearer
-                const: bearer
-                default: bearer
-              access_token:
-                $ref: '#/components/schemas/JWT'
-                description: Access JWT
-              refresh_token:
-                type: string
-                description: Refresh token value
-                example: f14e5acc2d86480fb50e254c8a3c3164
-              scope:
-                type: string
-                description: 'Space-separated list of token scopes, see Token Scope'
-                example: 'payment:create payment:read'
-              expires_in:
-                type: integer
-                minimum: 0
-                example: 900
-              refresh_expires_in:
-                type: integer
-                minimum: 0
-                example: 86400
           examples:
             Example 2:
               value:
@@ -2149,10 +2613,10 @@ components:
         application/json:
           schema:
             oneOf:
-              - $ref: '#/components/schemas/Onetime-Card-Token-Response'
+              - $ref: '#/components/schemas/Onetime-Card-Token-Details'
                 x-stoplight:
                   id: xig8crotxnieo
-              - $ref: '#/components/schemas/Permanent-Card-Token-Response'
+              - $ref: '#/components/schemas/Permanent-Card-Token-Details'
                 x-stoplight:
                   id: k811hv0jkvfoi
           examples:
@@ -2223,65 +2687,6 @@ components:
                   action_type: PSD2
                   state: REQUESTED
                   redirect_url: 'https://gate.gopay.com/redirect'
-    Payment-Create-Response:
-      description: Example response
-      content:
-        application/json:
-          schema:
-            type: object
-            x-examples:
-              Example 1:
-                id: string
-                order_number: string
-                state: string
-                amount: 0
-                currency: string
-                customer:
-                  email: user@example.com
-                  first_name: string
-                  last_name: string
-                  phone_number: string
-                  city: string
-                  street: string
-                  postal_code: string
-                  country_code: string
-                  customer_id: string
-                gw_url: string
-            required:
-              - id
-              - order_number
-              - state
-              - amount
-              - currency
-              - customer
-              - gw_url
-            properties:
-              id:
-                type: string
-                description: Payment session ID
-                example: '300000001'
-              order_number:
-                type: string
-                description: Order ID forwarded from the payment request
-                example: '2025010199'
-              state:
-                $ref: '#/components/schemas/Payment-State'
-                description: Payment state
-              amount:
-                type: integer
-                description: |
-                  Total amount in cents
-              currency:
-                $ref: '#/components/schemas/Currency'
-                description: |
-                  Payment currency
-              customer:
-                $ref: '#/components/schemas/Customer'
-                description: Customer data
-              gw_url:
-                type: string
-                description: URL of the hosted payment gateway
-      headers: {}
     Google-Pay-Info-Response:
       description: Google Pay Payment Request object consumed by the Google Payment button
       content:
@@ -2584,7 +2989,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
+            $ref: '#/components/schemas/QR-Payment-Details'
             x-examples:
               Example 1:
                 amount: 10000
@@ -2611,125 +3016,6 @@ components:
                   paybysquare: '{base64 QR code}'
                   sepa: '{base64 QR code}'
                   mnb_qr: '{base64 QR code}'
-            required:
-              - amount
-              - currency
-              - recipient
-              - qr_code
-            properties:
-              amount:
-                type: integer
-                example: 10000
-                description: Payment amount in cents
-              currency:
-                $ref: '#/components/schemas/Currency'
-                description: Payment currency
-              recipient:
-                type: object
-                description: Information about the recipient
-                required:
-                  - name
-                  - bank_account
-                properties:
-                  name:
-                    type: string
-                    example: GoPay Czech
-                    description: Recipient name
-                  bank_account:
-                    type: object
-                    description: Recipient's bank account information
-                    required:
-                      - international
-                    properties:
-                      local:
-                        type: object
-                        description: Recipient bank account information in local format
-                        required:
-                          - prefix
-                          - account_number
-                          - bank_code
-                          - variable_symbol
-                        properties:
-                          prefix:
-                            type: string
-                            example: '000000'
-                            description: Account prefix
-                          account_number:
-                            type: string
-                            example: '9878039'
-                            description: Account number in local format
-                          bank_code:
-                            type: string
-                            example: '2010'
-                            description: Local bank code
-                          variable_symbol:
-                            type: string
-                            example: '3123456789'
-                            description: Payment identifier
-                      international:
-                        type: object
-                        description: Recipient information in international format
-                        required:
-                          - bic
-                          - iban
-                          - reference
-                        properties:
-                          bic:
-                            type: string
-                            example: FIOBCZPP
-                            description: Recipient BIC/SWIFT
-                          iban:
-                            type: string
-                            example: CZ5120100000000009878039
-                            description: Recipient IBAN
-                          reference:
-                            type: string
-                            example: '3123456789'
-                            description: Payment identifier
-                  address:
-                    type: object
-                    description: Recipient address
-                    required:
-                      - street
-                      - city
-                      - zip_code
-                      - country
-                    properties:
-                      street:
-                        type: string
-                        example: Senovazne nam. 1736
-                        description: Recipient address street
-                      city:
-                        type: string
-                        example: Ceske Budejovice
-                        description: Recipient address city
-                      zip_code:
-                        type: string
-                        example: '37001'
-                        description: Recipient address ZIP code
-                      country:
-                        type: string
-                        example: Czech Republic
-                        description: Recipient address country
-              qr_code:
-                type: object
-                properties:
-                  spayd:
-                    type: string
-                    example: iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAAAklEQVR4AewaftIAAAglSURBVO3BUa4cuZYEwXCi9r9lH30WDh6RBJVXrekOM/wlVfU/rVTV1kpVba1U1dZKVW2tVNXWSlVtrVTV1kpVba1U1dYnh4D8DdRMQE6omYBMat4CZFIzATmhZgLyk9ScADKpmYD8DdQ8WamqrZWq2lqpqq2Vqtr65Deo+WlA3gJkUnMLyBM1t9RMQCY1E5BvaiYgJ4CcUHNDzU8DcmOlqrZWqmprpaq2Vqpq65OXAbml5i1qJiATkEnNBOQtQN4EZFLzFjUngExqbgC5peYtK1W1tVJVWytVtbVSVVuf/AuomYC8Sc0TILfUTEAmNSeAfFNzQs0EZFLzX7BSVVsrVbW1UlVbK1W19cm/AJBJzQRkUnMCyKTmCZATQCY1E5BJzaTmG5A3AZnU/NusVNXWSlVtrVTV1kpVbX3yMjV/mpoTak4AOQHkiZoJyJuATGp+kpoJyKTmhpq/wUpVba1U1dZKVW2tVNXWJ78ByN8AyKRmAjKpOaFmAvJNzQRkUjMBuaVmAvJNzQTkbwDkb7VSVVsrVbW1UlVb+Ev+hYBMam4BmdR8AzKpuQXklppvQCY1E5ATav4LVqpqa6WqtlaqamulqrY+OQRkUnMCyN8AyKRmAjKpuQFkUjMBmdRMQG6omYBMak4AuaXmCZBJzQTklponK1W1tVJVWytVtbVSVVufHFIzAZnUTGpOAJnUPAHyJjUTkCdqTgCZ1NxSMwH5puafoGYC8hY1P2mlqrZWqmprpaq2Vqpq65NDQCY1Pw3IEzX/BDU31NxSc0LNW4BMak4AmdR8AzKpOQFkUvOWlaraWqmqrZWq2lqpqi38Jf8AIJOaJ0AmNSeAnFBzAsgTNROQSc0tIDfU3ALyk9RMQCY1E5ATap6sVNXWSlVtrVTV1kpVbX3yG4BMat4E5AaQE2omIDfUTEAmNSeATGpOqLkB5E1qngCZgExqTqiZgNxYqaqtlaraWqmqrZWq2vrkEJBbQG6p+QbkTUAmNROQtwCZ1ExqTqiZgHxTMwGZ1ExAJjUngExqfhKQSc2NlaraWqmqrZWq2lqpqi38JZeAnFBzC8g3NROQSc0E5ISaCcik5gaQSc0tIDfUTED+NDUngJxQMwGZ1DxZqaqtlaraWqmqLfwlB4BMaiYgJ9S8BcgJNROQE2reAuSEmgnIpOYJkFtqJiBvUXMLyKTmLStVtbVSVVsrVbW1UlVb+EsuAZnUnAByQ80EZFIzAZnUnADyk9RMQG6puQFkUnMCyKTmCZATav60laraWqmqrZWq2lqpqq1P/gAgt9R8AzKpOaHmlpobQCY1E5BJzQRkUnMDyKTmlpoJyBM1t4BMaiYgk5onK1W1tVJVWytVtbVSVVuf/AY1E5BJzQTkBJC3ALmlZgLyRM1PA3JDzQkgk5oTap4AOaFmUvOTVqpqa6WqtlaqamulqrY++Q1Abql5C5CfBmRS8xY1J9S8BcikZlIzAZnUnADyFiCTmresVNXWSlVtrVTV1kpVbeEvOQBkUjMBOaFmAvJEzQkgk5oTQP4Gak4AeaLmBJATaiYgb1EzAZnUnAAyqXmyUlVbK1W1tVJVWytVtfXJy9RMQG6peQLkFpBJzQkg39TcAjIB+UlAJjVvUjMBeQLkBJBJzaTmxkpVba1U1dZKVW2tVNUW/pIXAZnUnADyRM0JIJOanwTkTWomIJOaCcifpmYCMqn5SUBOqHmyUlVbK1W1tVJVW58cAvImICfUPAEyqTkBZFLzFjUTkEnNBGRSMwF5i5oJyKRmAjKpmYC8Rc2kZgJyY6WqtlaqamulqrZWqmoLf8klIH+amgnICTUngExqngB5k5oTQCY1bwFyQs0E5ImaCcgtNROQSc2TlaraWqmqrZWq2lqpqq1PDgE5oWYCMqmZgExqvgGZ1LxJzQkg39RMQE6omYCcUPOT1ExA3gLkhJoJyATkLStVtbVSVVsrVbW1UlVbn/zlgHxTMwF5k5oTam6oeROQJ2omIJOaW0AmNROQb2pOAJnUTEDeslJVWytVtbVSVVsrVbX1yW9QMwGZ1ExAJjVPgExqfhqQSc03IJOaCcgJNROQE2qeqJmATGpOqJmA3AByAsgJNTdWqmprpaq2Vqpqa6WqtvCXHAAyqTkBZFIzAXmLmgnICTUTkCdqJiCTmjcBeYuaW0B+kppbQCY1T1aqamulqrZWqmprpaq2Pjmk5paaE2puAJmAnFAzATmh5icBmdRMap4AOQFkUnNLzQ0gJ4BMat6yUlVbK1W1tVJVWytVtfXJISB/AzW31ExA3gLknwDkiZoJyKTmBJBbQL6peROQt6xU1dZKVW2tVNXWJ79BzU8DckPNLTU31JwAcgvIpGYC8kTNBGRSM6mZgJxQ8xY1E5C3rFTV1kpVba1U1dZKVW198jIgt9T8aWreAmRSM6k5AWRSMwG5AWRScwLICSB/mpq3rFTV1kpVba1U1dZKVW198h8CZFLzFjUTkEnNBGRSc0vNNyCTmgnIpGZSMwG5oWYCcgLIpGYCMql5slJVWytVtbVSVVsrVbX1yb+AmgnICSCTmhNAbgA5AeQnAZnUTEDepOYbkEnNCTUTkLesVNXWSlVtrVTV1kpVbX3yMjX/n6i5peYJkBNqJiC3gHxTcwLIpOZNQP40NTdWqmprpaq2Vqpqa6Wqtj75DUD+BkBuAZnUnADyRM0EZAIyqZmAvAXIpOYEkBNq3gLkFpBJzZOVqtpaqaqtlaraWqmqLfwlVfU/rVTV1kpVba1U1dZKVW2tVNXWSlVtrVTV1kpVbf0fJGLzp4ep9m8AAAAASUVORK5CYII=
-                    description: Czech payment QR code (SPAYD) - only available for the CZK currency
-                  paybysquare:
-                    type: string
-                    example: '{QR code in base64}'
-                    description: Slovak payment QR code (PayBySquare) - only available for the EUR currency
-                  sepa:
-                    type: string
-                    example: '{QR code in base64}'
-                    description: SEPA payment QR code (specified by EPC) - only available for the EUR currency
-                  mnb_qr:
-                    type: string
-                    example: '{QR code in base64}'
-                    description: Hungarian payment QR code (specified by MNB) - only available for the HUF currency
           examples:
             Example 1:
               value:
@@ -2759,7 +3045,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
+            $ref: '#/components/schemas/Error-Response-Body'
             x-examples:
               Example 1:
                 code: 400
@@ -2768,42 +3054,6 @@ components:
                 detail: string
                 path: /payments/123/charge
                 timestamp: '2025-12-10T10:30:00Z'
-            required:
-              - code
-              - error
-              - message
-              - detail
-              - path
-              - timestamp
-            properties:
-              code:
-                type: integer
-                const: 400
-                format: int32
-                example: 400
-                description: HTTP status code
-              error:
-                example: BAD_REQUEST
-                description: Error type
-                type: string
-                const: BAD_REQUEST
-              message:
-                type: string
-                example: Invalid request parameter
-                description: Error message
-              detail:
-                type: string
-                example: Error Details
-                description: Detailed error description
-              path:
-                type: string
-                example: /payments/123/charge
-                description: Request path
-              timestamp:
-                type: string
-                format: date-time
-                example: '2025-12-10T10:30:00Z'
-                description: Error timestamp
           examples:
             Example 1:
               value:
@@ -2818,7 +3068,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
+            $ref: '#/components/schemas/Error-Response-Body'
             x-examples:
               Example 1:
                 code: 401
@@ -2827,42 +3077,6 @@ components:
                 detail: Detailed error description
                 path: /payments/123/charge
                 timestamp: '2025-12-10T10:30:00Z'
-            required:
-              - code
-              - error
-              - message
-              - detail
-              - path
-              - timestamp
-            properties:
-              code:
-                type: integer
-                const: 401
-                format: int32
-                example: 401
-                description: HTTP status code
-              error:
-                example: UNAUTHORIZED
-                description: Error type
-                type: string
-                const: UNAUTHORIZED
-              message:
-                type: string
-                example: Wrong credentials
-                description: Error message
-              detail:
-                type: string
-                example: Error Details
-                description: Detailed error description
-              path:
-                type: string
-                example: /payments/123/charge
-                description: Request path
-              timestamp:
-                type: string
-                format: date-time
-                example: '2025-12-10T10:30:00Z'
-                description: Error timestamp
           examples:
             Example 1:
               value:
@@ -2877,7 +3091,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
+            $ref: '#/components/schemas/Error-Response-Body'
             x-examples:
               Example 1:
                 code: 403
@@ -2886,42 +3100,6 @@ components:
                 detail: Error Details
                 path: /payments/123/charge
                 timestamp: '2025-12-10T10:30:00Z'
-            required:
-              - code
-              - error
-              - message
-              - detail
-              - path
-              - timestamp
-            properties:
-              code:
-                type: integer
-                const: 403
-                format: int32
-                example: 403
-                description: HTTP status code
-              error:
-                example: FORBIDDEN
-                description: Error type
-                type: string
-                const: FORBIDDEN
-              message:
-                type: string
-                example: Missing token scope
-                description: Error message
-              detail:
-                type: string
-                example: Error Details
-                description: Detailed error description
-              path:
-                type: string
-                example: /payments/123/charge
-                description: Request path
-              timestamp:
-                type: string
-                format: date-time
-                example: '2025-12-10T10:30:00Z'
-                description: Error timestamp
           examples:
             Example 1:
               value:
@@ -2936,7 +3114,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
+            $ref: '#/components/schemas/Error-Response-Body'
             x-examples:
               Example 1:
                 code: 404
@@ -2945,42 +3123,6 @@ components:
                 detail: Error Details
                 path: /payments/123/charge
                 timestamp: '2025-12-10T10:30:00Z'
-            required:
-              - code
-              - error
-              - message
-              - detail
-              - path
-              - timestamp
-            properties:
-              code:
-                type: integer
-                const: 404
-                format: int32
-                example: 404
-                description: HTTP status code
-              error:
-                example: NOT_FOUND
-                description: Error type
-                type: string
-                const: NOT_FOUND
-              message:
-                type: string
-                example: Resource not found
-                description: Error message
-              detail:
-                type: string
-                example: Error Details
-                description: Detailed error description
-              path:
-                type: string
-                example: /payments/123/charge
-                description: Request path
-              timestamp:
-                type: string
-                format: date-time
-                example: '2025-12-10T10:30:00Z'
-                description: Error timestamp
           examples:
             Example 1:
               value:
@@ -2995,43 +3137,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
-            required:
-              - code
-              - error
-              - message
-              - detail
-              - path
-              - timestamp
-            properties:
-              code:
-                type: integer
-                const: 409
-                format: int32
-                example: 409
-                description: HTTP status code
-              error:
-                example: CONFLICT
-                description: Error type
-                type: string
-                const: CONFLICT
-              message:
-                type: string
-                example: Wrong resource state
-                description: Error message
-              detail:
-                type: string
-                example: Error Details
-                description: Detailed error description
-              path:
-                type: string
-                example: /payments/123/charge
-                description: Request path
-              timestamp:
-                type: string
-                format: date-time
-                example: '2025-12-10T10:30:00Z'
-                description: Error timestamp
+            $ref: '#/components/schemas/Error-Response-Body'
           examples:
             Example 1:
               value:
@@ -3046,7 +3152,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
+            $ref: '#/components/schemas/Error-Response-Body'
             x-examples:
               Example 1:
                 code: 500
@@ -3055,42 +3161,6 @@ components:
                 detail: Error Details
                 path: /payments/123/charge
                 timestamp: '2025-12-10T10:30:00Z'
-            required:
-              - code
-              - error
-              - message
-              - detail
-              - path
-              - timestamp
-            properties:
-              code:
-                type: integer
-                const: 500
-                format: int32
-                example: 500
-                description: HTTP status code
-              error:
-                example: INTERNAL_SERVER_ERROR
-                description: Error type
-                type: string
-                const: INTERNAL_SERVER_ERROR
-              message:
-                type: string
-                example: Unexpected error occurred
-                description: Error message
-              detail:
-                type: string
-                example: Error Details
-                description: Detailed error description
-              path:
-                type: string
-                example: /payments/123/charge
-                description: Request path
-              timestamp:
-                type: string
-                format: date-time
-                example: '2025-12-10T10:30:00Z'
-                description: Error timestamp
           examples:
             Example 1:
               value:
@@ -3107,7 +3177,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
+            $ref: '#/components/schemas/Payment-Details'
             x-examples:
               Example 1:
                 id: string
@@ -3126,64 +3196,6 @@ components:
                   country_code: string
                   customer_id: string
                 gw_url: string
-            required:
-              - id
-              - order_number
-              - state
-              - amount
-              - currency
-              - customer
-              - gw_url
-            properties:
-              id:
-                type: string
-                description: Payment session ID
-                example: '300000001'
-              order_number:
-                type: string
-                description: Order ID forwarded from the payment request
-                example: '2025010199'
-              state:
-                $ref: '#/components/schemas/Payment-State'
-                description: Payment state
-              amount:
-                type: integer
-                description: |
-                  Total amount in cents
-              currency:
-                $ref: '#/components/schemas/Currency'
-                description: |
-                  Payment currency
-              customer:
-                $ref: '#/components/schemas/Customer'
-                description: Customer data
-              gw_url:
-                type: string
-                description: URL of the hosted payment gateway
-              charge:
-                type: object
-                x-stoplight:
-                  id: g0uec97fr0tv3
-                required:
-                  - id
-                  - state
-                  - href
-                properties:
-                  id:
-                    type: string
-                    x-stoplight:
-                      id: acvul1t46mtfa
-                    example: '9123456789'
-                  state:
-                    $ref: '#/components/schemas/Charge-State'
-                    x-stoplight:
-                      id: chmb77imsj32i
-                  href:
-                    type: string
-                    x-stoplight:
-                      id: 915p52uy1tw3k
-                    format: uri
-                    example: 'https://api.gopay.com/api/4.0/payments/9123456789/charge'
           examples:
             Example 1:
               value:
@@ -3213,6 +3225,29 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Payment-Charge-Response-Data'
+    Card-Form-URL-Response:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Card-Form-URL'
+            x-examples:
+              Example 1:
+                card_form_url: 'https://secure.gopay.com/q/gwuiccv4'
+          examples:
+            Example 1:
+              value:
+                card_form_url: 'https://secure.gopay.com/gp-card-comm/q/form'
+    Card-Token-Create-Response:
+      description: ''
+    Card-Token-Details-Response:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Permanent-Card-Token-Details'
+    Payment-Create-Response:
+      description: ''
   parameters:
     Accept-Json:
       name: Accept

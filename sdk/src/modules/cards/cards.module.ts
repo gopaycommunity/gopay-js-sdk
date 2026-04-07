@@ -5,6 +5,7 @@ import { DEFAULT_CARD_FORM_THEME } from './card-form-themes.js';
 import type {
     CardFormConfig,
     CardFormTheme,
+    CardRequestSubmit,
     CardSetLocale,
     CardSetTheme,
     OutboundMessage,
@@ -22,6 +23,15 @@ export interface CardFormController {
     setTheme: (theme: CardFormTheme) => void;
     /** Send an updated locale to the mounted iframe. No-op if the form is no longer mounted. */
     setLocale: (locale: string) => void;
+    /**
+     * Trigger form submission from the parent page. Only works in external submit mode
+     * (`submitMode: 'external'`). Throws a `GoPaySDKError` in internal submit mode.
+     * No-op if the form is no longer mounted.
+     */
+    submit: () => void;
+    /** Current validity state reported by the iframe. Always `false` until the first
+     *  `GOPAY_CARD_FORM_VALIDITY` message arrives (only sent in external submit mode). */
+    readonly isValid: boolean;
 }
 
 export class CardsModule {
@@ -61,7 +71,14 @@ export class CardsModule {
     mountCardForm(
         container: HTMLElement,
         iframeSrc: string,
-        options?: { theme?: CardFormTheme; locale?: string },
+        options?: {
+            theme?: CardFormTheme;
+            locale?: string;
+            submitMode?: 'internal' | 'external';
+            /** Whether to create a permanent (reusable) card token. Defaults to `false` (single-use). */
+            permanent?: boolean;
+            onValidityChange?: (isValid: boolean) => void;
+        },
     ): CardFormController {
         const tokens = this.client.getTokens();
         if (!tokens) {
@@ -72,7 +89,13 @@ export class CardsModule {
                 ),
             );
             result.catch(() => {}); // prevent unhandled-rejection warnings
-            return { result, setTheme: () => {}, setLocale: () => {} };
+            return {
+                result,
+                setTheme: () => {},
+                setLocale: () => {},
+                submit: () => {},
+                isValid: false,
+            };
         }
 
         container.replaceChildren();
@@ -92,8 +115,10 @@ export class CardsModule {
         const theme = options?.theme ?? DEFAULT_CARD_FORM_THEME;
         const locale =
             options?.locale ?? globalThis.navigator?.language ?? 'en';
+        const submitMode = options?.submitMode ?? 'internal';
 
         let active = true;
+        let isValid = false;
         let onMessage:
             | ((e: MessageEvent<OutboundMessage>) => Promise<void>)
             | undefined;
@@ -126,6 +151,7 @@ export class CardsModule {
                     ),
                     theme,
                     locale,
+                    submitMode,
                 } satisfies CardFormConfig,
                 expectedOrigin,
             );
@@ -143,6 +169,17 @@ export class CardsModule {
             }
 
             if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') {
+                return;
+            }
+
+            if (event.data?.type === 'GOPAY_CARD_FORM_VALIDITY') {
+                if (typeof event.data.isValid === 'boolean') {
+                    const prev = isValid;
+                    isValid = event.data.isValid;
+                    if (isValid !== prev) {
+                        options?.onValidityChange?.(isValid);
+                    }
+                }
                 return;
             }
 
@@ -164,6 +201,7 @@ export class CardsModule {
                 resolveResult(
                     await this.createToken({
                         payload: event.data.card_token,
+                        permanent: options?.permanent ?? false,
                     }),
                 );
             } catch (err) {
@@ -196,6 +234,25 @@ export class CardsModule {
                         expectedOrigin,
                     );
                 }
+            },
+            submit: () => {
+                if (submitMode !== 'external') {
+                    throw new GoPaySDKError(
+                        '[GoPaySDK] submit() is only available in external submit mode (submitMode: "external").',
+                        { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                    );
+                }
+                if (active) {
+                    iframe.contentWindow?.postMessage(
+                        {
+                            type: 'GOPAY_CARD_REQUEST_SUBMIT',
+                        } satisfies CardRequestSubmit,
+                        expectedOrigin,
+                    );
+                }
+            },
+            get isValid() {
+                return isValid;
             },
         };
     }

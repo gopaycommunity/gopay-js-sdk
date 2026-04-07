@@ -5,7 +5,7 @@ import { collectBrowserData } from './browser-data.js';
 type PaymentCreateRequest =
     components['requestBodies']['Payment-Create-Request']['content']['application/json'];
 type PaymentCreateResponse =
-    components['responses']['Payment-Create-Response']['content']['application/json'];
+    components['responses']['Payment-Status-Response']['content']['application/json'];
 type PaymentChargeRequest =
     components['requestBodies']['Payment-Charge-Request']['content']['application/json'];
 type PaymentChargeResponse =

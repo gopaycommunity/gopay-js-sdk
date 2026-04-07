@@ -22,6 +22,7 @@ import { sdk } from './sdk.js';
 
 let currentLang = 'en';
 let currentTheme = 'default';
+let currentSubmitMode = 'internal';
 let cardFormController = null;
 
 export function cardPaySetLang(lang) {
@@ -74,6 +75,40 @@ export function cardPaySetTheme(theme) {
     );
 }
 
+export function cardPaySetSubmitMode(mode) {
+    currentSubmitMode = mode;
+    document
+        .getElementById('cardpay-submit-internal')
+        .classList.toggle('!bg-[#F2F4F7]', mode !== 'internal');
+    document
+        .getElementById('cardpay-submit-internal')
+        .classList.toggle('!text-[#2D3643]', mode !== 'internal');
+    document
+        .getElementById('cardpay-submit-internal')
+        .classList.toggle('![box-shadow:none]', mode !== 'internal');
+    document
+        .getElementById('cardpay-submit-external')
+        .classList.toggle('!bg-[#F2F4F7]', mode !== 'external');
+    document
+        .getElementById('cardpay-submit-external')
+        .classList.toggle('!text-[#2D3643]', mode !== 'external');
+    document
+        .getElementById('cardpay-submit-external')
+        .classList.toggle('![box-shadow:none]', mode !== 'external');
+
+    const isExternal = mode === 'external';
+    document
+        .getElementById('cardpay-ext-submit')
+        .classList.toggle('hidden', !isExternal);
+    document
+        .getElementById('cardpay-ext-valid-row')
+        .classList.toggle('hidden', !isExternal);
+}
+
+export function cardPayExtSubmit() {
+    cardFormController?.submit();
+}
+
 export async function cardPayOpenIframe() {
     const paymentId = document
         .getElementById('cardpay-payment-id')
@@ -83,8 +118,21 @@ export async function cardPayOpenIframe() {
         ?.value.trim();
     const pre = document.getElementById('cardpay-output');
     const container = document.getElementById('cardpay-iframe-container');
+    const extSubmitBtn = document.getElementById('cardpay-ext-submit');
+
+    const extValidIndicator = document.getElementById('cardpay-ext-valid');
+
+    const isExternal = currentSubmitMode === 'external';
+
     container.style.display = 'block';
-    pre.textContent = `── Step 1: iframe mounted ──\nPayment ID: ${paymentId || '(none)'}\n\nWaiting for card confirmation in iframe…`;
+
+    if (isExternal) {
+        extSubmitBtn.disabled = true;
+        extSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        extValidIndicator.textContent = 'false';
+    }
+
+    pre.textContent = `── Step 1: iframe mounted (submitMode: '${currentSubmitMode}') ──\nPayment ID: ${paymentId || '(none)'}\n\nWaiting for card confirmation in iframe…`;
 
     const theme =
         currentTheme === 'dark'
@@ -97,7 +145,20 @@ export async function cardPayOpenIframe() {
         cardFormController = sdk.cards.mountCardForm(container, iframeSrc, {
             theme,
             locale: currentLang,
+            submitMode: currentSubmitMode,
+            onValidityChange: isExternal
+                ? (isValid) => {
+                      extValidIndicator.textContent = String(isValid);
+                      extSubmitBtn.disabled = !isValid;
+                      extSubmitBtn.classList.toggle('opacity-50', !isValid);
+                      extSubmitBtn.classList.toggle(
+                          'cursor-not-allowed',
+                          !isValid,
+                      );
+                  }
+                : undefined,
         });
+
         const tokenResult = await cardFormController.result;
         cardFormController = null;
         container.style.display = 'none';

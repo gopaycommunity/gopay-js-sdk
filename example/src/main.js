@@ -8,8 +8,10 @@ import {
     updateAuthBadge,
 } from './auth.js';
 import {
+    cardPayExtSubmit,
     cardPayOpenIframe,
     cardPaySetLang,
+    cardPaySetSubmitMode,
     cardPaySetTheme,
 } from './card-pay.js';
 import { googlePayLoadInfo } from './google-pay.js';
@@ -122,3 +124,5 @@ window.applePayLoadInfo = applePayLoadInfo;
 window.cardPayOpenIframe = cardPayOpenIframe;
 window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;
+window.cardPaySetSubmitMode = cardPaySetSubmitMode;
+window.cardPayExtSubmit = cardPayExtSubmit;

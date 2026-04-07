@@ -350,7 +350,7 @@ document.body.appendChild(img);
 
 | Method | Description |
 |---|---|
-| `mountCardForm(container, iframeSrc, options?)` | Mount the GoPay card encryption iframe into `container`. Returns a `CardFormController` with a `result` promise (resolves to the card token on submit), `setTheme()`, and `setLocale()` for runtime updates. Handles iframe creation, internal communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
+| `mountCardForm(container, iframeSrc, options?)` | Mount the GoPay card encryption iframe into `container`. Returns a `CardFormController` with a `result` promise (resolves to the card token on submit), `setTheme()`, `setLocale()`, `submit()`, and `isValid` for runtime control. Handles iframe creation, internal communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
 
 #### `mountCardForm` options
 
@@ -358,6 +358,8 @@ document.body.appendChild(img);
 |---|---|---|---|
 | `theme` | `CardFormTheme` | `DEFAULT_CARD_FORM_THEME` | Visual theme (colors, font sizes, spacing, button styles). All fields are optional — the iframe applies built-in defaults for any omitted field. |
 | `locale` | `string` | `navigator.language` | BCP 47 language tag for form labels and placeholders. The region subtag is ignored (`'cs-CZ'` → `'cs'`). Unknown locales fall back to English. Supported: `bg` `cs` `de` `en` `es` `et` `fr` `hr` `hu` `it` `lt` `lv` `nl` `pl` `pt` `ro` `ru` `sk` `sl` `uk`. |
+| `submitMode` | `'internal' \| 'external'` | `'internal'` | `'internal'` — the iframe renders its own submit button. `'external'` — the iframe hides the button; the parent controls submission via `cardForm.submit()` and receives validity changes via `onValidityChange`. |
+| `onValidityChange` | `(isValid: boolean) => void` | — | Called whenever the overall form validity changes in external submit mode. Use this to enable/disable your external submit button. |
 
 > **Send theme and locale at init time.** Both options are applied before the form is first painted, avoiding a flash of unstyled content. Use `cardForm.setTheme()` and `cardForm.setLocale()` on the returned controller if you need to update them after mounting.
 
@@ -392,6 +394,33 @@ langSelect.addEventListener('change', e => cardForm.setLocale(e.target.value));
 
 const cardToken = await cardForm.result;
 ```
+
+#### External submit button
+
+Use `submitMode: 'external'` when you want the submit button to live outside the iframe — for example to match your own checkout UI. The iframe hides its built-in button, reports validity changes via `onValidityChange`, and waits for `cardForm.submit()` to trigger encryption.
+
+```ts
+const payBtn = document.getElementById('pay-btn');
+
+const cardForm = sdk.cards.mountCardForm(container, iframeSrc, {
+  submitMode: 'external',
+  onValidityChange(isValid) {
+    // Enable/disable your own submit button based on form validity.
+    payBtn.disabled = !isValid;
+  },
+});
+
+payBtn.addEventListener('click', () => {
+  cardForm.submit(); // triggers encryption inside the iframe
+});
+
+// Await the result exactly the same as in internal submit.
+const cardToken = await cardForm.result;
+```
+
+`cardForm.isValid` is also available as a synchronous getter in case you need to read the current validity state imperatively (e.g. inside a click handler before calling `submit()`).
+
+> Calling `submit()` in internal submit mode throws a `GoPaySDKError`. Calling it after the form completes or is unmounted is a no-op.
 
 ### Card Pay
 

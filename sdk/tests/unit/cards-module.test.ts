@@ -197,6 +197,7 @@ describe('CardsModule', () => {
         function mountWithPostMessageSpy(options?: {
             theme?: CardFormTheme;
             locale?: string;
+            submitMode?: 'internal' | 'external';
         }) {
             const postMessageSpy = vi.fn();
             const contentWindowMock = { postMessage: postMessageSpy };
@@ -328,6 +329,125 @@ describe('CardsModule', () => {
                 postMessageSpy.mockClear();
                 controller.setLocale('de');
                 expect(postMessageSpy).not.toHaveBeenCalled();
+            });
+        });
+
+        // ── External submit mode ──────────────────────────────────────────────
+
+        describe('submitMode', () => {
+            it('includes submitMode: "external" in INIT when option is passed', () => {
+                const { postMessageSpy } = mountWithPostMessageSpy({
+                    submitMode: 'external',
+                });
+                expect(postMessageSpy).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        type: 'GOPAY_CARD_FORM_INIT',
+                        submitMode: 'external',
+                    }),
+                    IFRAME_ORIGIN,
+                );
+            });
+
+            it('defaults to submitMode: "internal" in INIT when no option is passed', () => {
+                const { postMessageSpy } = mountWithPostMessageSpy();
+                expect(postMessageSpy).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        type: 'GOPAY_CARD_FORM_INIT',
+                        submitMode: 'internal',
+                    }),
+                    IFRAME_ORIGIN,
+                );
+            });
+
+            it('submit() posts GOPAY_CARD_REQUEST_SUBMIT in external submit', () => {
+                const { postMessageSpy, controller } = mountWithPostMessageSpy({
+                    submitMode: 'external',
+                });
+                postMessageSpy.mockClear();
+                controller.submit();
+                expect(postMessageSpy).toHaveBeenCalledOnce();
+                expect(postMessageSpy).toHaveBeenCalledWith(
+                    { type: 'GOPAY_CARD_REQUEST_SUBMIT' },
+                    IFRAME_ORIGIN,
+                );
+            });
+
+            it('submit() throws in internal submit', () => {
+                const { controller } = mountWithPostMessageSpy();
+                expect(() => controller.submit()).toThrow(
+                    /external submit mode/,
+                );
+            });
+
+            it('submit() is a no-op after the form completes', async () => {
+                const { postMessageSpy, controller } = mountWithPostMessageSpy({
+                    submitMode: 'external',
+                });
+                dispatchCardMessage(getIframe());
+                await controller.result;
+                postMessageSpy.mockClear();
+                controller.submit();
+                expect(postMessageSpy).not.toHaveBeenCalled();
+            });
+
+            it('GOPAY_CARD_FORM_VALIDITY updates controller.isValid', () => {
+                const controller = cards.mountCardForm(container, IFRAME_SRC, {
+                    submitMode: 'external',
+                });
+                expect(controller.isValid).toBe(false);
+                window.dispatchEvent(
+                    new MessageEvent('message', {
+                        data: {
+                            type: 'GOPAY_CARD_FORM_VALIDITY',
+                            isValid: true,
+                        },
+                        origin: IFRAME_ORIGIN,
+                        source: getIframe().contentWindow,
+                    }),
+                );
+                expect(controller.isValid).toBe(true);
+            });
+
+            it('onValidityChange fires when validity changes', () => {
+                const cb = vi.fn();
+                cards.mountCardForm(container, IFRAME_SRC, {
+                    submitMode: 'external',
+                    onValidityChange: cb,
+                });
+                window.dispatchEvent(
+                    new MessageEvent('message', {
+                        data: {
+                            type: 'GOPAY_CARD_FORM_VALIDITY',
+                            isValid: true,
+                        },
+                        origin: IFRAME_ORIGIN,
+                        source: getIframe().contentWindow,
+                    }),
+                );
+                expect(cb).toHaveBeenCalledOnce();
+                expect(cb).toHaveBeenCalledWith(true);
+            });
+
+            it('onValidityChange deduplicates identical consecutive values', () => {
+                const cb = vi.fn();
+                cards.mountCardForm(container, IFRAME_SRC, {
+                    submitMode: 'external',
+                    onValidityChange: cb,
+                });
+                const dispatchValidity = (isValid: boolean) =>
+                    window.dispatchEvent(
+                        new MessageEvent('message', {
+                            data: { type: 'GOPAY_CARD_FORM_VALIDITY', isValid },
+                            origin: IFRAME_ORIGIN,
+                            source: getIframe().contentWindow,
+                        }),
+                    );
+                dispatchValidity(true);
+                dispatchValidity(true);
+                dispatchValidity(false);
+                expect(cb).toHaveBeenCalledTimes(2);
+                expect(cb).toHaveBeenNthCalledWith(1, true);
+                expect(cb).toHaveBeenNthCalledWith(2, false);
             });
         });
     });

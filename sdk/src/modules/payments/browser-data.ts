@@ -20,19 +20,16 @@ import type { BrowserData } from '../../types/index.js';
  *   browser_data: { ...data, language: 'en-US' }, // override one field
  * });
  */
-export function collectBrowserData(): BrowserData {
+export function collectBrowserData(): Partial<BrowserData> {
     if (typeof navigator === 'undefined') return {};
 
     return {
         language: navigator.language,
         timezone: new Date().getTimezoneOffset(),
-        screen_width: typeof screen !== 'undefined' ? screen.width : undefined,
-        screen_height:
-            typeof screen !== 'undefined' ? screen.height : undefined,
-        color_depth:
-            typeof screen !== 'undefined' ? screen.colorDepth : undefined,
+        screen_width: screen.width,
+        screen_height: screen.height,
+        color_depth: screen.colorDepth,
         user_agent: navigator.userAgent,
         javascript_enabled: true,
-        java_enabled: false,
     };
 }
