@@ -112,10 +112,14 @@ Credentials must never leave the server. The SDK provides a two-step handoff:
 4. All subsequent browser API calls use the access token directly, renewing via the refresh token transparently before expiry. The browser should finish it's business before refreshToken expires (usually 24 hrs) because it can't renew it. Else you need to provide a mechanism to get new client tokens.
 
 ```ts
-// Server: issue a fresh token pair for the browser
+// Server: issue a fresh token pair for the browser.
+// Include the scopes needed for the flows the browser will run:
+//   payment:create — create() and charge()
+//   payment:read   — getGooglePayInfo(), getApplePayInfo(), getQRPaymentInfo()
+//   card:save      — mountCardForm()
 app.get('/session/gopay-token', async (req, res) => {
   // Protect this endpoint with your own session check
-  const clientToken = await sdk.auth.issueClientToken('payment:create');
+  const clientToken = await sdk.auth.issueClientToken('payment:create payment:read card:save');
   res.json(clientToken);
 });
 ```
