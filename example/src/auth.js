@@ -102,6 +102,7 @@ export function runSetClientTokenFlow() {
     const refreshToken = document
         .getElementById('set-client-token-refresh')
         .value.trim();
+    const goid = document.getElementById('set-client-token-goid').value.trim();
 
     run('set-client-token-output', async () => {
         const browserSdk = new GoPaySDK(sdkConfig);
@@ -119,6 +120,16 @@ export function runSetClientTokenFlow() {
                   };
         browserSdk.auth.setClientToken(clientToken);
         updateAuthBadge();
-        return { authenticated: true };
+        // Verify the browser SDK can make authenticated API calls
+        return browserSdk.payments.create(goid, {
+            amount: 100,
+            currency: 'CZK',
+            order_number: `BROWSER-TEST-${Date.now()}`,
+            customer: { email: 'test@example.com' },
+            callback: {
+                notification_url: 'https://yourshop.example.com/notify',
+                return_url: 'https://yourshop.example.com/return',
+            },
+        });
     });
 }

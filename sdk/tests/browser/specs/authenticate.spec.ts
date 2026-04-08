@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures/fixtures.js';
+import { expect, parseOutput, test } from '../fixtures/fixtures.js';
 
 test('auth.authenticate() authenticates the SDK without exposing tokens', async ({
     page,
@@ -23,9 +23,9 @@ test('auth.authenticate() authenticates the SDK without exposing tokens', async 
     expect(
         text,
         'authenticate() should not have returned an error',
-    ).not.toMatch(/^\[/);
+    ).not.toMatch(/^── onError/);
 
-    const json = JSON.parse(text);
+    const json = parseOutput(text);
 
     // authenticate() returns void — tokens are stored internally and must never
     // be exposed. The demo confirms success with a non-sensitive summary only.

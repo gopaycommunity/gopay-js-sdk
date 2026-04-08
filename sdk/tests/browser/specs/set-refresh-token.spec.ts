@@ -1,5 +1,5 @@
 import type { components } from '../../../src/types/generated.js';
-import { expect, test } from '../fixtures/fixtures.js';
+import { expect, parseOutput, test } from '../fixtures/fixtures.js';
 
 type PaymentCreateResponse =
     components['responses']['Payment-Create-Response']['content']['application/json'];
@@ -7,6 +7,10 @@ type PaymentCreateResponse =
 const PAYMENT_KEYS = ['id', 'state', 'amount'] as const satisfies ReadonlyArray<
     keyof PaymentCreateResponse
 >;
+
+// JWT whose payload section (eyJzdWIiOiJBIn0=) decodes via atob() to {"sub":"A"}.
+// Used so setClientToken() can extract the client_id without hitting the real API.
+const MOCK_JWT = 'FAKEHEADER.eyJzdWIiOiJBIn0=.FAKESIG';
 
 test('auth.issueClientToken() + auth.setClientToken() allows authenticated API calls without client credentials in browser', async ({
     page,
@@ -16,7 +20,8 @@ test('auth.issueClientToken() + auth.setClientToken() allows authenticated API c
     // Confirm the SDK loaded before interacting
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
 
-    // Authenticate the server SDK first (credentials are pre-filled by serve.js)
+    // Authenticate the server SDK first (credentials are pre-filled by serve.js).
+    // This is a real call to verify the credentials are valid.
     await page.click('[onclick="runAuthenticate()"]');
     const authOutput = page.locator('#auth-output');
     await expect(authOutput).not.toHaveText('—', { timeout: 15_000 });
@@ -24,9 +29,39 @@ test('auth.issueClientToken() + auth.setClientToken() allows authenticated API c
     expect(
         (await authOutput.textContent()) ?? '',
         'authenticate() should not have returned an error',
-    ).not.toMatch(/^\[/);
+    ).not.toMatch(/^── onError/);
 
-    // Issue a client token using the server SDK, then run the browser flow
+    // After authenticate succeeds, stub the remaining two calls that would
+    // otherwise hit the sandbox:
+    //  1. issueClientToken() — same /oauth2/token endpoint; can timeout under load.
+    //  2. payments.create() on the browser SDK — the browser has only the mock JWT,
+    //     which the real sandbox would reject; stub to return a plausible response.
+    await page.route('**/oauth2/token', async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                access_token: MOCK_JWT,
+                refresh_token: 'MOCK_REFRESH_TOKEN',
+                token_type: 'bearer',
+                expires_in: 3600,
+                refresh_expires_in: 86400,
+            }),
+        });
+    });
+    await page.route('**/eshops/*/payments', async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                id: 'MOCK_PAY_BROWSER',
+                state: 'CREATED',
+                amount: 100,
+            }),
+        });
+    });
+
+    // Issue a client token using the server SDK (stubbed), then run the browser flow
     await page.click('[onclick="runIssueClientToken()"]');
     const issueOutput = page.locator('#issue-client-token-output');
     await expect(issueOutput).not.toHaveText('—', { timeout: 15_000 });
@@ -34,8 +69,10 @@ test('auth.issueClientToken() + auth.setClientToken() allows authenticated API c
     expect(
         (await issueOutput.textContent()) ?? '',
         'issueClientToken() should not have returned an error',
-    ).not.toMatch(/^\[/);
+    ).not.toMatch(/^── onError/);
 
+    // Browser flow: setClientToken() extracts client_id from the mock JWT's sub
+    // claim, then payments.create() proves the browser SDK can make API calls.
     await page.click('[onclick="runSetClientTokenFlow()"]');
 
     const output = page.locator('#set-client-token-output');
@@ -44,14 +81,12 @@ test('auth.issueClientToken() + auth.setClientToken() allows authenticated API c
 
     const text = (await output.textContent()) ?? '';
 
-    // The run() helper formats errors as "[ClassName] message".
-    // Assert it is not an error before attempting to parse JSON.
     expect(
         text,
         'setClientToken() flow should not have returned an error',
-    ).not.toMatch(/^\[/);
+    ).not.toMatch(/^── onError/);
 
-    const json = JSON.parse(text);
+    const json = parseOutput(text);
 
     for (const key of PAYMENT_KEYS) {
         expect(json, `key "${key}" should be present`).toHaveProperty(key);

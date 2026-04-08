@@ -14,7 +14,7 @@ test('cards.mountCardForm() mounts iframe and the container becomes visible', as
     expect(
         (await authOutput.textContent()) ?? '',
         'authenticate() should not have returned an error',
-    ).not.toMatch(/^\[/);
+    ).not.toMatch(/^── onError/);
 
     await page.click('[onclick="runCreatePayment()"]');
     const createOutput = page.locator('#payment-create-output');
@@ -23,7 +23,7 @@ test('cards.mountCardForm() mounts iframe and the container becomes visible', as
     expect(
         (await createOutput.textContent()) ?? '',
         'payments.create() should not have returned an error',
-    ).not.toMatch(/^\[/);
+    ).not.toMatch(/^── onError/);
 
     // The card iframe container starts hidden
     const container = page.locator('#cardpay-iframe-container');

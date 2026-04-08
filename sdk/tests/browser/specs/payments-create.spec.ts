@@ -1,5 +1,5 @@
 import type { components } from '../../../src/types/generated.js';
-import { expect, test } from '../fixtures/fixtures.js';
+import { expect, parseOutput, test } from '../fixtures/fixtures.js';
 
 type PaymentCreateResponse =
     components['responses']['Payment-Create-Response']['content']['application/json'];
@@ -22,7 +22,7 @@ test('payments.create() returns a payment with all expected keys', async ({
     expect(
         (await authOutput.textContent()) ?? '',
         'authenticate() should not have returned an error',
-    ).not.toMatch(/^\[/);
+    ).not.toMatch(/^── onError/);
 
     // Create payment
     await page.click('[onclick="runCreatePayment()"]');
@@ -34,9 +34,9 @@ test('payments.create() returns a payment with all expected keys', async ({
     expect(
         text,
         'payments.create() should not have returned an error',
-    ).not.toMatch(/^\[/);
+    ).not.toMatch(/^── onError/);
 
-    const json = JSON.parse(text);
+    const json = parseOutput(text);
     for (const key of PAYMENT_KEYS) {
         expect(json, `key "${key}" should be present`).toHaveProperty(key);
     }

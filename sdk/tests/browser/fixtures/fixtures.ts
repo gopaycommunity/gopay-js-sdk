@@ -23,3 +23,11 @@ export const test = base.extend<object>({
 });
 
 export { expect };
+
+/**
+ * Strip the `── onSuccess ──\n` prefix added by the example's `run()` helper
+ * and parse the remaining text as JSON.
+ */
+export function parseOutput<T = unknown>(text: string): T {
+    return JSON.parse(text.replace(/^── onSuccess ──\n/, '')) as T;
+}
