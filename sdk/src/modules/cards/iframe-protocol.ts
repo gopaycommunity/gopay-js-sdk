@@ -40,6 +40,15 @@ export interface CardFormConfig {
  * CSS generation happens exclusively inside the iframe — never in the SDK.
  */
 export interface CardFormTheme {
+    // ── Typography ───────────────────────────────────────────────────────────
+    /**
+     * CSS font-family stack applied to all form text (labels, inputs, errors,
+     * submit button). Use system font stacks to avoid loading external fonts.
+     * Example: "Inter, system-ui, sans-serif"
+     * Default: system-ui, sans-serif
+     */
+    fontFamily?: string;
+
     // ── Labels ───────────────────────────────────────────────────────────────
     /** Color of field labels. Default: #4b5e68 */
     labelColor?: string;
@@ -124,12 +133,6 @@ export interface CardSetLocale {
 export interface CardRequestSubmit {
     type: 'GOPAY_CARD_REQUEST_SUBMIT';
 }
-
-export type InboundMessage =
-    | CardFormConfig
-    | CardSetTheme
-    | CardSetLocale
-    | CardRequestSubmit;
 
 export type EncryptErrorCode =
     | 'PUBLIC_KEY_FETCH_FAILED'

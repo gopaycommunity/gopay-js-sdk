@@ -363,7 +363,15 @@ document.body.appendChild(img);
 
 > **Send theme and locale at init time.** Both options are applied before the form is first painted, avoiding a flash of unstyled content. Use `cardForm.setTheme()` and `cardForm.setLocale()` on the returned controller if you need to update them after mounting.
 
-`CardFormTheme` is fully typed — hover in your editor to see every available field. Theme presets are exported from the package:
+`CardFormTheme` is fully typed — hover in your editor to see every available field. Notable fields:
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `fontFamily` | `string` | `system-ui, sans-serif` | CSS font-family stack applied to all form text (labels, inputs, errors, submit button). Use system font stacks — e.g. `"Inter, system-ui, sans-serif"` — to match your page without loading external fonts. |
+
+Theme presets are exported from the package:
+
+> **Color format restriction.** All color fields in `CardFormTheme` must use one of the following CSS formats: `#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb(...)`, `rgba(...)`, `hsl(...)`, `hsla(...)`, or `transparent`. Values that do not match are silently replaced with `unset` (browser default). Named colors (e.g. `red`) and other CSS values are not accepted.
 
 ```ts
 import {
