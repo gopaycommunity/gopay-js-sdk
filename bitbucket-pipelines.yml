@@ -21,10 +21,6 @@ definitions:
           - yarn install --immutable
           - yarn ci
           - yarn npm audit --recursive --environment production
-          - cd sdk
-          - yarn typecheck
-          - yarn check:circular
-          - yarn check:exports
 
 
     # --- unit + e2e tests + coverage ---------------------------------
@@ -47,7 +43,7 @@ definitions:
         name: Analyze on SonarCloud
         size: 2x
         services:
-            - docker2x
+          - docker2x
         clone:
           depth: full
         script:

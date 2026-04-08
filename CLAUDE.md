@@ -15,16 +15,21 @@ Run this whenever `Payments.yaml` is updated to keep the types in sync.
 
 ## Checks
 
-After every edit, run checks with from the repo root:
+After every edit, run checks from the repo root:
 
 ```bash
-yarn lint
-yarn typecheck
+yarn ci
 ```
 
-This runs lint (Biome) and typecheck in sequence. It is wired up to:
+This runs lint (Biome), typecheck, circular dependency check, and export validation in sequence. It is wired up to:
 - **pre-commit hook** (husky) — runs automatically before every commit
 - **CI pipeline** (`bitbucket-pipelines.yml`, `code-quality` step) — runs on PRs and master
+
+Run tests separately:
+
+```bash
+cd sdk && yarn test
+```
 
 Security audit runs separately in CI:
 
@@ -40,6 +45,28 @@ The SDK is distributed in two ways:
 
 - **NPM package** (`gopay-js-sdk`) — for use in Node.js / bundler-based projects (ESM and CJS builds).
 - **CDN script** — a standalone IIFE bundle (`gopay-sdk.min.js`) that can be included directly via `<script src="...">`, exposing `window.GoPaySDK` as a browser global.
+
+---
+
+## `cards` module — iframe-based card tokenization
+
+`CardsModule.mountCardForm(container, iframeSrc, options?)` mounts the GoPay-hosted card encryption iframe and returns a `CardFormController`:
+
+- **`result`** — `Promise<CardTokenResponse>` that resolves with the card token on success, rejects on error or cancellation.
+- **`setTheme(theme)`** / **`setLocale(locale)`** — send runtime updates to the iframe via `postMessage`.
+- **`submit()`** — triggers form submission from the parent page; only valid when `submitMode: 'external'`.
+- **`isValid`** — live validity state (only populated in external submit mode).
+
+**postMessage protocol** is defined in `sdk/src/modules/cards/iframe-protocol.ts`. This file is intentionally duplicated between this repo and `gw-ui-cc-v4`. Keep both in sync manually — types and type aliases only, no imports or logic.
+
+**Init flow:**
+1. `mountCardForm` appends the iframe (sandboxed: `allow-scripts allow-forms`).
+2. On `iframe.onload`, the SDK posts `GOPAY_CARD_FORM_INIT` with tokens, environment, theme, locale, and submit mode. Target origin is `'*'` because the sandbox removes `allow-same-origin`, making the iframe's origin opaque (`"null"`).
+3. The iframe posts back `GOPAY_CARD_ENCRYPT_RESULT` (carrying the JWE payload), then the SDK calls `POST /cards/tokens` internally and resolves `result`.
+
+**Submit modes:**
+- `'internal'` (default) — iframe renders its own submit button.
+- `'external'` — iframe hides its submit button; parent calls `controller.submit()` and receives `GOPAY_CARD_FORM_VALIDITY` messages.
 
 ---
 
