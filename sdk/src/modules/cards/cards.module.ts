@@ -101,7 +101,10 @@ export class CardsModule {
         container.replaceChildren();
 
         const iframe = document.createElement('iframe');
-        iframe.src = iframeSrc;
+        const iframeUrl = new URL(iframeSrc, globalThis.location?.href);
+        iframeUrl.searchParams.set('origin', globalThis.location?.origin ?? '');
+        iframe.src = iframeUrl.href;
+        iframe.setAttribute('sandbox', 'allow-scripts allow-forms');
         iframe.style.cssText = 'width:100%;height:100%;border:none;';
         container.appendChild(iframe);
 
@@ -137,6 +140,11 @@ export class CardsModule {
         });
 
         iframe.onload = () => {
+            // The iframe is sandboxed without allow-same-origin, so its origin is the
+            // opaque "null" origin. postMessage with a specific targetOrigin would be
+            // silently dropped; '*' is required. The message is still only delivered to
+            // this specific contentWindow — '*' means "skip origin check on recipient",
+            // not "broadcast to all windows".
             iframe.contentWindow?.postMessage(
                 {
                     type: 'GOPAY_CARD_FORM_INIT',
@@ -153,13 +161,16 @@ export class CardsModule {
                     locale,
                     submitMode,
                 } satisfies CardFormConfig,
-                expectedOrigin,
+                '*',
             );
         };
 
         onMessage = async (event: MessageEvent<OutboundMessage>) => {
-            if (event.origin !== expectedOrigin) return;
+            // Sandboxed iframes (no allow-same-origin) report event.origin === 'null'.
+            // Checking the source window is a stronger guarantee than origin alone.
             if (event.source !== iframe.contentWindow) return;
+            if (event.origin !== 'null' && event.origin !== expectedOrigin)
+                return;
 
             if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
                 if (typeof event.data.height === 'number') {
@@ -220,7 +231,7 @@ export class CardsModule {
                             type: 'GOPAY_CARD_SET_THEME',
                             theme: t,
                         } satisfies CardSetTheme,
-                        expectedOrigin,
+                        '*',
                     );
                 }
             },
@@ -231,7 +242,7 @@ export class CardsModule {
                             type: 'GOPAY_CARD_SET_LOCALE',
                             locale: l,
                         } satisfies CardSetLocale,
-                        expectedOrigin,
+                        '*',
                     );
                 }
             },
@@ -247,7 +258,7 @@ export class CardsModule {
                         {
                             type: 'GOPAY_CARD_REQUEST_SUBMIT',
                         } satisfies CardRequestSubmit,
-                        expectedOrigin,
+                        '*',
                     );
                 }
             },

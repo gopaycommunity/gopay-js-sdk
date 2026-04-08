@@ -83,11 +83,25 @@ describe('CardsModule', () => {
     }
 
     describe('mountCardForm()', () => {
-        it('appends an iframe with the given src into the container', () => {
+        it('appends an iframe into the container with the correct base src', () => {
             cards.mountCardForm(container, IFRAME_SRC);
             const iframe = getIframe();
             expect(iframe).not.toBeNull();
-            expect(iframe?.src).toBe(IFRAME_SRC);
+            const url = new URL(iframe.src);
+            expect(`${url.origin}${url.pathname}`).toBe(IFRAME_SRC);
+        });
+
+        it('appends ?origin=<page-origin> to the iframe src', () => {
+            vi.stubGlobal('location', {
+                origin: 'https://merchant.example.com',
+                href: 'https://merchant.example.com/checkout',
+            });
+            cards.mountCardForm(container, IFRAME_SRC);
+            const url = new URL(getIframe().src);
+            expect(url.searchParams.get('origin')).toBe(
+                'https://merchant.example.com',
+            );
+            vi.unstubAllGlobals();
         });
 
         it('replaces existing children before mounting', () => {

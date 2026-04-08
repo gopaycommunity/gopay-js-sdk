@@ -21,6 +21,10 @@ export default defineConfig(({ mode }) => {
         plugins: [...(hasMkcert ? [] : [basicSsl()]), tailwindcss()],
         server: {
             port: 3000,
+            // The card form iframe runs sandboxed (no allow-same-origin), so its origin
+            // is "null". Allow null-origin requests so Vite's injected @vite/client
+            // script loads correctly during development.
+            cors: { origin: ['null', /^https?:\/\/localhost(:\d+)?$/] },
             ...(hasMkcert
                 ? {
                       https: {
