@@ -25,9 +25,7 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                goid: string;
-            };
+            path?: never;
             cookie?: never;
         };
         get?: never;
@@ -44,9 +42,7 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                payment_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         /** Payment Status */
@@ -63,9 +59,7 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                payment_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         /** Payment charge state */
@@ -83,9 +77,7 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                payment_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         /** QR Payment Info */
@@ -102,9 +94,7 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                payment_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         /** Google Pay Payment Info */
@@ -121,9 +111,7 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                payment_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         /** Apple Pay Payment Info */
@@ -140,9 +128,7 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                payment_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         get?: never;
@@ -159,9 +145,7 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                card_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         /** Card details */
@@ -239,13 +223,6 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
-         * Token Scope
-         * @description Supported token scopes
-         * @example payment:create
-         * @enum {unknown}
-         */
-        "Token-Scope": "card:save" | "card:read" | "payment:create" | "payment:read";
-        /**
          * Client Credentials Request
          * @description Request the token pair using the `client_credentials` grant type
          * @example {
@@ -277,6 +254,7 @@ export interface components {
          */
         "Refresh-Token-Request": {
             /**
+             * @description Always `refresh_token` for this flow
              * @example refresh_token
              * @constant
              */
@@ -306,7 +284,8 @@ export interface components {
              */
             refresh_token?: string;
             /**
-             * @description Space-separated list of token scopes, see Token Scope
+             * @description Space-separated list of token scopes.
+             *     Available scopes: `payment:create payment:read card:save card:read`
              * @example payment:create payment:read
              */
             scope?: string;
@@ -326,60 +305,14 @@ export interface components {
          * Format: jwt
          * @description The JWT string as described by [RFC 7519: JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)
          *
-         *     The JWT has 3 parts:
-         *     1. `header` -> JSON serialized [JWT header](./q132gwiib06ov-jwt-header)
-         *     2. `claims` -> Contains the main part of the token - see [JWT Claims](./1t7u4tgwic485-jwt-claims) for details
-         *     3. `signature` -> Contains the cryptographic signature of the token
-         *
-         *     Each of these parts is Base64URL-encoded and concatenated using dots so the overall structure is:
-         *     `BASE64URL(header).BASE64URL(claims).BASE64URL(signature)`
+         *     The JWT claims contain:
+         *     - `sub` -> the Client ID for which the token was issued
+         *     - `scope` -> the scopes of the token
+         *     - `iss` -> timestamp of token issuing
+         *     - `iat` -> timestamp of token expiration
          * @example eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
          */
         JWT: string;
-        /**
-         * JWT-header
-         * @example {
-         *       "alg": "RS256",
-         *       "typ": "JWT",
-         *       "kid": "key-2025-04"
-         *     }
-         */
-        "JWT-header": {
-            /**
-             * @example RS256
-             * @constant
-             */
-            alg: "HS256";
-            /**
-             * @example JWT
-             * @constant
-             */
-            typ: "JWT";
-            /**
-             * @description Key ID that was used to sign the token
-             * @example key-2025-04
-             */
-            kid: string;
-        };
-        /**
-         * JWT-claims
-         * @example {
-         *       "sub": "client_id_123",
-         *       "scope": "payments:read payments:write",
-         *       "iat": 1712640000,
-         *       "exp": 1712643600
-         *     }
-         */
-        "JWT-claims": {
-            /** @description The client ID for which the token has been issued */
-            sub?: string;
-            /** @description Space-separated list of [scopes](#scope) */
-            scope?: string;
-            /** @description Timestamp of when the token was issued */
-            iat?: number;
-            /** @description Timestamp of the token expiration */
-            exp?: number;
-        };
         /**
          * Payment-Create-Request
          * @description Representation of a request for a new payment
@@ -437,61 +370,7 @@ export interface components {
             callback: components["schemas"]["Payment-Callback"];
         };
         /**
-         * Payment-Details
-         * @description Representation of an existing payment
-         * @example {
-         *       "id": "300000001",
-         *       "order_number": "2025010199",
-         *       "state": "CREATED",
-         *       "amount": 100,
-         *       "currency": "CZK",
-         *       "customer": {
-         *         "email": "john.doe@example.com",
-         *         "first_name": "John",
-         *         "last_name": "Doe",
-         *         "phone_number": "+420123456789",
-         *         "city": "Testington",
-         *         "street": "Example st. 10",
-         *         "postal_code": "10000",
-         *         "country_code": "CZE",
-         *         "customer_id": "customer420"
-         *       },
-         *       "gw_url": "string",
-         *       "charge": {
-         *         "id": "9123456789",
-         *         "state": "REQUESTED",
-         *         "href": "https://api.gopay.com/api/4.0/payments/9123456789/charge"
-         *       }
-         *     }
-         */
-        "Payment-Details": {
-            /**
-             * @description Payment session ID
-             * @example 300000001
-             */
-            id: string;
-            /**
-             * @description Order ID forwarded from the payment request
-             * @example 2025010199
-             */
-            order_number: string;
-            /** @description Payment state */
-            state: components["schemas"]["Payment-State"];
-            /**
-             * @description Total amount in cents
-             * @example 100
-             */
-            amount: number;
-            /** @description Payment currency */
-            currency: components["schemas"]["Currency"];
-            /** @description Customer data */
-            customer: components["schemas"]["Customer"];
-            /** @description URL of the hosted payment gateway */
-            gw_url: string;
-            charge?: components["schemas"]["Payment-Charge-Ref"];
-        };
-        /**
-         * @description List of available currencies
+         * @description Supported payment currencies in ISO 4217 format
          * @example CZK
          * @enum {string}
          */
@@ -517,13 +396,7 @@ export interface components {
             value: string;
         };
         /**
-         * @description List of possible payment statuses
-         * @example CREATED
-         * @enum {string}
-         */
-        "Payment-State": "CREATED" | "PAID" | "CANCELED" | "PAYMENT_METHOD_CHOSEN" | "TIMEOUTED" | "AUTHORIZED" | "REFUNDED" | "PARTIALLY_REFUNDED";
-        /**
-         * @description Object representing the customer details. The email is required for authentication purposes.
+         * @description Customer details associated with the payment. The email address is required as it is used for authentication and notification purposes.
          * @example {
          *       "email": "john.doe@example.com",
          *       "first_name": "John",
@@ -605,6 +478,74 @@ export interface components {
             return_url: string;
         };
         /**
+         * Payment-Details
+         * @description Representation of an existing payment
+         * @example {
+         *       "id": "300000001",
+         *       "order_number": "2025010199",
+         *       "state": "CREATED",
+         *       "amount": 100,
+         *       "currency": "CZK",
+         *       "customer": {
+         *         "email": "john.doe@example.com",
+         *         "first_name": "John",
+         *         "last_name": "Doe",
+         *         "phone_number": "+420123456789",
+         *         "city": "Testington",
+         *         "street": "Example st. 10",
+         *         "postal_code": "10000",
+         *         "country_code": "CZE",
+         *         "customer_id": "customer420"
+         *       },
+         *       "gw_url": "string",
+         *       "charge": {
+         *         "id": "9123456789",
+         *         "state": "REQUESTED",
+         *         "href": "https://api.gopay.com/api/4.0/payments/9123456789/charge"
+         *       }
+         *     }
+         */
+        "Payment-Details": {
+            /**
+             * @description Payment session ID
+             * @example 300000001
+             */
+            id: string;
+            /**
+             * @description Order ID forwarded from the payment request
+             * @example 2025010199
+             */
+            order_number: string;
+            /** @description Payment state */
+            state: components["schemas"]["Payment-State"];
+            /**
+             * @description Total amount in cents
+             * @example 100
+             */
+            amount: number;
+            /** @description Payment currency */
+            currency: components["schemas"]["Currency"];
+            /** @description Customer data */
+            customer: components["schemas"]["Customer"];
+            /** @description URL of the hosted payment gateway */
+            gw_url: string;
+            charge?: components["schemas"]["Payment-Charge-Ref"];
+        };
+        /**
+         * @description The lifecycle state of a payment.
+         *     - `CREATED` - The payment has been created and is awaiting further action
+         *     - `PAID` - The payment has been successfully completed
+         *     - `CANCELED` - The payment was canceled
+         *     - `PAYMENT_METHOD_CHOSEN` - A payment method has been selected by the customer
+         *     - `TIMEOUTED` - The payment was not completed within the allowed time
+         *     - `AUTHORIZED` - The payment has been authorized but not yet captured
+         *     - `REFUNDED` - The payment has been fully refunded
+         *     - `PARTIALLY_REFUNDED` - The payment has been partially refunded
+         * @example CREATED
+         * @enum {string}
+         */
+        "Payment-State": "CREATED" | "PAID" | "CANCELED" | "PAYMENT_METHOD_CHOSEN" | "TIMEOUTED" | "AUTHORIZED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+        /**
          * Payment-Charge-Ref
          * @description A reference to a payment charge associated with the payment
          * @example {
@@ -628,6 +569,18 @@ export interface components {
              */
             href: string;
         };
+        /**
+         * Charge State
+         * @description The lifecycle state of a payment charge.
+         *     - `REQUESTED` - The charge has been initiated
+         *     - `PROCESSING` - The charge is being processed by the payment provider
+         *     - `ACTION_REQUIRED` - Additional action is required from the customer (e.g. 3DS authentication or bank redirect)
+         *     - `SUCCEEDED` - The charge completed successfully
+         *     - `FAILED` - The charge failed
+         * @example REQUESTED
+         * @enum {string}
+         */
+        "Charge-State": "REQUESTED" | "PROCESSING" | "ACTION_REQUIRED" | "SUCCEEDED" | "FAILED";
         /**
          * Payment Charge Input
          * @description Model holding all data necessary to perform a payment charge
@@ -666,73 +619,20 @@ export interface components {
          *     }
          */
         "Payment-Charge-Input": {
+            /** @description Payment instrument data specifying how the payment should be charged */
             payment_instrument?: components["schemas"]["Payment-Charge-Data"];
             /**
              * Format: url
+             * @description URL where the customer will be redirected after completing the payment action (e.g. 3DS authentication or bank login)
              * @example https://example.com/return
              */
             return_url?: string;
+            /** @description Customer browser data used for 3DS authentication. Required for card payments. */
             browser_data?: components["schemas"]["Browser-Data"];
         };
         /**
-         * Browser-Data
-         * @description Customer browser data used for authentication purposes
-         * @example {
-         *       "language": "cs-CZ",
-         *       "timezone": -60,
-         *       "screen_width": 434,
-         *       "screen_height": 965,
-         *       "color_depth": 24,
-         *       "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36",
-         *       "accept_header": "{\\\"accept-language\\\":\\\"cs;q\\\\u003d0.5\\\",\\\"accept-encoding\\\":\\\"gzip, deflate, br, zstd\\\",\\\"accept\\\":\\\"application/json, text/plain, *\/*\\\"}",
-         *       "javascript_enabled": true
-         *     }
-         */
-        "Browser-Data": {
-            /**
-             * @description Language or locale of the customer environment
-             * @example cs-CZ
-             */
-            language: string;
-            /**
-             * @description Timezone of the customer environment
-             * @example -60
-             */
-            timezone: number;
-            /**
-             * @description Width of customer viewport
-             * @example 434
-             */
-            screen_width: number;
-            /**
-             * @description Height of customer viewport
-             * @example 965
-             */
-            screen_height: number;
-            /**
-             * @description Color depth of customer screen
-             * @example 24
-             */
-            color_depth: number;
-            /**
-             * @description User agent of customer browser
-             * @example Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36
-             */
-            user_agent?: string;
-            /**
-             * @description Accept header received by customer browser
-             * @example {\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, *\/*\"}
-             */
-            accept_header?: string;
-            /**
-             * @description Whether Javascript is enabled in customer environment
-             * @example true
-             */
-            javascript_enabled?: boolean;
-        };
-        /**
          * Payment-Charge-Data
-         * @description Discriminated union of the possible payment charges. Discrimantor is the `payment_instrument` field gaining values from the [Payment-Instrument](./x3xyv4fy5blzy-payment-instrument) enum
+         * @description Discriminated union of the possible payment charges. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](./x3xyv4fy5blzy-payment-instrument) enum.
          * @example {
          *       "payment_instrument": "PAYMENT_CARD",
          *       "input": {
@@ -779,7 +679,7 @@ export interface components {
         };
         /**
          * Payment Card Input
-         * @description Discriminated union of the possible card payment inputs. Discrimantor is the `input_type` field gaining values from the [Payment Card Input Type](./n7rgf81mgdw30-payment-card-input-type) enum
+         * @description Discriminated union of the possible card payment inputs. The discriminator is the `input_type` field gaining values from the [Payment Card Input Type](./n7rgf81mgdw30-payment-card-input-type) enum.
          * @example {
          *       "input_type": "CARD_TOKEN",
          *       "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
@@ -807,7 +707,7 @@ export interface components {
         /**
          * Payment Card Input Type
          * @description Discriminator for the cases of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union
-         * @enum {unknown}
+         * @enum {string}
          */
         "Payment-Card-Input-Type": "CARD_TOKEN" | "APPLE_PAY" | "GOOGLE_PAY";
         /**
@@ -844,6 +744,7 @@ export interface components {
          */
         "Payment-Card-Challenge-Preference": "CHALLENGE_PREFERRED" | "NO_CHALLENGE_PREFERRED" | "AUTO";
         /**
+         * Google Pay Input
          * @description The `GOOGLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Google Pay.
          *     See [Payment Data Cryptography](https://developers.google.com/pay/api/web/guides/resources/payment-data-cryptography) in Google Pay documentation for details
          * @example {
@@ -865,16 +766,30 @@ export interface components {
              * @enum {string}
              */
             input_type: "GOOGLE_PAY";
-            /** @example ECv2 */
+            /**
+             * @description Version of the Google Pay API protocol used to encrypt the payment data
+             * @example ECv2
+             */
             protocolVersion?: string;
-            /** @example MEQCIH6Q4OwQ0jAceFEkGF0JID6sJNXxOEi4r+mA7biRxqBQAiAondqoUpU/bdsrAOpZIsrHQS9nwiiNwOrr24RyPeHA0Q\u003d\u003d */
+            /**
+             * @description Digital signature of the payment data
+             * @example MEQCIH6Q4OwQ0jAceFEkGF0JID6sJNXxOEi4r+mA7biRxqBQAiAondqoUpU/bdsrAOpZIsrHQS9nwiiNwOrr24RyPeHA0Q\u003d\u003d
+             */
             signature?: string;
+            /** @description Intermediate signing key from Google used to verify the signature */
             intermediateSigningKey?: {
-                /** @example {\"keyExpiration\":\"1542323393147\",\"keyValue\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw\\u003d\\u003d\"} */
+                /**
+                 * @description JSON-encoded string containing the key value and expiration
+                 * @example {\"keyExpiration\":\"1542323393147\",\"keyValue\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw\\u003d\\u003d\"}
+                 */
                 signedKey?: string;
+                /** @description Signatures of the intermediate signing key */
                 signatures?: string[];
             };
-            /** @example {\"tag\":\"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\\u003d\",\"ephemeralPublicKey\":\"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\\u003d\",\"encryptedMessage\":\"mKOoXwi8OavZ\"} */
+            /**
+             * @description JSON-encoded string containing the encrypted payment data
+             * @example {\"tag\":\"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\\u003d\",\"ephemeralPublicKey\":\"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\\u003d\",\"encryptedMessage\":\"mKOoXwi8OavZ\"}
+             */
             signedMessage?: string;
         };
         /**
@@ -899,18 +814,37 @@ export interface components {
              * @enum {string}
              */
             input_type: "APPLE_PAY";
-            /** @example V7OcjttPJnUJaQH7x7OjbIeZSINuc... */
+            /**
+             * @description Encrypted payment data from the Apple Pay token
+             * @example V7OcjttPJnUJaQH7x7OjbIeZSINuc...
+             */
             data: string;
-            /** @example MIAGCSqGSIb3DQEHAqCAM... */
+            /**
+             * @description Signature of the payment and header data, signed by Apple
+             * @example MIAGCSqGSIb3DQEHAqCAM...
+             */
             signature: string;
-            /** @example EC_v1 */
+            /**
+             * @description Version of the Apple Pay payment token format
+             * @example EC_v1
+             */
             version: string;
+            /** @description Header containing additional data for decrypting and verifying the payment token */
             header: {
-                /** @example MFkwEwYHKoZIzj... */
+                /**
+                 * @description Ephemeral public key used for deriving the shared secret
+                 * @example MFkwEwYHKoZIzj...
+                 */
                 ephemeralPublicKey: string;
-                /** @example L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo= */
+                /**
+                 * @description SHA-256 hash of the merchant's public key certificate
+                 * @example L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=
+                 */
                 publicKeyHash: string;
-                /** @example 4f4fac7a1...a6a8ba2c0e8c5 */
+                /**
+                 * @description Unique transaction identifier generated by Apple Pay
+                 * @example 4f4fac7a1...a6a8ba2c0e8c5
+                 */
                 transactionId: string;
             };
         };
@@ -927,14 +861,16 @@ export interface components {
          */
         "Bank-Account-Charge-Data": {
             /**
-             * @description discriminator enum property added by openapi-typescript
+             * @description Always `BANK_ACCOUNT` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
             payment_instrument: "BANK_ACCOUNT";
+            /** @description One of the possible inputs for a bank account payment */
             input: components["schemas"]["Bank-Account-Input"];
         };
         /**
          * Bank-Account-Input
+         * @description Discriminated union of the possible bank account payment inputs. The discriminator is the `input_type` field gaining values from the Bank Account Input Type enum.
          * @example {
          *       "input_type": "ACCOUNT_TOKEN",
          *       "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
@@ -954,11 +890,14 @@ export interface components {
         "Bank-Account-Input": components["schemas"]["Bank-Account-Token-Input"] | components["schemas"]["Bank-Account-Iban-Input"] | components["schemas"]["Bank-Account-Swift-Input"];
         /**
          * Bank Account Input Type
-         * @enum {unknown}
+         * @description Discriminator for the cases of the Bank Account Input union
+         * @example ACCOUNT_TOKEN
+         * @enum {string}
          */
         "Bank-Account-Input-Type": "ACCOUNT_TOKEN" | "IBAN" | "SWIFT";
         /**
          * Bank Account Token Input
+         * @description The `ACCOUNT_TOKEN` variant of the Bank Account Input union. Uses a previously saved bank account token to initiate the payment.
          * @example {
          *       "input_type": "ACCOUNT_TOKEN",
          *       "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
@@ -966,15 +905,19 @@ export interface components {
          */
         "Bank-Account-Token-Input": {
             /**
-             * @description discriminator enum property added by openapi-typescript
+             * @description Always `ACCOUNT_TOKEN` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
             input_type: "ACCOUNT_TOKEN";
-            /** @example f14e5acc2d86480fb50e254c8a3c3164 */
+            /**
+             * @description A previously saved bank account token identifier
+             * @example f14e5acc2d86480fb50e254c8a3c3164
+             */
             account_token: string;
         };
         /**
          * Bank Account Iban Input
+         * @description The `IBAN` variant of the Bank Account Input union. Uses an IBAN (International Bank Account Number) to identify the bank account for the payment.
          * @example {
          *       "input_type": "IBAN",
          *       "iban": "CZ5120100000000009878039",
@@ -984,18 +927,38 @@ export interface components {
          */
         "Bank-Account-Iban-Input": {
             /**
-             * @description discriminator enum property added by openapi-typescript
+             * @description Always `IBAN` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
             input_type: "IBAN";
-            /** @example CZ5120100000000009878039 */
+            /**
+             * @description The International Bank Account Number of the payer
+             * @example CZ5120100000000009878039
+             */
             iban: string;
+            /** @description SWIFT/BIC code identifying the payer's bank */
             swift?: components["schemas"]["Bank-Swift"];
-            /** @example John Doe */
+            /**
+             * @description Full name of the bank account holder
+             * @example John Doe
+             */
             account_holder_name?: string;
         };
         /**
+         * Bank Swift
+         * @description SWIFT/BIC code identifying a supported bank. Use `OTHERS` for banks not explicitly listed.
+         *     - `GIBACZPX` - Česká spořitelna (Czech Republic)
+         *     - `KOMBCZPP` - Komerční banka (Czech Republic)
+         *     - `SUBASKBX` - VÚB banka (Slovakia)
+         *     - `GIBASKBX` - Slovenská sporiteľňa (Slovakia)
+         *     - `OTHERS` - Any other supported bank
+         * @example GIBACZPX
+         * @enum {string}
+         */
+        "Bank-Swift": "GIBACZPX" | "KOMBCZPP" | "SUBASKBX" | "GIBASKBX" | "OTHERS";
+        /**
          * Bank Account Swift Input
+         * @description The `SWIFT` variant of the Bank Account Input union. Identifies only the bank (via SWIFT code) without specifying a particular account — the customer will be redirected to their bank to complete the payment.
          * @example {
          *       "input_type": "SWIFT",
          *       "swift": "GIBACZPX",
@@ -1004,25 +967,85 @@ export interface components {
          */
         "Bank-Account-Swift-Input": {
             /**
-             * @description discriminator enum property added by openapi-typescript
+             * @description Always `SWIFT` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
             input_type: "SWIFT";
+            /** @description SWIFT/BIC code identifying the payer's bank */
             swift: components["schemas"]["Bank-Swift"];
+            /** @description The type of bank payment flow to use */
             bank_payment_type?: components["schemas"]["Bank-Payment-Type"];
         };
         /**
-         * Bank Swift
-         * @enum {unknown}
-         */
-        "Bank-Swift": "GIBACZPX" | "KOMBCZPP" | "SUBASKBX" | "GIBASKBX" | "OTHERS";
-        /**
          * Bank Payment Type
-         * @enum {unknown}
+         * @description Specifies the bank payment flow to be used.
+         *     - `PSD2` - PSD2-compliant open banking payment initiation
+         *     - `ONLINE` - Online bank transfer via the bank's web interface
+         *     - `QRPAYMENT` - QR code based bank payment
+         *     - `OFFLINE` - Offline bank transfer (manual wire transfer)
+         * @example PSD2
+         * @enum {string}
          */
         "Bank-Payment-Type": "PSD2" | "ONLINE" | "QRPAYMENT" | "OFFLINE";
         /**
+         * Browser-Data
+         * @description Customer browser data collected for 3-D Secure authentication purposes. This data is forwarded to the card issuer during the authentication flow.
+         * @example {
+         *       "language": "cs-CZ",
+         *       "timezone": -60,
+         *       "screen_width": 434,
+         *       "screen_height": 965,
+         *       "color_depth": 24,
+         *       "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36",
+         *       "accept_header": "{\\\"accept-language\\\":\\\"cs;q\\\\u003d0.5\\\",\\\"accept-encoding\\\":\\\"gzip, deflate, br, zstd\\\",\\\"accept\\\":\\\"application/json, text/plain, *\/*\\\"}",
+         *       "javascript_enabled": true
+         *     }
+         */
+        "Browser-Data": {
+            /**
+             * @description Language or locale of the customer environment
+             * @example cs-CZ
+             */
+            language: string;
+            /**
+             * @description Timezone offset of the customer environment in minutes (e.g. -60 for CET)
+             * @example -60
+             */
+            timezone: number;
+            /**
+             * @description Width of the customer's screen in pixels
+             * @example 434
+             */
+            screen_width: number;
+            /**
+             * @description Height of the customer's screen in pixels
+             * @example 965
+             */
+            screen_height: number;
+            /**
+             * @description Color depth of the customer's screen in bits
+             * @example 24
+             */
+            color_depth: number;
+            /**
+             * @description User-Agent string of the customer's browser
+             * @example Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36
+             */
+            user_agent?: string;
+            /**
+             * @description JSON-encoded Accept headers from the customer's browser
+             * @example {\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, *\/*\"}
+             */
+            accept_header?: string;
+            /**
+             * @description Whether JavaScript is enabled in the customer's browser
+             * @example true
+             */
+            javascript_enabled?: boolean;
+        };
+        /**
          * Payment Charge Response Data
+         * @description Response data returned after initiating or querying a payment charge. Contains the current charge state, instrument details, and any required follow-up action.
          * @example {
          *       "id": "string",
          *       "state": "REQUESTED",
@@ -1065,23 +1088,27 @@ export interface components {
          *     }
          */
         "Payment-Charge-Response-Data": {
+            /**
+             * @description Unique identifier of the charge
+             * @example 9123456789
+             */
             id: string;
+            /** @description Current state of the charge */
             state: components["schemas"]["Charge-State"];
+            /** @description Details of the payment instrument used for this charge */
             payment_instrument: components["schemas"]["Payment-Instrument-Data"];
             /**
              * Format: url
+             * @description URL where the customer will be redirected after completing the payment action
              * @example https://example.com/return
              */
             return_url: string;
+            /** @description The follow-up action required to complete the charge (e.g. 3DS authentication or bank redirect) */
             action?: components["schemas"]["Payment-Charge-Action"];
         };
         /**
-         * Charge State
-         * @enum {unknown}
-         */
-        "Charge-State": "REQUESTED" | "PROCESSING" | "ACTION_REQUIRED" | "SUCCEEDED" | "FAILED";
-        /**
          * Payment Instrument Data
+         * @description Discriminated union of the possible payment instrument output data. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](./x3xyv4fy5blzy-payment-instrument) enum.
          * @example {
          *       "payment_instrument": "PAYMENT_CARD",
          *       "details": {
@@ -1106,6 +1133,7 @@ export interface components {
         "Payment-Instrument-Data": components["schemas"]["Payment-Card-Instrument-Out"] | components["schemas"]["Bank-Account-Instrument-Out"];
         /**
          * Payment Card Instrument Out
+         * @description The `PAYMENT_CARD` variant of the Payment Instrument Data union. Contains the card-specific details of the instrument used in a charge.
          * @example {
          *       "payment_instrument": "PAYMENT_CARD",
          *       "details": {
@@ -1120,14 +1148,16 @@ export interface components {
          */
         "Payment-Card-Instrument-Out": {
             /**
-             * @description discriminator enum property added by openapi-typescript
+             * @description Always `PAYMENT_CARD` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
             payment_instrument: "PAYMENT_CARD";
+            /** @description Card-specific details of the payment instrument */
             details: components["schemas"]["Payment-Card-Charge-Out"];
         };
         /**
          * Payment Card Data Out
+         * @description Output details of a card payment instrument as returned in a charge response. Contains masked card data identifying the card used.
          * @example {
          *       "input_type": "CARD_TOKEN",
          *       "masked_pan": "406821******1234",
@@ -1138,24 +1168,41 @@ export interface components {
          *     }
          */
         "Payment-Card-Charge-Out": {
+            /** @description The type of card input that was used for the charge */
             input_type?: components["schemas"]["Payment-Card-Input-Type"];
-            /** @example 406821******1234 */
+            /**
+             * @description Masked primary account number with only the first six and last four digits visible
+             * @example 406821******1234
+             */
             masked_pan?: string;
-            /** @example 01 */
+            /**
+             * @description Card expiration month (01–12)
+             * @example 01
+             */
             expiration_month?: string;
-            /** @example 30 */
+            /**
+             * @description Card expiration year (two-digit format)
+             * @example 30
+             */
             expiration_year?: string;
+            /** @description Card network scheme */
             scheme?: components["schemas"]["Card-scheme"];
-            /** @example 73c8d0a48d91def89761... */
+            /**
+             * @description A unique hash identifying the physical card
+             * @example 73c8d0a48d91def89761...
+             */
             fingerprint?: string;
         };
         /**
          * Card scheme
-         * @enum {unknown}
+         * @description The card network scheme (VISA or MASTERCARD)
+         * @example VISA
+         * @enum {string}
          */
         "Card-scheme": "VISA" | "MASTERCARD";
         /**
          * Bank Account Instrument Data
+         * @description The `BANK_ACCOUNT` variant of the Payment Instrument Data union. Contains the bank account-specific details of the instrument used in a charge.
          * @example {
          *       "payment_instrument": "BANK_ACCOUNT",
          *       "details": {
@@ -1168,14 +1215,16 @@ export interface components {
          */
         "Bank-Account-Instrument-Out": {
             /**
-             * @description discriminator enum property added by openapi-typescript
+             * @description Always `BANK_ACCOUNT` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
             payment_instrument: "BANK_ACCOUNT";
+            /** @description Bank account-specific details of the payment instrument */
             details: components["schemas"]["Bank-Account-Charge-Out"];
         };
         /**
          * Bank Account Data Details
+         * @description Output details of a bank account payment instrument as returned in a charge response. Contains the bank account information used for the payment.
          * @example {
          *       "input_type": "ACCOUNT_TOKEN",
          *       "iban": "CZ5120100000000009878039",
@@ -1184,18 +1233,25 @@ export interface components {
          *     }
          */
         "Bank-Account-Charge-Out": {
+            /** @description The type of bank account input that was used for the charge */
             input_type: components["schemas"]["Bank-Account-Input-Type"];
             /**
              * Format: iban
+             * @description The International Bank Account Number of the payer
              * @example CZ5120100000000009878039
              */
             iban?: string;
+            /** @description SWIFT/BIC code identifying the payer's bank */
             swift?: components["schemas"]["Bank-Swift"];
-            /** @example John Doe */
+            /**
+             * @description Full name of the bank account holder
+             * @example John Doe
+             */
             account_holder_name?: string;
         };
         /**
          * Payment Charge Action
+         * @description Discriminated union of actions that may be required to complete a payment charge. The discriminator is the `action_type` field. The action typically involves redirecting the customer to an external page (e.g. 3DS authentication or bank login).
          * @example {
          *       "action_type": "EMV3DS",
          *       "state": "CREATED",
@@ -1212,14 +1268,18 @@ export interface components {
          *       "redirect_url": "https://gate.gopay.com/redirect"
          *     }
          */
-        "Payment-Charge-Action": components["schemas"]["Emv-3DS-Action"] | components["schemas"]["Bank-Account-Action"];
+        "Payment-Charge-Action": components["schemas"]["Emv-3DS-Action"];
         /**
          * Payment Charge Action Type
-         * @enum {unknown}
+         * @description Discriminator for the cases of the Payment Charge Action union.
+         *     - `EMV3DS` - EMV 3-D Secure authentication for card payments
+         * @example EMV3DS
+         * @enum {string}
          */
-        "Payment-Charge-Action-Type": "EMV3DS" | "PSD2" | "BANK_ACCOUNT";
+        "Payment-Charge-Action-Type": "EMV3DS";
         /**
          * Emv 3DS Action
+         * @description The `EMV3DS` variant of the Payment Charge Action union. Represents an EMV 3-D Secure authentication action for card payments.
          * @example {
          *       "action_type": "EMV3DS",
          *       "state": "CREATED",
@@ -1228,49 +1288,36 @@ export interface components {
          */
         "Emv-3DS-Action": {
             /**
-             * @description discriminator enum property added by openapi-typescript
+             * @description Always `EMV3DS` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
             action_type: "EMV3DS";
+            /** @description Current state of the 3DS authentication flow */
             state: components["schemas"]["Emv-3DS-State"];
             /**
              * Format: url
+             * @description URL to redirect the customer to for completing the 3DS authentication
              * @example https://gate.gopay.com/redirect
              */
             redirect_url?: string;
         };
         /**
          * Emv 3DS State
-         * @enum {unknown}
+         * @description The lifecycle state of an EMV 3-D Secure authentication.
+         *     - `CREATED` - The 3DS authentication has been initiated
+         *     - `CHALLENGE_REQUIRED` - The customer must complete a 3DS challenge (e.g. OTP, biometric)
+         *     - `AUTHENTICATED_CHALLENGE` - The customer was successfully authenticated via a 3DS challenge
+         *     - `AUTHENTICATED_FRICTIONLESS` - The customer was authenticated without a challenge (frictionless flow)
+         *     - `NOT_AUTHENTICATED` - The 3DS authentication was not completed
+         *     - `FAILED` - The 3DS authentication failed
+         * @example CREATED
+         * @enum {string}
          */
         "Emv-3DS-State": "CREATED" | "CHALLENGE_REQUIRED" | "AUTHENTICATED_CHALLENGE" | "AUTHENTICATED_FRICTIONLESS" | "NOT_AUTHENTICATED" | "FAILED";
         /**
-         * Bank Account Action
-         * @example {
-         *       "action_type": "BANK_ACCOUNT",
-         *       "state": "REQUESTED",
-         *       "redirect_url": "https://gate.gopay.com/redirect"
-         *     }
+         * QR-Payment-Details
+         * @description Details of a QR code payment including the payment amount, recipient bank account information, and the generated QR codes in various formats.
          */
-        "Bank-Account-Action": {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            action_type: "BANK_ACCOUNT";
-            state: components["schemas"]["Bank-Account-State"];
-            /**
-             * Format: url
-             * @example https://gate.gopay.com/redirect
-             */
-            redirect_url?: string;
-        };
-        /**
-         * Bank Account State
-         * @enum {unknown}
-         */
-        "Bank-Account-State": "REQUESTED" | "PROCESSED" | "CANCELED" | "TIMEOUT";
-        /** QR-Payment-Details */
         "QR-Payment-Details": {
             /**
              * @description Payment amount in cents
@@ -1281,49 +1328,136 @@ export interface components {
             currency: components["schemas"]["Currency"];
             /** @description Information about the recipient */
             recipient: components["schemas"]["Bank-Transfer-Recipient"];
+            /** @description Generated QR code images in various regional formats */
             qr_code: components["schemas"]["QR-Code-List"];
         };
-        /** Bank-Transfer-Recipient */
+        /**
+         * Bank-Transfer-Recipient
+         * @description Information about the recipient of a bank transfer payment, including their name, bank account details, and address.
+         */
         "Bank-Transfer-Recipient": {
+            /**
+             * @description Name of the payment recipient
+             * @example GoPay Czech
+             */
             name?: string;
+            /** @description Bank account details of the recipient in both local and international formats */
             bank_account?: components["schemas"]["Recipient-Bank-Account"];
+            /** @description Physical address of the recipient */
             address?: components["schemas"]["Recipient-Address"];
         };
-        /** Recipient-Bank-Account */
+        /**
+         * Recipient-Bank-Account
+         * @description Recipient bank account details provided in both local (country-specific) and international (IBAN/SWIFT) formats.
+         */
         "Recipient-Bank-Account": {
+            /** @description Bank account details in the local (country-specific) format */
             local?: components["schemas"]["Bank-Account-Local-Details"];
+            /** @description Bank account details in the international IBAN/BIC format */
             international?: components["schemas"]["Bank-Account-International-Details"];
         };
+        /**
+         * Bank-Account-Local-Details
+         * @description Bank account details in the local Czech/Slovak format, including the account number prefix, bank code, and variable symbol for payment identification.
+         */
         "Bank-Account-Local-Details": {
+            /**
+             * @description Account number prefix (may be all zeros)
+             * @example 000000
+             */
             prefix: string;
+            /**
+             * @description The local bank account number
+             * @example 9878039
+             */
             account_number: string;
+            /**
+             * @description Numeric bank code identifying the bank
+             * @example 2010
+             */
             bank_code: string;
+            /**
+             * @description Variable symbol used to match the payment to an order
+             * @example 3123456789
+             */
             variable_symbol: string;
         };
+        /**
+         * Bank-Account-International-Details
+         * @description Bank account details in the international IBAN/BIC format, used for cross-border and SEPA payments.
+         */
         "Bank-Account-International-Details": {
+            /**
+             * @description BIC (Bank Identifier Code) / SWIFT code of the bank
+             * @example FIOBCZPP
+             */
             bic?: string;
+            /**
+             * @description International Bank Account Number
+             * @example CZ5120100000000009878039
+             */
             iban?: string;
+            /**
+             * @description Payment reference number used to match the payment to an order
+             * @example 3123456789
+             */
             reference?: string;
         };
+        /**
+         * Recipient-Address
+         * @description Physical address of the payment recipient.
+         */
         "Recipient-Address": {
+            /**
+             * @description Street address including the building number
+             * @example Senovazne nam. 1736
+             */
             street?: string;
+            /**
+             * @description City name
+             * @example Ceske Budejovice
+             */
             city?: string;
+            /**
+             * @description ZIP or postal code
+             * @example 37001
+             */
             zip_code?: string;
+            /**
+             * @description Country name
+             * @example Czech Republic
+             */
             country?: string;
         };
-        /** QR-Code-List */
+        /**
+         * QR-Code-List
+         * @description A collection of QR code images in various regional formats, each encoded as a base64 string. The available formats depend on the payment currency and recipient country.
+         */
         "QR-Code-List": {
-            /** @example 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 */
+            /**
+             * @description QR code in the SPAYD (Short Payment Descriptor) format, commonly used in the Czech Republic. Encoded as a base64 PNG image.
+             * @example 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
+             */
             spayd?: string;
-            /** @example {QR code in base64} */
+            /**
+             * @description QR code in the Pay by Square format, commonly used in Slovakia. Encoded as a base64 image.
+             * @example {QR code in base64}
+             */
             paybysquare?: string;
-            /** @example {QR code in base64} */
+            /**
+             * @description QR code in the SEPA (Single Euro Payments Area) format for EUR payments. Encoded as a base64 image.
+             * @example {QR code in base64}
+             */
             sepa?: string;
-            /** @example {QR code in base64} */
+            /**
+             * @description QR code in the MNB (Magyar Nemzeti Bank) format, commonly used in Hungary. Encoded as a base64 image.
+             * @example {QR code in base64}
+             */
             mnb_qr?: string;
         };
         /**
          * Onetime Card Token Details
+         * @description Details of a one-time (single use) card token. This token expires after a single charge or after the time specified in `expires_in`.
          * @example {
          *       "masked_pan": "406821******1234",
          *       "expiration_month": "01",
@@ -1338,27 +1472,67 @@ export interface components {
          *     }
          */
         "Onetime-Card-Token-Details": {
-            /** @example 406821******1234 */
+            /**
+             * @description Masked primary account number with only the first six and last four digits visible
+             * @example 406821******1234
+             */
             masked_pan: string;
-            /** @example 01 */
+            /**
+             * @description Card expiration month (01–12)
+             * @example 01
+             */
             expiration_month: string;
-            /** @example 30 */
+            /**
+             * @description Card expiration year (two-digit format)
+             * @example 30
+             */
             expiration_year: string;
+            /** @description Card network scheme */
             scheme: components["schemas"]["Card-scheme"];
-            /** @default false */
+            /**
+             * @description Whether the card is a corporate (business) card
+             * @default false
+             */
             corporate: boolean;
-            /** @example 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b */
+            /**
+             * @description A unique hash identifying the physical card, stable across multiple tokenizations of the same card
+             * @example 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
+             */
             fingerprint: string;
-            /** @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0= */
+            /**
+             * @description The one-time card token value to be used in a charge request
+             * @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
+             */
             token: string;
-            /** @example 3600 */
+            /**
+             * @description Token validity duration in seconds
+             * @example 3600
+             */
             expires_in?: string;
-            /** @example GOLD */
+            /**
+             * @description Card brand or tier (e.g. GOLD, PLATINUM, STANDARD)
+             * @example GOLD
+             */
             brand?: string;
+            /** @description Whether the card is a debit or credit card */
             service_type?: components["schemas"]["Card-Service-Type"];
         };
         /**
+         * Card-Token-Request
+         * @description Request body for creating a card token. Contains the encrypted card data and a flag indicating whether the token should be stored permanently.
+         */
+        "Card-Token-Request": {
+            /** @description The encrypted card data payload in JWE compact serialization format */
+            payload: components["schemas"]["JWE"];
+            /**
+             * @description When `true`, a permanent card token is created that can be reused for future payments. When `false`, a one-time token is created that expires after a single use.
+             * @default false
+             */
+            permanent: boolean;
+        };
+        /**
          * Permanent Card Token Details
+         * @description Details of a permanently stored card token. This token can be reused across multiple payments until the card expires or the token is explicitly deleted.
          * @example {
          *       "card_id": "8007127320",
          *       "masked_pan": "406821******1234",
@@ -1375,49 +1549,83 @@ export interface components {
          *     }
          */
         "Permanent-Card-Token-Details": {
-            /** @example 8007127320 */
+            /**
+             * @description Unique identifier of the stored card token
+             * @example 8007127320
+             */
             card_id: string;
-            /** @example 406821******1234 */
+            /**
+             * @description Masked primary account number with only the first six and last four digits visible
+             * @example 406821******1234
+             */
             masked_pan: string;
-            /** @example 489537******6287 */
+            /**
+             * @description Masked virtual PAN (network token) associated with the card
+             * @example 489537******6287
+             */
             masked_virtual_pan: string;
-            /** @example 01 */
+            /**
+             * @description Card expiration month (01–12)
+             * @example 01
+             */
             expiration_month: string;
-            /** @example 30 */
+            /**
+             * @description Card expiration year (two-digit format)
+             * @example 30
+             */
             expiration_year: string;
+            /** @description Card network scheme */
             scheme: components["schemas"]["Card-scheme"];
-            /** @default false */
+            /**
+             * @description Whether the card is a corporate (business) card
+             * @default false
+             */
             corporate: boolean;
-            /** @example 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b */
+            /**
+             * @description A unique hash identifying the physical card, stable across multiple tokenizations of the same card
+             * @example 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
+             */
             fingerprint: string;
-            /** @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0= */
+            /**
+             * @description The permanent card token value to be used in charge requests
+             * @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
+             */
             token: string;
             /**
              * Format: uri
+             * @description URL of the card art image provided by the issuing bank
              * @example https://card.art/pic.png
              */
             card_art_url: string;
-            /** @example GOLD */
+            /**
+             * @description Card brand or tier (e.g. GOLD, PLATINUM, STANDARD)
+             * @example GOLD
+             */
             brand?: string;
+            /** @description Whether the card is a debit or credit card */
             service_type?: components["schemas"]["Card-Service-Type"];
+            /** @description Current status of the stored card token */
             status?: components["schemas"]["Card-Token-Status"];
         };
         /**
          * Card Service Type
-         * @enum {unknown}
+         * @description Indicates whether the card is a debit or credit card.
+         *     - `DEBIT` - Funds are drawn directly from the cardholder's bank account
+         *     - `CREDIT` - Funds are drawn from the cardholder's credit line
+         * @example DEBIT
+         * @enum {string}
          */
         "Card-Service-Type": "DEBIT" | "CREDIT";
         /**
          * Card-Token-Status
-         * @enum {unknown}
+         * @description Current status of a permanent card token.
+         *     - `ACTIVE` - The token is valid and can be used for payments
+         *     - `SUSPENDED` - The token is temporarily suspended and cannot be used
+         *     - `DELETED` - The token has been permanently deleted
+         * @example ACTIVE
+         * @enum {string}
          */
         "Card-Token-Status": "ACTIVE" | "SUSPENDED" | "DELETED";
-        /** Card-Token-Request */
-        "Card-Token-Request": {
-            payload: components["schemas"]["JWE"];
-            /** @default false */
-            permanent: boolean;
-        };
         /**
          * JWK
          * @description The structure of the public encryption key. It is formatted according to RFC 7515: JSON Web Key (JWK)
@@ -1432,11 +1640,13 @@ export interface components {
          */
         JWK: {
             /**
+             * @description Key type. Always `RSA` for the encryption keys used by GoPay.
              * @example RSA
              * @constant
              */
             kty: "RSA";
             /**
+             * @description Key usage. Always `enc` (encryption).
              * @example enc
              * @constant
              */
@@ -1468,87 +1678,47 @@ export interface components {
          * JWE
          * @description The structure containing the encrypted payload. It is described by [RFC 7516: JSON Web Encryption (JWE)](https://datatracker.ietf.org/doc/html/rfc7516)
          *
-         *     The JWE has 5 parts:
-         *     1. `header` -> contains JSON serialized [JWE header](#jwe-header)
-         *     2. `encrypted_key` -> contains the CEK (Content Encryption Key) encrypted by the public JWK
-         *     3. `iv` -> initiation vector used for content encryption
-         *     4. `ciphertext` -> contains the [Encrypted card](#encrypted-card)
-         *     5. `tag` -> encryption authentication tag
-         *
-         *     Each of these parts is Base64URL-encoded and concatenated using dots so the overall structure is:
-         *     `BASE64URL(header).BASE64URL(encrypted_key).BASE64URL(iv).BASE64URL(ciphertext).BASE64URL(tag)`
+         *     The ciphertext is a JSON string specified in [Encrypted Card](./3b4df40c0843f-encrypted-card)
          * @example eyJalgIjoiUlNBLU9BRVAtMjU2IiwiZW5jIjoiQTI1NkdDTSIsImtpZCI6ImtleV8yMDI1MDQwNl8wMDEifQ.aG93ZGlkYmFzZTY0.dGhpc2lzdGhlaXY.ZW5jcnlwdGVkY2FyZGhvbGRlcmRhdGE.YXV0aHRhZw
          */
         JWE: string;
         /**
-         * JWE-header
-         * @description The header for the JWE payload described by [RFC 7516 Section 4](https://datatracker.ietf.org/doc/html/rfc7516#section-4)
-         * @example {
-         *       "alg": "RSA-OAEP-256",
-         *       "enc": "A256GCM",
-         *       "kid": "key_20250406",
-         *       "typ": "JWE"
-         *     }
+         * Card-Form-URL
+         * @description Response containing the URL of the hosted card input form. Use this form to securely collect card details without handling raw card data on your own servers.
          */
-        "JWE-header": {
+        "Card-Form-URL": {
             /**
-             * @description Must be same as JWK
-             * @example RSA-OAEP-256
+             * @description URL of the hosted card input form
+             * @example https://secure.gopay.com/gp-card-comm/q/form
              */
-            alg: string;
-            /**
-             * @description The algorithm used to encrypt the content. `A256GCM` is preferred.
-             * @default A256GCM
-             * @example A256GCM
-             */
-            enc: string;
-            /** @description Must be same as JWK */
-            kid: string;
-            /**
-             * @example JWE
-             * @constant
-             */
-            typ: "JWE";
+            card_form_url?: string;
         };
-        /**
-         * Encrypted-card
-         * @example {
-         *       "card_pan": "4444444444444448",
-         *       "exp_month": "01",
-         *       "exp_year": "30",
-         *       "cvv": "123"
-         *     }
-         */
-        "Encrypted-card": {
+        "Encrypted-Card": {
             /**
-             * Format: pan
-             * @description Primary Account Number (i.e., the credit/debit card number). Usually encrypted.
+             * @description Card Number (PAN)
              * @example 4444444444444448
              */
             card_pan: string;
             /**
-             * @description Expiration month of the card (e.g., "03" for March).
-             * @example 01
+             * @description Card expiration month as a 2-digit string
+             * @example 06
              */
             exp_month: string;
             /**
-             * @description Expiration year of the card (e.g., "2027").
-             * @example 30
+             * @description Card expiration year as a 2-digit string
+             * @example 27
              */
             exp_year: string;
             /**
-             * @description Card Verification Value. Should be encrypted as well.
+             * @description Card security code (CVV/)
              * @example 123
              */
             cvv: string;
         };
         /**
-         * @description Payment method groups
-         * @example CARD_PAYMENT
-         * @enum {string}
+         * Error-Response-Body
+         * @description Standard error response body returned for all API error responses. Contains the HTTP status code, error type, a human-readable message, and additional diagnostic details.
          */
-        "Payment-Group": "CARD_PAYMENT" | "BANK_TRANSFER" | "DIGITAL_WALLET" | "BNPL" | "OTHERS";
-        /** Error-Response-Body */
         "Error-Response-Body": {
             /**
              * Format: int32
@@ -1584,10 +1754,6 @@ export interface components {
              * @example 2025-12-10T10:30:00Z
              */
             timestamp: string;
-        };
-        "Card-Form-URL": {
-            /** @example https://secure.gopay.com/gp-card-comm/q/form */
-            card_form_url?: string;
         };
     };
     responses: {
@@ -1637,7 +1803,7 @@ export interface components {
                 "application/json": {
                     /**
                      * @example TEST
-                     * @enum {unknown}
+                     * @enum {string}
                      */
                     environment?: "TEST" | "PRODUCTION";
                     paymentDataRequest?: {
@@ -1894,10 +2060,7 @@ export interface operations {
             query?: never;
             header: {
                 Accept: components["parameters"]["Accept-Json"];
-                /**
-                 * @description Only applies to the `client_credentials` grant_type.
-                 * @example Basic {username:password in base64}
-                 */
+                /** @description Only applies to the `client_credentials` grant_type. */
                 Authorization?: string;
             };
             path?: never;
@@ -1909,48 +2072,7 @@ export interface operations {
             400: components["responses"]["Bad-Request-400-Response"];
             401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];
-            /** @description Internal Server Error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: int32
-                         * @description HTTP status code
-                         * @example 500
-                         */
-                        code: number;
-                        /**
-                         * @description Error type
-                         * @example INTERNAL_SERVER_ERROR
-                         */
-                        error: string;
-                        /**
-                         * @description Error message
-                         * @example Unexpected server error
-                         */
-                        message: string;
-                        /**
-                         * @description Detailed error description
-                         * @example Error Details
-                         */
-                        detail: string;
-                        /**
-                         * @description Request path
-                         * @example /oauth2/token
-                         */
-                        path: string;
-                        /**
-                         * Format: date-time
-                         * @description Error timestamp
-                         * @example 2025-12-10T10:30:00Z
-                         */
-                        timestamp: string;
-                    };
-                };
-            };
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
     "post-eshops-goid-payments": {
@@ -1968,13 +2090,7 @@ export interface operations {
         responses: {
             201: components["responses"]["Payment-Status-Response"];
             400: components["responses"]["Bad-Request-400-Response"];
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+            401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];
             404: components["responses"]["Not-Found-404-Response"];
             409: components["responses"]["Conflict-409-Response"];
@@ -2036,13 +2152,7 @@ export interface operations {
             403: components["responses"]["Forbidden-403-Response"];
             404: components["responses"]["Not-Found-404-Response"];
             409: components["responses"]["Conflict-409-Response"];
-            /** @description Internal Server Error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
     "get-payments-payment_id-qr-payment-info": {
@@ -2129,13 +2239,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: components["responses"]["Validate-Merchant-Response"];
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+            400: components["responses"]["Bad-Request-400-Response"];
             401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];
             404: components["responses"]["Not-Found-404-Response"];
@@ -2216,13 +2320,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: components["responses"]["JWK-Response"];
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+            401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];
             500: components["responses"]["Internal-Server-Error-500-Response"];
         };
@@ -2239,13 +2337,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: components["responses"]["Card-Form-URL-Response"];
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+            401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];
             500: components["responses"]["Internal-Server-Error-500-Response"];
         };
