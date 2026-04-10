@@ -38,24 +38,29 @@ export class CardsModule {
     constructor(private readonly client: HttpClient) {}
 
     /**
-     * Fetch the URL of the GoPay-hosted card encryption iframe.
-     * TODO: change to real endpoint once available; for now this is hardcoded in the example app.
+     * Fetch the URL of the GoPay-hosted card encryption iframe from the API.
+     * Called internally by {@link mountCardForm}.
      * Requires the `card:save` OAuth2 scope.
      */
-    async getCardFormUrl(): Promise<string> {
-        const result = await this.client.get<{ url: string }>(
-            '/cards/form-url',
-        );
-        return result.url;
+    private async getCardFormUrl(): Promise<string> {
+        const result = await this.client.get<
+            components['schemas']['Card-Form-URL']
+        >('/encryption/card-form-url');
+        if (!result.card_form_url) {
+            throw new GoPaySDKError(
+                '[GoPaySDK] Card form URL not available. Ensure the token has the card:save scope.',
+                { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+            );
+        }
+        return result.card_form_url;
     }
 
     /**
-     * Mount the GoPay card encryption iframe into `container` and return a
-     * {@link CardFormController} that exposes the token promise and runtime
-     * controls for updating the theme and locale after mounting.
+     * Fetch the GoPay-hosted card encryption iframe URL from the API, mount it
+     * into `container`, and return a {@link CardFormController} that exposes the
+     * token promise and runtime controls for updating the theme and locale.
      *
-     * The iframe must be the GoPay-hosted card encryption page (never a
-     * merchant-controlled origin). It communicates via `postMessage`:
+     * The iframe communicates via `postMessage`:
      * - `GOPAY_CARD_ENCRYPT_READY`  — iframe loaded, form is interactive
      * - `GOPAY_CARD_ENCRYPT_RESULT` — user submitted; carries the JWE payload
      *
@@ -66,11 +71,9 @@ export class CardsModule {
      * Requires the `card:save` OAuth2 scope.
      *
      * @param container - DOM element to append the iframe to
-     * @param iframeSrc - URL of the GoPay card encryption iframe
      */
-    mountCardForm(
+    async mountCardForm(
         container: HTMLElement,
-        iframeSrc: string,
         options?: {
             theme?: CardFormTheme;
             locale?: string;
@@ -79,7 +82,7 @@ export class CardsModule {
             permanent?: boolean;
             onValidityChange?: (isValid: boolean) => void;
         },
-    ): CardFormController {
+    ): Promise<CardFormController> {
         const tokens = this.client.getTokens();
         if (!tokens) {
             const result = Promise.reject<CardTokenResponse>(
@@ -97,6 +100,8 @@ export class CardsModule {
                 isValid: false,
             };
         }
+
+        const iframeSrc = await this.getCardFormUrl();
 
         container.replaceChildren();
 

@@ -50,7 +50,7 @@ The SDK is distributed in two ways:
 
 ## `cards` module — iframe-based card tokenization
 
-`CardsModule.mountCardForm(container, iframeSrc, options?)` mounts the GoPay-hosted card encryption iframe and returns a `CardFormController`:
+`CardsModule.mountCardForm(container, options?)` fetches the hosted iframe URL from `GET /encryption/card-form-url`, mounts the GoPay-hosted card encryption iframe, and returns `Promise<CardFormController>`:
 
 - **`result`** — `Promise<CardTokenResponse>` that resolves with the card token on success, rejects on error or cancellation.
 - **`setTheme(theme)`** / **`setLocale(locale)`** — send runtime updates to the iframe via `postMessage`.
@@ -60,9 +60,10 @@ The SDK is distributed in two ways:
 **postMessage protocol** is defined in `sdk/src/modules/cards/iframe-protocol.ts`. This file is intentionally duplicated between this repo and `gw-ui-cc-v4`. Keep both in sync manually — types and type aliases only, no imports or logic.
 
 **Init flow:**
-1. `mountCardForm` appends the iframe (sandboxed: `allow-scripts allow-forms`).
-2. On `iframe.onload`, the SDK posts `GOPAY_CARD_FORM_INIT` with tokens, environment, theme, locale, and submit mode. Target origin is `'*'` because the sandbox removes `allow-same-origin`, making the iframe's origin opaque (`"null"`).
-3. The iframe posts back `GOPAY_CARD_ENCRYPT_RESULT` (carrying the JWE payload), then the SDK calls `POST /cards/tokens` internally and resolves `result`.
+1. `mountCardForm` calls `GET /encryption/card-form-url` internally to obtain the iframe URL.
+2. The SDK appends the iframe (sandboxed: `allow-scripts allow-forms`).
+3. On `iframe.onload`, the SDK posts `GOPAY_CARD_FORM_INIT` with tokens, environment, theme, locale, and submit mode. Target origin is `'*'` because the sandbox removes `allow-same-origin`, making the iframe's origin opaque (`"null"`).
+4. The iframe posts back `GOPAY_CARD_ENCRYPT_RESULT` (carrying the JWE payload), then the SDK calls `POST /cards/tokens` internally and resolves `result`.
 
 **Submit modes:**
 - `'internal'` (default) — iframe renders its own submit button.

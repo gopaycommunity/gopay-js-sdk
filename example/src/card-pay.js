@@ -1,16 +1,16 @@
 // Card payment via iframe tokenization — two steps:
 //
-// Step 1: call sdk.cards.mountCardForm(container, iframeSrc) to inject GoPay's card-entry
-//   iframe into a container element on your page. The promise resolves when the customer
+// Step 1: call sdk.cards.mountCardForm(container) to inject GoPay's card-entry iframe into
+//   a container element on your page. The SDK fetches the hosted iframe URL automatically
+//   from GET /encryption/card-form-url. The returned promise resolves when the customer
 //   submits the form (or rejects if they cancel / an error occurs).
-//   iframeSrc comes from sdk.cards.getCardFormUrl() (GoPay API), or can be overridden
-//   with a local URL for development (e.g. /iframe/index.html).
 //
 // Step 2: mountCardForm resolves with { token, ... }. Pass the token to sdk.payments.charge()
 //   as input_type: 'CARD_TOKEN'. The raw card number never touches your server.
 //
 // Example:
-//   const { token } = await sdk.cards.mountCardForm(container, await sdk.cards.getCardFormUrl());
+//   const cardForm = await sdk.cards.mountCardForm(container);
+//   const { token } = await cardForm.result;
 //   await sdk.payments.charge(paymentId, {
 //     payment_instrument: { payment_instrument: 'PAYMENT_CARD', input: { input_type: 'CARD_TOKEN', card_token: token } },
 //     return_url: 'https://yourshop.example.com/return',
@@ -113,9 +113,6 @@ export async function cardPayOpenIframe() {
     const paymentId = document
         .getElementById('cardpay-payment-id')
         .value.trim();
-    const iframeOverride = document
-        .getElementById('cardpay-iframe-override')
-        ?.value.trim();
     const pre = document.getElementById('cardpay-output');
     const container = document.getElementById('cardpay-iframe-container');
     const extSubmitBtn = document.getElementById('cardpay-ext-submit');
@@ -140,9 +137,7 @@ export async function cardPayOpenIframe() {
             : DEFAULT_CARD_FORM_THEME;
 
     try {
-        const iframeSrc = iframeOverride || '/iframe/index.html';
-
-        cardFormController = sdk.cards.mountCardForm(container, iframeSrc, {
+        cardFormController = await sdk.cards.mountCardForm(container, {
             theme,
             locale: currentLang,
             submitMode: currentSubmitMode,

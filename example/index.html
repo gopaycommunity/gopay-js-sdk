@@ -171,11 +171,10 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">Card Pay</h2>
             <p class="desc">
                 Step 1: <code>payments.create()</code> fills in the Payment ID below.<br>
-                Step 2: Click <em>Open Card Payment</em> — <code>cards.mountCardForm()</code> mounts the iframe and tokenizes. Token is prefilled into <em>payments.charge()</em> below.
+                Step 2: Click <em>Open Card Payment</em> — <code>cards.mountCardForm()</code> fetches the hosted iframe URL from the API, mounts it, and tokenizes. Token is prefilled into <em>payments.charge()</em> below.
             </p>
             <div class="fields">
                 <label>Payment ID<input id="cardpay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
-                <label>Iframe URL override<input id="cardpay-iframe-override" type="text" value="/iframe/index.html" placeholder="leave blank to use sdk.cards.getCardFormUrl()" /></label>
             </div>
             <p class="note">Test card: <code>4111 1111 1111 1111</code> — any future expiry (e.g. <code>12/30</code>), any 3-digit CVV.</p>
             <div class="flex items-center gap-2 flex-wrap mb-3">

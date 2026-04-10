@@ -354,7 +354,7 @@ document.body.appendChild(img);
 
 | Method | Description |
 |---|---|
-| `mountCardForm(container, iframeSrc, options?)` | Mount the GoPay card encryption iframe into `container`. Returns a `CardFormController` with a `result` promise (resolves to the card token on submit), `setTheme()`, `setLocale()`, `submit()`, and `isValid` for runtime control. Handles iframe creation, internal communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
+| `mountCardForm(container, options?)` | Fetches the GoPay-hosted iframe URL from `GET /encryption/card-form-url`, mounts it into `container`, and returns `Promise<CardFormController>`. The controller exposes a `result` promise (resolves to the card token on submit), `setTheme()`, `setLocale()`, `submit()`, and `isValid` for runtime control. Handles iframe creation, internal communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
 
 #### `mountCardForm` options
 
@@ -385,18 +385,18 @@ import {
 } from 'gopay-js-sdk';
 
 // Default theme, locale from navigator.language (options can be omitted entirely)
-const cardForm = sdk.cards.mountCardForm(container, iframeSrc);
+const cardForm = await sdk.cards.mountCardForm(container);
 const cardToken = await cardForm.result;
 
 // Dark theme with Czech locale
-const cardForm = sdk.cards.mountCardForm(container, iframeSrc, {
+const cardForm = await sdk.cards.mountCardForm(container, {
   theme: DARK_CARD_FORM_THEME,
   locale: 'cs',
 });
 const cardToken = await cardForm.result;
 
 // Custom theme — override individual fields, keep the rest as defaults
-const cardForm = sdk.cards.mountCardForm(container, iframeSrc, {
+const cardForm = await sdk.cards.mountCardForm(container, {
   theme: { ...DEFAULT_CARD_FORM_THEME, submitBackgroundColor: '#your-brand-color' },
 });
 
@@ -414,7 +414,7 @@ Use `submitMode: 'external'` when you want the submit button to live outside the
 ```ts
 const payBtn = document.getElementById('pay-btn');
 
-const cardForm = sdk.cards.mountCardForm(container, iframeSrc, {
+const cardForm = await sdk.cards.mountCardForm(container, {
   submitMode: 'external',
   onValidityChange(isValid) {
     // Enable/disable your own submit button based on form validity.
@@ -442,10 +442,11 @@ Card number encryption must never run in publicly reachable JavaScript — doing
 // 1. Create a payment session first (server-side).
 const payment = await sdk.payments.create(goid, params);
 
-// 2. Mount the iframe — awaits the user submitting the card form,
-//    then calls POST /cards/tokens automatically.
+// 2. Mount the iframe — the SDK fetches the hosted form URL from the API,
+//    mounts the iframe, then awaits the user submitting the card form,
+//    and calls POST /cards/tokens automatically.
 const container = document.getElementById('card-form-container');
-const cardForm = sdk.cards.mountCardForm(container, GOPAY_CARD_IFRAME_URL);
+const cardForm = await sdk.cards.mountCardForm(container);
 const cardToken = await cardForm.result;
 
 // 3. Charge the payment with the resulting card token.

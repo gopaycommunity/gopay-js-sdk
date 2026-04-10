@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GoPayHTTPError } from '../../src/errors.js';
+import { GoPayHTTPError, GoPaySDKError } from '../../src/errors.js';
 import { HttpClient } from '../../src/http/client.js';
 import type { TokenStore } from '../../src/http/token-store.js';
 import { DEFAULT_CARD_FORM_THEME } from '../../src/modules/cards/card-form-themes.js';
@@ -54,8 +54,10 @@ describe('CardsModule', () => {
     let container: HTMLDivElement;
 
     beforeEach(() => {
+        // First call: GET /encryption/card-form-url; subsequent calls: POST /cards/tokens
         fetchMock = vi
             .fn()
+            .mockResolvedValueOnce(makeResponse({ card_form_url: IFRAME_SRC }))
             .mockResolvedValue(makeResponse(MOCK_TOKEN_RESPONSE));
         vi.stubGlobal('fetch', fetchMock);
         client = new HttpClient({ baseUrl: 'https://example.com' });
@@ -83,20 +85,48 @@ describe('CardsModule', () => {
     }
 
     describe('mountCardForm()', () => {
-        it('appends an iframe into the container with the correct base src', () => {
-            cards.mountCardForm(container, IFRAME_SRC);
+        // ── card form URL fetching ─────────────────────────────────────────────
+
+        describe('card form URL fetching', () => {
+            it('fetches from GET /encryption/card-form-url', async () => {
+                await cards.mountCardForm(container);
+                const req = fetchMock.mock.calls[0][0] as Request;
+                expect(req.method).toBe('GET');
+                expect(req.url).toContain('/encryption/card-form-url');
+            });
+
+            it('uses the returned card_form_url as the iframe src', async () => {
+                await cards.mountCardForm(container);
+                const url = new URL(getIframe().src);
+                expect(`${url.origin}${url.pathname}`).toBe(IFRAME_SRC);
+            });
+
+            it('rejects when card_form_url is missing from response', async () => {
+                fetchMock.mockReset();
+                fetchMock.mockResolvedValue(makeResponse({}));
+                const err = await cards
+                    .mountCardForm(container)
+                    .catch((e: unknown) => e);
+                expect(err).toBeInstanceOf(GoPaySDKError);
+            });
+        });
+
+        // ── iframe mounting ───────────────────────────────────────────────────
+
+        it('appends an iframe into the container with the correct base src', async () => {
+            await cards.mountCardForm(container);
             const iframe = getIframe();
             expect(iframe).not.toBeNull();
             const url = new URL(iframe.src);
             expect(`${url.origin}${url.pathname}`).toBe(IFRAME_SRC);
         });
 
-        it('appends ?origin=<page-origin> to the iframe src', () => {
+        it('appends ?origin=<page-origin> to the iframe src', async () => {
             vi.stubGlobal('location', {
                 origin: 'https://merchant.example.com',
                 href: 'https://merchant.example.com/checkout',
             });
-            cards.mountCardForm(container, IFRAME_SRC);
+            await cards.mountCardForm(container);
             const url = new URL(getIframe().src);
             expect(url.searchParams.get('origin')).toBe(
                 'https://merchant.example.com',
@@ -104,15 +134,15 @@ describe('CardsModule', () => {
             vi.unstubAllGlobals();
         });
 
-        it('replaces existing children before mounting', () => {
+        it('replaces existing children before mounting', async () => {
             container.appendChild(document.createElement('div'));
-            cards.mountCardForm(container, IFRAME_SRC);
+            await cards.mountCardForm(container);
             expect(container.children).toHaveLength(1);
             expect(container.querySelector('iframe')).not.toBeNull();
         });
 
         it('resolves result with the token response when GOPAY_CARD_ENCRYPT_RESULT arrives', async () => {
-            const { result } = cards.mountCardForm(container, IFRAME_SRC);
+            const { result } = await cards.mountCardForm(container);
             const iframe = getIframe();
             dispatchCardMessage(iframe);
             expect(await result).toEqual(MOCK_TOKEN_RESPONSE);
@@ -121,22 +151,28 @@ describe('CardsModule', () => {
         it('POSTs the JWE payload to /cards/tokens', async () => {
             let capturedBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
+                if (req.url.includes('/encryption/card-form-url')) {
+                    return makeResponse({ card_form_url: IFRAME_SRC });
+                }
                 capturedBody = await req.text();
                 return makeResponse(MOCK_TOKEN_RESPONSE);
             });
 
-            const { result } = cards.mountCardForm(container, IFRAME_SRC);
+            const { result } = await cards.mountCardForm(container);
             dispatchCardMessage(getIframe());
             await result;
 
-            const req = fetchMock.mock.calls[0][0] as Request;
-            expect(req.method).toBe('POST');
-            expect(req.url).toContain('/cards/tokens');
-            expect(JSON.parse(capturedBody)).toEqual({ payload: MOCK_JWE });
+            const tokensReq = fetchMock.mock.calls[1][0] as Request;
+            expect(tokensReq.method).toBe('POST');
+            expect(tokensReq.url).toContain('/cards/tokens');
+            expect(JSON.parse(capturedBody)).toEqual({
+                payload: MOCK_JWE,
+                permanent: false,
+            });
         });
 
         it('removes the iframe and listener after completion', async () => {
-            const { result } = cards.mountCardForm(container, IFRAME_SRC);
+            const { result } = await cards.mountCardForm(container);
             const iframe = getIframe();
             dispatchCardMessage(iframe);
             await result;
@@ -144,7 +180,7 @@ describe('CardsModule', () => {
         });
 
         it('ignores messages from a different origin', async () => {
-            const { result } = cards.mountCardForm(container, IFRAME_SRC);
+            const { result } = await cards.mountCardForm(container);
             dispatchCardMessage(getIframe(), { origin: 'https://evil.com' });
 
             let settled = false;
@@ -157,11 +193,12 @@ describe('CardsModule', () => {
                 });
             await new Promise((r) => setTimeout(r, 20));
             expect(settled).toBe(false);
-            expect(fetchMock).not.toHaveBeenCalled();
+            // Only getCardFormUrl was called — createToken was not
+            expect(fetchMock).toHaveBeenCalledTimes(1);
         });
 
         it('ignores messages from a different source', async () => {
-            const { result } = cards.mountCardForm(container, IFRAME_SRC);
+            const { result } = await cards.mountCardForm(container);
             dispatchCardMessage(getIframe(), { source: window });
 
             let settled = false;
@@ -177,7 +214,7 @@ describe('CardsModule', () => {
         });
 
         it('ignores messages with an unrecognised type', async () => {
-            const { result } = cards.mountCardForm(container, IFRAME_SRC);
+            const { result } = await cards.mountCardForm(container);
             dispatchCardMessage(getIframe(), { type: 'UNKNOWN_MSG' });
 
             let settled = false;
@@ -194,11 +231,14 @@ describe('CardsModule', () => {
 
         it('rejects result when the /cards/tokens API call fails', async () => {
             fetchMock.mockImplementation(async (req: Request) => {
+                if (req.url.includes('/encryption/card-form-url')) {
+                    return makeResponse({ card_form_url: IFRAME_SRC });
+                }
                 await req.text();
                 return makeResponse({ error: 'FORBIDDEN' }, 403, 'Forbidden');
             });
 
-            const { result } = cards.mountCardForm(container, IFRAME_SRC);
+            const { result } = await cards.mountCardForm(container);
             dispatchCardMessage(getIframe());
 
             const err = await result.catch((e: unknown) => e);
@@ -208,7 +248,7 @@ describe('CardsModule', () => {
 
         // ── Helper: mount with a postMessage spy wired onto the iframe ────────
 
-        function mountWithPostMessageSpy(options?: {
+        async function mountWithPostMessageSpy(options?: {
             theme?: CardFormTheme;
             locale?: string;
             submitMode?: 'internal' | 'external';
@@ -227,11 +267,7 @@ describe('CardsModule', () => {
                     return node;
                 },
             );
-            const controller = cards.mountCardForm(
-                container,
-                IFRAME_SRC,
-                options,
-            );
+            const controller = await cards.mountCardForm(container, options);
             const iframe = getIframe();
             iframe.onload?.(new Event('load'));
             return { postMessageSpy, controller };
@@ -240,23 +276,23 @@ describe('CardsModule', () => {
         // ── GOPAY_CARD_FORM_INIT carries initial theme and locale ─────────────
 
         describe('GOPAY_CARD_FORM_INIT', () => {
-            it('includes DEFAULT_CARD_FORM_THEME in INIT when no theme option given', () => {
-                const { postMessageSpy } = mountWithPostMessageSpy();
+            it('includes DEFAULT_CARD_FORM_THEME in INIT when no theme option given', async () => {
+                const { postMessageSpy } = await mountWithPostMessageSpy();
                 expect(postMessageSpy).toHaveBeenCalledWith(
                     expect.objectContaining({
                         type: 'GOPAY_CARD_FORM_INIT',
                         theme: DEFAULT_CARD_FORM_THEME,
                     }),
-                    IFRAME_ORIGIN,
+                    '*',
                 );
             });
 
-            it('includes the provided custom theme in INIT', () => {
+            it('includes the provided custom theme in INIT', async () => {
                 const customTheme: CardFormTheme = {
                     labelColor: '#ff0000',
                     submitBorderRadius: 8,
                 };
-                const { postMessageSpy } = mountWithPostMessageSpy({
+                const { postMessageSpy } = await mountWithPostMessageSpy({
                     theme: customTheme,
                 });
                 expect(postMessageSpy).toHaveBeenCalledWith(
@@ -264,25 +300,25 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         theme: customTheme,
                     }),
-                    IFRAME_ORIGIN,
+                    '*',
                 );
             });
 
-            it('includes navigator.language as locale in INIT when no locale option given', () => {
+            it('includes navigator.language as locale in INIT when no locale option given', async () => {
                 vi.stubGlobal('navigator', { language: 'cs-CZ' });
-                const { postMessageSpy } = mountWithPostMessageSpy();
+                const { postMessageSpy } = await mountWithPostMessageSpy();
                 expect(postMessageSpy).toHaveBeenCalledWith(
                     expect.objectContaining({
                         type: 'GOPAY_CARD_FORM_INIT',
                         locale: 'cs-CZ',
                     }),
-                    IFRAME_ORIGIN,
+                    '*',
                 );
                 vi.unstubAllGlobals();
             });
 
-            it('includes the provided locale override in INIT', () => {
-                const { postMessageSpy } = mountWithPostMessageSpy({
+            it('includes the provided locale override in INIT', async () => {
+                const { postMessageSpy } = await mountWithPostMessageSpy({
                     locale: 'de-DE',
                 });
                 expect(postMessageSpy).toHaveBeenCalledWith(
@@ -290,7 +326,7 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         locale: 'de-DE',
                     }),
-                    IFRAME_ORIGIN,
+                    '*',
                 );
             });
         });
@@ -298,22 +334,22 @@ describe('CardsModule', () => {
         // ── setTheme() / setLocale() controller methods ───────────────────────
 
         describe('setTheme()', () => {
-            it('sends GOPAY_CARD_SET_THEME to the iframe', () => {
+            it('sends GOPAY_CARD_SET_THEME to the iframe', async () => {
                 const { postMessageSpy, controller } =
-                    mountWithPostMessageSpy();
+                    await mountWithPostMessageSpy();
                 postMessageSpy.mockClear();
                 const newTheme: CardFormTheme = { labelColor: '#00ff00' };
                 controller.setTheme(newTheme);
                 expect(postMessageSpy).toHaveBeenCalledOnce();
                 expect(postMessageSpy).toHaveBeenCalledWith(
                     { type: 'GOPAY_CARD_SET_THEME', theme: newTheme },
-                    IFRAME_ORIGIN,
+                    '*',
                 );
             });
 
             it('is a no-op after the form completes', async () => {
                 const { postMessageSpy, controller } =
-                    mountWithPostMessageSpy();
+                    await mountWithPostMessageSpy();
                 dispatchCardMessage(getIframe());
                 await controller.result;
                 postMessageSpy.mockClear();
@@ -323,21 +359,21 @@ describe('CardsModule', () => {
         });
 
         describe('setLocale()', () => {
-            it('sends GOPAY_CARD_SET_LOCALE to the iframe', () => {
+            it('sends GOPAY_CARD_SET_LOCALE to the iframe', async () => {
                 const { postMessageSpy, controller } =
-                    mountWithPostMessageSpy();
+                    await mountWithPostMessageSpy();
                 postMessageSpy.mockClear();
                 controller.setLocale('cs');
                 expect(postMessageSpy).toHaveBeenCalledOnce();
                 expect(postMessageSpy).toHaveBeenCalledWith(
                     { type: 'GOPAY_CARD_SET_LOCALE', locale: 'cs' },
-                    IFRAME_ORIGIN,
+                    '*',
                 );
             });
 
             it('is a no-op after the form completes', async () => {
                 const { postMessageSpy, controller } =
-                    mountWithPostMessageSpy();
+                    await mountWithPostMessageSpy();
                 dispatchCardMessage(getIframe());
                 await controller.result;
                 postMessageSpy.mockClear();
@@ -349,8 +385,8 @@ describe('CardsModule', () => {
         // ── External submit mode ──────────────────────────────────────────────
 
         describe('submitMode', () => {
-            it('includes submitMode: "external" in INIT when option is passed', () => {
-                const { postMessageSpy } = mountWithPostMessageSpy({
+            it('includes submitMode: "external" in INIT when option is passed', async () => {
+                const { postMessageSpy } = await mountWithPostMessageSpy({
                     submitMode: 'external',
                 });
                 expect(postMessageSpy).toHaveBeenCalledWith(
@@ -358,45 +394,47 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         submitMode: 'external',
                     }),
-                    IFRAME_ORIGIN,
+                    '*',
                 );
             });
 
-            it('defaults to submitMode: "internal" in INIT when no option is passed', () => {
-                const { postMessageSpy } = mountWithPostMessageSpy();
+            it('defaults to submitMode: "internal" in INIT when no option is passed', async () => {
+                const { postMessageSpy } = await mountWithPostMessageSpy();
                 expect(postMessageSpy).toHaveBeenCalledWith(
                     expect.objectContaining({
                         type: 'GOPAY_CARD_FORM_INIT',
                         submitMode: 'internal',
                     }),
-                    IFRAME_ORIGIN,
+                    '*',
                 );
             });
 
-            it('submit() posts GOPAY_CARD_REQUEST_SUBMIT in external submit', () => {
-                const { postMessageSpy, controller } = mountWithPostMessageSpy({
-                    submitMode: 'external',
-                });
+            it('submit() posts GOPAY_CARD_REQUEST_SUBMIT in external submit', async () => {
+                const { postMessageSpy, controller } =
+                    await mountWithPostMessageSpy({
+                        submitMode: 'external',
+                    });
                 postMessageSpy.mockClear();
                 controller.submit();
                 expect(postMessageSpy).toHaveBeenCalledOnce();
                 expect(postMessageSpy).toHaveBeenCalledWith(
                     { type: 'GOPAY_CARD_REQUEST_SUBMIT' },
-                    IFRAME_ORIGIN,
+                    '*',
                 );
             });
 
-            it('submit() throws in internal submit', () => {
-                const { controller } = mountWithPostMessageSpy();
+            it('submit() throws in internal submit', async () => {
+                const { controller } = await mountWithPostMessageSpy();
                 expect(() => controller.submit()).toThrow(
                     /external submit mode/,
                 );
             });
 
             it('submit() is a no-op after the form completes', async () => {
-                const { postMessageSpy, controller } = mountWithPostMessageSpy({
-                    submitMode: 'external',
-                });
+                const { postMessageSpy, controller } =
+                    await mountWithPostMessageSpy({
+                        submitMode: 'external',
+                    });
                 dispatchCardMessage(getIframe());
                 await controller.result;
                 postMessageSpy.mockClear();
@@ -404,8 +442,8 @@ describe('CardsModule', () => {
                 expect(postMessageSpy).not.toHaveBeenCalled();
             });
 
-            it('GOPAY_CARD_FORM_VALIDITY updates controller.isValid', () => {
-                const controller = cards.mountCardForm(container, IFRAME_SRC, {
+            it('GOPAY_CARD_FORM_VALIDITY updates controller.isValid', async () => {
+                const controller = await cards.mountCardForm(container, {
                     submitMode: 'external',
                 });
                 expect(controller.isValid).toBe(false);
@@ -422,9 +460,9 @@ describe('CardsModule', () => {
                 expect(controller.isValid).toBe(true);
             });
 
-            it('onValidityChange fires when validity changes', () => {
+            it('onValidityChange fires when validity changes', async () => {
                 const cb = vi.fn();
-                cards.mountCardForm(container, IFRAME_SRC, {
+                await cards.mountCardForm(container, {
                     submitMode: 'external',
                     onValidityChange: cb,
                 });
@@ -442,9 +480,9 @@ describe('CardsModule', () => {
                 expect(cb).toHaveBeenCalledWith(true);
             });
 
-            it('onValidityChange deduplicates identical consecutive values', () => {
+            it('onValidityChange deduplicates identical consecutive values', async () => {
                 const cb = vi.fn();
-                cards.mountCardForm(container, IFRAME_SRC, {
+                await cards.mountCardForm(container, {
                     submitMode: 'external',
                     onValidityChange: cb,
                 });
