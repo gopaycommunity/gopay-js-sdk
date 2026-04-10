@@ -222,12 +222,12 @@ export class CardsModule {
             }
 
             if (event.data?.type === 'GOPAY_CARD_FORM_VALIDITY') {
-                if (typeof event.data.isValid === 'boolean') {
-                    const prev = isValid;
+                if (
+                    typeof event.data.isValid === 'boolean' &&
+                    event.data.isValid !== isValid
+                ) {
                     isValid = event.data.isValid;
-                    if (isValid !== prev) {
-                        options?.onValidityChange?.(isValid);
-                    }
+                    options?.onValidityChange?.(isValid);
                 }
                 return;
             }
