@@ -199,7 +199,7 @@ export class CardsModule {
                     locale,
                     submitMode,
                 } satisfies CardFormConfig,
-                '*',
+                '*', // NOSONAR -- sandboxed iframe (no allow-same-origin) has opaque "null" origin; a specific targetOrigin is silently dropped
             );
         };
 
@@ -269,7 +269,7 @@ export class CardsModule {
                             type: 'GOPAY_CARD_SET_THEME',
                             theme: t,
                         } satisfies CardSetTheme,
-                        '*',
+                        '*', // NOSONAR -- sandboxed iframe has opaque "null" origin; specific targetOrigin is silently dropped
                     );
                 }
             },
@@ -280,7 +280,7 @@ export class CardsModule {
                             type: 'GOPAY_CARD_SET_LOCALE',
                             locale: l,
                         } satisfies CardSetLocale,
-                        '*',
+                        '*', // NOSONAR -- sandboxed iframe has opaque "null" origin; specific targetOrigin is silently dropped
                     );
                 }
             },
@@ -296,7 +296,7 @@ export class CardsModule {
                         {
                             type: 'GOPAY_CARD_REQUEST_SUBMIT',
                         } satisfies CardRequestSubmit,
-                        '*',
+                        '*', // NOSONAR -- sandboxed iframe has opaque "null" origin; specific targetOrigin is silently dropped
                     );
                 }
             },
