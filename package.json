@@ -10,7 +10,7 @@
         "lint": "biome check .",
         "ci": "yarn biome ci . && yarn workspace gopay-js-sdk run typecheck && yarn workspace gopay-js-sdk run check:circular && yarn workspace gopay-js-sdk run check:exports",
         "prepare": "husky",
-        "test:browser": "playwright test",
+        "test:e2e": "playwright test",
         "example": "yarn workspace gopay-js-sdk run build && yarn workspace gopay-js-sdk-example run dev"
     },
     "devDependencies": {

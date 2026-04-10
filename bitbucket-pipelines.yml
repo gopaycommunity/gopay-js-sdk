@@ -91,7 +91,7 @@ definitions:
           - corepack enable
           - yarn install --immutable
           - yarn workspace gopay-js-sdk run build
-          - yarn test:browser
+          - yarn test:e2e
         artifacts:
           - playwright-report/**
 

@@ -40,7 +40,7 @@ yarn lint
 yarn ci
 
 # Browser (Playwright) tests — builds the SDK first
-yarn test:browser
+yarn test:e2e
 
 # Start the example dev server
 yarn example

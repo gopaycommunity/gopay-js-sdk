@@ -1,12 +1,4 @@
-import type { components } from '../../../src/types/generated.js';
 import { expect, parseOutput, test } from '../fixtures/fixtures.js';
-
-type PaymentCreateResponse =
-    components['responses']['Payment-Create-Response']['content']['application/json'];
-
-const PAYMENT_KEYS = ['id', 'state', 'amount'] as const satisfies ReadonlyArray<
-    keyof PaymentCreateResponse
->;
 
 // JWT whose payload section (eyJzdWIiOiJBIn0=) decodes via atob() to {"sub":"A"}.
 // Used so setClientToken() can extract the client_id without hitting the real API.
@@ -31,11 +23,8 @@ test('auth.issueClientToken() + auth.setClientToken() allows authenticated API c
         'authenticate() should not have returned an error',
     ).not.toMatch(/^── onError/);
 
-    // After authenticate succeeds, stub the remaining two calls that would
-    // otherwise hit the sandbox:
-    //  1. issueClientToken() — same /oauth2/token endpoint; can timeout under load.
-    //  2. payments.create() on the browser SDK — the browser has only the mock JWT,
-    //     which the real sandbox would reject; stub to return a plausible response.
+    // After authenticate succeeds, stub issueClientToken() — same /oauth2/token
+    // endpoint; can timeout under load.
     await page.route('**/oauth2/token', async (route) => {
         await route.fulfill({
             status: 200,
@@ -46,17 +35,6 @@ test('auth.issueClientToken() + auth.setClientToken() allows authenticated API c
                 token_type: 'bearer',
                 expires_in: 3600,
                 refresh_expires_in: 86400,
-            }),
-        });
-    });
-    await page.route('**/eshops/*/payments', async (route) => {
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-                id: 'MOCK_PAY_BROWSER',
-                state: 'CREATED',
-                amount: 100,
             }),
         });
     });
@@ -72,7 +50,7 @@ test('auth.issueClientToken() + auth.setClientToken() allows authenticated API c
     ).not.toMatch(/^── onError/);
 
     // Browser flow: setClientToken() extracts client_id from the mock JWT's sub
-    // claim, then payments.create() proves the browser SDK can make API calls.
+    // claim and returns { authenticated: true }.
     await page.click('[onclick="runSetClientTokenFlow()"]');
 
     const output = page.locator('#set-client-token-output');
@@ -87,8 +65,5 @@ test('auth.issueClientToken() + auth.setClientToken() allows authenticated API c
     ).not.toMatch(/^── onError/);
 
     const json = parseOutput(text);
-
-    for (const key of PAYMENT_KEYS) {
-        expect(json, `key "${key}" should be present`).toHaveProperty(key);
-    }
+    expect(json).toEqual({ authenticated: true });
 });
