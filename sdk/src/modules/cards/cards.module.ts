@@ -15,6 +15,14 @@ type CardTokenRequest =
     components['requestBodies']['Card-Token-Request']['content']['application/json'];
 type CardTokenResponse =
     components['responses']['Card-Token-Response']['content']['application/json'];
+type CardDetailsResponse =
+    components['responses']['Card-Token-Details-Response']['content']['application/json'];
+
+function requireCardId(cardId: string): void {
+    if (!cardId) {
+        throw new Error('cardId is required');
+    }
+}
 
 export interface CardFormController {
     /** Resolves with the card token when the user submits the form; rejects on error or cancellation. */
@@ -36,6 +44,31 @@ export interface CardFormController {
 
 export class CardsModule {
     constructor(private readonly client: HttpClient) {}
+
+    /**
+     * Retrieve details of a stored permanent card token.
+     * Requires the `card:read` OAuth2 scope.
+     *
+     * GET /cards/tokens/{card_id}
+     *
+     * @param cardId - Unique identifier of the stored card token
+     */
+    async getDetails(cardId: string): Promise<CardDetailsResponse> {
+        requireCardId(cardId);
+        return this.client.get<CardDetailsResponse>(`/cards/tokens/${cardId}`);
+    }
+
+    /**
+     * Delete a stored permanent card token.
+     *
+     * DELETE /cards/tokens/{card_id}
+     *
+     * @param cardId - Unique identifier of the stored card token
+     */
+    async deleteCard(cardId: string): Promise<void> {
+        requireCardId(cardId);
+        return this.client.delete(`/cards/tokens/${cardId}`);
+    }
 
     /**
      * Fetch the URL of the GoPay-hosted card encryption iframe from the API.

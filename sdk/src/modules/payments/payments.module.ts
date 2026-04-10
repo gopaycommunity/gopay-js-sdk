@@ -18,6 +18,10 @@ type ApplePayInfoResponse =
     components['responses']['Apple-Pay-Info-Response']['content']['application/json'];
 type QRPaymentInfoResponse =
     components['responses']['QR-Payment-Info-Response']['content']['application/json'];
+type PaymentStatusResponse =
+    components['responses']['Payment-Status-Response']['content']['application/json'];
+type PaymentChargeStateResponse =
+    components['responses']['Payment-Charge-State-Response']['content']['application/json'];
 
 function requirePaymentId(paymentId: string): void {
     if (!paymentId) {
@@ -27,6 +31,18 @@ function requirePaymentId(paymentId: string): void {
 
 export class PaymentsModule {
     constructor(private readonly client: HttpClient) {}
+
+    /**
+     * Retrieve the current status of an existing payment.
+     *
+     * GET /payments/{payment_id}
+     *
+     * @param paymentId - Payment session ID returned by {@link create}
+     */
+    async getStatus(paymentId: string): Promise<PaymentStatusResponse> {
+        requirePaymentId(paymentId);
+        return this.client.get<PaymentStatusResponse>(`/payments/${paymentId}`);
+    }
 
     /**
      * Create a new payment session.
@@ -75,6 +91,22 @@ export class PaymentsModule {
         return this.client.post<PaymentChargeResponse>(
             `/payments/${paymentId}/charge`,
             mergedParams,
+        );
+    }
+
+    /**
+     * Retrieve the current state of a payment charge.
+     *
+     * GET /payments/{payment_id}/charge
+     *
+     * @param paymentId - Payment session ID returned by {@link create}
+     */
+    async getChargeState(
+        paymentId: string,
+    ): Promise<PaymentChargeStateResponse> {
+        requirePaymentId(paymentId);
+        return this.client.get<PaymentChargeStateResponse>(
+            `/payments/${paymentId}/charge`,
         );
     }
 

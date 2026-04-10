@@ -229,12 +229,24 @@ describe('GoPaySDK', () => {
             const sdk = new GoPaySDK();
             expect(typeof sdk.cards.mountCardForm).toBe('function');
         });
+
+        it('exposes getDetails()', () => {
+            const sdk = new GoPaySDK();
+            expect(typeof sdk.cards.getDetails).toBe('function');
+        });
+
+        it('exposes deleteCard()', () => {
+            const sdk = new GoPaySDK();
+            expect(typeof sdk.cards.deleteCard).toBe('function');
+        });
     });
 
     describe('PaymentsModule', () => {
         const paymentMethods = [
             'create',
             'charge',
+            'getStatus',
+            'getChargeState',
             'getGooglePayInfo',
             'getApplePayInfo',
             'startApplePaySession',

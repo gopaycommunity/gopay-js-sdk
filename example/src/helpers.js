@@ -85,6 +85,8 @@ export function prefillPaymentId(result) {
     if (!id) return;
     for (const fieldId of [
         'charge-payment-id',
+        'status-payment-id',
+        'charge-state-payment-id',
         'googlepay-payment-id',
         'applepay-payment-id',
         'qr-payment-id',

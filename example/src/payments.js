@@ -36,6 +36,27 @@ export function runCreatePayment() {
     );
 }
 
+// Retrieve the current status of an existing payment.
+// Useful for polling on the server after a redirect or 3DS challenge.
+// Example:
+//   const status = await sdk.payments.getStatus(paymentId);
+//   // status.state: 'CREATED' | 'PAID' | 'CANCELED' | ...
+export function runGetPaymentStatus() {
+    const paymentId = document.getElementById('status-payment-id').value.trim();
+    run('status-output', () => sdk.payments.getStatus(paymentId));
+}
+
+// Retrieve the current state of a specific charge attempt.
+// Example:
+//   const state = await sdk.payments.getChargeState(paymentId);
+//   if (state.action?.redirect_url) window.location.href = state.action.redirect_url;
+export function runGetChargeState() {
+    const paymentId = document
+        .getElementById('charge-state-payment-id')
+        .value.trim();
+    run('charge-state-output', () => sdk.payments.getChargeState(paymentId));
+}
+
 // Charge a payment using a payment instrument obtained from one of the payment flows
 // (Google Pay, Apple Pay or card iframe).
 // If result.action.redirect_url is present, redirect the customer there for 3DS verification.

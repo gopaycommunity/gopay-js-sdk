@@ -104,6 +104,17 @@ export class HttpClient {
         }
     }
 
+    async delete(path: string, options?: RequestOptions): Promise<void> {
+        try {
+            await this.kyInstance.delete(
+                this.buildUrl(path),
+                this.kyOptions(options),
+            );
+        } catch (err) {
+            return this.handleError(err);
+        }
+    }
+
     async postForm<T>(
         path: string,
         form: Record<string, string>,

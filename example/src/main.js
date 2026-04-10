@@ -19,8 +19,11 @@ import {
     clearCharge,
     runCharge,
     runCreatePayment,
+    runGetChargeState,
+    runGetPaymentStatus,
     runQRPaymentInfo,
 } from './payments.js';
+import { runDeleteCard, runGetCardDetails } from './saved-cards.js';
 import { clientId, clientSecret, goid, hasProxy, sdk } from './sdk.js';
 
 // -----------------------------------------------------------------------
@@ -31,7 +34,6 @@ if (clientSecret)
     document.getElementById('auth-client-secret').value = clientSecret;
 if (goid) {
     document.getElementById('create-goid').value = goid;
-    document.getElementById('set-client-token-goid').value = goid;
 }
 
 // -----------------------------------------------------------------------
@@ -126,3 +128,7 @@ window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;
 window.cardPaySetSubmitMode = cardPaySetSubmitMode;
 window.cardPayExtSubmit = cardPayExtSubmit;
+window.runGetPaymentStatus = runGetPaymentStatus;
+window.runGetChargeState = runGetChargeState;
+window.runGetCardDetails = runGetCardDetails;
+window.runDeleteCard = runDeleteCard;

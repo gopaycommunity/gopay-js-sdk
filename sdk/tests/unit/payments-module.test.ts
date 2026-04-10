@@ -849,6 +849,155 @@ describe('PaymentsModule', () => {
         });
     });
 
+    describe('getStatus()', () => {
+        beforeEach(() => {
+            fetchMock.mockResolvedValue(makeResponse(mockPaymentResponse));
+        });
+
+        it('sends GET to /payments/{paymentId}', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(mockPaymentResponse);
+            });
+
+            await payments.getStatus('pay_300000001');
+
+            expect(capturedReq.method).toBe('GET');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001',
+            );
+        });
+
+        it('interpolates paymentId correctly into the URL', async () => {
+            let capturedUrl = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedUrl = req.url;
+                return makeResponse(mockPaymentResponse);
+            });
+
+            await payments.getStatus('pay_999');
+
+            expect(capturedUrl).toContain('/payments/pay_999');
+            expect(capturedUrl).not.toContain('/charge');
+        });
+
+        it('sends Bearer token from token store', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(mockPaymentResponse);
+            });
+
+            await payments.getStatus('pay_300000001');
+
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                'Bearer at-test',
+            );
+        });
+
+        it('does not send a request body', async () => {
+            let capturedBody: string | null = null;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(mockPaymentResponse);
+            });
+
+            await payments.getStatus('pay_300000001');
+
+            expect(capturedBody).toBe('');
+        });
+
+        it('returns the payment status response', async () => {
+            const result = await payments.getStatus('pay_300000001');
+
+            expect(result).toEqual(mockPaymentResponse);
+            expect(result.id).toBe('pay_300000001');
+            expect(result.state).toBe('CREATED');
+            expect(result.amount).toBe(1000);
+        });
+
+        it('throws when paymentId is empty', async () => {
+            await expect(payments.getStatus('')).rejects.toThrow(
+                'paymentId is required',
+            );
+        });
+    });
+
+    describe('getChargeState()', () => {
+        beforeEach(() => {
+            fetchMock.mockResolvedValue(makeResponse(mockChargeResponse));
+        });
+
+        it('sends GET to /payments/{paymentId}/charge', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(mockChargeResponse);
+            });
+
+            await payments.getChargeState('pay_300000001');
+
+            expect(capturedReq.method).toBe('GET');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001/charge',
+            );
+        });
+
+        it('interpolates paymentId correctly into the URL', async () => {
+            let capturedUrl = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedUrl = req.url;
+                return makeResponse(mockChargeResponse);
+            });
+
+            await payments.getChargeState('pay_999');
+
+            expect(capturedUrl).toContain('/payments/pay_999/charge');
+        });
+
+        it('sends Bearer token from token store', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(mockChargeResponse);
+            });
+
+            await payments.getChargeState('pay_300000001');
+
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                'Bearer at-test',
+            );
+        });
+
+        it('does not send a request body', async () => {
+            let capturedBody: string | null = null;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(mockChargeResponse);
+            });
+
+            await payments.getChargeState('pay_300000001');
+
+            expect(capturedBody).toBe('');
+        });
+
+        it('returns the charge state response', async () => {
+            const result = await payments.getChargeState('pay_300000001');
+
+            expect(result).toEqual(mockChargeResponse);
+            expect(result.id).toBe('pay_300000001');
+            expect(result.state).toBe('REQUESTED');
+            expect(result.return_url).toBe('https://example.com/return');
+        });
+
+        it('throws when paymentId is empty', async () => {
+            await expect(payments.getChargeState('')).rejects.toThrow(
+                'paymentId is required',
+            );
+        });
+    });
+
     describe('getQRPaymentInfo()', () => {
         const mockQRPaymentResponse = {
             amount: 10000,

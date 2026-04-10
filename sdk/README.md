@@ -119,7 +119,7 @@ Credentials must never leave the server. The SDK provides a two-step handoff:
 //   card:save      — mountCardForm()
 app.get('/session/gopay-token', async (req, res) => {
   // Protect this endpoint with your own session check
-  const clientToken = await sdk.auth.issueClientToken('payment:create payment:read card:save');
+  const clientToken = await sdk.auth.issueClientToken('payment:create payment:read card:save card:read');
   res.json(clientToken);
 });
 ```
@@ -217,6 +217,8 @@ The one exception is `startApplePaySession`: it returns `void` instead of a Prom
 |---|---|
 | `create(goid, params)` | Create a new payment session (`POST /eshops/{goid}/payments`). |
 | `charge(paymentId, params)` | Charge a payment using a payment instrument (`POST /payments/{paymentId}/charge`). |
+| `getStatus(paymentId)` | Retrieve the current status of a payment (`GET /payments/{paymentId}`). Returns state, amount, currency, customer, and charge reference. |
+| `getChargeState(paymentId)` | Retrieve the current state of a payment charge (`GET /payments/{paymentId}/charge`). Returns charge state, instrument details, and any 3DS action. |
 | `getGooglePayInfo(paymentId)` | Retrieve Google Pay configuration for a payment. |
 | `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment. Returns `applepayVersion`, `merchantIdentifier`, and `applePayPaymentRequest` needed to construct an `ApplePaySession`. |
 | `startApplePaySession(paymentId, session, origin?, callbacks?)` | Wire merchant validation onto an `ApplePaySession` and call `begin()`. Handles `onvalidatemerchant` automatically; `origin` defaults to `window.location.origin`. Pass `{ oncancel }` in `callbacks` to be notified when the user dismisses the sheet. You must still wire `session.onpaymentauthorized` yourself. |
@@ -332,6 +334,26 @@ session.oncancel = () => {
 sdk.payments.startApplePaySession(payment.id, session);
 ```
 
+### Payment status and charge state
+
+Poll for payment completion on your server after the customer returns from a redirect or completes a 3DS challenge:
+
+```ts
+// Check whether the payment has been paid, cancelled, or is still pending.
+const status = await sdk.payments.getStatus(payment.id);
+// status.state: 'CREATED' | 'PAID' | 'CANCELED' | 'PAYMENT_METHOD_CHOSEN'
+//             | 'TIMEOUTED' | 'AUTHORIZED' | 'REFUNDED' | 'PARTIALLY_REFUNDED'
+
+// Check the outcome of a specific charge attempt (e.g. after 3DS redirect).
+const chargeState = await sdk.payments.getChargeState(payment.id);
+// chargeState.state: 'REQUESTED' | 'PROCESSING' | 'ACTION_REQUIRED'
+//                  | 'SUCCEEDED' | 'FAILED'
+if (chargeState.action?.redirect_url) {
+  // 3DS challenge still in progress — redirect the customer again
+  window.location.href = chargeState.action.redirect_url;
+}
+```
+
 ### QR Payment
 
 ```ts
@@ -355,6 +377,8 @@ document.body.appendChild(img);
 | Method | Description |
 |---|---|
 | `mountCardForm(container, options?)` | Fetches the GoPay-hosted iframe URL from `GET /encryption/card-form-url`, mounts it into `container`, and returns `Promise<CardFormController>`. The controller exposes a `result` promise (resolves to the card token on submit), `setTheme()`, `setLocale()`, `submit()`, and `isValid` for runtime control. Handles iframe creation, internal communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
+| `getDetails(cardId)` | Retrieve details of a stored permanent card token (`GET /cards/tokens/{cardId}`). Returns masked PAN, expiry, scheme, fingerprint, and the reusable token. Requires the `card:read` scope. |
+| `deleteCard(cardId)` | Delete a stored permanent card token (`DELETE /cards/tokens/{cardId}`). Returns `void`. |
 
 #### `mountCardForm` options
 
@@ -466,6 +490,28 @@ if (charge.action?.redirect_url) {
   // 3DS authentication required — redirect the customer.
   window.location.href = charge.action.redirect_url;
 }
+```
+
+### Saved cards
+
+When `mountCardForm` is called with `permanent: true`, the resulting `cardToken.token` is a permanent token tied to a card ID (`cardToken.card_id`). You can retrieve or delete it later:
+
+```ts
+// Retrieve details of a stored card (masked PAN, expiry, scheme, etc.)
+const card = await sdk.cards.getDetails(cardToken.card_id);
+console.log(card.masked_pan, card.expiration_month, card.expiration_year);
+
+// Charge a subsequent payment using the permanent token (no re-entry of card details)
+const charge = await sdk.payments.charge(payment.id, {
+  payment_instrument: {
+    payment_instrument: 'PAYMENT_CARD',
+    input: { input_type: 'CARD_TOKEN', card_token: card.token },
+  },
+  return_url: 'https://yourshop.com/return',
+});
+
+// Delete the card when the customer removes it from their account
+await sdk.cards.deleteCard(card.card_id);
 ```
 
 `GET /encryption/public-key` and the JWE construction it enables are **intentionally not part of this SDK's API surface**. Do not use the `sdk/src/iframe/index.html` stub in production or testing.

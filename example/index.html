@@ -83,7 +83,6 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">auth.setClientToken() — browser flow</h2>
             <p class="desc">Simulates the browser client pattern: a fresh SDK instance receives both tokens from the server (no credentials in the browser). The <code>client_id</code> is extracted automatically from the JWT.</p>
             <div class="fields">
-                <label>GoID<input id="set-client-token-goid" type="text" value="8761908826" /></label>
                 <label>Access Token<input id="set-client-token-access" type="password" placeholder="auto-filled by issueClientToken()" /></label>
                 <label>Refresh Token<input id="set-client-token-refresh" type="password" placeholder="auto-filled by issueClientToken()" /></label>
             </div>
@@ -108,6 +107,17 @@
             <button type="button" onclick="runCreatePayment()">Run</button>
             <pre id="payment-create-output">—</pre>
             <p class="note">On success, use the returned <code>id</code> to charge the payment via card token, Apple Pay, Google Pay, etc.</p>
+        </section>
+
+        <!-- Payment status -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getStatus()</h2>
+            <p class="desc">GET /payments/{id} — retrieve the current state of a payment (CREATED, PAID, CANCELED, etc.).</p>
+            <div class="fields">
+                <label>Payment ID<input id="status-payment-id" type="text" placeholder="pay_300000001" /></label>
+            </div>
+            <button type="button" onclick="runGetPaymentStatus()">Run</button>
+            <pre id="status-output">—</pre>
         </section>
 
         <!-- Google Pay -->
@@ -212,6 +222,39 @@
             <button type="button" onclick="runCharge()">Run</button>
             <button type="button" onclick="clearCharge()" class="!bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">Clear</button>
             <pre id="payment-charge-output">—</pre>
+        </section>
+
+        <!-- Charge state -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getChargeState()</h2>
+            <p class="desc">GET /payments/{id}/charge — retrieve the current state of a charge (REQUESTED, PROCESSING, SUCCEEDED, FAILED, etc.).</p>
+            <div class="fields">
+                <label>Payment ID<input id="charge-state-payment-id" type="text" placeholder="pay_300000001" /></label>
+            </div>
+            <button type="button" onclick="runGetChargeState()">Run</button>
+            <pre id="charge-state-output">—</pre>
+        </section>
+
+        <!-- Card details -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.getDetails()</h2>
+            <p class="desc">GET /cards/tokens/{card_id} — retrieve details of a stored permanent card token (masked PAN, expiry, scheme, fingerprint). Requires <code>card:read</code> scope.</p>
+            <div class="fields">
+                <label>Card ID<input id="card-details-id" type="text" placeholder="8007127320" /></label>
+            </div>
+            <button type="button" onclick="runGetCardDetails()">Run</button>
+            <pre id="card-details-output">—</pre>
+        </section>
+
+        <!-- Delete card -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.deleteCard()</h2>
+            <p class="desc">DELETE /cards/tokens/{card_id} — permanently remove a stored card token. Returns no content on success.</p>
+            <div class="fields">
+                <label>Card ID<input id="delete-card-id" type="text" placeholder="8007127320" /></label>
+            </div>
+            <button type="button" onclick="runDeleteCard()" class="!bg-[#FEECEB] !text-[#B71C1C] hover:!bg-[#FFCDD2]">Run</button>
+            <pre id="delete-card-output">—</pre>
         </section>
 
     </main>
