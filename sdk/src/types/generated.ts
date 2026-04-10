@@ -332,8 +332,8 @@ export interface components {
          *     The JWT claims contain:
          *     - `sub` -> the Client ID for which the token was issued
          *     - `scope` -> the scopes of the token
-         *     - `iss` -> timestamp of token issuing
-         *     - `iat` -> timestamp of token expiration
+         *     - `iat` -> timestamp of token issuing
+         *     - `exp` -> timestamp of token expiration
          * @example eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
          */
         JWT: string;
