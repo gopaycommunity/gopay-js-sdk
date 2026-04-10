@@ -278,7 +278,10 @@ export class CardsModule {
             const payload = JSON.parse(
                 globalThis.atob(accessToken.split('.')[1]),
             ) as Record<string, unknown>;
-            return typeof payload.sub === 'string' ? payload.sub : null;
+            if (typeof payload.sub === 'string') {
+                return payload.sub;
+            }
+            return null;
         } catch {
             return null;
         }

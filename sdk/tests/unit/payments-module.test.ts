@@ -180,11 +180,18 @@ describe('PaymentsModule', () => {
                 language: 'en-US',
                 userAgent: 'test-agent',
             });
+            vi.stubGlobal('window', {});
             vi.stubGlobal('screen', {
                 width: 1920,
                 height: 1080,
                 colorDepth: 24,
             });
+        });
+
+        it('throws when paymentId is empty', async () => {
+            await expect(payments.charge('', chargeParams)).rejects.toThrow(
+                'paymentId is required',
+            );
         });
 
         it('sends POST to /payments/{paymentId}/charge', async () => {
@@ -711,6 +718,7 @@ describe('PaymentsModule', () => {
         function makeSession() {
             return {
                 onvalidatemerchant: null as ((event: unknown) => void) | null,
+                oncancel: null as ((event: unknown) => void) | null,
                 completeMerchantValidation: vi.fn(),
                 abort: vi.fn(),
                 begin: vi.fn(),
@@ -726,6 +734,41 @@ describe('PaymentsModule', () => {
             );
             expect(typeof session.onvalidatemerchant).toBe('function');
             expect(session.begin).toHaveBeenCalledOnce();
+        });
+
+        it('sets oncancel on the session', () => {
+            const session = makeSession();
+            payments.startApplePaySession('pay_123', session);
+            expect(typeof session.oncancel).toBe('function');
+        });
+
+        it('calls callbacks.oncancel when the session fires oncancel', () => {
+            const session = makeSession();
+            const oncancel = vi.fn();
+            payments.startApplePaySession(
+                'pay_123',
+                session,
+                'https://shop.example.com',
+                { oncancel },
+            );
+            const cancelEvent = { type: 'cancel' };
+            (session.oncancel as (e: unknown) => void)(cancelEvent);
+            expect(oncancel).toHaveBeenCalledOnce();
+            expect(oncancel).toHaveBeenCalledWith(cancelEvent);
+        });
+
+        it('does not throw when oncancel fires without a callback', () => {
+            const session = makeSession();
+            payments.startApplePaySession('pay_123', session);
+            expect(() =>
+                (session.oncancel as (e: unknown) => void)({}),
+            ).not.toThrow();
+        });
+
+        it('throws when paymentId is empty', () => {
+            expect(() =>
+                payments.startApplePaySession('', makeSession()),
+            ).toThrow('paymentId is required');
         });
 
         it('calls completeMerchantValidation with the API response on success', async () => {

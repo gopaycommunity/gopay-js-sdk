@@ -134,6 +134,16 @@ describe('CardsModule', () => {
             vi.unstubAllGlobals();
         });
 
+        it('appends ?origin= as empty string when location.origin is not available', async () => {
+            vi.stubGlobal('location', {
+                href: 'https://merchant.example.com/checkout',
+            });
+            await cards.mountCardForm(container);
+            const url = new URL(getIframe().src);
+            expect(url.searchParams.get('origin')).toBe('');
+            vi.unstubAllGlobals();
+        });
+
         it('replaces existing children before mounting', async () => {
             container.appendChild(document.createElement('div'));
             await cards.mountCardForm(container);
@@ -227,6 +237,115 @@ describe('CardsModule', () => {
                 });
             await new Promise((r) => setTimeout(r, 20));
             expect(settled).toBe(false);
+        });
+
+        it('returns a rejected result immediately when no client token is set', async () => {
+            const freshClient = new HttpClient({
+                baseUrl: 'https://example.com',
+            });
+            const freshCards = new CardsModule(freshClient);
+            const controller = await freshCards.mountCardForm(container);
+            const err = await controller.result.catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe('AUTH_TOKEN_MISSING');
+            // No-op controller methods should not throw
+            expect(() =>
+                controller.setTheme(DEFAULT_CARD_FORM_THEME),
+            ).not.toThrow();
+            expect(() => controller.setLocale('en')).not.toThrow();
+            expect(() => controller.submit()).not.toThrow();
+            expect(controller.isValid).toBe(false);
+            expect(fetchMock).not.toHaveBeenCalled();
+        });
+
+        it('GOPAY_CARD_ENCRYPT_READY message does not settle result', async () => {
+            const { result } = await cards.mountCardForm(container);
+            dispatchCardMessage(getIframe(), {
+                type: 'GOPAY_CARD_ENCRYPT_READY',
+            });
+
+            let settled = false;
+            result
+                .then(() => {
+                    settled = true;
+                })
+                .catch(() => {
+                    settled = true;
+                });
+            await new Promise((r) => setTimeout(r, 20));
+            expect(settled).toBe(false);
+        });
+
+        it('GOPAY_CARD_ENCRYPT_ERROR rejects result with GoPaySDKError', async () => {
+            const { result } = await cards.mountCardForm(container);
+            window.dispatchEvent(
+                new MessageEvent('message', {
+                    data: {
+                        type: 'GOPAY_CARD_ENCRYPT_ERROR',
+                        error: 'User cancelled',
+                    },
+                    origin: IFRAME_ORIGIN,
+                    source: getIframe().contentWindow,
+                }),
+            );
+
+            const err = await result.catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).message).toContain('User cancelled');
+            expect((err as GoPaySDKError).errorCode).toBe('CARD_FORM_ERROR');
+        });
+
+        it('removes the iframe on GOPAY_CARD_ENCRYPT_ERROR', async () => {
+            const { result } = await cards.mountCardForm(container);
+            window.dispatchEvent(
+                new MessageEvent('message', {
+                    data: { type: 'GOPAY_CARD_ENCRYPT_ERROR', error: 'fail' },
+                    origin: IFRAME_ORIGIN,
+                    source: getIframe().contentWindow,
+                }),
+            );
+            await result.catch(() => {});
+            expect(container.querySelector('iframe')).toBeNull();
+        });
+
+        it('GOPAY_CARD_FORM_HEIGHT resizes the iframe', async () => {
+            await cards.mountCardForm(container);
+            const iframe = getIframe();
+            window.dispatchEvent(
+                new MessageEvent('message', {
+                    data: { type: 'GOPAY_CARD_FORM_HEIGHT', height: 350 },
+                    origin: IFRAME_ORIGIN,
+                    source: iframe.contentWindow,
+                }),
+            );
+            expect(iframe.style.height).toBe('350px');
+        });
+
+        it('ignores GOPAY_CARD_FORM_HEIGHT when height is not a number', async () => {
+            await cards.mountCardForm(container);
+            const iframe = getIframe();
+            const originalHeight = iframe.style.height;
+            window.dispatchEvent(
+                new MessageEvent('message', {
+                    data: { type: 'GOPAY_CARD_FORM_HEIGHT', height: 'tall' },
+                    origin: IFRAME_ORIGIN,
+                    source: iframe.contentWindow,
+                }),
+            );
+            expect(iframe.style.height).toBe(originalHeight);
+        });
+
+        it('ignores GOPAY_CARD_FORM_VALIDITY when isValid is not a boolean', async () => {
+            const cb = vi.fn();
+            await cards.mountCardForm(container, { onValidityChange: cb });
+            window.dispatchEvent(
+                new MessageEvent('message', {
+                    data: { type: 'GOPAY_CARD_FORM_VALIDITY', isValid: 'yes' },
+                    origin: IFRAME_ORIGIN,
+                    source: getIframe().contentWindow,
+                }),
+            );
+            expect(cb).not.toHaveBeenCalled();
         });
 
         it('rejects result when the /cards/tokens API call fails', async () => {
@@ -328,6 +447,57 @@ describe('CardsModule', () => {
                     }),
                     '*',
                 );
+            });
+
+            it('sends client_id as empty string when JWT payload has no string sub claim', async () => {
+                // 'e30=' is btoa('{}') — valid base64 JSON with no sub claim
+                tokenStore(client).set({
+                    access_token: 'header.e30=.sig',
+                    refresh_token: 'rt-test',
+                    expires_in: 900,
+                    refresh_expires_in: 86400,
+                    token_type: 'bearer',
+                });
+                const { postMessageSpy } = await mountWithPostMessageSpy();
+                expect(postMessageSpy).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        type: 'GOPAY_CARD_FORM_INIT',
+                        client_id: '',
+                    }),
+                    '*',
+                );
+            });
+
+            it('extracts client_id from JWT sub claim when present', async () => {
+                // btoa('{"sub":"merchant-123"}')
+                tokenStore(client).set({
+                    access_token: 'header.eyJzdWIiOiJtZXJjaGFudC0xMjMifQ==.sig',
+                    refresh_token: 'rt-test',
+                    expires_in: 900,
+                    refresh_expires_in: 86400,
+                    token_type: 'bearer',
+                });
+                const { postMessageSpy } = await mountWithPostMessageSpy();
+                expect(postMessageSpy).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        type: 'GOPAY_CARD_FORM_INIT',
+                        client_id: 'merchant-123',
+                    }),
+                    '*',
+                );
+            });
+
+            it('defaults locale to "en" when navigator has no language', async () => {
+                vi.stubGlobal('navigator', {});
+                const { postMessageSpy } = await mountWithPostMessageSpy();
+                expect(postMessageSpy).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        type: 'GOPAY_CARD_FORM_INIT',
+                        locale: 'en',
+                    }),
+                    '*',
+                );
+                vi.unstubAllGlobals();
             });
         });
 

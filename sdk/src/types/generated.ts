@@ -25,7 +25,10 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Unique identifier of a registered merchant website */
+                goid: string;
+            };
             cookie?: never;
         };
         get?: never;
@@ -42,7 +45,10 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
             cookie?: never;
         };
         /** Payment Status */
@@ -59,7 +65,10 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
             cookie?: never;
         };
         /** Payment charge state */
@@ -77,7 +86,10 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
             cookie?: never;
         };
         /** QR Payment Info */
@@ -94,7 +106,10 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
             cookie?: never;
         };
         /** Google Pay Payment Info */
@@ -111,7 +126,10 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
             cookie?: never;
         };
         /** Apple Pay Payment Info */
@@ -128,7 +146,10 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
             cookie?: never;
         };
         get?: never;
@@ -145,7 +166,10 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description ID of the saved payment card */
+                card_id: string;
+            };
             cookie?: never;
         };
         /** Card details */
@@ -2066,7 +2090,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: components["requestBodies"]["Access-Token-Request"];
+        requestBody: components["requestBodies"]["Access-Token-Request"];
         responses: {
             200: components["responses"]["Token-Pair-Response"];
             400: components["responses"]["Bad-Request-400-Response"];
@@ -2086,7 +2110,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: components["requestBodies"]["Payment-Create-Request"];
+        requestBody: components["requestBodies"]["Payment-Create-Request"];
         responses: {
             201: components["responses"]["Payment-Status-Response"];
             400: components["responses"]["Bad-Request-400-Response"];
@@ -2144,7 +2168,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: components["requestBodies"]["Payment-Charge-Request"];
+        requestBody: components["requestBodies"]["Payment-Charge-Request"];
         responses: {
             201: components["responses"]["Payment-Charge-Response"];
             400: components["responses"]["Bad-Request-400-Response"];
@@ -2298,7 +2322,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: components["requestBodies"]["Card-Token-Request"];
+        requestBody: components["requestBodies"]["Card-Token-Request"];
         responses: {
             201: components["responses"]["Card-Token-Response"];
             400: components["responses"]["Bad-Request-400-Response"];

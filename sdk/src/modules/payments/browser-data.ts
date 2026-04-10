@@ -21,15 +21,25 @@ import type { BrowserData } from '../../types/index.js';
  * });
  */
 export function collectBrowserData(): Partial<BrowserData> {
-    if (typeof navigator === 'undefined') return {};
+    // Return early if not in a browser-like environment
+    if (typeof navigator === 'undefined') {
+        return {};
+    }
 
-    return {
+    const data: Partial<BrowserData> = {
         language: navigator.language,
         timezone: new Date().getTimezoneOffset(),
-        screen_width: screen.width,
-        screen_height: screen.height,
-        color_depth: screen.colorDepth,
         user_agent: navigator.userAgent,
         javascript_enabled: true,
+        java_enabled: false,
     };
+
+    // Safely add screen data only if it exists
+    if (typeof screen !== 'undefined') {
+        data.screen_width = screen.width;
+        data.screen_height = screen.height;
+        data.color_depth = screen.colorDepth;
+    }
+
+    return data;
 }

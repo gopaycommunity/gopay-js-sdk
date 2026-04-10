@@ -96,6 +96,13 @@ paths:
           description: Production
       x-stoplight:
         id: v9ch48jk8g32z
+    parameters:
+      - schema:
+          type: string
+        name: goid
+        in: path
+        required: true
+        description: Unique identifier of a registered merchant website
   '/payments/{payment_id}':
     get:
       tags:
@@ -129,6 +136,13 @@ paths:
           description: Production
       x-stoplight:
         id: bdnj7pr2fsf8h
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+        description: Payment ID
   '/payments/{payment_id}/charge':
     post:
       tags:
@@ -201,6 +215,13 @@ paths:
           description: Production
       x-stoplight:
         id: d3qt6runvz7qq
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+        description: Payment ID
   '/payments/{payment_id}/qr-payment/info':
     get:
       tags:
@@ -255,6 +276,13 @@ paths:
           description: Production
       x-stoplight:
         id: tezlj31vsbthn
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+        description: Payment ID
   '/payments/{payment_id}/google-pay/info':
     get:
       tags:
@@ -298,6 +326,13 @@ paths:
           description: Production
       x-stoplight:
         id: 43hpmsojye84d
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+        description: Payment ID
   '/payments/{payment_id}/apple-pay/info':
     get:
       tags:
@@ -341,6 +376,13 @@ paths:
           description: Production
       x-stoplight:
         id: yqxnklshztoz9
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+        description: Payment ID
   '/payments/{payment_id}/apple-pay/validate':
     post:
       tags:
@@ -384,6 +426,13 @@ paths:
           description: Production
       x-stoplight:
         id: dg4vuah8nqutg
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+        description: Payment ID
   '/cards/tokens/{card_id}':
     get:
       tags:
@@ -446,6 +495,13 @@ paths:
           description: Production
       x-stoplight:
         id: ujgwi2dz8mggh
+    parameters:
+      - schema:
+          type: string
+        name: card_id
+        in: path
+        required: true
+        description: ID of the saved payment card
   /cards/tokens:
     post:
       tags:
@@ -551,6 +607,7 @@ components:
           - application/json
   requestBodies:
     Access-Token-Request:
+      required: true
       content:
         application/x-www-form-urlencoded:
           schema:
@@ -568,6 +625,7 @@ components:
                 refresh_token: 2f53a04d4dd749f6a2a81285da72f67a
                 client_id: '123456'
     Card-Token-Request:
+      required: true
       content:
         application/json:
           schema:
@@ -578,6 +636,7 @@ components:
                 payload: eyJalgIjoiUlNBLU9BRVAtMjU2IiwiZW5jIjoiQTI1NkdDTSIsImtpZCI6ImtleV8yMDI1MDQwNl8wMDEifQ.aG93ZGlkYmFzZTY0.dGhpc2lzdGhlaXY.ZW5jcnlwdGVkY2FyZGhvbGRlcmRhdGE.YXV0aHRhZw
                 permanent: false
     Payment-Charge-Request:
+      required: true
       content:
         application/json:
           schema:
@@ -612,6 +671,7 @@ components:
                     account_token: f14e5acc2d86480fb50e254c8a3c3164
                 return_url: 'https://example.com/return'
     Payment-Create-Request:
+      required: true
       content:
         application/json:
           schema:
