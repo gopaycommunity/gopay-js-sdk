@@ -29,6 +29,13 @@ function requirePaymentId(paymentId: string): void {
     }
 }
 
+/**
+ * Manages payment sessions and charging flows.
+ *
+ * All methods that call the API may additionally throw {@link GoPayHTTPError}
+ * (non-2xx response) or {@link GoPaySDKError} (auth / network failures —
+ * see {@link GoPayErrorCodes}).
+ */
 export class PaymentsModule {
     constructor(private readonly client: HttpClient) {}
 
@@ -78,6 +85,10 @@ export class PaymentsModule {
      *
      * @param paymentId - Payment session ID returned by {@link create}
      * @param params    - Charge parameters including payment instrument details
+     *
+     * @throws {@link GoPayHTTPError} when the API returns a non-2xx response.
+     *   Inspect `err.status` and `err.body` to distinguish failure reasons
+     *   (e.g. card declined, invalid params, server error).
      */
     async charge(
         paymentId: string,

@@ -25,7 +25,12 @@ function requireCardId(cardId: string): void {
 }
 
 export interface CardFormController {
-    /** Resolves with the card token when the user submits the form; rejects on error or cancellation. */
+    /**
+     * Resolves with the card token when the user submits the form.
+     * Rejects with {@link GoPaySDKError} (`CARD_FORM_ERROR`) if the iframe
+     * reports an encryption error, or with {@link GoPayHTTPError} if
+     * `POST /cards/tokens` fails.
+     */
     result: Promise<CardTokenResponse>;
     /** Send an updated theme to the mounted iframe. No-op if the form is no longer mounted. */
     setTheme: (theme: CardFormTheme) => void;
@@ -33,8 +38,10 @@ export interface CardFormController {
     setLocale: (locale: string) => void;
     /**
      * Trigger form submission from the parent page. Only works in external submit mode
-     * (`submitMode: 'external'`). Throws a `GoPaySDKError` in internal submit mode.
-     * No-op if the form is no longer mounted.
+     * (`submitMode: 'external'`). No-op if the form is no longer mounted.
+     *
+     * @throws {@link GoPaySDKError} with `CARD_FORM_ERROR` if called when
+     *   `submitMode` is `'internal'`.
      */
     submit: () => void;
     /** Current validity state reported by the iframe. Always `false` until the first
@@ -42,6 +49,13 @@ export interface CardFormController {
     readonly isValid: boolean;
 }
 
+/**
+ * Manages card tokenization via the GoPay-hosted iframe and stored card tokens.
+ *
+ * All methods that call the API may additionally throw {@link GoPayHTTPError}
+ * (non-2xx response) or {@link GoPaySDKError} (auth / network failures —
+ * see {@link GoPayErrorCodes}).
+ */
 export class CardsModule {
     constructor(private readonly client: HttpClient) {}
 
@@ -104,6 +118,9 @@ export class CardsModule {
      * Requires the `card:save` OAuth2 scope.
      *
      * @param container - DOM element to append the iframe to
+     *
+     * @throws {@link GoPaySDKError} with `CARD_FORM_ERROR` if the card form
+     *   URL is unavailable (e.g. token missing the `card:save` scope).
      */
     async mountCardForm(
         container: HTMLElement,

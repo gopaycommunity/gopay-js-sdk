@@ -6,6 +6,13 @@ import type { AuthenticateRequest, ClientToken } from '../../types/index.js';
 type TokenPair =
     components['responses']['Token-Pair-Response']['content']['application/json'];
 
+/**
+ * Handles OAuth2 authentication flows for the GoPay API.
+ *
+ * All methods that call the API may additionally throw {@link GoPayHTTPError}
+ * (non-2xx response) or {@link GoPaySDKError} (auth / network failures —
+ * see {@link GoPayErrorCodes}).
+ */
 export class AuthModule {
     constructor(private readonly client: HttpClient) {}
 
@@ -21,6 +28,9 @@ export class AuthModule {
      * Use `isAuthenticated()` to confirm the SDK is ready.
      *
      * POST /oauth2/token (`client_credentials` grant)
+     *
+     * @throws {@link GoPaySDKError} with `AUTH_INVALID_RESPONSE` if the token
+     *   response is missing required fields.
      */
     async authenticate(params: AuthenticateRequest): Promise<void> {
         const form: Record<string, string> = {
@@ -77,6 +87,11 @@ export class AuthModule {
      * `payment:create` only) to limit what the browser-side token can do.
      *
      * POST /oauth2/token (`client_credentials` grant, does **not** store tokens)
+     *
+     * @throws {@link GoPaySDKError} with `AUTH_CREDENTIALS_MISSING` if
+     *   `authenticate()` has not been called yet.
+     * @throws {@link GoPaySDKError} with `AUTH_INVALID_RESPONSE` if the token
+     *   response is missing required fields.
      */
     async issueClientToken(scope?: string): Promise<ClientToken> {
         const creds = this.client.getClientCredentials();
@@ -135,6 +150,9 @@ export class AuthModule {
      *
      * **Client credentials must never be passed to the browser.** Obtain a
      * `ClientToken` server-side and pass only that to this method.
+     *
+     * @throws {@link GoPaySDKError} with `AUTH_INVALID_TOKEN` if the access
+     *   token is not a valid JWT or is missing the `sub` claim.
      */
     setClientToken(token: ClientToken): void {
         let clientId: string;

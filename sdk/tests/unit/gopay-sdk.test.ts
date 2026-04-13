@@ -93,21 +93,12 @@ describe('GoPaySDK', () => {
             data: unknown,
             status = 200,
             statusText = 'OK',
-        ) => {
-            const body = JSON.stringify(data);
-            const res = {
-                ok: status >= 200 && status < 300,
+        ) =>
+            new Response(JSON.stringify(data), {
                 status,
                 statusText,
-                headers: new Headers({ 'content-type': 'application/json' }),
-                json: () => Promise.resolve(data),
-                text: () => Promise.resolve(body),
-                clone() {
-                    return makeMockResponse(data, status, statusText);
-                },
-            };
-            return res;
-        };
+                headers: { 'content-type': 'application/json' },
+            });
 
         beforeEach(() => {
             vi.stubGlobal(
