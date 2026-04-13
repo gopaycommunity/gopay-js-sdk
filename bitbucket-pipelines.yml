@@ -19,6 +19,7 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
+          - yarn dedupe --check
           - yarn ci
           - yarn npm audit --recursive --environment production
 
@@ -83,7 +84,7 @@ definitions:
  
     - step: &test-playwright
         name: Browser smoke test (IIFE)
-        image: mcr.microsoft.com/playwright:v1.58.2-noble
+        image: mcr.microsoft.com/playwright:v1.59.1-noble
         caches:
           - yarn-global
           - yarn-cache

@@ -1,4 +1,4 @@
-import ky, { type KyInstance, type Options as KyOptions } from 'ky';
+import ky, { HTTPError, type KyInstance, type Options as KyOptions } from 'ky';
 import { BASE_URLS, type GoPayConfig } from '../config.js';
 import { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from '../errors.js';
 import { type StoredTokenPair, TokenStore } from './token-store.js';
@@ -156,25 +156,12 @@ export class HttpClient {
             );
         }
 
-        // HTTP error response
-        if (err instanceof Error && 'response' in err) {
-            const res = (err as { response: Response }).response;
-            const text = await res.text();
-            const contentType = res.headers.get('content-type') ?? '';
-            let body: unknown;
-            if (
-                contentType.startsWith('application/json') ||
-                contentType.includes('+json')
-            ) {
-                try {
-                    body = JSON.parse(text);
-                } catch {
-                    body = text;
-                }
-            } else {
-                body = text;
-            }
-            return this.emitError(new GoPayHTTPError(res.status, body));
+        // HTTP error response — ky v2 pre-reads the body into err.data before throwing,
+        // so res.text() / res.json() are unusable; use err.data directly.
+        if (err instanceof HTTPError) {
+            return this.emitError(
+                new GoPayHTTPError(err.response.status, err.data),
+            );
         }
 
         // Network-level failure (fetch threw, no response)
@@ -270,7 +257,7 @@ export class HttpClient {
     private buildKyInstance(): KyInstance {
         const beforeRequest: NonNullable<KyOptions['hooks']>['beforeRequest'] =
             [
-                async (request) => {
+                async ({ request }) => {
                     if (request.url.includes(AUTH_PATH)) return;
                     if (request.headers.has('Authorization')) return;
 
@@ -299,7 +286,7 @@ export class HttpClient {
 
         const afterResponse: NonNullable<KyOptions['hooks']>['afterResponse'] =
             [
-                async (request, _options, response) => {
+                async ({ request, response }) => {
                     if (
                         response.status !== 401 ||
                         request.url.includes(AUTH_PATH)
@@ -336,10 +323,10 @@ export class HttpClient {
             ];
 
         if (this.config.debugLoggingEnabled) {
-            beforeRequest.push((request) => {
+            beforeRequest.push(({ request }) => {
                 console.debug('[GoPaySDK] →', request.method, request.url);
             });
-            afterResponse.push((_req, _opts, response) => {
+            afterResponse.push(({ response }) => {
                 console.debug('[GoPaySDK] ←', response.status, response.url);
                 return response;
             });
@@ -348,6 +335,15 @@ export class HttpClient {
         return ky.create({
             retry: 0,
             timeout: this.config.requestTimeoutMs ?? 10_000,
+            // ky v2 returns undefined for error.data when JSON parsing fails, losing the raw body.
+            // Override parseJson to fall back to the raw text so GoPayHTTPError.body is always populated.
+            parseJson: (text) => {
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return text;
+                }
+            },
             hooks: { beforeRequest, afterResponse },
         });
     }

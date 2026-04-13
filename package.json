@@ -14,10 +14,10 @@
         "example": "yarn workspace gopay-js-sdk run build && yarn workspace gopay-js-sdk-example run dev"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.4.8",
+        "@biomejs/biome": "^2.4.11",
         "@commitlint/cli": "^20.5.0",
         "@commitlint/config-conventional": "^20.5.0",
-        "@playwright/test": "^1.58.2",
+        "@playwright/test": "^1.59.1",
         "husky": "^9.1.7"
     },
     "commitlint": {
