@@ -15,8 +15,31 @@ export class HttpClient {
 
     constructor(config: GoPayConfig) {
         this.config = config;
-        this.baseUrl =
+        const rawBaseUrl =
             config.baseUrl ?? BASE_URLS[config.environment ?? 'sandbox'];
+        if (config.baseUrl) {
+            let parsed: URL;
+            try {
+                parsed = new URL(config.baseUrl);
+            } catch {
+                throw new Error(
+                    `[GoPaySDK] config.baseUrl is not a valid URL: "${config.baseUrl}"`,
+                );
+            }
+            const isLocalhost =
+                parsed.hostname === 'localhost' ||
+                parsed.hostname === '127.0.0.1' ||
+                parsed.hostname === '::1';
+            const isInsecureAllowed =
+                (config.environment ?? 'sandbox') === 'sandbox' && isLocalhost;
+            if (parsed.protocol !== 'https:' && !isInsecureAllowed) {
+                throw new Error(
+                    `[GoPaySDK] config.baseUrl must use HTTPS. Got "${config.baseUrl}". ` +
+                        `Plain HTTP is only permitted for localhost in the sandbox environment.`,
+                );
+            }
+        }
+        this.baseUrl = rawBaseUrl;
         this.tokenStore = new TokenStore();
         this.kyInstance = this.buildKyInstance();
     }

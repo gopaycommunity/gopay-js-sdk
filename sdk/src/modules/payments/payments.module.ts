@@ -200,6 +200,24 @@ export class PaymentsModule {
         },
     ): void {
         requirePaymentId(paymentId);
+        // Validate the origin sent to the Apple Pay merchant-validation endpoint.
+        // It must be an https: URL whose origin equals itself (no path/query/hash).
+        // Callers cannot spoof an arbitrary host through this parameter.
+        if (origin) {
+            let parsed: URL | undefined;
+            try {
+                parsed = new URL(origin);
+            } catch {
+                throw new Error(
+                    `[GoPaySDK] startApplePaySession: invalid origin "${origin}"`,
+                );
+            }
+            if (parsed.protocol !== 'https:' || parsed.origin !== origin) {
+                throw new Error(
+                    `[GoPaySDK] startApplePaySession: origin must be an https: origin (e.g. "https://example.com"). Got "${origin}"`,
+                );
+            }
+        }
         session.onvalidatemerchant = () => {
             this.validateApplePayMerchant(paymentId, origin)
                 .then((merchantSession) =>

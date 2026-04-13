@@ -820,6 +820,55 @@ describe('PaymentsModule', () => {
             expect(session.completeMerchantValidation).not.toHaveBeenCalled();
         });
 
+        // ── Security: origin parameter validation (F6) ───────────────────────
+
+        it('throws for an http:// origin', () => {
+            expect(() =>
+                payments.startApplePaySession(
+                    'pay_123',
+                    makeSession(),
+                    'http://shop.example.com',
+                ),
+            ).toThrow(/https:/);
+        });
+
+        it('throws for an invalid URL as origin', () => {
+            expect(() =>
+                payments.startApplePaySession(
+                    'pay_123',
+                    makeSession(),
+                    'not-a-url',
+                ),
+            ).toThrow(/invalid origin/);
+        });
+
+        it('throws when origin includes a path component', () => {
+            expect(() =>
+                payments.startApplePaySession(
+                    'pay_123',
+                    makeSession(),
+                    'https://shop.example.com/path',
+                ),
+            ).toThrow(/https:/);
+        });
+
+        it('accepts a valid https:// origin', () => {
+            expect(() =>
+                payments.startApplePaySession(
+                    'pay_123',
+                    makeSession(),
+                    'https://shop.example.com',
+                ),
+            ).not.toThrow();
+        });
+
+        it('accepts an empty origin (defaults to window.location.origin)', () => {
+            // Empty string skips validation and falls back to the browser default
+            expect(() =>
+                payments.startApplePaySession('pay_123', makeSession(), ''),
+            ).not.toThrow();
+        });
+
         it('POSTs to /payments/{paymentId}/apple-pay/validate with Origin header', async () => {
             let capturedReq: Request | undefined;
             fetchMock.mockImplementation(async (req: Request) => {

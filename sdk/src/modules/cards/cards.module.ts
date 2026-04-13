@@ -1,3 +1,4 @@
+import { TRUSTED_CARD_FORM_ORIGINS } from '../../config.js';
 import { GoPayErrorCodes, GoPaySDKError } from '../../errors.js';
 import type { HttpClient } from '../../http/client.js';
 import type { components } from '../../types/generated.js';
@@ -57,6 +58,9 @@ export interface CardFormController {
  * see {@link GoPayErrorCodes}).
  */
 export class CardsModule {
+    /** Cleanup function for the currently active card-form mount, if any. */
+    private activeCleanup: (() => void) | undefined;
+
     constructor(private readonly client: HttpClient) {}
 
     /**
@@ -151,7 +155,35 @@ export class CardsModule {
             };
         }
 
+        // Tear down any previous mount that never received a terminal message
+        // (ENCRYPT_RESULT / ENCRYPT_ERROR). Without this, re-mounting would leave
+        // the old message listener dangling (a memory leak — benign because
+        // event.source guards it, but still an observable footgun).
+        this.activeCleanup?.();
+        this.activeCleanup = undefined;
+
         const iframeSrc = await this.getCardFormUrl();
+
+        // Compute expectedOrigin before touching the DOM so we can validate
+        // it against the allowlist before the iframe is ever appended.
+        const expectedOrigin = new URL(iframeSrc, globalThis.location?.href)
+            .origin;
+
+        // In production, reject iframe URLs whose origin is not explicitly
+        // trusted. This prevents token leakage if the API or DNS were ever
+        // compromised. Sandbox is left permissive to support local/staging setups.
+        const env = this.client.getEnvironment();
+        if (env === 'production') {
+            if (
+                !TRUSTED_CARD_FORM_ORIGINS.production.includes(expectedOrigin)
+            ) {
+                throw new GoPaySDKError(
+                    `[GoPaySDK] Card form URL origin is not trusted in production: "${expectedOrigin}". ` +
+                        `Allowed origins: ${TRUSTED_CARD_FORM_ORIGINS.production.join(', ')}`,
+                    { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                );
+            }
+        }
 
         container.replaceChildren();
 
@@ -162,9 +194,6 @@ export class CardsModule {
         iframe.setAttribute('sandbox', 'allow-scripts allow-forms');
         iframe.style.cssText = 'width:100%;height:100%;border:none;';
         container.appendChild(iframe);
-
-        const expectedOrigin = new URL(iframeSrc, globalThis.location?.href)
-            .origin;
         const environment = this.client.getEnvironment();
         const elapsedSeconds = Math.floor(
             (Date.now() - tokens.issued_at) / 1000,
@@ -185,7 +214,9 @@ export class CardsModule {
             active = false;
             if (onMessage) window.removeEventListener('message', onMessage);
             iframe.remove();
+            this.activeCleanup = undefined;
         };
+        this.activeCleanup = cleanup;
 
         let resolveResult!: (value: CardTokenResponse) => void;
         let rejectResult!: (reason: unknown) => void;
@@ -230,7 +261,12 @@ export class CardsModule {
 
             if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
                 if (typeof event.data.height === 'number') {
-                    iframe.style.height = `${event.data.height}px`;
+                    // Clamp to prevent a defective or compromised iframe from
+                    // setting an arbitrarily large height and breaking the host layout.
+                    const h = Math.max(0, Math.min(10_000, event.data.height));
+                    if (Number.isFinite(h)) {
+                        iframe.style.height = `${h}px`;
+                    }
                 }
                 return;
             }
@@ -328,6 +364,10 @@ export class CardsModule {
     }
 
     private extractClientId(accessToken: string): string | null {
+        // Trusted decode: this token was just received from our own authenticated
+        // API call over TLS. We only read the `sub` claim for client_id telemetry.
+        // Do NOT copy this pattern for tokens received from untrusted sources —
+        // signature verification would be required in that case.
         try {
             const payload = JSON.parse(
                 globalThis.atob(accessToken.split('.')[1]),

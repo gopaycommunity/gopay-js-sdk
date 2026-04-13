@@ -226,7 +226,7 @@ describe('HttpClient', () => {
                 error: 'UNAUTHORIZED',
             });
             expect((err as GoPayHTTPError).message).toBe(
-                'HTTP 401: {"error":"UNAUTHORIZED"}',
+                'GoPay API error: HTTP 401',
             );
         });
 
@@ -739,6 +739,151 @@ describe('HttpClient', () => {
                         requestTimeoutMs: 5_000,
                     }),
             ).not.toThrow();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // Security: baseUrl scheme validation (F2)
+    // -------------------------------------------------------------------------
+
+    describe('constructor: baseUrl scheme validation', () => {
+        it('accepts https:// baseUrl', () => {
+            expect(
+                () => new HttpClient({ baseUrl: 'https://example.com' }),
+            ).not.toThrow();
+        });
+
+        it('throws for http:// non-localhost baseUrl', () => {
+            expect(
+                () => new HttpClient({ baseUrl: 'http://example.com' }),
+            ).toThrow(/must use HTTPS/);
+        });
+
+        it('throws for javascript: scheme', () => {
+            expect(
+                () => new HttpClient({ baseUrl: 'javascript:alert(1)' }),
+            ).toThrow(/must use HTTPS/);
+        });
+
+        it('throws for a completely invalid URL string', () => {
+            expect(() => new HttpClient({ baseUrl: 'not a url' })).toThrow(
+                /not a valid URL/,
+            );
+        });
+
+        it('accepts http://localhost in sandbox environment', () => {
+            expect(
+                () =>
+                    new HttpClient({
+                        environment: 'sandbox',
+                        baseUrl: 'http://localhost:3000',
+                    }),
+            ).not.toThrow();
+        });
+
+        it('accepts http://127.0.0.1 in sandbox environment', () => {
+            expect(
+                () =>
+                    new HttpClient({
+                        environment: 'sandbox',
+                        baseUrl: 'http://127.0.0.1:8080',
+                    }),
+            ).not.toThrow();
+        });
+
+        it('throws for http://localhost in production environment', () => {
+            expect(
+                () =>
+                    new HttpClient({
+                        environment: 'production',
+                        baseUrl: 'http://localhost:3000',
+                    }),
+            ).toThrow(/must use HTTPS/);
+        });
+
+        it('throws for http:// remote host in sandbox environment', () => {
+            expect(
+                () =>
+                    new HttpClient({
+                        environment: 'sandbox',
+                        baseUrl: 'http://staging.example.com',
+                    }),
+            ).toThrow(/must use HTTPS/);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // Security: GoPayHTTPError.message does not expose response body (F4)
+    // -------------------------------------------------------------------------
+
+    describe('GoPayHTTPError message format', () => {
+        it('message is terse and does not contain the response body', async () => {
+            fetchMock.mockImplementation(async (req: Request) => {
+                await req.text();
+                return makeResponse(
+                    { pan: '4111111111111111', error: 'CARD_DECLINED' },
+                    402,
+                    'Payment Required',
+                );
+            });
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+
+            const err = await client
+                .post('/payments', {})
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPayHTTPError);
+            expect((err as GoPayHTTPError).message).toBe(
+                'GoPay API error: HTTP 402',
+            );
+            // Full body is still accessible for programmatic handling
+            expect((err as GoPayHTTPError).body).toEqual({
+                pan: '4111111111111111',
+                error: 'CARD_DECLINED',
+            });
+            // Sensitive data must NOT appear in the message string
+            expect((err as GoPayHTTPError).message).not.toContain(
+                '4111111111111111',
+            );
+            expect((err as GoPayHTTPError).message).not.toContain(
+                'CARD_DECLINED',
+            );
+        });
+
+        it('message does not contain response body for plain-text error', async () => {
+            fetchMock.mockResolvedValue(
+                new Response('Internal server error details', {
+                    status: 500,
+                    statusText: 'Internal Server Error',
+                    headers: { 'content-type': 'text/plain' },
+                }),
+            );
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+
+            const err = await client.get('/resource').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPayHTTPError);
+            expect((err as GoPayHTTPError).message).toBe(
+                'GoPay API error: HTTP 500',
+            );
+            expect((err as GoPayHTTPError).message).not.toContain(
+                'Internal server error details',
+            );
+        });
+
+        it('debugLoggingEnabled: false produces no console output by default', async () => {
+            const debugSpy = vi
+                .spyOn(console, 'debug')
+                .mockImplementation(() => {});
+
+            const client = new HttpClient({ baseUrl: 'https://example.com' });
+            tokenStore(client).set(storedTokens);
+            await client.get('/data');
+
+            expect(debugSpy).not.toHaveBeenCalled();
         });
     });
 });

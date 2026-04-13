@@ -38,3 +38,18 @@ export const BASE_URLS: Record<
     sandbox: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0',
     production: 'https://api.gopay.com/api/merchant/payments/4.0',
 };
+
+/**
+ * Hard-coded allowlist of trusted card-form iframe origins per environment.
+ * Applied only in production: in sandbox the API-returned URL is trusted as-is
+ * to avoid breaking local/staging environments where the iframe host may vary.
+ * If the API returns a card_form_url whose origin is not in this list, mountCardForm
+ * will reject it before appending the iframe — preventing token leakage to a
+ * potentially compromised or misconfigured endpoint.
+ */
+export const TRUSTED_CARD_FORM_ORIGINS: Record<
+    'production',
+    readonly string[]
+> = {
+    production: ['https://secure.gopay.com'],
+};

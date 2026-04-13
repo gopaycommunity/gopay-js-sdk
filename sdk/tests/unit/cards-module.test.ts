@@ -812,6 +812,54 @@ describe('CardsModule', () => {
                 expect(cb).toHaveBeenCalledWith(true);
             });
 
+            // ── Security: iframe height clamping (F5) ─────────────────────────────
+
+            it('clamps an oversized height to 10 000', async () => {
+                await cards.mountCardForm(container);
+                const iframe = getIframe();
+                window.dispatchEvent(
+                    new MessageEvent('message', {
+                        data: {
+                            type: 'GOPAY_CARD_FORM_HEIGHT',
+                            height: 99_999,
+                        },
+                        origin: IFRAME_ORIGIN,
+                        source: iframe.contentWindow,
+                    }),
+                );
+                expect(iframe.style.height).toBe('10000px');
+            });
+
+            it('clamps a negative height to 0', async () => {
+                await cards.mountCardForm(container);
+                const iframe = getIframe();
+                window.dispatchEvent(
+                    new MessageEvent('message', {
+                        data: { type: 'GOPAY_CARD_FORM_HEIGHT', height: -100 },
+                        origin: IFRAME_ORIGIN,
+                        source: iframe.contentWindow,
+                    }),
+                );
+                expect(iframe.style.height).toBe('0px');
+            });
+
+            it('ignores NaN height without touching the style', async () => {
+                await cards.mountCardForm(container);
+                const iframe = getIframe();
+                const originalHeight = iframe.style.height;
+                window.dispatchEvent(
+                    new MessageEvent('message', {
+                        data: {
+                            type: 'GOPAY_CARD_FORM_HEIGHT',
+                            height: Number.NaN,
+                        },
+                        origin: IFRAME_ORIGIN,
+                        source: iframe.contentWindow,
+                    }),
+                );
+                expect(iframe.style.height).toBe(originalHeight);
+            });
+
             it('onValidityChange deduplicates identical consecutive values', async () => {
                 const cb = vi.fn();
                 await cards.mountCardForm(container, {
@@ -833,6 +881,111 @@ describe('CardsModule', () => {
                 expect(cb).toHaveBeenNthCalledWith(1, true);
                 expect(cb).toHaveBeenNthCalledWith(2, false);
             });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // Security: production iframe-origin allowlist (F1)
+    // -------------------------------------------------------------------------
+
+    describe('production iframe-origin allowlist', () => {
+        const TRUSTED_PROD_SRC = 'https://secure.gopay.com/card-encrypt.html';
+        const TRUSTED_PROD_ORIGIN = 'https://secure.gopay.com';
+
+        it('rejects an untrusted iframe origin in production before mounting', async () => {
+            // IFRAME_SRC = 'https://gopay.com/...' is not in the production allowlist
+            const prodClient = new HttpClient({
+                environment: 'production',
+                baseUrl: 'https://example.com',
+            });
+            tokenStore(prodClient).set({
+                access_token: 'at-test',
+                refresh_token: 'rt-test',
+                expires_in: 900,
+                refresh_expires_in: 86400,
+                token_type: 'bearer',
+            });
+            const prodCards = new CardsModule(prodClient);
+
+            const err = await prodCards
+                .mountCardForm(container)
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe('CARD_FORM_ERROR');
+            expect((err as GoPaySDKError).message).toContain('not trusted');
+            // iframe must NOT have been appended
+            expect(container.querySelector('iframe')).toBeNull();
+        });
+
+        it('accepts a trusted iframe origin in production', async () => {
+            fetchMock.mockReset();
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({ card_form_url: TRUSTED_PROD_SRC }),
+                )
+                .mockResolvedValue(makeResponse(MOCK_TOKEN_RESPONSE));
+
+            const prodClient = new HttpClient({
+                environment: 'production',
+                baseUrl: 'https://example.com',
+            });
+            tokenStore(prodClient).set({
+                access_token: 'at-test',
+                refresh_token: 'rt-test',
+                expires_in: 900,
+                refresh_expires_in: 86400,
+                token_type: 'bearer',
+            });
+            const prodCards = new CardsModule(prodClient);
+
+            const { result } = await prodCards.mountCardForm(container);
+            dispatchCardMessage(getIframe(), {
+                origin: TRUSTED_PROD_ORIGIN,
+            });
+            await expect(result).resolves.toEqual(MOCK_TOKEN_RESPONSE);
+        });
+
+        it('allows any iframe origin in sandbox (permissive)', async () => {
+            // IFRAME_SRC = 'https://gopay.com/...' — not in the prod allowlist,
+            // but sandbox accepts whatever the API returns.
+            const { result } = await cards.mountCardForm(container);
+            dispatchCardMessage(getIframe());
+            await expect(result).resolves.toEqual(MOCK_TOKEN_RESPONSE);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // Security: orphan listener cleanup on re-mount (F7)
+    // -------------------------------------------------------------------------
+
+    describe('re-mount listener cleanup', () => {
+        it('removes the previous message listener when re-mounting before form completes', async () => {
+            const removeListenerSpy = vi.spyOn(window, 'removeEventListener');
+
+            fetchMock.mockReset();
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({ card_form_url: IFRAME_SRC }),
+                )
+                .mockResolvedValueOnce(
+                    makeResponse({ card_form_url: IFRAME_SRC }),
+                )
+                .mockResolvedValue(makeResponse(MOCK_TOKEN_RESPONSE));
+
+            // First mount — no cleanup yet
+            await cards.mountCardForm(container);
+            expect(removeListenerSpy).not.toHaveBeenCalledWith(
+                'message',
+                expect.any(Function),
+            );
+
+            // Second mount — should clean up the first listener
+            await cards.mountCardForm(container);
+            expect(removeListenerSpy).toHaveBeenCalledWith(
+                'message',
+                expect.any(Function),
+            );
         });
     });
 });
