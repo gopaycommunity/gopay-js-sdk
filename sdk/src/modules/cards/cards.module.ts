@@ -201,6 +201,7 @@ export class CardsModule {
             // this specific contentWindow — '*' means "skip origin check on recipient",
             // not "broadcast to all windows".
             iframe.contentWindow?.postMessage(
+                // NOSONAR -- sandboxed iframe (no allow-same-origin) has opaque "null" origin; a specific targetOrigin is silently dropped
                 {
                     type: 'GOPAY_CARD_FORM_INIT',
                     environment,
@@ -216,7 +217,7 @@ export class CardsModule {
                     locale,
                     submitMode,
                 } satisfies CardFormConfig,
-                '*', // NOSONAR -- sandboxed iframe (no allow-same-origin) has opaque "null" origin; a specific targetOrigin is silently dropped
+                '*',
             );
         };
 
@@ -282,22 +283,24 @@ export class CardsModule {
             setTheme: (t: CardFormTheme) => {
                 if (active) {
                     iframe.contentWindow?.postMessage(
+                        // NOSONAR -- sandboxed iframe has opaque "null" origin; specific targetOrigin is silently dropped
                         {
                             type: 'GOPAY_CARD_SET_THEME',
                             theme: t,
                         } satisfies CardSetTheme,
-                        '*', // NOSONAR -- sandboxed iframe has opaque "null" origin; specific targetOrigin is silently dropped
+                        '*',
                     );
                 }
             },
             setLocale: (l: string) => {
                 if (active) {
                     iframe.contentWindow?.postMessage(
+                        // NOSONAR -- sandboxed iframe has opaque "null" origin; specific targetOrigin is silently dropped
                         {
                             type: 'GOPAY_CARD_SET_LOCALE',
                             locale: l,
                         } satisfies CardSetLocale,
-                        '*', // NOSONAR -- sandboxed iframe has opaque "null" origin; specific targetOrigin is silently dropped
+                        '*',
                     );
                 }
             },
@@ -310,10 +313,11 @@ export class CardsModule {
                 }
                 if (active) {
                     iframe.contentWindow?.postMessage(
+                        // NOSONAR -- sandboxed iframe has opaque "null" origin; specific targetOrigin is silently dropped
                         {
                             type: 'GOPAY_CARD_REQUEST_SUBMIT',
                         } satisfies CardRequestSubmit,
-                        '*', // NOSONAR -- sandboxed iframe has opaque "null" origin; specific targetOrigin is silently dropped
+                        '*',
                     );
                 }
             },
