@@ -91,8 +91,11 @@ export class GoPayHTTPError extends Error {
         public readonly status: number,
         public readonly body: unknown,
     ) {
-        super(
-            `HTTP ${status}: ${typeof body === 'string' ? body : JSON.stringify(body)}`,
-        );
+        // Keep the message terse — error-reporting SDKs (Sentry, Datadog RUM,
+        // etc.) capture Error.message automatically. The full response body is
+        // available on err.body for callers that need it, but must not appear
+        // in logs by default (PCI-DSS Req 3.3, Req 10: no PANs or sensitive data
+        // in logs).
+        super(`GoPay API error: HTTP ${status}`);
     }
 }
