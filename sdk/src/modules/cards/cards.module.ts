@@ -260,13 +260,11 @@ export class CardsModule {
                 return;
 
             if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
-                if (typeof event.data.height === 'number') {
-                    // Clamp to prevent a defective or compromised iframe from
-                    // setting an arbitrarily large height and breaking the host layout.
-                    const h = Math.max(0, Math.min(10_000, event.data.height));
-                    if (Number.isFinite(h)) {
-                        iframe.style.height = `${h}px`;
-                    }
+                const { height } = event.data;
+                // Clamp to prevent a defective or compromised iframe from
+                // setting an arbitrarily large height and breaking the host layout.
+                if (typeof height === 'number' && !Number.isNaN(height)) {
+                    iframe.style.height = `${Math.max(0, Math.min(500, height))}px`;
                 }
                 return;
             }

@@ -827,7 +827,7 @@ describe('CardsModule', () => {
                         source: iframe.contentWindow,
                     }),
                 );
-                expect(iframe.style.height).toBe('10000px');
+                expect(iframe.style.height).toBe('500px');
             });
 
             it('clamps a negative height to 0', async () => {
