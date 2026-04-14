@@ -109,7 +109,7 @@ Credentials must never leave the server. The SDK provides a two-step handoff:
 1. **Server** calls `issueClientToken()` — obtains a fresh token pair for every browser client without touching its own session. The browser may use a **narrower scope** than the server.
 2. **Server** returns the `ClientToken` to the browser (e.g. via a session endpoint).
 3. **Browser** calls `setClientToken()` — seeds the SDK with both tokens. The `client_id` is extracted automatically from the JWT; no credentials are needed in the browser.
-4. All subsequent browser API calls use the access token directly, renewing via the refresh token transparently before expiry. The browser should finish it's business before refreshToken expires (usually 24 hrs) because it can't renew it. Else you need to provide a mechanism to get new client tokens.
+4. All subsequent browser API calls use the access token directly, renewing via the refresh token transparently before expiry. The browser should finish its business before refreshToken expires (usually 24 hrs) because it can't renew it. Else you need to provide a mechanism to get new client tokens.
 
 ```ts
 // Server: issue a fresh token pair for the browser.
@@ -323,15 +323,13 @@ session.onpaymentauthorized = async (event) => {
   );
 };
 
-// Step 2 — Cancellation.
-// Fires when the user dismisses the sheet without paying.
-session.oncancel = () => {
-  // Update your UI to reflect the cancelled state.
-};
-
 // Wire merchant validation, then open the Apple Pay sheet.
-// onvalidatemerchant is handled automatically by the SDK.
-sdk.payments.startApplePaySession(payment.id, session);
+// onvalidatemerchant and oncancel are handled automatically by the SDK.
+sdk.payments.startApplePaySession(payment.id, session, undefined, {
+  oncancel: () => {
+    // Update your UI to reflect the cancelled state.
+  },
+});
 ```
 
 ### Payment status and charge state
@@ -387,6 +385,7 @@ document.body.appendChild(img);
 | `theme` | `CardFormTheme` | `DEFAULT_CARD_FORM_THEME` | Visual theme (colors, font sizes, spacing, button styles). All fields are optional — the iframe applies built-in defaults for any omitted field. |
 | `locale` | `string` | `navigator.language` | BCP 47 language tag for form labels and placeholders. The region subtag is ignored (`'cs-CZ'` → `'cs'`). Unknown locales fall back to English. Supported: `bg` `cs` `de` `en` `es` `et` `fr` `hr` `hu` `it` `lt` `lv` `nl` `pl` `pt` `ro` `ru` `sk` `sl` `uk`. |
 | `submitMode` | `'internal' \| 'external'` | `'internal'` | `'internal'` — the iframe renders its own submit button. `'external'` — the iframe hides the button; the parent controls submission via `cardForm.submit()` and receives validity changes via `onValidityChange`. |
+| `permanent` | `boolean` | `false` | When `true`, a permanent (reusable) card token is created that can be charged again for future payments. When `false` (default), a single-use token is created. |
 | `onValidityChange` | `(isValid: boolean) => void` | — | Called whenever the overall form validity changes in external submit mode. Use this to enable/disable your external submit button. |
 
 > **Send theme and locale at init time.** Both options are applied before the form is first painted, avoiding a flash of unstyled content. Use `cardForm.setTheme()` and `cardForm.setLocale()` on the returned controller if you need to update them after mounting.
@@ -397,9 +396,9 @@ document.body.appendChild(img);
 |---|---|---|---|
 | `fontFamily` | `string` | `system-ui, sans-serif` | CSS font-family stack applied to all form text (labels, inputs, errors, submit button). Use system font stacks — e.g. `"Inter, system-ui, sans-serif"` — to match your page without loading external fonts. |
 
-Theme presets are exported from the package:
-
 > **Color format restriction.** All color fields in `CardFormTheme` must use one of the following CSS formats: `#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb(...)`, `rgba(...)`, `hsl(...)`, `hsla(...)`, or `transparent`. Values that do not match are silently replaced with `unset` (browser default). Named colors (e.g. `red`) and other CSS values are not accepted.
+
+Theme presets are exported from the package:
 
 ```ts
 import {
@@ -514,7 +513,7 @@ const charge = await sdk.payments.charge(payment.id, {
 await sdk.cards.deleteCard(card.card_id);
 ```
 
-`GET /encryption/public-key` and the JWE construction it enables are **intentionally not part of this SDK's API surface**. Do not use the `sdk/src/iframe/index.html` stub in production or testing.
+`GET /encryption/public-key` and the JWE construction it enables are **intentionally not part of this SDK's API surface**.
 
 ---
 
@@ -539,6 +538,7 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 | `AUTH_UNAUTHORIZED` | Still 401 after a successful token refresh — check OAuth2 scopes. |
 | `NETWORK_TIMEOUT` | Request exceeded `requestTimeoutMs`. |
 | `NETWORK_ERROR` | Network-level failure (no response received). |
+| `CARD_FORM_ERROR` | The card form iframe encountered an error (e.g. URL unavailable, init timeout, or encryption failure). |
 
 ```ts
 import { GoPaySDKError, GoPayErrorCodes } from 'gopay-js-sdk';
