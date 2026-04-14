@@ -30,22 +30,10 @@ export function cardPaySetLang(lang) {
     currentLang = lang;
     document
         .getElementById('cardpay-lang-en')
-        .classList.toggle('!bg-[#F2F4F7]', lang !== 'en');
-    document
-        .getElementById('cardpay-lang-en')
-        .classList.toggle('!text-[#2D3643]', lang !== 'en');
-    document
-        .getElementById('cardpay-lang-en')
-        .classList.toggle('![box-shadow:none]', lang !== 'en');
+        .classList.toggle('js-btn-inactive', lang !== 'en');
     document
         .getElementById('cardpay-lang-cs')
-        .classList.toggle('!bg-[#F2F4F7]', lang !== 'cs');
-    document
-        .getElementById('cardpay-lang-cs')
-        .classList.toggle('!text-[#2D3643]', lang !== 'cs');
-    document
-        .getElementById('cardpay-lang-cs')
-        .classList.toggle('![box-shadow:none]', lang !== 'cs');
+        .classList.toggle('js-btn-inactive', lang !== 'cs');
 
     cardFormController?.setLocale(lang);
 }
@@ -54,22 +42,10 @@ export function cardPaySetTheme(theme) {
     currentTheme = theme;
     document
         .getElementById('cardpay-theme-default')
-        .classList.toggle('!bg-[#F2F4F7]', theme !== 'default');
-    document
-        .getElementById('cardpay-theme-default')
-        .classList.toggle('!text-[#2D3643]', theme !== 'default');
-    document
-        .getElementById('cardpay-theme-default')
-        .classList.toggle('![box-shadow:none]', theme !== 'default');
+        .classList.toggle('js-btn-inactive', theme !== 'default');
     document
         .getElementById('cardpay-theme-dark')
-        .classList.toggle('!bg-[#F2F4F7]', theme !== 'dark');
-    document
-        .getElementById('cardpay-theme-dark')
-        .classList.toggle('!text-[#2D3643]', theme !== 'dark');
-    document
-        .getElementById('cardpay-theme-dark')
-        .classList.toggle('![box-shadow:none]', theme !== 'dark');
+        .classList.toggle('js-btn-inactive', theme !== 'dark');
 
     cardFormController?.setTheme(
         theme === 'dark' ? DARK_CARD_FORM_THEME : DEFAULT_CARD_FORM_THEME,
@@ -80,22 +56,10 @@ export function cardPaySetSubmitMode(mode) {
     currentSubmitMode = mode;
     document
         .getElementById('cardpay-submit-internal')
-        .classList.toggle('!bg-[#F2F4F7]', mode !== 'internal');
-    document
-        .getElementById('cardpay-submit-internal')
-        .classList.toggle('!text-[#2D3643]', mode !== 'internal');
-    document
-        .getElementById('cardpay-submit-internal')
-        .classList.toggle('![box-shadow:none]', mode !== 'internal');
+        .classList.toggle('js-btn-inactive', mode !== 'internal');
     document
         .getElementById('cardpay-submit-external')
-        .classList.toggle('!bg-[#F2F4F7]', mode !== 'external');
-    document
-        .getElementById('cardpay-submit-external')
-        .classList.toggle('!text-[#2D3643]', mode !== 'external');
-    document
-        .getElementById('cardpay-submit-external')
-        .classList.toggle('![box-shadow:none]', mode !== 'external');
+        .classList.toggle('js-btn-inactive', mode !== 'external');
 
     const isExternal = mode === 'external';
     document
@@ -114,22 +78,10 @@ export function cardPaySetPermanent(permanent) {
     currentPermanent = permanent;
     document
         .getElementById('cardpay-permanent-off')
-        .classList.toggle('!bg-[#F2F4F7]', permanent);
-    document
-        .getElementById('cardpay-permanent-off')
-        .classList.toggle('!text-[#2D3643]', permanent);
-    document
-        .getElementById('cardpay-permanent-off')
-        .classList.toggle('![box-shadow:none]', permanent);
+        .classList.toggle('js-btn-inactive', permanent);
     document
         .getElementById('cardpay-permanent-on')
-        .classList.toggle('!bg-[#F2F4F7]', !permanent);
-    document
-        .getElementById('cardpay-permanent-on')
-        .classList.toggle('!text-[#2D3643]', !permanent);
-    document
-        .getElementById('cardpay-permanent-on')
-        .classList.toggle('![box-shadow:none]', !permanent);
+        .classList.toggle('js-btn-inactive', !permanent);
 }
 
 export async function cardPayOpenIframe() {
@@ -148,7 +100,7 @@ export async function cardPayOpenIframe() {
 
     if (isExternal) {
         extSubmitBtn.disabled = true;
-        extSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        extSubmitBtn.classList.add('js-btn-disabled');
         extValidIndicator.textContent = 'false';
     }
 
@@ -169,9 +121,8 @@ export async function cardPayOpenIframe() {
                 ? (isValid) => {
                       extValidIndicator.textContent = String(isValid);
                       extSubmitBtn.disabled = !isValid;
-                      extSubmitBtn.classList.toggle('opacity-50', !isValid);
                       extSubmitBtn.classList.toggle(
-                          'cursor-not-allowed',
+                          'js-btn-disabled',
                           !isValid,
                       );
                   }

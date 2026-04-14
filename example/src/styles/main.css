@@ -132,3 +132,16 @@ button:hover {
         32px 16px 16px -24px rgba(3, 44, 108, 0.5) inset,
         0px 1px 1px 0px rgba(13, 71, 161, 0.24);
 }
+
+/* JS-controlled states — prefix js- signals these are toggled by JavaScript */
+.js-btn-inactive,
+.js-btn-inactive:hover {
+    background: #f2f4f7;
+    color: #2d3643;
+    box-shadow: none;
+}
+
+.js-btn-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
