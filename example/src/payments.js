@@ -110,7 +110,7 @@ export function clearCharge() {
 // Render the image in your UI so the customer can scan it with their banking app.
 // Example:
 //   const qr = await sdk.payments.getQRPaymentInfo(paymentId, 'png'); // or 'svg'
-//   img.src = `data:image/png;base64,${qr.data}`;
+//   img.src = `data:image/png;base64,${qr.qr_code?.spayd}`; // CZK; use paybysquare/sepa/mnb_qr for other currencies
 export function runQRPaymentInfo() {
     const paymentId = document.getElementById('qr-payment-id').value.trim();
     const format = document.getElementById('qr-format').value || undefined;

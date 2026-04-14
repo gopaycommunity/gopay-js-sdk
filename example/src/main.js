@@ -11,6 +11,7 @@ import {
     cardPayExtSubmit,
     cardPayOpenIframe,
     cardPaySetLang,
+    cardPaySetPermanent,
     cardPaySetSubmitMode,
     cardPaySetTheme,
 } from './card-pay.js';
@@ -128,6 +129,7 @@ window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;
 window.cardPaySetSubmitMode = cardPaySetSubmitMode;
 window.cardPayExtSubmit = cardPayExtSubmit;
+window.cardPaySetPermanent = cardPaySetPermanent;
 window.runGetPaymentStatus = runGetPaymentStatus;
 window.runGetChargeState = runGetChargeState;
 window.runGetCardDetails = runGetCardDetails;

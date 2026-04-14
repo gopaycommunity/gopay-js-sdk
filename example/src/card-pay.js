@@ -23,6 +23,7 @@ import { sdk } from './sdk.js';
 let currentLang = 'en';
 let currentTheme = 'default';
 let currentSubmitMode = 'internal';
+let currentPermanent = false;
 let cardFormController = null;
 
 export function cardPaySetLang(lang) {
@@ -109,6 +110,28 @@ export function cardPayExtSubmit() {
     cardFormController?.submit();
 }
 
+export function cardPaySetPermanent(permanent) {
+    currentPermanent = permanent;
+    document
+        .getElementById('cardpay-permanent-off')
+        .classList.toggle('!bg-[#F2F4F7]', permanent);
+    document
+        .getElementById('cardpay-permanent-off')
+        .classList.toggle('!text-[#2D3643]', permanent);
+    document
+        .getElementById('cardpay-permanent-off')
+        .classList.toggle('![box-shadow:none]', permanent);
+    document
+        .getElementById('cardpay-permanent-on')
+        .classList.toggle('!bg-[#F2F4F7]', !permanent);
+    document
+        .getElementById('cardpay-permanent-on')
+        .classList.toggle('!text-[#2D3643]', !permanent);
+    document
+        .getElementById('cardpay-permanent-on')
+        .classList.toggle('![box-shadow:none]', !permanent);
+}
+
 export async function cardPayOpenIframe() {
     const paymentId = document
         .getElementById('cardpay-payment-id')
@@ -141,6 +164,7 @@ export async function cardPayOpenIframe() {
             theme,
             locale: currentLang,
             submitMode: currentSubmitMode,
+            permanent: currentPermanent,
             onValidityChange: isExternal
                 ? (isValid) => {
                       extValidIndicator.textContent = String(isValid);

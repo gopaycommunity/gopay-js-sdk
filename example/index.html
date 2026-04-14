@@ -197,6 +197,9 @@
                 <span class="text-xs text-[#6B7280] font-medium ml-3">Submit:</span>
                 <button type="button" id="cardpay-submit-internal" onclick="cardPaySetSubmitMode('internal')" class="!text-xs !py-1 !px-3">Internal</button>
                 <button type="button" id="cardpay-submit-external" onclick="cardPaySetSubmitMode('external')" class="!text-xs !py-1 !px-3 !bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">External</button>
+                <span class="text-xs text-[#6B7280] font-medium ml-3">Token:</span>
+                <button type="button" id="cardpay-permanent-off" onclick="cardPaySetPermanent(false)" class="!text-xs !py-1 !px-3">Single-use</button>
+                <button type="button" id="cardpay-permanent-on" onclick="cardPaySetPermanent(true)" class="!text-xs !py-1 !px-3 !bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">Permanent</button>
             </div>
             <div class="flex items-center gap-3 flex-wrap mb-3">
                 <button type="button" onclick="cardPayOpenIframe()">Open Card Payment</button>
