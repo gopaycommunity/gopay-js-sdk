@@ -10,7 +10,6 @@ import type { TokenStore } from '../../src/http/token-store.js';
 const tokenStore = (client: HttpClient) =>
     (client as unknown as { tokenStore: TokenStore }).tokenStore;
 
-// Must return a real Response so ky accepts it as an afterResponse hook replacement
 const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
     new Response(JSON.stringify(data), {
         status,
@@ -729,9 +728,7 @@ describe('HttpClient', () => {
     // -------------------------------------------------------------------------
 
     describe('requestTimeoutMs config', () => {
-        it('defaults to 10 000 ms (ky timeout option)', async () => {
-            // We can't inspect ky internals directly, but we can verify the
-            // instance was built without error and the config value is accepted.
+        it('accepts a custom timeout value without throwing', async () => {
             expect(
                 () =>
                     new HttpClient({

@@ -1,47 +1,28 @@
-import ky, { HTTPError, type KyInstance, type Options as KyOptions } from 'ky';
-import { BASE_URLS, type GoPayConfig } from '../config.js';
+import type { GoPayConfig } from '../config.js';
 import { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from '../errors.js';
+import { AuthHandler } from './auth-handler.js';
+import { buildUrl, resolveBaseUrl } from './build-url.js';
+import { parseBody } from './response.js';
 import { type StoredTokenPair, TokenStore } from './token-store.js';
 import type { RequestOptions } from './types.js';
-
-const AUTH_PATH = '/oauth2/token';
 
 export class HttpClient {
     readonly baseUrl: string;
     private readonly config: GoPayConfig;
     private readonly tokenStore: TokenStore;
-    private readonly kyInstance: KyInstance;
-    private refreshPromise: Promise<void> | null = null;
+    private readonly auth: AuthHandler;
 
     constructor(config: GoPayConfig) {
         this.config = config;
-        const rawBaseUrl =
-            config.baseUrl ?? BASE_URLS[config.environment ?? 'sandbox'];
-        if (config.baseUrl) {
-            let parsed: URL;
-            try {
-                parsed = new URL(config.baseUrl);
-            } catch {
-                throw new Error(
-                    `[GoPaySDK] config.baseUrl is not a valid URL: "${config.baseUrl}"`,
-                );
-            }
-            const isLocalhost =
-                parsed.hostname === 'localhost' ||
-                parsed.hostname === '127.0.0.1' ||
-                parsed.hostname === '::1';
-            const isInsecureAllowed =
-                (config.environment ?? 'sandbox') === 'sandbox' && isLocalhost;
-            if (parsed.protocol !== 'https:' && !isInsecureAllowed) {
-                throw new Error(
-                    `[GoPaySDK] config.baseUrl must use HTTPS. Got "${config.baseUrl}". ` +
-                        `Plain HTTP is only permitted for localhost in the sandbox environment.`,
-                );
-            }
-        }
-        this.baseUrl = rawBaseUrl;
+        this.baseUrl = resolveBaseUrl(config);
         this.tokenStore = new TokenStore();
-        this.kyInstance = this.buildKyInstance();
+        this.auth = new AuthHandler({
+            store: this.tokenStore,
+            baseUrl: this.baseUrl,
+            emitError: (e) => this.emitError(e),
+            getTimeoutMs: () => this.timeoutMs,
+            debugLogResponse: (r) => this.debugLogResponse(r),
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -102,9 +83,16 @@ export class HttpClient {
 
     async get<T>(path: string, options?: RequestOptions): Promise<T> {
         try {
-            return await this.kyInstance
-                .get(this.buildUrl(path), this.kyOptions(options))
-                .json<T>();
+            const url = buildUrl(this.baseUrl, path);
+            const headers = new Headers({ Accept: 'application/json' });
+            await this.auth.injectAuth(headers, url, options);
+            this.debugLogRequest('GET', url);
+            const response = await this.auth.fetchAndHandle401(url, {
+                method: 'GET',
+                headers,
+            });
+            await this.throwIfNotOk(response);
+            return response.json() as Promise<T>;
         } catch (err) {
             return this.handleError(err);
         }
@@ -116,12 +104,20 @@ export class HttpClient {
         options?: RequestOptions,
     ): Promise<T> {
         try {
-            return await this.kyInstance
-                .post(this.buildUrl(path), {
-                    ...this.kyOptions(options),
-                    json: body,
-                })
-                .json<T>();
+            const url = buildUrl(this.baseUrl, path);
+            const headers = new Headers({
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            });
+            await this.auth.injectAuth(headers, url, options);
+            this.debugLogRequest('POST', url);
+            const response = await this.auth.fetchAndHandle401(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body),
+            });
+            await this.throwIfNotOk(response);
+            return response.json() as Promise<T>;
         } catch (err) {
             return this.handleError(err);
         }
@@ -129,10 +125,15 @@ export class HttpClient {
 
     async delete(path: string, options?: RequestOptions): Promise<void> {
         try {
-            await this.kyInstance.delete(
-                this.buildUrl(path),
-                this.kyOptions(options),
-            );
+            const url = buildUrl(this.baseUrl, path);
+            const headers = new Headers();
+            await this.auth.injectAuth(headers, url, options);
+            this.debugLogRequest('DELETE', url);
+            const response = await this.auth.fetchAndHandle401(url, {
+                method: 'DELETE',
+                headers,
+            });
+            await this.throwIfNotOk(response);
         } catch (err) {
             return this.handleError(err);
         }
@@ -143,34 +144,60 @@ export class HttpClient {
         form: Record<string, string>,
         options?: RequestOptions,
     ): Promise<T> {
-        const url = this.buildUrl(path);
-        const body = new URLSearchParams(form).toString();
         try {
-            return await this.kyInstance
-                .post(url, {
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        Accept: 'application/json',
-                        ...options?.headers,
-                    },
+            const url = buildUrl(this.baseUrl, path);
+            const headers = new Headers({
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Accept: 'application/json',
+            });
+            if (options?.headers) {
+                for (const [k, v] of Object.entries(options.headers)) {
+                    headers.set(k, v);
+                }
+            }
+            // Inject Bearer for non-auth paths without an explicit Authorization header
+            await this.auth.injectAuth(headers, url, options);
+            this.debugLogRequest('POST', url);
+            const body = new URLSearchParams(form).toString();
+            // Token endpoints use bare fetch — no 5xx retry (not idempotent-safe)
+            const response = await fetch(
+                new Request(url, {
+                    method: 'POST',
+                    headers,
                     body,
-                    retry: 0,
-                })
-                .json<T>();
+                    signal: AbortSignal.timeout(this.timeoutMs),
+                }),
+            );
+            this.debugLogResponse(response);
+            await this.throwIfNotOk(response);
+            return response.json() as Promise<T>;
         } catch (err) {
             return this.handleError(err);
         }
     }
 
     // -------------------------------------------------------------------------
-    // Error handling
+    // URL construction
     // -------------------------------------------------------------------------
 
-    private async handleError(err: unknown): Promise<never> {
-        // Already a GoPaySDKError (thrown by our own hooks) — re-throw as-is
-        if (err instanceof GoPaySDKError) throw err;
+    protected buildUrl(path: string): string {
+        return buildUrl(this.baseUrl, path);
+    }
 
-        // Timeout
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    private get timeoutMs(): number {
+        return this.config.requestTimeoutMs ?? 10_000;
+    }
+
+    private handleError(err: unknown): never {
+        // Already an SDK error — re-throw as-is
+        // (onError was already called via emitError before the throw)
+        if (err instanceof GoPaySDKError) throw err;
+        if (err instanceof GoPayHTTPError) throw err;
+
         if (err instanceof Error && err.name === 'TimeoutError') {
             return this.emitError(
                 new GoPaySDKError('[GoPaySDK] Request timed out.', {
@@ -179,15 +206,6 @@ export class HttpClient {
             );
         }
 
-        // HTTP error response — ky v2 pre-reads the body into err.data before throwing,
-        // so res.text() / res.json() are unusable; use err.data directly.
-        if (err instanceof HTTPError) {
-            return this.emitError(
-                new GoPayHTTPError(err.response.status, err.data),
-            );
-        }
-
-        // Network-level failure (fetch threw, no response)
         if (err instanceof Error) {
             return this.emitError(
                 new GoPaySDKError(`[GoPaySDK] Network error: ${err.message}`, {
@@ -200,182 +218,21 @@ export class HttpClient {
         throw err;
     }
 
-    // -------------------------------------------------------------------------
-    // URL construction
-    // -------------------------------------------------------------------------
-
-    protected buildUrl(path: string): string {
-        const base = this.baseUrl.endsWith('/')
-            ? this.baseUrl
-            : `${this.baseUrl}/`;
-        const relative = path.startsWith('/') ? path.slice(1) : path;
-        return new URL(relative, base).toString();
+    private async throwIfNotOk(response: Response): Promise<void> {
+        if (response.ok) return;
+        const body = await parseBody(response);
+        this.emitError(new GoPayHTTPError(response.status, body));
     }
 
-    // -------------------------------------------------------------------------
-    // Token refresh
-    // -------------------------------------------------------------------------
-
-    private async refreshTokens(): Promise<void> {
-        if (this.refreshPromise) return this.refreshPromise;
-
-        this.refreshPromise = (async () => {
-            const refreshToken = this.tokenStore.getRefreshToken();
-            if (!refreshToken) {
-                this.tokenStore.clear();
-                this.emitError(
-                    new GoPaySDKError(
-                        '[GoPaySDK] Session expired and no refresh token available. Call authenticate() or setClientToken() again.',
-                        {
-                            errorCode:
-                                GoPayErrorCodes.AUTH_REFRESH_TOKEN_MISSING,
-                        },
-                    ),
-                );
-            }
-
-            try {
-                const form: Record<string, string> = {
-                    grant_type: 'refresh_token',
-                    refresh_token: refreshToken,
-                };
-                const headers: Record<string, string> = {};
-                const clientId = this.tokenStore.getClientId();
-                const clientSecret = this.tokenStore.getClientSecret();
-                if (clientId && clientSecret) {
-                    const credentials = globalThis.btoa(
-                        `${clientId}:${clientSecret}`,
-                    );
-                    headers.Authorization = `Basic ${credentials}`;
-                } else if (clientId) {
-                    form.client_id = clientId;
-                }
-                const fresh = await this.postForm<
-                    Omit<StoredTokenPair, 'issued_at'>
-                >(AUTH_PATH, form, { headers });
-                this.tokenStore.set(fresh);
-            } catch (cause) {
-                this.tokenStore.clear();
-                this.emitError(
-                    new GoPaySDKError(
-                        '[GoPaySDK] Token refresh failed. Call authenticate() again.',
-                        {
-                            cause,
-                            errorCode: GoPayErrorCodes.AUTH_REFRESH_FAILED,
-                        },
-                    ),
-                );
-            }
-        })().finally(() => {
-            this.refreshPromise = null;
-        });
-
-        return this.refreshPromise;
-    }
-
-    // -------------------------------------------------------------------------
-    // ky instance
-    // -------------------------------------------------------------------------
-
-    private buildKyInstance(): KyInstance {
-        const beforeRequest: NonNullable<KyOptions['hooks']>['beforeRequest'] =
-            [
-                async ({ request }) => {
-                    if (request.url.includes(AUTH_PATH)) return;
-                    if (request.headers.has('Authorization')) return;
-
-                    if (this.tokenStore.isExpiringSoon()) {
-                        await this.refreshTokens();
-                    }
-
-                    const tokens = this.tokenStore.get();
-                    if (!tokens) {
-                        this.emitError(
-                            new GoPaySDKError(
-                                '[GoPaySDK] No access token available. Call authenticate() first.',
-                                {
-                                    errorCode:
-                                        GoPayErrorCodes.AUTH_TOKEN_MISSING,
-                                },
-                            ),
-                        );
-                    }
-                    request.headers.set(
-                        'Authorization',
-                        `Bearer ${tokens.access_token}`,
-                    );
-                },
-            ];
-
-        const afterResponse: NonNullable<KyOptions['hooks']>['afterResponse'] =
-            [
-                async ({ request, response }) => {
-                    if (
-                        response.status !== 401 ||
-                        request.url.includes(AUTH_PATH)
-                    ) {
-                        return response;
-                    }
-
-                    await this.refreshTokens();
-
-                    // Retry with bare fetch — bypasses ky hooks, no infinite loop
-                    const fresh = this.tokenStore.get() as StoredTokenPair;
-                    const retryRequest = request.clone();
-                    retryRequest.headers.set(
-                        'Authorization',
-                        `Bearer ${fresh.access_token}`,
-                    );
-                    const retryResponse = await fetch(retryRequest);
-
-                    if (retryResponse.status === 401) {
-                        this.tokenStore.clear();
-                        this.emitError(
-                            new GoPaySDKError(
-                                '[GoPaySDK] Request unauthorized after token refresh. Check OAuth2 scopes.',
-                                {
-                                    errorCode:
-                                        GoPayErrorCodes.AUTH_UNAUTHORIZED,
-                                },
-                            ),
-                        );
-                    }
-
-                    return retryResponse;
-                },
-            ];
-
+    private debugLogRequest(method: string, url: string): void {
         if (this.config.debugLoggingEnabled) {
-            beforeRequest.push(({ request }) => {
-                console.debug('[GoPaySDK] →', request.method, request.url);
-            });
-            afterResponse.push(({ response }) => {
-                console.debug('[GoPaySDK] ←', response.status, response.url);
-                return response;
-            });
+            console.debug('[GoPaySDK] →', method, url);
         }
-
-        return ky.create({
-            retry: 0,
-            timeout: this.config.requestTimeoutMs ?? 10_000,
-            // ky v2 returns undefined for error.data when JSON parsing fails, losing the raw body.
-            // Override parseJson to fall back to the raw text so GoPayHTTPError.body is always populated.
-            parseJson: (text) => {
-                try {
-                    return JSON.parse(text);
-                } catch {
-                    return text;
-                }
-            },
-            hooks: { beforeRequest, afterResponse },
-        });
     }
 
-    private kyOptions(options?: RequestOptions): KyOptions {
-        const headers: Record<string, string> = { ...options?.headers };
-        if (options?.accessToken) {
-            headers.Authorization = `Bearer ${options.accessToken}`;
+    private debugLogResponse(response: Response): void {
+        if (this.config.debugLoggingEnabled) {
+            console.debug('[GoPaySDK] ←', response.status, response.url);
         }
-        return { headers };
     }
 }
