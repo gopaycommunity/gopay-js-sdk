@@ -10,11 +10,21 @@ npm install gopay-js-sdk
 yarn add gopay-js-sdk
 ```
 
-Browser (CDN):
+Browser (CDN via unpkg):
 
 ```html
-<script src="https://gopaycdn.com/js-sdk/gopay-sdk.min.js"></script>
+<!-- Pin to a specific version (recommended for production) -->
+<script src="https://unpkg.com/gopay-js-sdk@1.1.0/dist/gopay-sdk.min.js"></script>
 ```
+
+Pin to a major version to receive minor and patch updates automatically while staying protected from breaking changes:
+
+```html
+<!-- Auto-updates within the same major version -->
+<script src="https://unpkg.com/gopay-js-sdk@1/dist/gopay-sdk.min.js"></script>
+```
+
+Avoid the bare package name without a version — it resolves to `latest` and will include future major (breaking) releases.
 
 ---
 
@@ -126,7 +136,7 @@ app.get('/session/gopay-token', async (req, res) => {
 
 ```html
 <!-- Browser (IIFE) -->
-<script src="https://gopaycdn.com/js-sdk/gopay-sdk.min.js"></script>
+<script src="https://unpkg.com/gopay-js-sdk@1.1.0/dist/gopay-sdk.min.js"></script>
 <script>
   const browserSdk = new GoPaySDK.GoPaySDK({ environment: 'production' });
 

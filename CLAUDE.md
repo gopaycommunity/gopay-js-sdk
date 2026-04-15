@@ -23,7 +23,7 @@ yarn ci
 
 This runs lint (Biome), typecheck, circular dependency check, and export validation in sequence. It is wired up to:
 - **pre-commit hook** (husky) — runs automatically before every commit
-- **CI pipeline** (`bitbucket-pipelines.yml`, `code-quality` step) — runs on PRs and master
+- **CI pipeline** (`bitbucket-pipelines.yml`, `code-quality` step) — runs on PRs only (master is protected by pre-commit + PR checks)
 
 Run tests separately:
 
@@ -74,6 +74,20 @@ The SDK is distributed in two ways:
 ## `encryption` module — intentionally absent
 
 Card data encryption must never be performed in publicly reachable JavaScript. The public key fetch (`GET /encryption/public-key`) and JWE construction happen inside an isolated GoPay-hosted iframe served from a separate, non-public origin. Do not add an `encryption` module to this SDK.
+
+---
+
+## Releasing — breaking changes checklist
+
+Before merging to master, check whether any public API changes are breaking (require a major version bump). If yes, ensure the commit message includes a `BREAKING CHANGE:` footer so semantic-release bumps the major version correctly.
+
+Consumer-facing breaking changes (bump major):
+- Removed or renamed exported functions, classes, types, or constants
+- Changed method signatures (added required params, changed return types)
+- Changed `window.GoPaySDK` global shape (IIFE consumers on unpkg pin to `@1`)
+- Changed error codes in `GoPayErrorCodes`
+
+**postMessage protocol** (`sdk/src/modules/cards/iframe-protocol.ts`) changes are **not** consumer-facing — the wire protocol between the SDK and the GoPay-hosted iframe is invisible to e-shops. However, they require **coordinated deployment** with `gw-ui-cc-v4`: deploy the iframe side first, or make the change backward-compatible, to avoid a compatibility gap between the two.
 
 ---
 

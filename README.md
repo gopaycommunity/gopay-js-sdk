@@ -17,6 +17,18 @@ gp-gw-js-sdk/
 └── Payments.yaml         # OpenAPI 3.1 spec (source of truth)
 ```
 
+## Releasing — breaking changes checklist
+
+Before merging to master, check whether any public API changes are breaking (require a major version bump). If yes, ensure the commit message includes a `BREAKING CHANGE:` footer so semantic-release bumps the major version correctly.
+
+Consumer-facing breaking changes (bump major):
+- Removed or renamed exported functions, classes, types, or constants
+- Changed method signatures (added required params, changed return types)
+- Changed `window.GoPaySDK` global shape (IIFE consumers on unpkg pin to `@1`)
+- Changed error codes in `GoPayErrorCodes`
+
+**postMessage protocol** (`sdk/src/modules/cards/iframe-protocol.ts`) changes are **not** consumer-facing — the wire protocol between the SDK and the GoPay-hosted iframe is invisible to e-shops. However, they require **coordinated deployment** with `gw-ui-cc-v4`: deploy the iframe side first, or make the change backward-compatible, to avoid a compatibility gap between the two.
+
 ## Development
 
 ```bash

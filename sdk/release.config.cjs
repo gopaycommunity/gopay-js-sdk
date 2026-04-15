@@ -26,19 +26,6 @@ module.exports = {
             },
         ],
 
-        // Upload IIFE bundle to gopaycdn.com
-        // TODO: replace the placeholder command with the actual CDN upload mechanism
-        // [
-        //   '@semantic-release/exec',
-        //   {
-        //     publishCmd:
-        //       'curl -X PUT "https://gopaycdn.com/upload/js-sdk/${nextRelease.version}/gopay-sdk.min.js" \
-        //        -H "Authorization: Bearer ${CDN_TOKEN}" \
-        //        --data-binary @dist/gopay-sdk.min.js',
-        //   },
-        // TODO nebo generovat pull request na static
-        // ],
-
         // Commit version bump + CHANGELOG back to the repo
         [
             '@semantic-release/git',
