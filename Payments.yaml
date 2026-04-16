@@ -639,7 +639,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Recurrence-Details'
+              $ref: '#/components/schemas/Recurrence-Create-Request'
   '/recurrences/{rec_id}':
     parameters:
       - schema:

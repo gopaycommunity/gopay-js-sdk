@@ -2628,7 +2628,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["Recurrence-Details"];
+                "application/json": components["schemas"]["Recurrence-Create-Request"];
             };
         };
         responses: {
