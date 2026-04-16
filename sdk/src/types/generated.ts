@@ -242,6 +242,122 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/eshops/{goid}/recurrences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goid: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a recurrence */
+        post: operations["post-eshops-goid-recurrences"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/recurrences/{rec_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rec_id: string;
+            };
+            cookie?: never;
+        };
+        /** Recurrence status */
+        get: operations["get-recurrences-rec_id"];
+        put?: never;
+        post?: never;
+        /** Stop a recurrence */
+        delete: operations["delete-recurrences-rec_id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/recurrences/{rec_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rec_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a recurrence */
+        post: operations["post-recurrences-rec_id-start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/recurrences/{rec_id}/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rec_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a next payment for a recurrence */
+        post: operations["post-recurrences-rec_id-next"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/eshops/{goid}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goid: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a payment link */
+        post: operations["post-eshops-goid-links"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/links/{link_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        /** Link status */
+        get: operations["get-links-link_id"];
+        put?: never;
+        post?: never;
+        /** Disable a link */
+        delete: operations["delete-links-link_id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -392,6 +508,60 @@ export interface components {
             customer: components["schemas"]["Customer"];
             /** @description Callback urls */
             callback: components["schemas"]["Payment-Callback"];
+        };
+        /**
+         * Payment-Update-Request
+         * @description Representation of a request for a new payment
+         * @example {
+         *       "amount": 100,
+         *       "currency": "CZK",
+         *       "order_number": "2025010199",
+         *       "order_description": "Test order",
+         *       "additional_params": [
+         *         {
+         *           "name": "Custom param",
+         *           "value": "Custom value"
+         *         }
+         *       ],
+         *       "customer": {
+         *         "email": "john.doe@example.com",
+         *         "first_name": "John",
+         *         "last_name": "Doe",
+         *         "phone_number": "+420123456789",
+         *         "city": "Testington",
+         *         "street": "Example st. 10",
+         *         "postal_code": "10000",
+         *         "country_code": "CZE",
+         *         "customer_id": "customer420"
+         *       },
+         *       "callback": {
+         *         "notification_url": "https://example.com/notify",
+         *         "return_url": "https://example.com/return"
+         *       }
+         *     }
+         */
+        "Payment-Update-Request": {
+            /**
+             * @description Total amount in cents
+             * @example 100
+             */
+            amount?: number;
+            /**
+             * @description Order identification for the online shop, alphanumeric characters
+             * @example 2025010199
+             */
+            order_number?: string;
+            /**
+             * @description Order description, alphanumeric characters
+             * @example Test order
+             */
+            order_description?: string;
+            /** @description Additional parameters for the payment */
+            additional_params?: components["schemas"]["Additional-Param"][];
+            /** @description Information about the customer */
+            customer?: components["schemas"]["Customer"];
+            /** @description Callback urls */
+            callback?: components["schemas"]["Payment-Callback"];
         };
         /**
          * @description Supported payment currencies in ISO 4217 format
@@ -551,7 +721,10 @@ export interface components {
             currency: components["schemas"]["Currency"];
             /** @description Customer data */
             customer: components["schemas"]["Customer"];
-            /** @description URL of the hosted payment gateway */
+            /**
+             * Format: uri
+             * @description URL of the hosted payment gateway
+             */
             gw_url: string;
             charge?: components["schemas"]["Payment-Charge-Ref"];
         };
@@ -818,7 +991,7 @@ export interface components {
         };
         /**
          * Apple Pay Input
-         * @description The `APPLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Google Pay.
+         * @description The `APPLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Apple Pay.
          *     See [Payment Data Cryptography](https://developer.apple.com/documentation/passkit/payment-token-format-reference) in Apple Pay documentation for details
          * @example {
          *       "input_type": "APPLE_PAY",
@@ -1779,6 +1952,74 @@ export interface components {
              */
             timestamp: string;
         };
+        /** Link-Create-Request */
+        "Link-Create-Request": {
+            /** @description Payment data for the payments created by clicking on the link */
+            payment: components["schemas"]["Payment-Create-Request"];
+            /**
+             * @description Time (seconds) after which the link will become inactive
+             * @example 86400
+             */
+            expires_in?: number;
+            /**
+             * @description Indicates whether the link should only allow one successful payment or may be reused
+             * @default true
+             * @example true
+             */
+            reusable: boolean;
+        };
+        /** Link-Details */
+        "Link-Details": {
+            /**
+             * @description Time (seconds) after which the link will become inactive
+             * @example 86400
+             */
+            expires_in?: number;
+            /**
+             * @description Indicates whether the link should only allow one successful payment or may be reused
+             * @default true
+             * @example true
+             */
+            reusable: boolean;
+            /**
+             * @description Link identifier
+             * @example xfv56td3y5
+             */
+            id: string;
+            /**
+             * @description Link URL. When the link is open, a payment is created and the customer is redirected to the payment gateway
+             * @example https://go.pay/xfv56td3y5
+             */
+            url: string;
+            /** @description Whether the link is currently active */
+            active: boolean;
+            payment?: components["schemas"]["Payment-Create-Request"];
+        };
+        /** Recurrence-Schedule */
+        "Recurrence-Schedule": {
+            /** @enum {string} */
+            period?: "DAY" | "WEEK" | "MONTH";
+            cycle?: number;
+        };
+        /** Recurrence-Create-Request */
+        "Recurrence-Create-Request": {
+            /** @enum {unknown} */
+            type: "AUTO" | "ON_DEMAND";
+            schedule?: components["schemas"]["Recurrence-Schedule"];
+            payment: components["schemas"]["Payment-Create-Request"];
+        };
+        /** Recurrence-Details */
+        "Recurrence-Details": {
+            /** @enum {unknown} */
+            type: "AUTO" | "ON_DEMAND";
+            schedule?: components["schemas"]["Recurrence-Schedule"];
+            id: string;
+            /** @enum {unknown} */
+            state?: "NEW" | "REQUESTED" | "STARTED" | "STOPPED";
+            /** @enum {unknown} */
+            stop_reason?: "RECURRENCE_EXPIRED" | "CARD_EXPIRED" | "CANCELLED_VIA_API" | "CANCELLED_VIA_BACKOFFICE" | "CANCELLED_BY_GOPAY" | "UNKNOWN";
+            payment: components["schemas"]["Payment-Create-Request"];
+        };
     };
     responses: {
         /** @description Successful authentication */
@@ -1994,12 +2235,6 @@ export interface components {
                 "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
-        "Error-Response": {
-            headers: {
-                [name: string]: unknown;
-            };
-            content?: never;
-        };
         /** @description Example response */
         "Payment-Status-Response": {
             headers: {
@@ -2027,12 +2262,6 @@ export interface components {
                 "application/json": components["schemas"]["Card-Form-URL"];
             };
         };
-        "Card-Token-Create-Response": {
-            headers: {
-                [name: string]: unknown;
-            };
-            content?: never;
-        };
         /** @description Example response */
         "Card-Token-Details-Response": {
             headers: {
@@ -2046,7 +2275,27 @@ export interface components {
             headers: {
                 [name: string]: unknown;
             };
-            content?: never;
+            content: {
+                "application/json": components["schemas"]["Payment-Details"];
+            };
+        };
+        /** @description Example response */
+        "Link-Create-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Link-Details"];
+            };
+        };
+        /** @description Example response */
+        "Recurrence-Details-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Recurrence-Details"];
+            };
         };
     };
     parameters: {
@@ -2058,19 +2307,9 @@ export interface components {
                 "application/x-www-form-urlencoded": components["schemas"]["Client-Credentials-Request"] | components["schemas"]["Refresh-Token-Request"];
             };
         };
-        "Card-Token-Request": {
+        "Recurrence-Next-Request": {
             content: {
-                "application/json": components["schemas"]["Card-Token-Request"];
-            };
-        };
-        "Payment-Charge-Request": {
-            content: {
-                "application/json": components["schemas"]["Payment-Charge-Input"];
-            };
-        };
-        "Payment-Create-Request": {
-            content: {
-                "application/json": components["schemas"]["Payment-Create-Request"];
+                "application/json": components["schemas"]["Payment-Update-Request"];
             };
         };
     };
@@ -2110,7 +2349,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: components["requestBodies"]["Payment-Create-Request"];
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Payment-Create-Request"];
+            };
+        };
         responses: {
             201: components["responses"]["Payment-Status-Response"];
             400: components["responses"]["Bad-Request-400-Response"];
@@ -2168,7 +2411,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: components["requestBodies"]["Payment-Charge-Request"];
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Payment-Charge-Input"];
+            };
+        };
         responses: {
             201: components["responses"]["Payment-Charge-Response"];
             400: components["responses"]["Bad-Request-400-Response"];
@@ -2322,7 +2569,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: components["requestBodies"]["Card-Token-Request"];
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Card-Token-Request"];
+            };
+        };
         responses: {
             201: components["responses"]["Card-Token-Response"];
             400: components["responses"]["Bad-Request-400-Response"];
@@ -2363,6 +2614,178 @@ export interface operations {
             200: components["responses"]["Card-Form-URL-Response"];
             401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-eshops-goid-recurrences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Recurrence-Details"];
+            };
+        };
+        responses: {
+            201: components["responses"]["Recurrence-Details-Response"];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-recurrences-rec_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rec_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Recurrence-Details-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "delete-recurrences-rec_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rec_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-recurrences-rec_id-start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rec_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: components["requestBodies"]["Recurrence-Next-Request"];
+        responses: {
+            201: components["responses"]["Payment-Status-Response"];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-recurrences-rec_id-next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rec_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: components["requestBodies"]["Recurrence-Next-Request"];
+        responses: {
+            201: components["responses"]["Payment-Status-Response"];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-eshops-goid-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                goid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Link-Create-Request"];
+            };
+        };
+        responses: {
+            201: components["responses"]["Link-Create-Response"];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-links-link_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Link-Create-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "delete-links-link_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
             500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };

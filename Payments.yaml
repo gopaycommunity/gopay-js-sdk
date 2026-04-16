@@ -69,8 +69,6 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        $ref: '#/components/requestBodies/Payment-Create-Request'
       responses:
         '201':
           $ref: '#/components/responses/Payment-Status-Response'
@@ -96,6 +94,11 @@ paths:
           description: Production
       x-stoplight:
         id: v9ch48jk8g32z
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment-Create-Request'
     parameters:
       - schema:
           type: string
@@ -156,8 +159,6 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        $ref: '#/components/requestBodies/Payment-Charge-Request'
       responses:
         '201':
           $ref: '#/components/responses/Payment-Charge-Response'
@@ -183,6 +184,11 @@ paths:
           description: Production
       x-stoplight:
         id: vynhf3rofgzt3
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment-Charge-Input'
     get:
       tags:
         - Payments
@@ -510,8 +516,6 @@ paths:
       operationId: post-cards-tokens
       parameters:
         - $ref: '#/components/parameters/Accept-Json'
-      requestBody:
-        $ref: '#/components/requestBodies/Card-Token-Request'
       responses:
         '201':
           $ref: '#/components/responses/Card-Token-Response'
@@ -535,6 +539,11 @@ paths:
           description: Production
       x-stoplight:
         id: im4tdg0fno5ot
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Card-Token-Request'
   /encryption/public-key:
     get:
       tags:
@@ -594,6 +603,243 @@ paths:
           description: Production
       x-stoplight:
         id: 3wvu6533dxyd5
+  '/eshops/{goid}/recurrences':
+    parameters:
+      - schema:
+          type: string
+        name: goid
+        in: path
+        required: true
+    post:
+      summary: Create a recurrence
+      tags:
+        - Recurrences
+      responses:
+        '201':
+          $ref: '#/components/responses/Recurrence-Details-Response'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: post-eshops-goid-recurrences
+      x-stoplight:
+        id: ni0nlxj47iy4n
+      security:
+        - clientCredentials:
+            - 'payment:create'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recurrence-Details'
+  '/recurrences/{rec_id}':
+    parameters:
+      - schema:
+          type: string
+        name: rec_id
+        in: path
+        required: true
+    get:
+      summary: Recurrence status
+      tags:
+        - Recurrences
+      responses:
+        '200':
+          $ref: '#/components/responses/Recurrence-Details-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: get-recurrences-rec_id
+      x-stoplight:
+        id: 9j2k26raoijf4
+      security:
+        - clientCredentials:
+            - 'payment:read'
+    delete:
+      summary: Stop a recurrence
+      tags:
+        - Recurrences
+      responses:
+        '204':
+          description: No Content
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: delete-recurrences-rec_id
+      x-stoplight:
+        id: 9aev3cbu0r4ih
+      security:
+        - clientCredentials:
+            - 'payment:create'
+  '/recurrences/{rec_id}/start':
+    parameters:
+      - schema:
+          type: string
+        name: rec_id
+        in: path
+        required: true
+    post:
+      summary: Start a recurrence
+      tags:
+        - Recurrences
+      responses:
+        '201':
+          $ref: '#/components/responses/Payment-Status-Response'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: post-recurrences-rec_id-start
+      x-stoplight:
+        id: 1ue2i69szvqhi
+      security:
+        - clientCredentials:
+            - 'payment:create'
+      requestBody:
+        $ref: '#/components/requestBodies/Recurrence-Next-Request'
+  '/recurrences/{rec_id}/next':
+    parameters:
+      - schema:
+          type: string
+        name: rec_id
+        in: path
+        required: true
+    post:
+      summary: Create a next payment for a recurrence
+      tags:
+        - Recurrences
+      responses:
+        '201':
+          $ref: '#/components/responses/Payment-Status-Response'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: post-recurrences-rec_id-next
+      security:
+        - clientCredentials:
+            - 'payment:create'
+      requestBody:
+        $ref: '#/components/requestBodies/Recurrence-Next-Request'
+      x-stoplight:
+        id: i3qwkxoh1wg1u
+  '/eshops/{goid}/links':
+    parameters:
+      - schema:
+          type: string
+        name: goid
+        in: path
+        required: true
+    post:
+      summary: Create a payment link
+      responses:
+        '201':
+          $ref: '#/components/responses/Link-Create-Response'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: post-eshops-goid-links
+      x-stoplight:
+        id: bv4jcqr0qg2ur
+      tags:
+        - Links
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Link-Create-Request'
+  '/links/{link_id}':
+    parameters:
+      - schema:
+          type: string
+        name: link_id
+        in: path
+        required: true
+    get:
+      summary: Link status
+      tags:
+        - Links
+      responses:
+        '200':
+          $ref: '#/components/responses/Link-Create-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: get-links-link_id
+      x-stoplight:
+        id: rmagnyt7jlpxh
+      security:
+        - clientCredentials:
+            - 'payment:create'
+    delete:
+      summary: Disable a link
+      tags:
+        - Links
+      responses:
+        '204':
+          description: No Content
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: delete-links-link_id
+      x-stoplight:
+        id: ygqjv181yd27e
+      security:
+        - clientCredentials:
+            - 'payment:create'
 components:
   parameters:
     Accept-Json:
@@ -624,79 +870,11 @@ components:
                 grant_type: refresh_token
                 refresh_token: 2f53a04d4dd749f6a2a81285da72f67a
                 client_id: '123456'
-    Card-Token-Request:
-      required: true
+    Recurrence-Next-Request:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Card-Token-Request'
-          examples:
-            Example:
-              value:
-                payload: eyJalgIjoiUlNBLU9BRVAtMjU2IiwiZW5jIjoiQTI1NkdDTSIsImtpZCI6ImtleV8yMDI1MDQwNl8wMDEifQ.aG93ZGlkYmFzZTY0.dGhpc2lzdGhlaXY.ZW5jcnlwdGVkY2FyZGhvbGRlcmRhdGE.YXV0aHRhZw
-                permanent: false
-    Payment-Charge-Request:
-      required: true
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Payment-Charge-Input'
-          examples:
-            Example 1:
-              value:
-                payment_instrument:
-                  payment_instrument: PAYMENT_CARD
-                  input:
-                    input_type: CARD_TOKEN
-                    card_token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
-                    challenge_preferrence: AUTO
-                return_url: 'https://example.com/return'
-                browser_data:
-                  ip: 198.51.100.1
-                  language: cs-CZ
-                  timezone: -60
-                  screen_width: 434
-                  screen_height: 965
-                  color_depth: 24
-                  user_agent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
-                  accept_header: '{"accept-language":"cs;q\u003d0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, */*"}'
-                  javascript_enabled: true
-                  java_enabled: false
-            Example 2:
-              value:
-                payment_instrument:
-                  payment_instrument: BANK_ACCOUNT
-                  input:
-                    input_type: ACCOUNT_TOKEN
-                    account_token: f14e5acc2d86480fb50e254c8a3c3164
-                return_url: 'https://example.com/return'
-    Payment-Create-Request:
-      required: true
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Payment-Create-Request'
-            x-examples:
-              Example 1:
-                amount: 10000
-                currency: CZK
-                order_number: '123456'
-                order_description: Test order
-                customer:
-                  first_name: John
-                  last_name: Doe
-                  email: john.doe@example.com
-                  phone_number: '+420123456789'
-                  city: Test city
-                  street: Test street 10
-                  postal_code: '10000'
-                  country_code: CZE
-                  customer_id: custom21321
-                callback:
-                  notification_url: 'https://example.com/your-notify-url'
-                additional_params:
-                  - name: Test name
-                    value: Test value
+            $ref: '#/components/schemas/Payment-Update-Request'
   securitySchemes:
     clientCredentials:
       type: oauth2
@@ -1342,8 +1520,6 @@ components:
                 detail: Error Details
                 path: /payments/123/charge
                 timestamp: '2025-12-10T10:30:00Z'
-    Error-Response:
-      description: ''
     Payment-Status-Response:
       description: Example response
       content:
@@ -1410,8 +1586,6 @@ components:
             Example 1:
               value:
                 card_form_url: 'https://secure.gopay.com/gp-card-comm/q/form'
-    Card-Token-Create-Response:
-      description: ''
     Card-Token-Details-Response:
       description: Example response
       content:
@@ -1420,6 +1594,22 @@ components:
             $ref: '#/components/schemas/Permanent-Card-Token-Details'
     Payment-Create-Response:
       description: ''
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Payment-Details'
+    Link-Create-Response:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Link-Details'
+    Recurrence-Details-Response:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Recurrence-Details'
   schemas:
     Client-Credentials-Request:
       type: object
@@ -1592,6 +1782,63 @@ components:
             return_url: 'https://example.com/return'
       x-stoplight:
         id: o8g75vurzaw6q
+    Payment-Update-Request:
+      type: object
+      x-stoplight:
+        id: xgda6dcdxfju7
+      title: Payment-Update-Request
+      description: Representation of a request for a new payment
+      examples:
+        - amount: 100
+          currency: CZK
+          order_number: '2025010199'
+          order_description: Test order
+          additional_params:
+            - name: Custom param
+              value: Custom value
+          customer:
+            email: john.doe@example.com
+            first_name: John
+            last_name: Doe
+            phone_number: '+420123456789'
+            city: Testington
+            street: Example st. 10
+            postal_code: '10000'
+            country_code: CZE
+            customer_id: customer420
+          callback:
+            notification_url: 'https://example.com/notify'
+            return_url: 'https://example.com/return'
+      properties:
+        amount:
+          type: integer
+          description: Total amount in cents
+          minimum: 0
+          examples:
+            - 100
+        order_number:
+          type: string
+          description: 'Order identification for the online shop, alphanumeric characters'
+          maxLength: 128
+          examples:
+            - '2025010199'
+        order_description:
+          type: string
+          description: 'Order description, alphanumeric characters'
+          examples:
+            - Test order
+        additional_params:
+          type: array
+          description: Additional parameters for the payment
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/Additional-Param'
+        customer:
+          $ref: '#/components/schemas/Customer'
+          description: Information about the customer
+        callback:
+          $ref: '#/components/schemas/Payment-Callback'
+          description: Callback urls
     Currency:
       type: string
       enum:
@@ -1741,6 +1988,37 @@ components:
       type: object
       title: Payment-Details
       description: Representation of an existing payment
+      examples:
+        - id: '300000001'
+          order_number: '2025010199'
+          state: CREATED
+          amount: 100
+          currency: CZK
+          customer:
+            email: john.doe@example.com
+            first_name: John
+            last_name: Doe
+            phone_number: '+420123456789'
+            city: Testington
+            street: Example st. 10
+            postal_code: '10000'
+            country_code: CZE
+            customer_id: customer420
+          gw_url: string
+          charge:
+            id: '9123456789'
+            state: REQUESTED
+            href: 'https://api.gopay.com/api/4.0/payments/9123456789/charge'
+      x-stoplight:
+        id: ul7e04nvq1ve2
+      required:
+        - id
+        - order_number
+        - state
+        - amount
+        - currency
+        - customer
+        - gw_url
       properties:
         id:
           type: string
@@ -1771,39 +2049,9 @@ components:
         gw_url:
           type: string
           description: URL of the hosted payment gateway
+          format: uri
         charge:
           $ref: '#/components/schemas/Payment-Charge-Ref'
-      required:
-        - id
-        - order_number
-        - state
-        - amount
-        - currency
-        - customer
-        - gw_url
-      examples:
-        - id: '300000001'
-          order_number: '2025010199'
-          state: CREATED
-          amount: 100
-          currency: CZK
-          customer:
-            email: john.doe@example.com
-            first_name: John
-            last_name: Doe
-            phone_number: '+420123456789'
-            city: Testington
-            street: Example st. 10
-            postal_code: '10000'
-            country_code: CZE
-            customer_id: customer420
-          gw_url: string
-          charge:
-            id: '9123456789'
-            state: REQUESTED
-            href: 'https://api.gopay.com/api/4.0/payments/9123456789/charge'
-      x-stoplight:
-        id: ul7e04nvq1ve2
     Payment-State:
       type: string
       enum:
@@ -2128,7 +2376,7 @@ components:
       type: object
       title: Apple Pay Input
       description: |-
-        The `APPLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Google Pay.
+        The `APPLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Apple Pay.
         See [Payment Data Cryptography](https://developer.apple.com/documentation/passkit/payment-token-format-reference) in Apple Pay documentation for details
       properties:
         input_type:
@@ -3294,4 +3542,165 @@ components:
         - timestamp
       x-stoplight:
         id: 2vyzd6ap5g6vb
+    Link-Create-Request:
+      title: Link-Create-Request
+      x-stoplight:
+        id: 6zetojhazd6qi
+      type: object
+      required:
+        - payment
+      properties:
+        payment:
+          $ref: '#/components/schemas/Payment-Create-Request'
+          x-stoplight:
+            id: 52w729nmq8mah
+          description: Payment data for the payments created by clicking on the link
+        expires_in:
+          type: integer
+          x-stoplight:
+            id: i4q1u3d3xxn41
+          minimum: 1
+          example: 86400
+          description: Time (seconds) after which the link will become inactive
+        reusable:
+          type: boolean
+          x-stoplight:
+            id: t1fg2phb79q3d
+          default: true
+          example: true
+          description: Indicates whether the link should only allow one successful payment or may be reused
+    Link-Details:
+      title: Link-Details
+      x-stoplight:
+        id: ptx0o90wfjege
+      type: object
+      required:
+        - reusable
+        - id
+        - url
+        - active
+      properties:
+        expires_in:
+          type: integer
+          x-stoplight:
+            id: i4q1u3d3xxn41
+          minimum: 1
+          example: 86400
+          description: Time (seconds) after which the link will become inactive
+        reusable:
+          type: boolean
+          x-stoplight:
+            id: t1fg2phb79q3d
+          default: true
+          example: true
+          description: Indicates whether the link should only allow one successful payment or may be reused
+        id:
+          type: string
+          x-stoplight:
+            id: 42p4rtqq7420b
+          description: Link identifier
+          example: xfv56td3y5
+        url:
+          type: string
+          x-stoplight:
+            id: e6eimixubrvh0
+          description: 'Link URL. When the link is open, a payment is created and the customer is redirected to the payment gateway'
+          example: 'https://go.pay/xfv56td3y5'
+        active:
+          type: boolean
+          x-stoplight:
+            id: rxray36qdk1v1
+          description: Whether the link is currently active
+        payment:
+          $ref: '#/components/schemas/Payment-Create-Request'
+          x-stoplight:
+            id: 17sivwa06s9kf
+    Recurrence-Schedule:
+      title: Recurrence-Schedule
+      x-stoplight:
+        id: 9fsqtvzbz2i7w
+      type: object
+      properties:
+        period:
+          type: string
+          x-stoplight:
+            id: jjw54vy9r443p
+          enum:
+            - DAY
+            - WEEK
+            - MONTH
+        cycle:
+          type: number
+          x-stoplight:
+            id: hsyaujzj5hkgs
+          minimum: 1
+    Recurrence-Create-Request:
+      title: Recurrence-Create-Request
+      x-stoplight:
+        id: 07z3iw3yqwjn7
+      type: object
+      required:
+        - type
+        - payment
+      properties:
+        type:
+          x-stoplight:
+            id: nwr6w8unzxshc
+          enum:
+            - AUTO
+            - ON_DEMAND
+        schedule:
+          $ref: '#/components/schemas/Recurrence-Schedule'
+          x-stoplight:
+            id: 790r8zzk8glf0
+        payment:
+          $ref: '#/components/schemas/Payment-Create-Request'
+          x-stoplight:
+            id: jvc1a12tqlet9
+    Recurrence-Details:
+      title: Recurrence-Details
+      x-stoplight:
+        id: kkpv9wqb2s76u
+      type: object
+      required:
+        - type
+        - id
+        - payment
+      properties:
+        type:
+          x-stoplight:
+            id: nwr6w8unzxshc
+          enum:
+            - AUTO
+            - ON_DEMAND
+        schedule:
+          $ref: '#/components/schemas/Recurrence-Schedule'
+          x-stoplight:
+            id: 790r8zzk8glf0
+        id:
+          type: string
+          x-stoplight:
+            id: u1jbdt4ynf1ih
+        state:
+          x-stoplight:
+            id: ea790ukok0qgp
+          enum:
+            - NEW
+            - REQUESTED
+            - STARTED
+            - STOPPED
+        stop_reason:
+          x-stoplight:
+            id: jmbwtiowtl557
+          enum:
+            - RECURRENCE_EXPIRED
+            - CARD_EXPIRED
+            - CANCELLED_VIA_API
+            - CANCELLED_VIA_BACKOFFICE
+            - CANCELLED_BY_GOPAY
+            - UNKNOWN
+        payment:
+          $ref: '#/components/schemas/Payment-Create-Request'
+          x-stoplight:
+            id: jvc1a12tqlet9
 x-internal: false

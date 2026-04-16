@@ -12,8 +12,7 @@ import type {
     OutboundMessage,
 } from './iframe-protocol.js';
 
-type CardTokenRequest =
-    components['requestBodies']['Card-Token-Request']['content']['application/json'];
+type CardTokenRequest = components['schemas']['Card-Token-Request'];
 type CardTokenResponse =
     components['responses']['Card-Token-Response']['content']['application/json'];
 type CardDetailsResponse =

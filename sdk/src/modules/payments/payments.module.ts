@@ -2,12 +2,10 @@ import type { HttpClient } from '../../http/client.js';
 import type { components } from '../../types/generated.js';
 import { collectBrowserData } from './browser-data.js';
 
-type PaymentCreateRequest =
-    components['requestBodies']['Payment-Create-Request']['content']['application/json'];
+type PaymentCreateRequest = components['schemas']['Payment-Create-Request'];
 type PaymentCreateResponse =
     components['responses']['Payment-Status-Response']['content']['application/json'];
-type PaymentChargeRequest =
-    components['requestBodies']['Payment-Charge-Request']['content']['application/json'];
+type PaymentChargeRequest = components['schemas']['Payment-Charge-Input'];
 type PaymentChargeResponse =
     components['responses']['Payment-Charge-Response']['content']['application/json'];
 type GooglePayInfoResponse =
