@@ -16,13 +16,19 @@ module.exports = {
             },
         ],
 
-        // Publish to npm (reads NPM_TOKEN from env)
+        // Bump version in package.json.
+        // We use exec+node instead of @semantic-release/npm because `npm version` (used
+        // internally by @semantic-release/npm) does not understand Yarn's `workspace:*`
+        // protocol used in example/package.json.
+        //
+        // When ready to publish to npm, replace this block with:
+        //   ['@semantic-release/npm', { npmPublish: true }]
+        // and ensure NPM_TOKEN is set in Bitbucket repository variables.
         [
-            '@semantic-release/npm',
+            '@semantic-release/exec',
             {
-                // npmPublish: true,
-                // sdk is private for now
-                npmPublish: false,
+                // biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release template, not JS
+                prepareCmd: 'npm pkg set version=${nextRelease.version}',
             },
         ],
 
