@@ -7,54 +7,58 @@ export interface StoredTokenPair {
     issued_at: number;
 }
 
-export class TokenStore {
-    private tokens: StoredTokenPair | null = null;
-    private clientId: string | null = null;
+export function createTokenStore() {
+    let tokens: StoredTokenPair | null = null;
+    let clientId: string | null = null;
     /** Server-side client secret, persisted across token refreshes. Never set in browser flow. */
-    private clientSecret: string | null = null;
+    let clientSecret: string | null = null;
 
-    get(): StoredTokenPair | null {
-        return this.tokens;
-    }
+    return {
+        get(): StoredTokenPair | null {
+            return tokens;
+        },
 
-    getRefreshToken(): string | null {
-        return this.tokens?.refresh_token ?? null;
-    }
+        getRefreshToken(): string | null {
+            return tokens?.refresh_token ?? null;
+        },
 
-    getClientId(): string | null {
-        return this.clientId;
-    }
+        getClientId(): string | null {
+            return clientId;
+        },
 
-    getClientSecret(): string | null {
-        return this.clientSecret;
-    }
+        getClientSecret(): string | null {
+            return clientSecret;
+        },
 
-    setClientSecret(clientId: string, clientSecret: string): void {
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
-    }
+        setClientSecret(id: string, secret: string): void {
+            clientId = id;
+            clientSecret = secret;
+        },
 
-    setClientId(clientId: string): void {
-        this.clientId = clientId;
-    }
+        setClientId(id: string): void {
+            clientId = id;
+        },
 
-    set(pair: Omit<StoredTokenPair, 'issued_at'>): void {
-        this.tokens = { ...pair, issued_at: Date.now() };
-    }
+        set(pair: Omit<StoredTokenPair, 'issued_at'>): void {
+            tokens = { ...pair, issued_at: Date.now() };
+        },
 
-    clear(): void {
-        this.tokens = null;
-        this.clientId = null;
-        this.clientSecret = null;
-    }
+        clear(): void {
+            tokens = null;
+            clientId = null;
+            clientSecret = null;
+        },
 
-    hasAccessToken(): boolean {
-        return this.tokens !== null;
-    }
+        hasAccessToken(): boolean {
+            return tokens !== null;
+        },
 
-    isExpiringSoon(bufferSeconds = 30): boolean {
-        if (!this.tokens) return false;
-        const expiresAt = this.tokens.issued_at + this.tokens.expires_in * 1000;
-        return Date.now() >= expiresAt - bufferSeconds * 1000;
-    }
+        isExpiringSoon(bufferSeconds = 30): boolean {
+            if (!tokens) return false;
+            const expiresAt = tokens.issued_at + tokens.expires_in * 1000;
+            return Date.now() >= expiresAt - bufferSeconds * 1000;
+        },
+    };
 }
+
+export type TokenStore = ReturnType<typeof createTokenStore>;

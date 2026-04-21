@@ -1,19 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HttpClient } from '../../src/http/client.js';
-import { GoPaySDK } from '../../src/index.js';
+import { buildUrl } from '../../src/http/build-url.js';
+import { createGoPaySDK } from '../../src/index.js';
 import type { components } from '../../src/types/generated.js';
 
 type TokenPair =
     components['responses']['Token-Pair-Response']['content']['application/json'];
 
-// Expose protected buildUrl for testing
-class TestHttpClient extends HttpClient {
-    public buildUrlPublic(path: string): string {
-        return this.buildUrl(path);
-    }
-}
-
-describe('HttpClient.buildUrl', () => {
+describe('buildUrl', () => {
     it.each([
         // [description, baseUrl, path, expected]
         [
@@ -47,36 +40,49 @@ describe('HttpClient.buildUrl', () => {
             'https://api.sandbox.gopay.com/api/v4/encryption/public-key',
         ],
     ])('%s', (_, baseUrl, path, expected) => {
-        const client = new TestHttpClient({ baseUrl });
-        expect(client.buildUrlPublic(path)).toBe(expected);
+        expect(buildUrl(baseUrl, path)).toBe(expected);
     });
 
     it('uses sandbox base URL by default', () => {
-        const client = new TestHttpClient({});
-        expect(client.buildUrlPublic('oauth2/token')).toBe(
+        expect(
+            buildUrl(
+                'https://api.sandbox.gopay.com/api/merchant/payments/4.0',
+                'oauth2/token',
+            ),
+        ).toBe(
             'https://api.sandbox.gopay.com/api/merchant/payments/4.0/oauth2/token',
         );
     });
 
     it('uses production base URL when environment is production', () => {
-        const client = new TestHttpClient({ environment: 'production' });
-        expect(client.buildUrlPublic('oauth2/token')).toBe(
-            'https://api.gopay.com/api/merchant/payments/4.0/oauth2/token',
-        );
+        expect(
+            buildUrl(
+                'https://api.gopay.com/api/merchant/payments/4.0',
+                'oauth2/token',
+            ),
+        ).toBe('https://api.gopay.com/api/merchant/payments/4.0/oauth2/token');
     });
 });
 
 describe('GoPaySDK', () => {
     it('instantiates with default config', () => {
-        const sdk = new GoPaySDK();
-        expect(sdk).toBeInstanceOf(GoPaySDK);
+        const sdk = createGoPaySDK();
+        expect(sdk).toBeDefined();
     });
 
-    it('exposes all sub-modules', () => {
-        const sdk = new GoPaySDK({ environment: 'sandbox' });
-        expect(sdk.auth).toBeDefined();
-        expect(sdk.payments).toBeDefined();
-        expect(sdk.cards).toBeDefined();
+    it('exposes flat methods', () => {
+        const sdk = createGoPaySDK({ environment: 'sandbox' });
+        expect(typeof sdk.authenticate).toBe('function');
+        expect(typeof sdk.issueClientToken).toBe('function');
+        expect(typeof sdk.setClientToken).toBe('function');
+        expect(typeof sdk.isAuthenticated).toBe('function');
+        expect(typeof sdk.logout).toBe('function');
+        expect(typeof sdk.createPayment).toBe('function');
+        expect(typeof sdk.getPaymentStatus).toBe('function');
+        expect(typeof sdk.chargePayment).toBe('function');
+        expect(typeof sdk.mountCardForm).toBe('function');
+        expect(typeof sdk.getCardDetails).toBe('function');
+        expect(typeof sdk.deleteCard).toBe('function');
     });
 
     describe('AuthModule', () => {
@@ -113,8 +119,8 @@ describe('GoPaySDK', () => {
         });
 
         it('exposes authenticate()', () => {
-            const sdk = new GoPaySDK();
-            expect(typeof sdk.auth.authenticate).toBe('function');
+            const sdk = createGoPaySDK();
+            expect(typeof sdk.authenticate).toBe('function');
         });
 
         it('authenticate() with client_credentials sends correct request', async () => {
@@ -129,15 +135,15 @@ describe('GoPaySDK', () => {
                 }),
             );
 
-            const sdk = new GoPaySDK({ environment: 'sandbox' });
-            await sdk.auth.authenticate({
+            const sdk = createGoPaySDK({ environment: 'sandbox' });
+            await sdk.authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'my-client',
                 client_secret: 'my-secret',
                 scope: 'payment:create',
             });
 
-            expect(sdk.auth.isAuthenticated()).toBe(true);
+            expect(sdk.isAuthenticated()).toBe(true);
             expect(capturedReq.url).toBe(
                 'https://api.sandbox.gopay.com/api/merchant/payments/4.0/oauth2/token',
             );
@@ -154,9 +160,9 @@ describe('GoPaySDK', () => {
         });
 
         it('exposes issueClientToken() and setClientToken()', () => {
-            const sdk = new GoPaySDK();
-            expect(typeof sdk.auth.issueClientToken).toBe('function');
-            expect(typeof sdk.auth.setClientToken).toBe('function');
+            const sdk = createGoPaySDK();
+            expect(typeof sdk.issueClientToken).toBe('function');
+            expect(typeof sdk.setClientToken).toBe('function');
         });
 
         it('issueClientToken() returns a ClientToken without changing the server session', async () => {
@@ -179,15 +185,15 @@ describe('GoPaySDK', () => {
                 }),
             );
 
-            const sdk = new GoPaySDK({ environment: 'sandbox' });
-            await sdk.auth.authenticate({
+            const sdk = createGoPaySDK({ environment: 'sandbox' });
+            await sdk.authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'my-client',
                 client_secret: 'my-secret',
                 scope: 'payment:create payment:read',
             });
 
-            const token = await sdk.auth.issueClientToken('payment:create');
+            const token = await sdk.issueClientToken('payment:create');
             expect(token.access_token).toBe('client-at');
             expect(token.refresh_token).toBe('client-rt');
             expect(typeof token.expires_in).toBe('number');
@@ -203,9 +209,9 @@ describe('GoPaySDK', () => {
                         makeMockResponse({}, 401, 'Unauthorized'),
                     ),
             );
-            const sdk = new GoPaySDK();
+            const sdk = createGoPaySDK();
             await expect(
-                sdk.auth.authenticate({
+                sdk.authenticate({
                     grant_type: 'client_credentials',
                     client_id: 'bad-client',
                     client_secret: 'bad-secret',
@@ -217,26 +223,26 @@ describe('GoPaySDK', () => {
 
     describe('CardsModule', () => {
         it('exposes mountCardForm()', () => {
-            const sdk = new GoPaySDK();
-            expect(typeof sdk.cards.mountCardForm).toBe('function');
+            const sdk = createGoPaySDK();
+            expect(typeof sdk.mountCardForm).toBe('function');
         });
 
-        it('exposes getDetails()', () => {
-            const sdk = new GoPaySDK();
-            expect(typeof sdk.cards.getDetails).toBe('function');
+        it('exposes getCardDetails()', () => {
+            const sdk = createGoPaySDK();
+            expect(typeof sdk.getCardDetails).toBe('function');
         });
 
         it('exposes deleteCard()', () => {
-            const sdk = new GoPaySDK();
-            expect(typeof sdk.cards.deleteCard).toBe('function');
+            const sdk = createGoPaySDK();
+            expect(typeof sdk.deleteCard).toBe('function');
         });
     });
 
     describe('PaymentsModule', () => {
         const paymentMethods = [
-            'create',
-            'charge',
-            'getStatus',
+            'createPayment',
+            'chargePayment',
+            'getPaymentStatus',
             'getChargeState',
             'getGooglePayInfo',
             'getApplePayInfo',
@@ -244,11 +250,11 @@ describe('GoPaySDK', () => {
         ] as const;
 
         it.each(paymentMethods)('exposes %s()', (method) => {
-            const sdk = new GoPaySDK();
-            expect(typeof sdk.payments[method]).toBe('function');
+            const sdk = createGoPaySDK();
+            expect(typeof sdk[method]).toBe('function');
         });
 
-        it('create() sends POST to /eshops/{goid}/payments and returns response', async () => {
+        it('createPayment() sends POST to /eshops/{goid}/payments and returns response', async () => {
             const mockPayment = {
                 id: 'pay_300000001',
                 order_number: 'ORDER-001',
@@ -287,14 +293,14 @@ describe('GoPaySDK', () => {
                 }),
             );
 
-            const sdk = new GoPaySDK({ environment: 'sandbox' });
-            await sdk.auth.authenticate({
+            const sdk = createGoPaySDK({ environment: 'sandbox' });
+            await sdk.authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
                 scope: 'payment:create',
             });
-            const result = await sdk.payments.create('test-goid', {
+            const result = await sdk.createPayment('test-goid', {
                 amount: 1000,
                 currency: 'CZK',
                 order_number: 'ORDER-001',
@@ -312,7 +318,7 @@ describe('GoPaySDK', () => {
             expect(result).toEqual(mockPayment);
         });
 
-        it('charge() sends POST to /payments/{id}/charge and returns response', async () => {
+        it('chargePayment() sends POST to /payments/{id}/charge and returns response', async () => {
             const mockCharge = {
                 id: 'pay_300000001',
                 state: 'REQUESTED',
@@ -359,14 +365,14 @@ describe('GoPaySDK', () => {
                 }),
             );
 
-            const sdk = new GoPaySDK({ environment: 'sandbox' });
-            await sdk.auth.authenticate({
+            const sdk = createGoPaySDK({ environment: 'sandbox' });
+            await sdk.authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
                 scope: 'payment:create',
             });
-            const result = await sdk.payments.charge('pay_300000001', {
+            const result = await sdk.chargePayment('pay_300000001', {
                 payment_instrument: {
                     payment_instrument: 'PAYMENT_CARD',
                     input: {
@@ -417,14 +423,14 @@ describe('GoPaySDK', () => {
                 }),
             );
 
-            const sdk = new GoPaySDK({ environment: 'sandbox' });
-            await sdk.auth.authenticate({
+            const sdk = createGoPaySDK({ environment: 'sandbox' });
+            await sdk.authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
                 scope: 'payment:create',
             });
-            const result = await sdk.payments.getGooglePayInfo('payment-123');
+            const result = await sdk.getGooglePayInfo('payment-123');
 
             expect(capturedReq.method).toBe('GET');
             expect(capturedReq.url).toBe(
@@ -477,17 +483,14 @@ describe('GoPaySDK', () => {
                 }),
             );
 
-            const sdk = new GoPaySDK({ environment: 'sandbox' });
-            await sdk.auth.authenticate({
+            const sdk = createGoPaySDK({ environment: 'sandbox' });
+            await sdk.authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
                 scope: 'payment:create',
             });
-            const result = await sdk.payments.getQRPaymentInfo(
-                'payment-123',
-                'svg',
-            );
+            const result = await sdk.getQRPaymentInfo('payment-123', 'svg');
 
             expect(capturedReq.method).toBe('GET');
             expect(capturedReq.url).toBe(

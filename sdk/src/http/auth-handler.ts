@@ -15,22 +15,14 @@ interface AuthHandlerDeps {
     debugLogResponse: (response: Response) => void;
 }
 
-export class AuthHandler {
-    private refreshPromise: Promise<void> | null = null;
+export function createAuthHandler(deps: AuthHandlerDeps) {
+    let refreshPromise: Promise<void> | null = null;
 
-    constructor(private readonly deps: AuthHandlerDeps) {}
-
-    // -------------------------------------------------------------------------
-    // Auth injection
-    // -------------------------------------------------------------------------
-
-    /** Merges extra headers and injects Authorization — skipped for AUTH_PATH or when already set. */
-    async injectAuth(
+    async function injectAuth(
         headers: Headers,
         url: string,
         options?: RequestOptions,
     ): Promise<void> {
-        // Always merge caller-supplied extra headers first
         if (options?.headers) {
             for (const [k, v] of Object.entries(options.headers)) {
                 headers.set(k, v);
@@ -45,13 +37,13 @@ export class AuthHandler {
             return;
         }
 
-        if (this.deps.store.isExpiringSoon()) {
-            await this.refresh();
+        if (deps.store.isExpiringSoon()) {
+            await refresh();
         }
 
-        const tokens = this.deps.store.get();
+        const tokens = deps.store.get();
         if (!tokens) {
-            this.deps.emitError(
+            deps.emitError(
                 new GoPaySDKError(
                     '[GoPaySDK] No access token available. Call authenticate() first.',
                     { errorCode: GoPayErrorCodes.AUTH_TOKEN_MISSING },
@@ -61,19 +53,11 @@ export class AuthHandler {
         headers.set('Authorization', `Bearer ${tokens.access_token}`);
     }
 
-    // -------------------------------------------------------------------------
-    // Request execution with 401 retry
-    // -------------------------------------------------------------------------
-
-    /**
-     * Executes the request via fetchWithRetry. On 401 (non-auth path), refreshes
-     * the token and retries once with bare fetch to avoid an infinite loop.
-     */
-    async fetchAndHandle401(
+    async function fetchAndHandle401(
         url: string,
         init: Omit<RequestInit, 'signal'> & { headers: Headers },
     ): Promise<Response> {
-        const { getTimeoutMs, debugLogResponse, store, emitError } = this.deps;
+        const { getTimeoutMs, debugLogResponse, store, emitError } = deps;
         const timeoutMs = getTimeoutMs();
 
         let response = await fetchWithRetry(url, init, timeoutMs);
@@ -83,7 +67,7 @@ export class AuthHandler {
             return response;
         }
 
-        await this.refresh();
+        await refresh();
 
         const fresh = store.get() as StoredTokenPair;
         const retryHeaders = new Headers(init.headers);
@@ -111,21 +95,16 @@ export class AuthHandler {
         return response;
     }
 
-    // -------------------------------------------------------------------------
-    // Token refresh (deduplicated)
-    // -------------------------------------------------------------------------
-
-    /** Triggers a token refresh, coalescing concurrent calls into one request. */
-    async refresh(): Promise<void> {
-        if (this.refreshPromise) return this.refreshPromise;
-        this.refreshPromise = this.doRefresh().finally(() => {
-            this.refreshPromise = null;
+    async function refresh(): Promise<void> {
+        if (refreshPromise) return refreshPromise;
+        refreshPromise = doRefresh().finally(() => {
+            refreshPromise = null;
         });
-        return this.refreshPromise;
+        return refreshPromise;
     }
 
-    private async doRefresh(): Promise<void> {
-        const { store, baseUrl, emitError, getTimeoutMs } = this.deps;
+    async function doRefresh(): Promise<void> {
+        const { store, baseUrl, emitError, getTimeoutMs } = deps;
 
         const refreshToken = store.getRefreshToken();
         if (!refreshToken) {
@@ -188,4 +167,6 @@ export class AuthHandler {
             );
         }
     }
+
+    return { injectAuth, fetchAndHandle401, refresh };
 }

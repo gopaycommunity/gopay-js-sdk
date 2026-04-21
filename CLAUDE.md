@@ -50,7 +50,7 @@ The SDK is distributed in two ways:
 
 ## `cards` module — iframe-based card tokenization
 
-`CardsModule.mountCardForm(container, options?)` fetches the hosted iframe URL from `GET /encryption/card-form-url`, mounts the GoPay-hosted card encryption iframe, and returns `Promise<CardFormController>`:
+`sdk.mountCardForm(container, options?)` fetches the hosted iframe URL from `GET /encryption/card-form-url`, mounts the GoPay-hosted card encryption iframe, and returns `Promise<CardFormController>`:
 
 - **`result`** — `Promise<CardTokenResponse>` that resolves with the card token on success, rejects on error or cancellation.
 - **`setTheme(theme)`** / **`setLocale(locale)`** — send runtime updates to the iframe via `postMessage`.
@@ -93,6 +93,6 @@ Consumer-facing breaking changes (bump major):
 
 ## `gw_url` — do not use or recommend
 
-`payments.create()` returns a `gw_url` field. **Do not use it, suggest it, or add it to examples.**
+`createPayment()` returns a `gw_url` field. **Do not use it, suggest it, or add it to examples.**
 
 It exists solely for backward compatibility with integrations that predate this SDK (old redirect-based flow). This SDK's flow is always: create → charge (card token / Apple Pay / Google Pay). The API spec will document this once updated.

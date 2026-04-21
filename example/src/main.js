@@ -46,16 +46,10 @@ badge.textContent = 'LOADED';
 badge.className = 'badge ok';
 sdkInfo.textContent = JSON.stringify(
     {
-        class: sdk.constructor.name,
         baseUrl: hasProxy
             ? `${window.location.origin}/proxy`
             : '(sandbox default)',
-        modules: ['auth', 'payments', 'cards'].map((m) => ({
-            name: m,
-            methods: Object.getOwnPropertyNames(
-                Object.getPrototypeOf(sdk[m]),
-            ).filter((n) => n !== 'constructor'),
-        })),
+        methods: Object.keys(sdk).filter((k) => typeof sdk[k] === 'function'),
     },
     null,
     2,

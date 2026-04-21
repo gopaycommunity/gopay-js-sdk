@@ -5,7 +5,7 @@ import { sdk } from './sdk.js';
 // Returns a payment object with an `id` you'll use for all subsequent steps (charge, Google Pay, etc.).
 // amount is in the smallest currency unit (e.g. 1000 = 10.00 CZK).
 // Example:
-//   const payment = await sdk.payments.create(goid, { amount: 1000, currency: 'CZK', ... });
+//   const payment = await sdk.createPayment(goid, { amount: 1000, currency: 'CZK', ... });
 export function runCreatePayment() {
     const goid = document.getElementById('create-goid').value.trim();
     const amount = parseInt(document.getElementById('create-amount').value, 10);
@@ -25,7 +25,7 @@ export function runCreatePayment() {
     run(
         'payment-create-output',
         () =>
-            sdk.payments.create(goid, {
+            sdk.createPayment(goid, {
                 amount,
                 currency,
                 order_number,
@@ -39,29 +39,29 @@ export function runCreatePayment() {
 // Retrieve the current status of an existing payment.
 // Useful for polling on the server after a redirect or 3DS challenge.
 // Example:
-//   const status = await sdk.payments.getStatus(paymentId);
+//   const status = await sdk.getPaymentStatus(paymentId);
 //   // status.state: 'CREATED' | 'PAID' | 'CANCELED' | ...
 export function runGetPaymentStatus() {
     const paymentId = document.getElementById('status-payment-id').value.trim();
-    run('status-output', () => sdk.payments.getStatus(paymentId));
+    run('status-output', () => sdk.getPaymentStatus(paymentId));
 }
 
 // Retrieve the current state of a specific charge attempt.
 // Example:
-//   const state = await sdk.payments.getChargeState(paymentId);
+//   const state = await sdk.getChargeState(paymentId);
 //   if (state.action?.redirect_url) window.location.href = state.action.redirect_url;
 export function runGetChargeState() {
     const paymentId = document
         .getElementById('charge-state-payment-id')
         .value.trim();
-    run('charge-state-output', () => sdk.payments.getChargeState(paymentId));
+    run('charge-state-output', () => sdk.getChargeState(paymentId));
 }
 
 // Charge a payment using a payment instrument obtained from one of the payment flows
 // (Google Pay, Apple Pay or card iframe).
 // If result.action.redirect_url is present, redirect the customer there for 3DS verification.
 // Example:
-//   const result = await sdk.payments.charge(paymentId, { payment_instrument: instrument, return_url });
+//   const result = await sdk.chargePayment(paymentId, { payment_instrument: instrument, return_url });
 //   if (result.action?.redirect_url) window.location.href = result.action.redirect_url;
 export function runCharge() {
     const paymentId = document.getElementById('charge-payment-id').value.trim();
@@ -81,7 +81,7 @@ export function runCharge() {
     run(
         'payment-charge-output',
         () =>
-            sdk.payments.charge(paymentId, {
+            sdk.chargePayment(paymentId, {
                 payment_instrument: instrument,
                 return_url,
             }),
@@ -109,14 +109,14 @@ export function clearCharge() {
 // Fetch QR payment info for a payment. Returns image data (base64 PNG or SVG markup).
 // Render the image in your UI so the customer can scan it with their banking app.
 // Example:
-//   const qr = await sdk.payments.getQRPaymentInfo(paymentId, 'png'); // or 'svg'
+//   const qr = await sdk.getQRPaymentInfo(paymentId, 'png'); // or 'svg'
 //   img.src = `data:image/png;base64,${qr.qr_code?.spayd}`; // CZK; use paybysquare/sepa/mnb_qr for other currencies
 export function runQRPaymentInfo() {
     const paymentId = document.getElementById('qr-payment-id').value.trim();
     const format = document.getElementById('qr-format').value || undefined;
     run(
         'qr-output',
-        () => sdk.payments.getQRPaymentInfo(paymentId, format),
+        () => sdk.getQRPaymentInfo(paymentId, format),
         (result) => {
             const pre = document.getElementById('qr-output');
             if (pre.nextElementSibling?.dataset.qrImg)

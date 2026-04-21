@@ -1,13 +1,13 @@
 // Google Pay flow — two steps:
 //
-// Step 1 (googlePayLoadInfo): call sdk.payments.getGooglePayInfo(paymentId) to fetch the
+// Step 1 (googlePayLoadInfo): call sdk.getGooglePayInfo(paymentId) to fetch the
 //   PaymentsClient config and paymentDataRequest from the GoPay API. This must happen before
 //   rendering the Google Pay button, and the button must be created via Google's own
 //   paymentsClient.createButton() so it meets Google's UX requirements.
 //
 // Step 2 (googlePayOpenSheet): call paymentsClient.loadPaymentData() from within the button's
 //   click handler (must be user-initiated). Parse the tokenizationData.token JSON string to
-//   extract { protocolVersion, signature, signedMessage }, then pass them to sdk.payments.charge()
+//   extract { protocolVersion, signature, signedMessage }, then pass them to sdk.chargePayment()
 //   as input_type: 'GOOGLE_PAY'.
 //
 // Note: load the Google Pay script in your HTML:
@@ -38,7 +38,7 @@ export async function googlePayLoadInfo() {
 
     pre.textContent = 'Step 1: Fetching Google Pay info…';
     try {
-        _googlePayInfo = await sdk.payments.getGooglePayInfo(paymentId);
+        _googlePayInfo = await sdk.getGooglePayInfo(paymentId);
         _googlePaymentId = paymentId;
         pre.textContent = `── onSuccess (getGooglePayInfo) ──\n${JSON.stringify(_googlePayInfo, null, 2)}\n\nClick the Google Pay button to proceed.`;
     } catch (err) {

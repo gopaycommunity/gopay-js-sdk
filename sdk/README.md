@@ -31,12 +31,12 @@ Avoid the bare package name without a version — it resolves to `latest` and wi
 ## Quick start
 
 ```ts
-import { GoPaySDK } from 'gopay-js-sdk';
+import { createGoPaySDK } from 'gopay-js-sdk';
 
-const sdk = new GoPaySDK({ environment: 'production' });
+const sdk = createGoPaySDK({ environment: 'production' });
 
 // Authenticate (server-side only — never expose credentials in the browser)
-await sdk.auth.authenticate({
+await sdk.authenticate({
   grant_type: 'client_credentials',
   client_id: process.env.GOPAY_CLIENT_ID,
   client_secret: process.env.GOPAY_CLIENT_SECRET,
@@ -44,7 +44,7 @@ await sdk.auth.authenticate({
 });
 
 // Create a payment session
-const payment = await sdk.payments.create('YOUR_GOID', {
+const payment = await sdk.createPayment('YOUR_GOID', {
   amount: 1000, // CZK 10.00
   currency: 'CZK',
   order_number: 'ORDER-001',
@@ -56,7 +56,7 @@ const payment = await sdk.payments.create('YOUR_GOID', {
 });
 
 // Use payment.id to charge via card token, Apple Pay, Google Pay, etc.
-// See sdk.payments.charge() below.
+// See sdk.chargePayment() below.
 ```
 
 ### Charging a payment
@@ -64,8 +64,8 @@ const payment = await sdk.payments.create('YOUR_GOID', {
 Once the customer completes the payment flow and returns to your site, charge the payment using the instrument they provided:
 
 ```ts
-// Card token (obtained via sdk.cards.mountCardForm() — returns an object, use .token)
-const charge = await sdk.payments.charge(payment.id, {
+// Card token (obtained via sdk.mountCardForm() — returns an object, use .token)
+const charge = await sdk.chargePayment(payment.id, {
   payment_instrument: {
     payment_instrument: 'PAYMENT_CARD',
     input: {
@@ -97,11 +97,11 @@ The SDK uses OAuth2. **Client credentials (`client_id` / `client_secret`) must n
 Your backend holds the credentials. Call `authenticate()` once on startup — the SDK stores the token and refreshes it transparently before expiry:
 
 ```ts
-import { GoPaySDK } from 'gopay-js-sdk';
+import { createGoPaySDK } from 'gopay-js-sdk';
 
-const sdk = new GoPaySDK({ environment: 'production' });
+const sdk = createGoPaySDK({ environment: 'production' });
 
-await sdk.auth.authenticate({
+await sdk.authenticate({
   grant_type: 'client_credentials',
   client_id: process.env.GOPAY_CLIENT_ID,
   client_secret: process.env.GOPAY_CLIENT_SECRET,
@@ -109,7 +109,7 @@ await sdk.auth.authenticate({
 });
 
 // All subsequent calls attach the Bearer token automatically.
-const payment = await sdk.payments.create(goid, params);
+const payment = await sdk.createPayment(goid, params);
 ```
 
 ### Browser client
@@ -129,7 +129,7 @@ Credentials must never leave the server. The SDK provides a two-step handoff:
 //   card:save      — mountCardForm()
 app.get('/session/gopay-token', async (req, res) => {
   // Protect this endpoint with your own session check
-  const clientToken = await sdk.auth.issueClientToken('payment:create payment:read card:save card:read');
+  const clientToken = await sdk.issueClientToken('payment:create payment:read card:save card:read');
   res.json(clientToken);
 });
 ```
@@ -138,13 +138,13 @@ app.get('/session/gopay-token', async (req, res) => {
 <!-- Browser (IIFE) -->
 <script src="https://unpkg.com/gopay-js-sdk@1.1.0/dist/gopay-sdk.min.js"></script>
 <script>
-  const browserSdk = new GoPaySDK.GoPaySDK({ environment: 'production' });
+  const browserSdk = GoPaySDK.createGoPaySDK({ environment: 'production' });
 
   // Fetch the token pair from your server — never hardcode credentials here.
   const clientToken = await fetch('/session/gopay-token').then(r => r.json());
 
   // client_id is extracted automatically from the JWT access_token.
-  browserSdk.auth.setClientToken(clientToken);
+  browserSdk.setClientToken(clientToken);
 
   // SDK is now authenticated — make API calls as normal.
 </script>
@@ -153,12 +153,12 @@ app.get('/session/gopay-token', async (req, res) => {
 ESM / bundler:
 
 ```ts
-import { GoPaySDK } from 'gopay-js-sdk';
+import { createGoPaySDK } from 'gopay-js-sdk';
 
-const browserSdk = new GoPaySDK({ environment: 'production' });
+const browserSdk = createGoPaySDK({ environment: 'production' });
 
 const clientToken = await fetch('/session/gopay-token').then(r => r.json());
-browserSdk.auth.setClientToken(clientToken);
+browserSdk.setClientToken(clientToken);
 
 // SDK is now authenticated — make API calls as normal.
 ```
@@ -176,7 +176,7 @@ browserSdk.auth.setClientToken(clientToken);
 | `onError`             | `(error: GoPaySDKError \| GoPayHTTPError) => void` | —           | Called synchronously for every error the SDK throws. Useful for centralised logging or alerting. |
 
 ```ts
-const sdk = new GoPaySDK({
+const sdk = createGoPaySDK({
   environment: 'production',
   requestTimeoutMs: 5000,
   debugLoggingEnabled: true,
@@ -196,7 +196,7 @@ Handle errors with `try/catch`. The SDK throws two typed error classes (`GoPaySD
 
 ```ts
 try {
-  const payment = await sdk.payments.create(goid, params);
+  const payment = await sdk.createPayment(goid, params);
 } catch (err) {
   if (err instanceof GoPayHTTPError) { /* API error — check err.status and err.body */ }
   if (err instanceof GoPaySDKError)  { /* SDK lifecycle error — check err.errorCode */ }
@@ -211,7 +211,7 @@ The one exception is `startApplePaySession`: it returns `void` instead of a Prom
 
 ## API
 
-### `sdk.auth`
+### Authentication
 
 | Method | Description |
 |---|---|
@@ -221,13 +221,13 @@ The one exception is `startApplePaySession`: it returns `void` instead of a Prom
 | `isAuthenticated()` | Returns `true` if a token is currently stored. Does not check expiry — expired tokens are refreshed transparently on the next API call. |
 | `logout()` | Clear all stored tokens and credentials. All subsequent API calls will throw until the SDK is re-authenticated. |
 
-### `sdk.payments`
+### Payments
 
 | Method | Description |
 |---|---|
-| `create(goid, params)` | Create a new payment session (`POST /eshops/{goid}/payments`). |
-| `charge(paymentId, params)` | Charge a payment using a payment instrument (`POST /payments/{paymentId}/charge`). |
-| `getStatus(paymentId)` | Retrieve the current status of a payment (`GET /payments/{paymentId}`). Returns state, amount, currency, customer, and charge reference. |
+| `createPayment(goid, params)` | Create a new payment session (`POST /eshops/{goid}/payments`). |
+| `chargePayment(paymentId, params)` | Charge a payment using a payment instrument (`POST /payments/{paymentId}/charge`). |
+| `getPaymentStatus(paymentId)` | Retrieve the current status of a payment (`GET /payments/{paymentId}`). Returns state, amount, currency, customer, and charge reference. |
 | `getChargeState(paymentId)` | Retrieve the current state of a payment charge (`GET /payments/{paymentId}/charge`). Returns charge state, instrument details, and any 3DS action. |
 | `getGooglePayInfo(paymentId)` | Retrieve Google Pay configuration for a payment. |
 | `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment. Returns `applepayVersion`, `merchantIdentifier`, and `applePayPaymentRequest` needed to construct an `ApplePaySession`. |
@@ -257,7 +257,7 @@ The one exception is `startApplePaySession`: it returns `void` instead of a Prom
 //   paymentDataRequest — pre-filled PaymentRequest object (allowed networks,
 //                        transaction info, merchant info, etc.) ready to pass
 //                        to loadPaymentData()
-const googlePayInfo = await sdk.payments.getGooglePayInfo(payment.id);
+const googlePayInfo = await sdk.getGooglePayInfo(payment.id);
 
 // Initialise the Google Pay client and request payment data.
 const paymentsClient = new google.payments.api.PaymentsClient({
@@ -271,7 +271,7 @@ const paymentData = await paymentsClient.loadPaymentData(
 const { protocolVersion, signature, signedMessage } = JSON.parse(
   paymentData.paymentMethodData.tokenizationData.token,
 );
-const charge = await sdk.payments.charge(payment.id, {
+const charge = await sdk.chargePayment(payment.id, {
   payment_instrument: {
     payment_instrument: 'PAYMENT_CARD',
     input: {
@@ -300,7 +300,7 @@ const charge = await sdk.payments.charge(payment.id, {
 // Returns applepayVersion and applePayPaymentRequest (networks, country,
 // currency, total, etc.) needed to construct the ApplePaySession.
 // Must be called before the user-gesture handler that creates the session.
-const applePayInfo = await sdk.payments.getApplePayInfo(payment.id);
+const applePayInfo = await sdk.getApplePayInfo(payment.id);
 
 // Create the ApplePaySession — must be called synchronously from a user-gesture
 // handler (e.g. button click). Do not await anything between the gesture and
@@ -312,7 +312,7 @@ const session = new ApplePaySession(applePayInfo.applepayVersion, applePayInfo.a
 // event.payment.token.paymentData is an Apple-encrypted blob — pass it to charge().
 session.onpaymentauthorized = async (event) => {
   const token = event.payment.token.paymentData;
-  const charge = await sdk.payments.charge(payment.id, {
+  const charge = await sdk.chargePayment(payment.id, {
     payment_instrument: {
       payment_instrument: 'PAYMENT_CARD',
       input: {
@@ -335,7 +335,7 @@ session.onpaymentauthorized = async (event) => {
 
 // Wire merchant validation, then open the Apple Pay sheet.
 // onvalidatemerchant and oncancel are handled automatically by the SDK.
-sdk.payments.startApplePaySession(payment.id, session, undefined, {
+sdk.startApplePaySession(payment.id, session, undefined, {
   oncancel: () => {
     // Update your UI to reflect the cancelled state.
   },
@@ -348,12 +348,12 @@ Poll for payment completion on your server after the customer returns from a red
 
 ```ts
 // Check whether the payment has been paid, cancelled, or is still pending.
-const status = await sdk.payments.getStatus(payment.id);
+const status = await sdk.getPaymentStatus(payment.id);
 // status.state: 'CREATED' | 'PAID' | 'CANCELED' | 'PAYMENT_METHOD_CHOSEN'
 //             | 'TIMEOUTED' | 'AUTHORIZED' | 'REFUNDED' | 'PARTIALLY_REFUNDED'
 
 // Check the outcome of a specific charge attempt (e.g. after 3DS redirect).
-const chargeState = await sdk.payments.getChargeState(payment.id);
+const chargeState = await sdk.getChargeState(payment.id);
 // chargeState.state: 'REQUESTED' | 'PROCESSING' | 'ACTION_REQUIRED'
 //                  | 'SUCCEEDED' | 'FAILED'
 if (chargeState.action?.redirect_url) {
@@ -365,9 +365,9 @@ if (chargeState.action?.redirect_url) {
 ### QR Payment
 
 ```ts
-const qrInfo = await sdk.payments.getQRPaymentInfo(payment.id);
+const qrInfo = await sdk.getQRPaymentInfo(payment.id);
 // Optionally request SVG format instead of the default PNG:
-// const qrInfo = await sdk.payments.getQRPaymentInfo(payment.id, 'svg');
+// const qrInfo = await sdk.getQRPaymentInfo(payment.id, 'svg');
 
 // Display the QR code (currency-specific)
 const img = document.createElement('img');
@@ -380,12 +380,12 @@ document.body.appendChild(img);
 
 ---
 
-### `sdk.cards`
+### Cards
 
 | Method | Description |
 |---|---|
 | `mountCardForm(container, options?)` | Fetches the GoPay-hosted iframe URL from `GET /encryption/card-form-url`, mounts it into `container`, and returns `Promise<CardFormController>`. The controller exposes a `result` promise (resolves to the card token on submit), `setTheme()`, `setLocale()`, `submit()`, and `isValid` for runtime control. Handles iframe creation, internal communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
-| `getDetails(cardId)` | Retrieve details of a stored permanent card token (`GET /cards/tokens/{cardId}`). Returns masked PAN, expiry, scheme, fingerprint, and the reusable token. Requires the `card:read` scope. |
+| `getCardDetails(cardId)` | Retrieve details of a stored permanent card token (`GET /cards/tokens/{cardId}`). Returns masked PAN, expiry, scheme, fingerprint, and the reusable token. Requires the `card:read` scope. |
 | `deleteCard(cardId)` | Delete a stored permanent card token (`DELETE /cards/tokens/{cardId}`). Returns `void`. |
 
 #### `mountCardForm` options
@@ -418,18 +418,18 @@ import {
 } from 'gopay-js-sdk';
 
 // Default theme, locale from navigator.language (options can be omitted entirely)
-const cardForm = await sdk.cards.mountCardForm(container);
+const cardForm = await sdk.mountCardForm(container);
 const cardToken = await cardForm.result;
 
 // Dark theme with Czech locale
-const cardForm = await sdk.cards.mountCardForm(container, {
+const cardForm = await sdk.mountCardForm(container, {
   theme: DARK_CARD_FORM_THEME,
   locale: 'cs',
 });
 const cardToken = await cardForm.result;
 
 // Custom theme — override individual fields, keep the rest as defaults
-const cardForm = await sdk.cards.mountCardForm(container, {
+const cardForm = await sdk.mountCardForm(container, {
   theme: { ...DEFAULT_CARD_FORM_THEME, submitBackgroundColor: '#your-brand-color' },
 });
 
@@ -447,7 +447,7 @@ Use `submitMode: 'external'` when you want the submit button to live outside the
 ```ts
 const payBtn = document.getElementById('pay-btn');
 
-const cardForm = await sdk.cards.mountCardForm(container, {
+const cardForm = await sdk.mountCardForm(container, {
   submitMode: 'external',
   onValidityChange(isValid) {
     // Enable/disable your own submit button based on form validity.
@@ -473,17 +473,17 @@ Card number encryption must never run in publicly reachable JavaScript — doing
 
 ```ts
 // 1. Create a payment session first (server-side).
-const payment = await sdk.payments.create(goid, params);
+const payment = await sdk.createPayment(goid, params);
 
 // 2. Mount the iframe — the SDK fetches the hosted form URL from the API,
 //    mounts the iframe, then awaits the user submitting the card form,
 //    and calls POST /cards/tokens automatically.
 const container = document.getElementById('card-form-container');
-const cardForm = await sdk.cards.mountCardForm(container);
+const cardForm = await sdk.mountCardForm(container);
 const cardToken = await cardForm.result;
 
 // 3. Charge the payment with the resulting card token.
-const charge = await sdk.payments.charge(payment.id, {
+const charge = await sdk.chargePayment(payment.id, {
   payment_instrument: {
     payment_instrument: 'PAYMENT_CARD',
     input: {
@@ -507,11 +507,11 @@ When `mountCardForm` is called with `permanent: true`, the resulting `cardToken.
 
 ```ts
 // Retrieve details of a stored card (masked PAN, expiry, scheme, etc.)
-const card = await sdk.cards.getDetails(cardToken.card_id);
+const card = await sdk.getCardDetails(cardToken.card_id);
 console.log(card.masked_pan, card.expiration_month, card.expiration_year);
 
 // Charge a subsequent payment using the permanent token (no re-entry of card details)
-const charge = await sdk.payments.charge(payment.id, {
+const charge = await sdk.chargePayment(payment.id, {
   payment_instrument: {
     payment_instrument: 'PAYMENT_CARD',
     input: { input_type: 'CARD_TOKEN', card_token: card.token },
@@ -520,7 +520,7 @@ const charge = await sdk.payments.charge(payment.id, {
 });
 
 // Delete the card when the customer removes it from their account
-await sdk.cards.deleteCard(card.card_id);
+await sdk.deleteCard(card.card_id);
 ```
 
 `GET /encryption/public-key` and the JWE construction it enables are **intentionally not part of this SDK's API surface**.
@@ -554,7 +554,7 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 import { GoPaySDKError, GoPayErrorCodes } from 'gopay-js-sdk';
 
 try {
-  await sdk.payments.create(goid, params);
+  await sdk.createPayment(goid, params);
 } catch (err) {
   if (err instanceof GoPaySDKError) {
     if (err.errorCode === GoPayErrorCodes.AUTH_TOKEN_MISSING) {
@@ -576,7 +576,7 @@ Thrown when the GoPay API returns a non-2xx response. Exposes the HTTP `status` 
 import { GoPayHTTPError } from 'gopay-js-sdk';
 
 try {
-  await sdk.auth.authenticate({ grant_type: 'client_credentials', ... });
+  await sdk.authenticate({ grant_type: 'client_credentials', ... });
 } catch (err) {
   if (err instanceof GoPayHTTPError) {
     console.error(`HTTP ${err.status}`, err.body);
@@ -594,7 +594,7 @@ try {
 Pass an `onError` callback to the SDK config to intercept every error in one place — useful for logging or alerting — without replacing per-call `catch` blocks:
 
 ```ts
-const sdk = new GoPaySDK({
+const sdk = createGoPaySDK({
   environment: 'production',
   onError(err) {
     analytics.track('gopay_error', { code: err instanceof GoPaySDKError ? err.errorCode : err.status });

@@ -1,17 +1,17 @@
 // Card payment via iframe tokenization — two steps:
 //
-// Step 1: call sdk.cards.mountCardForm(container) to inject GoPay's card-entry iframe into
+// Step 1: call sdk.mountCardForm(container) to inject GoPay's card-entry iframe into
 //   a container element on your page. The SDK fetches the hosted iframe URL automatically
 //   from GET /encryption/card-form-url. The returned promise resolves when the customer
 //   submits the form (or rejects if they cancel / an error occurs).
 //
-// Step 2: mountCardForm resolves with { token, ... }. Pass the token to sdk.payments.charge()
+// Step 2: mountCardForm resolves with { token, ... }. Pass the token to sdk.chargePayment()
 //   as input_type: 'CARD_TOKEN'. The raw card number never touches your server.
 //
 // Example:
-//   const cardForm = await sdk.cards.mountCardForm(container);
+//   const cardForm = await sdk.mountCardForm(container);
 //   const { token } = await cardForm.result;
-//   await sdk.payments.charge(paymentId, {
+//   await sdk.chargePayment(paymentId, {
 //     payment_instrument: { payment_instrument: 'PAYMENT_CARD', input: { input_type: 'CARD_TOKEN', card_token: token } },
 //     return_url: 'https://yourshop.example.com/return',
 //   });
@@ -112,7 +112,7 @@ export async function cardPayOpenIframe() {
             : DEFAULT_CARD_FORM_THEME;
 
     try {
-        cardFormController = await sdk.cards.mountCardForm(container, {
+        cardFormController = await sdk.mountCardForm(container, {
             theme,
             locale: currentLang,
             submitMode: currentSubmitMode,

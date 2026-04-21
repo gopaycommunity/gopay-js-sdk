@@ -2,14 +2,10 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayHTTPError, GoPaySDKError } from '../../src/errors.js';
-import { HttpClient } from '../../src/http/client.js';
-import type { TokenStore } from '../../src/http/token-store.js';
+import { createHttpClient } from '../../src/http/client.js';
 import { DEFAULT_CARD_FORM_THEME } from '../../src/modules/cards/card-form-themes.js';
-import { CardsModule } from '../../src/modules/cards/cards.module.js';
+import { createCardsApi } from '../../src/modules/cards/cards.module.js';
 import type { CardFormTheme } from '../../src/modules/cards/iframe-protocol.js';
-
-const tokenStore = (client: HttpClient) =>
-    (client as unknown as { tokenStore: TokenStore }).tokenStore;
 
 const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
     new Response(JSON.stringify(data), {
@@ -49,8 +45,8 @@ function dispatchCardMessage(
 
 describe('CardsModule', () => {
     let fetchMock: ReturnType<typeof vi.fn>;
-    let client: HttpClient;
-    let cards: CardsModule;
+    let client: ReturnType<typeof createHttpClient>;
+    let cards: ReturnType<typeof createCardsApi>;
     let container: HTMLDivElement;
 
     beforeEach(() => {
@@ -60,15 +56,15 @@ describe('CardsModule', () => {
             .mockResolvedValueOnce(makeResponse({ card_form_url: IFRAME_SRC }))
             .mockResolvedValue(makeResponse(MOCK_TOKEN_RESPONSE));
         vi.stubGlobal('fetch', fetchMock);
-        client = new HttpClient({ baseUrl: 'https://example.com' });
-        tokenStore(client).set({
+        client = createHttpClient({ baseUrl: 'https://example.com' });
+        client.tokenStore.set({
             access_token: 'at-test',
             refresh_token: 'rt-test',
             expires_in: 900,
             refresh_expires_in: 86400,
             token_type: 'bearer',
         });
-        cards = new CardsModule(client);
+        cards = createCardsApi(client);
         container = document.createElement('div');
         document.body.appendChild(container);
     });
@@ -97,7 +93,7 @@ describe('CardsModule', () => {
         card_art_url: 'https://card.art/pic.png',
     };
 
-    describe('getDetails()', () => {
+    describe('getCardDetails()', () => {
         beforeEach(() => {
             fetchMock.mockReset();
             fetchMock.mockResolvedValue(makeResponse(mockCardDetailsResponse));
@@ -111,7 +107,7 @@ describe('CardsModule', () => {
                 return makeResponse(mockCardDetailsResponse);
             });
 
-            await cards.getDetails('8007127320');
+            await cards.getCardDetails('8007127320');
 
             expect(capturedReq.method).toBe('GET');
             expect(capturedReq.url).toBe(
@@ -126,7 +122,7 @@ describe('CardsModule', () => {
                 return makeResponse(mockCardDetailsResponse);
             });
 
-            await cards.getDetails('card_999');
+            await cards.getCardDetails('card_999');
 
             expect(capturedUrl).toContain('/cards/tokens/card_999');
         });
@@ -138,7 +134,7 @@ describe('CardsModule', () => {
                 return makeResponse(mockCardDetailsResponse);
             });
 
-            await cards.getDetails('8007127320');
+            await cards.getCardDetails('8007127320');
 
             expect(capturedReq.headers.get('Authorization')).toBe(
                 'Bearer at-test',
@@ -152,13 +148,13 @@ describe('CardsModule', () => {
                 return makeResponse(mockCardDetailsResponse);
             });
 
-            await cards.getDetails('8007127320');
+            await cards.getCardDetails('8007127320');
 
             expect(capturedBody).toBe('');
         });
 
         it('returns the card details response', async () => {
-            const result = await cards.getDetails('8007127320');
+            const result = await cards.getCardDetails('8007127320');
 
             expect(result).toEqual(mockCardDetailsResponse);
             expect(result.card_id).toBe('8007127320');
@@ -167,7 +163,7 @@ describe('CardsModule', () => {
         });
 
         it('throws when cardId is empty', async () => {
-            await expect(cards.getDetails('')).rejects.toThrow(
+            await expect(cards.getCardDetails('')).rejects.toThrow(
                 'cardId is required',
             );
         });
@@ -402,10 +398,10 @@ describe('CardsModule', () => {
         });
 
         it('returns a rejected result immediately when no client token is set', async () => {
-            const freshClient = new HttpClient({
+            const freshClient = createHttpClient({
                 baseUrl: 'https://example.com',
             });
-            const freshCards = new CardsModule(freshClient);
+            const freshCards = createCardsApi(freshClient);
             const controller = await freshCards.mountCardForm(container);
             const err = await controller.result.catch((e: unknown) => e);
             expect(err).toBeInstanceOf(GoPaySDKError);
@@ -613,7 +609,7 @@ describe('CardsModule', () => {
 
             it('sends client_id as empty string when JWT payload has no string sub claim', async () => {
                 // 'e30=' is btoa('{}') — valid base64 JSON with no sub claim
-                tokenStore(client).set({
+                client.tokenStore.set({
                     access_token: 'header.e30=.sig',
                     refresh_token: 'rt-test',
                     expires_in: 900,
@@ -632,7 +628,7 @@ describe('CardsModule', () => {
 
             it('extracts client_id from JWT sub claim when present', async () => {
                 // btoa('{"sub":"merchant-123"}')
-                tokenStore(client).set({
+                client.tokenStore.set({
                     access_token: 'header.eyJzdWIiOiJtZXJjaGFudC0xMjMifQ==.sig',
                     refresh_token: 'rt-test',
                     expires_in: 900,
@@ -894,18 +890,18 @@ describe('CardsModule', () => {
 
         it('rejects an untrusted iframe origin in production before mounting', async () => {
             // IFRAME_SRC = 'https://gopay.com/...' is not in the production allowlist
-            const prodClient = new HttpClient({
+            const prodClient = createHttpClient({
                 environment: 'production',
                 baseUrl: 'https://example.com',
             });
-            tokenStore(prodClient).set({
+            prodClient.tokenStore.set({
                 access_token: 'at-test',
                 refresh_token: 'rt-test',
                 expires_in: 900,
                 refresh_expires_in: 86400,
                 token_type: 'bearer',
             });
-            const prodCards = new CardsModule(prodClient);
+            const prodCards = createCardsApi(prodClient);
 
             const err = await prodCards
                 .mountCardForm(container)
@@ -926,18 +922,18 @@ describe('CardsModule', () => {
                 )
                 .mockResolvedValue(makeResponse(MOCK_TOKEN_RESPONSE));
 
-            const prodClient = new HttpClient({
+            const prodClient = createHttpClient({
                 environment: 'production',
                 baseUrl: 'https://example.com',
             });
-            tokenStore(prodClient).set({
+            prodClient.tokenStore.set({
                 access_token: 'at-test',
                 refresh_token: 'rt-test',
                 expires_in: 900,
                 refresh_expires_in: 86400,
                 token_type: 'bearer',
             });
-            const prodCards = new CardsModule(prodClient);
+            const prodCards = createCardsApi(prodClient);
 
             const { result } = await prodCards.mountCardForm(container);
             dispatchCardMessage(getIframe(), {

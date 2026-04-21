@@ -11,22 +11,20 @@ test('SDK loads and initialises GoPaySDK', async ({ page }) => {
 test('SDK exposes expected modules and methods', async ({ page }) => {
     await page.goto('/');
 
+    await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
+
     const raw = await page.locator('#sdk-info').textContent();
     const info = JSON.parse(raw ?? '{}') as {
-        modules: Array<{ name: string; methods: string[] }>;
+        methods: string[];
     };
 
-    const modules = Object.fromEntries(
-        info.modules.map(({ name, methods }) => [name, methods]),
-    );
-
-    expect(modules.auth).toContain('authenticate');
-    expect(modules.auth).toContain('issueClientToken');
-    expect(modules.auth).toContain('setClientToken');
-    expect(modules.payments).toContain('create');
-    expect(modules.payments).toContain('charge');
-    expect(modules.payments).toContain('getGooglePayInfo');
-    expect(modules.payments).toContain('getApplePayInfo');
-    expect(modules.payments).toContain('startApplePaySession');
-    expect(modules.cards).toContain('createToken');
+    expect(info.methods).toContain('authenticate');
+    expect(info.methods).toContain('issueClientToken');
+    expect(info.methods).toContain('setClientToken');
+    expect(info.methods).toContain('createPayment');
+    expect(info.methods).toContain('chargePayment');
+    expect(info.methods).toContain('getGooglePayInfo');
+    expect(info.methods).toContain('getApplePayInfo');
+    expect(info.methods).toContain('startApplePaySession');
+    expect(info.methods).toContain('mountCardForm');
 });

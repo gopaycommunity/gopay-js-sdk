@@ -1,7 +1,7 @@
 export type { GoPayConfig } from './config.js';
 export type { GoPayErrorCode } from './errors.js';
 export { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from './errors.js';
-export { GoPaySDK } from './gopay-sdk.js';
+export { createGoPaySDK, type GoPaySDK } from './gopay-sdk.js';
 export {
     DARK_CARD_FORM_THEME,
     DEFAULT_CARD_FORM_THEME,

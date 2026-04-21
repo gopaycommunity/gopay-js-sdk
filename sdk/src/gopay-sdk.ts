@@ -1,42 +1,33 @@
 import type { GoPayConfig } from './config.js';
-import { HttpClient } from './http/client.js';
-import { AuthModule } from './modules/auth/auth.module.js';
-import { CardsModule } from './modules/cards/cards.module.js';
-import { PaymentsModule } from './modules/payments/payments.module.js';
+import { createHttpClient } from './http/client.js';
+import { createAuthApi } from './modules/auth/auth.module.js';
+import { createCardsApi } from './modules/cards/cards.module.js';
+import { createPaymentsApi } from './modules/payments/payments.module.js';
 
 /**
- * GoPay JavaScript SDK
+ * Create a GoPay SDK instance.
  *
  * Browser (IIFE):
  * ```html
  * <script src="https://gopaycdn.com/js-sdk/gopay-sdk.min.js"></script>
  * <script>
- *   const sdk = new GoPaySDK.GoPaySDK({ environment: 'sandbox' });
+ *   const sdk = GoPaySDK.createGoPaySDK({ environment: 'sandbox' });
  * </script>
  * ```
  *
  * ESM / CommonJS:
  * ```ts
- * import { GoPaySDK } from 'gopay-js-sdk';
- * const sdk = new GoPaySDK({ environment: 'sandbox' });
+ * import { createGoPaySDK } from 'gopay-js-sdk';
+ * const sdk = createGoPaySDK({ environment: 'sandbox' });
  * ```
  */
-export class GoPaySDK {
-    /** Authentication — obtain and refresh access tokens */
-    readonly auth: AuthModule;
-
-    /** Payments — create and charge payment sessions */
-    readonly payments: PaymentsModule;
-
-    /** Cards — tokenize encrypted card data */
-    readonly cards: CardsModule;
-
-    private readonly httpClient: HttpClient;
-
-    constructor(config: GoPayConfig = {}) {
-        this.httpClient = new HttpClient(config);
-        this.auth = new AuthModule(this.httpClient);
-        this.payments = new PaymentsModule(this.httpClient);
-        this.cards = new CardsModule(this.httpClient);
-    }
+export function createGoPaySDK(config: GoPayConfig = {}) {
+    const client = createHttpClient(config);
+    return {
+        ...createAuthApi(client),
+        ...createPaymentsApi(client),
+        ...createCardsApi(client),
+    };
 }
+
+export type GoPaySDK = ReturnType<typeof createGoPaySDK>;

@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HttpClient } from '../../src/http/client.js';
-import type { TokenStore } from '../../src/http/token-store.js';
-import { PaymentsModule } from '../../src/modules/payments/payments.module.js';
-
-const tokenStore = (client: HttpClient) =>
-    (client as unknown as { tokenStore: TokenStore }).tokenStore;
+import { createHttpClient } from '../../src/http/client.js';
+import { createPaymentsApi } from '../../src/modules/payments/payments.module.js';
 
 const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
     new Response(JSON.stringify(data), {
@@ -70,23 +66,23 @@ const chargeParams = {
 
 describe('PaymentsModule', () => {
     let fetchMock: ReturnType<typeof vi.fn>;
-    let client: HttpClient;
-    let payments: PaymentsModule;
+    let client: ReturnType<typeof createHttpClient>;
+    let payments: ReturnType<typeof createPaymentsApi>;
 
     beforeEach(() => {
         fetchMock = vi
             .fn()
             .mockResolvedValue(makeResponse(mockPaymentResponse));
         vi.stubGlobal('fetch', fetchMock);
-        client = new HttpClient({ baseUrl: 'https://example.com' });
-        tokenStore(client).set({
+        client = createHttpClient({ baseUrl: 'https://example.com' });
+        client.tokenStore.set({
             access_token: 'at-test',
             refresh_token: 'rt-test',
             expires_in: 900,
             refresh_expires_in: 86400,
             token_type: 'bearer',
         });
-        payments = new PaymentsModule(client);
+        payments = createPaymentsApi(client);
     });
 
     afterEach(() => {
@@ -102,7 +98,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockPaymentResponse);
             });
 
-            await payments.create('goid-123', createParams);
+            await payments.createPayment('goid-123', createParams);
 
             expect(capturedReq.method).toBe('POST');
             expect(capturedReq.url).toBe(
@@ -118,7 +114,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockPaymentResponse);
             });
 
-            await payments.create('merchant-456', createParams);
+            await payments.createPayment('merchant-456', createParams);
 
             expect(capturedUrl).toContain('/eshops/merchant-456/payments');
         });
@@ -130,7 +126,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockPaymentResponse);
             });
 
-            await payments.create('goid-123', createParams);
+            await payments.createPayment('goid-123', createParams);
 
             expect(JSON.parse(capturedBody)).toEqual(createParams);
         });
@@ -143,7 +139,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockPaymentResponse);
             });
 
-            await payments.create('goid-123', createParams);
+            await payments.createPayment('goid-123', createParams);
 
             expect(capturedReq.headers.get('Content-Type')).toContain(
                 'application/json',
@@ -158,7 +154,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockPaymentResponse);
             });
 
-            await payments.create('goid-123', createParams);
+            await payments.createPayment('goid-123', createParams);
 
             expect(capturedReq.headers.get('Authorization')).toBe(
                 'Bearer at-test',
@@ -166,7 +162,10 @@ describe('PaymentsModule', () => {
         });
 
         it('returns the payment response', async () => {
-            const result = await payments.create('goid-123', createParams);
+            const result = await payments.createPayment(
+                'goid-123',
+                createParams,
+            );
 
             expect(result).toEqual(mockPaymentResponse);
             expect(result.id).toBe('pay_300000001');
@@ -189,9 +188,9 @@ describe('PaymentsModule', () => {
         });
 
         it('throws when paymentId is empty', async () => {
-            await expect(payments.charge('', chargeParams)).rejects.toThrow(
-                'paymentId is required',
-            );
+            await expect(
+                payments.chargePayment('', chargeParams),
+            ).rejects.toThrow('paymentId is required');
         });
 
         it('sends POST to /payments/{paymentId}/charge', async () => {
@@ -202,7 +201,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', chargeParams);
+            await payments.chargePayment('pay_300000001', chargeParams);
 
             expect(capturedReq.method).toBe('POST');
             expect(capturedReq.url).toBe(
@@ -218,7 +217,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockChargeResponse, 201);
             });
 
-            await payments.charge('pay_999', chargeParams);
+            await payments.chargePayment('pay_999', chargeParams);
 
             expect(capturedUrl).toContain('/payments/pay_999/charge');
         });
@@ -230,7 +229,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', chargeParams);
+            await payments.chargePayment('pay_300000001', chargeParams);
 
             expect(JSON.parse(capturedBody)).toMatchObject(chargeParams);
         });
@@ -243,7 +242,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', chargeParams);
+            await payments.chargePayment('pay_300000001', chargeParams);
 
             expect(capturedReq.headers.get('Content-Type')).toContain(
                 'application/json',
@@ -258,7 +257,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', chargeParams);
+            await payments.chargePayment('pay_300000001', chargeParams);
 
             expect(capturedReq.headers.get('Authorization')).toBe(
                 'Bearer at-test',
@@ -266,7 +265,10 @@ describe('PaymentsModule', () => {
         });
 
         it('returns the charge response', async () => {
-            const result = await payments.charge('pay_300000001', chargeParams);
+            const result = await payments.chargePayment(
+                'pay_300000001',
+                chargeParams,
+            );
 
             expect(result).toEqual(mockChargeResponse);
             expect(result.id).toBe('pay_300000001');
@@ -280,7 +282,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', chargeParams);
+            await payments.chargePayment('pay_300000001', chargeParams);
 
             const body = JSON.parse(capturedBody);
             expect(body.browser_data).toMatchObject({
@@ -301,7 +303,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', {
+            await payments.chargePayment('pay_300000001', {
                 ...chargeParams,
                 browser_data: { language: 'fr-FR', ip: '1.2.3.4' },
             });
@@ -486,7 +488,10 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockGooglePayChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', googlePayChargeParams);
+            await payments.chargePayment(
+                'pay_300000001',
+                googlePayChargeParams,
+            );
 
             expect(capturedReq.method).toBe('POST');
             expect(capturedReq.url).toBe(
@@ -501,7 +506,10 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockGooglePayChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', googlePayChargeParams);
+            await payments.chargePayment(
+                'pay_300000001',
+                googlePayChargeParams,
+            );
 
             const body = JSON.parse(capturedBody);
             expect(body.payment_instrument.input.input_type).toBe('GOOGLE_PAY');
@@ -518,7 +526,10 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockGooglePayChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', googlePayChargeParams);
+            await payments.chargePayment(
+                'pay_300000001',
+                googlePayChargeParams,
+            );
 
             expect(capturedReq.headers.get('Authorization')).toBe(
                 'Bearer at-test',
@@ -526,7 +537,7 @@ describe('PaymentsModule', () => {
         });
 
         it('returns the charge response', async () => {
-            const result = await payments.charge(
+            const result = await payments.chargePayment(
                 'pay_300000001',
                 googlePayChargeParams,
             );
@@ -587,7 +598,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockApplePayChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', applePayChargeParams);
+            await payments.chargePayment('pay_300000001', applePayChargeParams);
 
             expect(capturedReq.method).toBe('POST');
             expect(capturedReq.url).toBe(
@@ -602,7 +613,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockApplePayChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', applePayChargeParams);
+            await payments.chargePayment('pay_300000001', applePayChargeParams);
 
             const body = JSON.parse(capturedBody);
             const input = body.payment_instrument.input;
@@ -625,7 +636,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockApplePayChargeResponse, 201);
             });
 
-            await payments.charge('pay_300000001', applePayChargeParams);
+            await payments.chargePayment('pay_300000001', applePayChargeParams);
 
             expect(capturedReq.headers.get('Authorization')).toBe(
                 'Bearer at-test',
@@ -633,7 +644,7 @@ describe('PaymentsModule', () => {
         });
 
         it('returns the charge response', async () => {
-            const result = await payments.charge(
+            const result = await payments.chargePayment(
                 'pay_300000001',
                 applePayChargeParams,
             );
@@ -910,7 +921,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockPaymentResponse);
             });
 
-            await payments.getStatus('pay_300000001');
+            await payments.getPaymentStatus('pay_300000001');
 
             expect(capturedReq.method).toBe('GET');
             expect(capturedReq.url).toBe(
@@ -925,7 +936,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockPaymentResponse);
             });
 
-            await payments.getStatus('pay_999');
+            await payments.getPaymentStatus('pay_999');
 
             expect(capturedUrl).toContain('/payments/pay_999');
             expect(capturedUrl).not.toContain('/charge');
@@ -938,7 +949,7 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockPaymentResponse);
             });
 
-            await payments.getStatus('pay_300000001');
+            await payments.getPaymentStatus('pay_300000001');
 
             expect(capturedReq.headers.get('Authorization')).toBe(
                 'Bearer at-test',
@@ -952,13 +963,13 @@ describe('PaymentsModule', () => {
                 return makeResponse(mockPaymentResponse);
             });
 
-            await payments.getStatus('pay_300000001');
+            await payments.getPaymentStatus('pay_300000001');
 
             expect(capturedBody).toBe('');
         });
 
         it('returns the payment status response', async () => {
-            const result = await payments.getStatus('pay_300000001');
+            const result = await payments.getPaymentStatus('pay_300000001');
 
             expect(result).toEqual(mockPaymentResponse);
             expect(result.id).toBe('pay_300000001');
@@ -967,7 +978,7 @@ describe('PaymentsModule', () => {
         });
 
         it('throws when paymentId is empty', async () => {
-            await expect(payments.getStatus('')).rejects.toThrow(
+            await expect(payments.getPaymentStatus('')).rejects.toThrow(
                 'paymentId is required',
             );
         });

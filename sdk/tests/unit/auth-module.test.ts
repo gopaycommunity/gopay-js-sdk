@@ -1,12 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
-import { HttpClient } from '../../src/http/client.js';
-import type { TokenStore } from '../../src/http/token-store.js';
-import { AuthModule } from '../../src/modules/auth/auth.module.js';
+import { createHttpClient } from '../../src/http/client.js';
+import { createAuthApi } from '../../src/modules/auth/auth.module.js';
 import type { ClientToken } from '../../src/types/index.js';
-
-const tokenStore = (client: HttpClient) =>
-    (client as unknown as { tokenStore: TokenStore }).tokenStore;
 
 const validTokenPair = {
     token_type: 'bearer' as const,
@@ -37,14 +33,14 @@ const makeJwt = (sub: string) => {
 
 describe('AuthModule', () => {
     let fetchMock: ReturnType<typeof vi.fn>;
-    let client: HttpClient;
-    let auth: AuthModule;
+    let client: ReturnType<typeof createHttpClient>;
+    let auth: ReturnType<typeof createAuthApi>;
 
     beforeEach(() => {
         fetchMock = vi.fn().mockResolvedValue(makeResponse(validTokenPair));
         vi.stubGlobal('fetch', fetchMock);
-        client = new HttpClient({ baseUrl: 'https://example.com' });
-        auth = new AuthModule(client);
+        client = createHttpClient({ baseUrl: 'https://example.com' });
+        auth = createAuthApi(client);
     });
 
     afterEach(() => {
@@ -63,7 +59,7 @@ describe('AuthModule', () => {
             scope: 'payment:create',
         });
 
-        const stored = tokenStore(client).get();
+        const stored = client.tokenStore.get();
         expect(stored?.access_token).toBe('at-abc');
         expect(stored?.refresh_token).toBe('rt-xyz');
         expect(stored?.expires_in).toBe(900);
@@ -80,8 +76,8 @@ describe('AuthModule', () => {
             scope: 'payment:create',
         });
 
-        expect(tokenStore(client).getClientId()).toBe('my-client');
-        expect(tokenStore(client).getClientSecret()).toBe('my-secret');
+        expect(client.tokenStore.getClientId()).toBe('my-client');
+        expect(client.tokenStore.getClientSecret()).toBe('my-secret');
     });
 
     it.each([
@@ -137,7 +133,7 @@ describe('AuthModule', () => {
             }),
         ).rejects.toThrow();
 
-        expect(tokenStore(client).hasAccessToken()).toBe(false);
+        expect(client.tokenStore.hasAccessToken()).toBe(false);
     });
 
     // -------------------------------------------------------------------------
@@ -146,7 +142,6 @@ describe('AuthModule', () => {
 
     describe('issueClientToken()', () => {
         beforeEach(async () => {
-            // Authenticate server first to store credentials
             await auth.authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'server-client',
@@ -156,7 +151,7 @@ describe('AuthModule', () => {
         });
 
         it('returns a ClientToken without storing it in the token store', async () => {
-            const serverTokens = tokenStore(client).get();
+            const serverTokens = client.tokenStore.get();
 
             const clientTokenPair = {
                 ...validTokenPair,
@@ -171,8 +166,7 @@ describe('AuthModule', () => {
             expect(result.refresh_token).toBe('client-rt');
             expect(result.expires_in).toBe(900);
             expect(result.refresh_expires_in).toBe(86400);
-            // Server's own token store is unchanged
-            expect(tokenStore(client).get()).toEqual(serverTokens);
+            expect(client.tokenStore.get()).toEqual(serverTokens);
         });
 
         it('sends correct scope when provided', async () => {
@@ -218,10 +212,10 @@ describe('AuthModule', () => {
         });
 
         it('throws GoPaySDKError when no credentials are stored', async () => {
-            const freshClient = new HttpClient({
+            const freshClient = createHttpClient({
                 baseUrl: 'https://example.com',
             });
-            const freshAuth = new AuthModule(freshClient);
+            const freshAuth = createAuthApi(freshClient);
 
             const err = await freshAuth
                 .issueClientToken()
@@ -258,23 +252,23 @@ describe('AuthModule', () => {
         it('stores both tokens in the token store immediately', () => {
             auth.setClientToken(clientToken);
 
-            expect(tokenStore(client).hasAccessToken()).toBe(true);
-            expect(tokenStore(client).get()?.access_token).toBe(
+            expect(client.tokenStore.hasAccessToken()).toBe(true);
+            expect(client.tokenStore.get()?.access_token).toBe(
                 clientToken.access_token,
             );
-            expect(tokenStore(client).getRefreshToken()).toBe('rt-from-server');
+            expect(client.tokenStore.getRefreshToken()).toBe('rt-from-server');
         });
 
         it('extracts client_id from the JWT sub claim', () => {
             auth.setClientToken(clientToken);
 
-            expect(tokenStore(client).getClientId()).toBe('client-123');
+            expect(client.tokenStore.getClientId()).toBe('client-123');
         });
 
         it('stores expires_in and refresh_expires_in', () => {
             auth.setClientToken(clientToken);
 
-            const stored = tokenStore(client).get();
+            const stored = client.tokenStore.get();
             expect(stored?.expires_in).toBe(900);
             expect(stored?.refresh_expires_in).toBe(86400);
         });
@@ -378,11 +372,11 @@ describe('AuthModule', () => {
     describe('onError callback', () => {
         it('is called when authenticate returns invalid token response', async () => {
             const onError = vi.fn();
-            const clientWithCallback = new HttpClient({
+            const clientWithCallback = createHttpClient({
                 baseUrl: 'https://example.com',
                 onError,
             });
-            const authWithCallback = new AuthModule(clientWithCallback);
+            const authWithCallback = createAuthApi(clientWithCallback);
 
             fetchMock.mockImplementation(async (req: Request) => {
                 await req.text();
@@ -409,11 +403,11 @@ describe('AuthModule', () => {
 
         it('is called when no credentials are stored for issueClientToken', async () => {
             const onError = vi.fn();
-            const clientWithCallback = new HttpClient({
+            const clientWithCallback = createHttpClient({
                 baseUrl: 'https://example.com',
                 onError,
             });
-            const authWithCallback = new AuthModule(clientWithCallback);
+            const authWithCallback = createAuthApi(clientWithCallback);
 
             await authWithCallback.issueClientToken().catch(() => {});
 

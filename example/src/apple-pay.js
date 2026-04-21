@@ -1,15 +1,15 @@
 // Apple Pay flow — two steps, three possible paths:
 //
-// Step 1 (applePayLoadInfo): call sdk.payments.getApplePayInfo(paymentId) to fetch merchant
+// Step 1 (applePayLoadInfo): call sdk.getApplePayInfo(paymentId) to fetch merchant
 //   config (merchantIdentifier, applepayVersion, applePayPaymentRequest) from the GoPay API.
 //
 // Step 2 — choose one path based on the user's browser:
 //
 //   Path A — Native Safari (ApplePaySession):
 //     Create an ApplePaySession, wire onpaymentauthorized, then call
-//     sdk.payments.startApplePaySession(paymentId, session) which handles merchant validation.
+//     sdk.startApplePaySession(paymentId, session) which handles merchant validation.
 //     In onpaymentauthorized, extract { data, signature, version, header } from
-//     event.payment.token.paymentData and pass them to sdk.payments.charge() as input_type: 'APPLE_PAY'.
+//     event.payment.token.paymentData and pass them to sdk.chargePayment() as input_type: 'APPLE_PAY'.
 //     Always call session.completePayment(STATUS_SUCCESS / STATUS_FAILURE) before the sheet closes.
 //
 //   Path B — PaymentRequest API (Chrome/Edge with QR cross-device):
@@ -40,7 +40,7 @@ export async function applePayLoadInfo() {
 
     pre.textContent = 'Step 1: Fetching Apple Pay info…';
     try {
-        _applePayInfo = await sdk.payments.getApplePayInfo(paymentId);
+        _applePayInfo = await sdk.getApplePayInfo(paymentId);
         _applePaymentId = paymentId;
         pre.textContent = `── onSuccess (getApplePayInfo) ──\n${JSON.stringify(_applePayInfo, null, 2)}\n\nClick a button below to proceed.`;
     } catch (err) {
@@ -158,7 +158,7 @@ async function applePayPaymentRequestFlow() {
     };
     prefillCharge(_applePaymentId, instrument);
     try {
-        const charge = await sdk.payments.charge(_applePaymentId, {
+        const charge = await sdk.chargePayment(_applePaymentId, {
             payment_instrument: instrument,
             return_url: returnUrl,
         });
@@ -201,7 +201,7 @@ function applePayBeginSession(SessionClass = window.ApplePaySession) {
         };
         prefillCharge(_applePaymentId, instrument);
         try {
-            const charge = await sdk.payments.charge(_applePaymentId, {
+            const charge = await sdk.chargePayment(_applePaymentId, {
                 payment_instrument: instrument,
                 return_url: returnUrl,
             });
@@ -216,7 +216,7 @@ function applePayBeginSession(SessionClass = window.ApplePaySession) {
         }
     };
 
-    sdk.payments.startApplePaySession(_applePaymentId, session, undefined, {
+    sdk.startApplePaySession(_applePaymentId, session, undefined, {
         oncancel: (event) => {
             const detail =
                 event !== undefined

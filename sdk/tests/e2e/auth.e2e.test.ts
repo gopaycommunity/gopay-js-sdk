@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { GoPaySDK } from '../../src/index.js';
+import { createGoPaySDK, type GoPaySDK } from '../../src/index.js';
 
 describe('auth.authenticate() — E2E', () => {
     let sdk: GoPaySDK;
@@ -38,11 +38,11 @@ describe('auth.authenticate() — E2E', () => {
             );
         }
 
-        sdk = new GoPaySDK(baseUrl ? { baseUrl } : { environment });
+        sdk = createGoPaySDK(baseUrl ? { baseUrl } : { environment });
     });
 
     it('authenticates and marks the SDK instance as authenticated', async () => {
-        await sdk.auth.authenticate({
+        await sdk.authenticate({
             grant_type: 'client_credentials',
             client_id: clientId,
             client_secret: clientSecret,
@@ -50,6 +50,6 @@ describe('auth.authenticate() — E2E', () => {
         });
 
         // Token pair is stored internally only — never returned to callers.
-        expect(sdk.auth.isAuthenticated()).toBe(true);
+        expect(sdk.isAuthenticated()).toBe(true);
     });
 });
