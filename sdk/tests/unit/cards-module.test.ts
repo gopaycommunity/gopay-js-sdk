@@ -564,7 +564,7 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         theme: DEFAULT_CARD_FORM_THEME,
                     }),
-                    '*',
+                    IFRAME_ORIGIN,
                 );
             });
 
@@ -581,7 +581,7 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         theme: customTheme,
                     }),
-                    '*',
+                    IFRAME_ORIGIN,
                 );
             });
 
@@ -593,7 +593,7 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         locale: 'cs-CZ',
                     }),
-                    '*',
+                    IFRAME_ORIGIN,
                 );
                 vi.unstubAllGlobals();
             });
@@ -607,7 +607,7 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         locale: 'de-DE',
                     }),
-                    '*',
+                    IFRAME_ORIGIN,
                 );
             });
 
@@ -626,7 +626,7 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         client_id: '',
                     }),
-                    '*',
+                    IFRAME_ORIGIN,
                 );
             });
 
@@ -645,7 +645,7 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         client_id: 'merchant-123',
                     }),
-                    '*',
+                    IFRAME_ORIGIN,
                 );
             });
 
@@ -657,7 +657,7 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         locale: 'en',
                     }),
-                    '*',
+                    IFRAME_ORIGIN,
                 );
                 vi.unstubAllGlobals();
             });
@@ -675,7 +675,7 @@ describe('CardsModule', () => {
                 expect(postMessageSpy).toHaveBeenCalledOnce();
                 expect(postMessageSpy).toHaveBeenCalledWith(
                     { type: 'GOPAY_CARD_SET_THEME', theme: newTheme },
-                    '*',
+                    IFRAME_ORIGIN,
                 );
             });
 
@@ -699,7 +699,7 @@ describe('CardsModule', () => {
                 expect(postMessageSpy).toHaveBeenCalledOnce();
                 expect(postMessageSpy).toHaveBeenCalledWith(
                     { type: 'GOPAY_CARD_SET_LOCALE', locale: 'cs' },
-                    '*',
+                    IFRAME_ORIGIN,
                 );
             });
 
@@ -726,7 +726,7 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         submitMode: 'external',
                     }),
-                    '*',
+                    IFRAME_ORIGIN,
                 );
             });
 
@@ -737,7 +737,7 @@ describe('CardsModule', () => {
                         type: 'GOPAY_CARD_FORM_INIT',
                         submitMode: 'internal',
                     }),
-                    '*',
+                    IFRAME_ORIGIN,
                 );
             });
 
@@ -751,7 +751,7 @@ describe('CardsModule', () => {
                 expect(postMessageSpy).toHaveBeenCalledOnce();
                 expect(postMessageSpy).toHaveBeenCalledWith(
                     { type: 'GOPAY_CARD_REQUEST_SUBMIT' },
-                    '*',
+                    IFRAME_ORIGIN,
                 );
             });
 

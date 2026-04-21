@@ -61,8 +61,8 @@ The SDK is distributed in two ways:
 
 **Init flow:**
 1. `mountCardForm` calls `GET /encryption/card-form-url` internally to obtain the iframe URL.
-2. The SDK appends the iframe (sandboxed: `allow-scripts allow-forms`).
-3. On `iframe.onload`, the SDK posts `GOPAY_CARD_FORM_INIT` with tokens, environment, theme, locale, and submit mode. Target origin is `'*'` because the sandbox removes `allow-same-origin`, making the iframe's origin opaque (`"null"`).
+2. The SDK appends the iframe (`sandbox="allow-scripts allow-forms allow-same-origin"`). `allow-same-origin` keeps the real origin so `postMessage(targetOrigin)` works; the absent `allow-top-navigation` and `allow-popups` deny those vectors.
+3. On `iframe.onload`, the SDK posts `GOPAY_CARD_FORM_INIT` with tokens, environment, theme, locale, and submit mode. Target origin is the iframe's origin (derived from the card-form URL).
 4. The iframe posts back `GOPAY_CARD_ENCRYPT_RESULT` (carrying the JWE payload), then the SDK calls `POST /cards/tokens` internally and resolves `result`.
 
 **Submit modes:**
