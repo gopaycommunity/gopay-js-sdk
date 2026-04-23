@@ -110,6 +110,9 @@ definitions:
           # npm publish is currently disabled (npmPublish: false in release.config.cjs)
           # Bitbucket Pipelines implicit auth handles the git push back to repo
           - cd sdk && yarn dlx semantic-release
+          - npm pkg get version --prefix sdk | tr -d '"' > version
+        artifacts:
+          - version
     # Required secret: GITHUB_PERSONAL_ACCESS_TOKEN
     - step: &github-sync
         name: Sync master to GitHub
@@ -120,6 +123,27 @@ definitions:
           - git remote add github https://${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/gopaycommunity/gopay-js-sdk.git
           - git push github refs/remotes/origin/master:refs/heads/master --force
           - git push github --tags
+
+    - step: &docker-build-push
+        name: Build & push example Docker image
+        size: 2x
+        services:
+          - docker2x
+        script:
+          - ./scripts/bitbucket-config.sh
+          - VERSION=$(cat version)
+          - IMAGE="repo.gopay.com/gopay/gp-gw-js-sdk-example:$VERSION"
+          - IMAGE_NOT_EXISTS=true; docker pull "$IMAGE" > /dev/null 2>&1 && IMAGE_NOT_EXISTS=false
+          - if [ "$IMAGE_NOT_EXISTS" = true ]; then (docker build . -t "$IMAGE" && docker push "$IMAGE"); fi
+
+    - step: &docker-build-dry-run
+        name: Build example Docker image (dry-run)
+        size: 2x
+        services:
+          - docker2x
+        script:
+          - docker build -t repo.gopay.com/gopay/gp-gw-js-sdk-example:latest .
+
 pipelines:
   branches:
     master:
@@ -131,6 +155,7 @@ pipelines:
         - step: *sonar
       - step: *release
       - step: *github-sync
+      - step: *docker-build-push
   pull-requests:
     '**':
       - parallel:
@@ -140,4 +165,4 @@ pipelines:
           - step: *test-playwright
       - parallel:
           - step: *sonar
-      
+      - step: *docker-build-dry-run

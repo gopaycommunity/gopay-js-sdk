@@ -76,6 +76,23 @@ yarn workspace gopay-js-sdk-example cert:check
 
 This generates `example/certs/localhost.pem` and `example/certs/localhost-key.pem` (git-ignored). The dev server picks them up automatically on next `yarn example`.
 
+## Running the example page with Docker
+
+Build and start the container:
+
+```bash
+yarn docker
+```
+
+By default the SDK connects directly to the GoPay sandbox from the browser. To point at a different API environment, pass `GP_GW_JS_SDK_BASE_URL` at build time:
+
+```bash
+docker build --build-arg GP_GW_JS_SDK_BASE_URL=https://gw.alpha8.dev.gopay.com/api/merchant/payments/4.0 -t gopay-js-sdk-example:latest .
+yarn docker:start
+```
+
+The example page is served on [http://localhost:8080](http://localhost:8080).
+
 ## Browser tests
 
 Playwright tests in `tests/browser/` run against the IIFE bundle served from `example/index.html`.

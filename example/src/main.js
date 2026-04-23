@@ -25,7 +25,7 @@ import {
     runQRPaymentInfo,
 } from './payments.js';
 import { runDeleteCard, runGetCardDetails } from './saved-cards.js';
-import { clientId, clientSecret, goid, hasProxy, sdk } from './sdk.js';
+import { clientId, clientSecret, goid, sdk } from './sdk.js';
 
 // -----------------------------------------------------------------------
 // Pre-populate auth fields from Vite env (sdk/.env.e2e) — fall back to empty
@@ -46,9 +46,7 @@ badge.textContent = 'LOADED';
 badge.className = 'badge ok';
 sdkInfo.textContent = JSON.stringify(
     {
-        baseUrl: hasProxy
-            ? `${window.location.origin}/proxy`
-            : '(sandbox default)',
+        baseUrl: import.meta.env.GP_GW_JS_SDK_BASE_URL ?? '(sandbox default)',
         methods: Object.keys(sdk).filter((k) => typeof sdk[k] === 'function'),
     },
     null,

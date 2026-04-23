@@ -1,0 +1,45 @@
+# Dependencies
+node_modules
+sdk/node_modules
+example/node_modules
+
+# Build artifacts
+sdk/dist
+example/dist
+
+# Test output
+sdk/coverage
+sdk/test-results
+playwright-report
+
+# Local env files
+sdk/.env*
+!sdk/.env.e2e
+
+# Dev certs
+example/certs
+
+# Misc
+.DS_Store
+*.pem
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode
+.idea
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# CI / tooling
+bitbucket-pipelines.yml
+biome.json
+*.tsbuildinfo

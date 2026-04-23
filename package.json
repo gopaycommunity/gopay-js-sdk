@@ -11,7 +11,11 @@
         "ci": "yarn biome ci . && yarn workspace gopay-js-sdk run typecheck && yarn workspace gopay-js-sdk run check:circular && yarn workspace gopay-js-sdk run check:exports",
         "prepare": "husky",
         "test:e2e": "playwright test",
-        "example": "yarn workspace gopay-js-sdk run build && yarn workspace gopay-js-sdk-example run dev"
+        "example": "yarn workspace gopay-js-sdk run build && yarn workspace gopay-js-sdk-example run dev",
+        "docker": "yarn docker:clean && yarn docker:build && yarn docker:start",
+        "docker:build": "docker build -t gopay-js-sdk-example:latest .",
+        "docker:clean": "docker ps -aq --filter ancestor=gopay-js-sdk-example:latest | grep . | xargs docker rm -f || true",
+        "docker:start": "docker run --name gopay-js-sdk-example -e GP_DEBUG=true --env-file sdk/.env.e2e -p 8080:8080 gopay-js-sdk-example:latest"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.12",
