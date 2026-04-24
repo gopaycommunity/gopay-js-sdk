@@ -9,11 +9,18 @@ function prefillLinkId(result) {
         if (el) el.value = id;
     }
     const urlEl = document.getElementById('link-create-url');
-    if (urlEl && result.url) {
-        urlEl.href = result.url;
-        urlEl.textContent = result.url;
-        urlEl.setAttribute('aria-label', result.url);
-        urlEl.style.display = 'inline';
+    if (urlEl) {
+        if (result.url) {
+            urlEl.href = result.url;
+            urlEl.textContent = result.url;
+            urlEl.setAttribute('aria-label', result.url);
+            urlEl.style.display = 'inline';
+        } else {
+            urlEl.href = '';
+            urlEl.textContent = '';
+            urlEl.removeAttribute('aria-label');
+            urlEl.style.display = 'none';
+        }
     }
 }
 
@@ -55,7 +62,12 @@ export function runCreatePaymentLink() {
 
     run(
         'link-create-output',
-        () => sdk.createPaymentLink(goid, params),
+        () => {
+            if (!Number.isInteger(amount) || amount <= 0) {
+                throw new Error('amount must be a positive integer');
+            }
+            return sdk.createPaymentLink(goid, params);
+        },
         prefillLinkId,
     );
 }
