@@ -304,8 +304,8 @@ describe('HttpClient', () => {
             });
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set(storedTokens);
             client.setClientCredentials('my-client', 'my-secret');
+            client.tokenStore.set(storedTokens);
 
             await client.get('/resource');
 

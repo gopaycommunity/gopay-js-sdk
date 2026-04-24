@@ -33,6 +33,7 @@ export function createTokenStore() {
         setClientSecret(id: string, secret: string): void {
             clientId = id;
             clientSecret = secret;
+            tokens = null;
         },
 
         setClientId(id: string): void {
