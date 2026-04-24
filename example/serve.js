@@ -28,7 +28,7 @@ createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     let file = join(dist, url.pathname);
 
-    if (!existsSync(file) || !extname(file)) {
+    if (!existsSync(file)) {
         // Only fall back to index.html for extensionless paths (SPA routes).
         // Missing assets (e.g. .js, .css) get a 404 to avoid masking build errors.
         if (extname(file)) {
