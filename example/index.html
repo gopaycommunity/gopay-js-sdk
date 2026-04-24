@@ -56,7 +56,7 @@
                 </label>
             </div>
             <button type="button" onclick="runAuthenticate()">Run</button>
-            <button type="button" onclick="runLogout()" class="!bg-[#FEECEB] !text-[#B71C1C] ![box-shadow:none] hover:!bg-[#FFCDD2]">Logout</button>
+            <button type="button" onclick="runLogout()">Logout</button>
             <pre id="auth-output">—</pre>
         </section>
 
@@ -191,16 +191,16 @@
             <div class="flex items-center gap-2 flex-wrap mb-3">
                 <span class="text-xs text-[#6B7280] font-medium">Language:</span>
                 <button type="button" id="cardpay-lang-en" onclick="cardPaySetLang('en')" class="!text-xs !py-1 !px-3">EN</button>
-                <button type="button" id="cardpay-lang-cs" onclick="cardPaySetLang('cs')" class="!text-xs !py-1 !px-3 !bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">CS</button>
+                <button type="button" id="cardpay-lang-cs" onclick="cardPaySetLang('cs')" class="!text-xs !py-1 !px-3 js-btn-inactive">CS</button>
                 <span class="text-xs text-[#6B7280] font-medium ml-3">Theme:</span>
                 <button type="button" id="cardpay-theme-default" onclick="cardPaySetTheme('default')" class="!text-xs !py-1 !px-3">Default</button>
-                <button type="button" id="cardpay-theme-dark" onclick="cardPaySetTheme('dark')" class="!text-xs !py-1 !px-3 !bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">Dark</button>
+                <button type="button" id="cardpay-theme-dark" onclick="cardPaySetTheme('dark')" class="!text-xs !py-1 !px-3 js-btn-inactive">Dark</button>
                 <span class="text-xs text-[#6B7280] font-medium ml-3">Submit:</span>
                 <button type="button" id="cardpay-submit-internal" onclick="cardPaySetSubmitMode('internal')" class="!text-xs !py-1 !px-3">Internal</button>
-                <button type="button" id="cardpay-submit-external" onclick="cardPaySetSubmitMode('external')" class="!text-xs !py-1 !px-3 !bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">External</button>
+                <button type="button" id="cardpay-submit-external" onclick="cardPaySetSubmitMode('external')" class="!text-xs !py-1 !px-3 js-btn-inactive">External</button>
                 <span class="text-xs text-[#6B7280] font-medium ml-3">Token:</span>
                 <button type="button" id="cardpay-permanent-off" onclick="cardPaySetPermanent(false)" class="!text-xs !py-1 !px-3">Single-use</button>
-                <button type="button" id="cardpay-permanent-on" onclick="cardPaySetPermanent(true)" class="!text-xs !py-1 !px-3 !bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">Permanent</button>
+                <button type="button" id="cardpay-permanent-on" onclick="cardPaySetPermanent(true)" class="!text-xs !py-1 !px-3 js-btn-inactive">Permanent</button>
             </div>
             <div class="flex items-center gap-3 flex-wrap mb-3">
                 <button type="button" onclick="cardPayOpenIframe()">Open Card Payment</button>
@@ -257,7 +257,7 @@
             <div class="fields">
                 <label>Card ID<input id="delete-card-id" type="text" placeholder="8007127320" /></label>
             </div>
-            <button type="button" onclick="runDeleteCard()" class="!bg-[#FEECEB] !text-[#B71C1C] hover:!bg-[#FFCDD2]">Run</button>
+            <button type="button" onclick="runDeleteCard()">Run</button>
             <pre id="delete-card-output">—</pre>
         </section>
 
@@ -328,7 +328,7 @@
             <div class="fields">
                 <label>Recurrence ID<input id="rec-stop-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
             </div>
-            <button type="button" onclick="runStopRecurrence()" class="!bg-[#FEECEB] !text-[#B71C1C] hover:!bg-[#FFCDD2]">Run</button>
+            <button type="button" onclick="runStopRecurrence()">Run</button>
             <pre id="rec-stop-output">—</pre>
         </section>
 
@@ -377,7 +377,7 @@
             <div class="fields">
                 <label>Link ID<input id="link-disable-id" type="text" placeholder="auto-filled by createPaymentLink()" /></label>
             </div>
-            <button type="button" onclick="runDisableLink()" class="!bg-[#FEECEB] !text-[#B71C1C] hover:!bg-[#FFCDD2]">Run</button>
+            <button type="button" onclick="runDisableLink()">Run</button>
             <pre id="link-disable-output">—</pre>
         </section>
 
