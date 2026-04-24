@@ -6,7 +6,7 @@ type LinkDetails =
     components['responses']['Link-Create-Response']['content']['application/json'];
 
 function requireLinkId(linkId: string): void {
-    if (!linkId) {
+    if (!linkId || linkId.trim().length === 0) {
         throw new Error('linkId is required');
     }
 }
