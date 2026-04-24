@@ -9,9 +9,8 @@
 //    first), then pass the returned ClientToken to the browser and call sdk.setClientToken().
 //    The browser SDK can then make payment calls directly without ever seeing your secret.
 
-import { createGoPaySDK } from 'gopay-js-sdk';
 import { run, state } from './helpers.js';
-import { sdk, sdkConfig } from './sdk.js';
+import { sdk } from './sdk.js';
 
 const authBadge = document.getElementById('auth-badge');
 
@@ -104,7 +103,6 @@ export function runSetClientTokenFlow() {
         .value.trim();
 
     run('set-client-token-output', async () => {
-        const browserSdk = createGoPaySDK(sdkConfig);
         // Use full ClientToken if available (preserves expires_in from server response),
         // otherwise fall back to defaults so manually pasted tokens still work.
         const clientToken =
@@ -117,8 +115,8 @@ export function runSetClientTokenFlow() {
                       expires_in: 900,
                       refresh_expires_in: 86400,
                   };
-        browserSdk.setClientToken(clientToken);
+        sdk.setClientToken(clientToken);
         updateAuthBadge();
-        return { authenticated: browserSdk.isAuthenticated() };
+        return { authenticated: sdk.isAuthenticated() };
     });
 }
