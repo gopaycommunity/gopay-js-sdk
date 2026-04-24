@@ -49,26 +49,26 @@ export interface CardFormController {
     readonly isValid: boolean;
 }
 
+function extractClientId(accessToken: string): string | null {
+    // Trusted decode: this token was just received from our own authenticated
+    // API call over TLS. We only read the `sub` claim for client_id telemetry.
+    // Do NOT copy this pattern for tokens received from untrusted sources —
+    // signature verification would be required in that case.
+    try {
+        const payload = JSON.parse(
+            globalThis.atob(accessToken.split('.')[1]),
+        ) as Record<string, unknown>;
+        if (typeof payload.sub === 'string') {
+            return payload.sub;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 export function createCardsApi(client: HttpClient) {
     let activeCleanup: (() => void) | undefined;
-
-    function extractClientId(accessToken: string): string | null {
-        // Trusted decode: this token was just received from our own authenticated
-        // API call over TLS. We only read the `sub` claim for client_id telemetry.
-        // Do NOT copy this pattern for tokens received from untrusted sources —
-        // signature verification would be required in that case.
-        try {
-            const payload = JSON.parse(
-                globalThis.atob(accessToken.split('.')[1]),
-            ) as Record<string, unknown>;
-            if (typeof payload.sub === 'string') {
-                return payload.sub;
-            }
-            return null;
-        } catch {
-            return null;
-        }
-    }
 
     async function getCardFormUrl(): Promise<string> {
         const result = await client.get<components['schemas']['Card-Form-URL']>(
