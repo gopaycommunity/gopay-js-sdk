@@ -12,9 +12,9 @@
         "gopay-js-sdk": "workspace:*"
     },
     "devDependencies": {
-        "@tailwindcss/vite": "^4.2.2",
+        "@tailwindcss/vite": "^4.2.4",
         "@vitejs/plugin-basic-ssl": "^2.3.0",
-        "tailwindcss": "^4.2.2",
-        "vite": "^8.0.8"
+        "tailwindcss": "^4.2.4",
+        "vite": "^8.0.10"
     }
 }

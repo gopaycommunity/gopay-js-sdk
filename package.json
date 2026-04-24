@@ -18,7 +18,7 @@
         "docker:start": "docker run --name gopay-js-sdk-example -e GP_DEBUG=true --env-file sdk/.env.e2e -p 8080:8080 gopay-js-sdk-example:latest"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.4.12",
+        "@biomejs/biome": "^2.4.13",
         "@commitlint/cli": "^20.5.0",
         "@commitlint/config-conventional": "^20.5.0",
         "@playwright/test": "^1.59.1",
