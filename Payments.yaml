@@ -791,6 +791,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Link-Create-Request'
+      security:
+        - clientCredentials:
+            - 'payment:create'
   '/links/{link_id}':
     parameters:
       - schema:
@@ -832,6 +835,8 @@ paths:
           $ref: '#/components/responses/Forbidden-403-Response'
         '404':
           $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: delete-links-link_id
@@ -1711,6 +1716,7 @@ components:
         - `scope` -> the scopes of the token
         - `iat` -> timestamp of token issuing
         - `exp` -> timestamp of token expiration
+        - `aud` -> the audience API for which the token has been issued
       format: jwt
       examples:
         - eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
@@ -3555,13 +3561,13 @@ components:
           x-stoplight:
             id: 52w729nmq8mah
           description: Payment data for the payments created by clicking on the link
-        expires_in:
-          type: integer
+        expires_at:
+          type: string
           x-stoplight:
             id: i4q1u3d3xxn41
-          minimum: 1
-          example: 86400
+          example: '2027-04-21T14:30:00'
           description: Time (seconds) after which the link will become inactive
+          format: date-time
         reusable:
           type: boolean
           x-stoplight:
@@ -3580,13 +3586,13 @@ components:
         - url
         - active
       properties:
-        expires_in:
-          type: integer
+        expires_at:
+          type: string
           x-stoplight:
             id: i4q1u3d3xxn41
-          minimum: 1
-          example: 86400
+          example: '2026-04-21T14:30:00'
           description: Time (seconds) after which the link will become inactive
+          format: date-time
         reusable:
           type: boolean
           x-stoplight:
@@ -3599,7 +3605,7 @@ components:
           x-stoplight:
             id: 42p4rtqq7420b
           description: Link identifier
-          example: xfv56td3y5
+          example: '123456'
         url:
           type: string
           x-stoplight:
@@ -3615,6 +3621,14 @@ components:
           $ref: '#/components/schemas/Payment-Create-Request'
           x-stoplight:
             id: 17sivwa06s9kf
+        stop_reason:
+          x-stoplight:
+            id: 6iudvifr1xrh0
+          type: string
+          enum:
+            - FROM_API
+            - ALREADY_PAID
+            - EXPIRED
     Recurrence-Schedule:
       title: Recurrence-Schedule
       x-stoplight:
@@ -3702,5 +3716,5 @@ components:
         payment:
           $ref: '#/components/schemas/Payment-Create-Request'
           x-stoplight:
-            id: jvc1a12tqlet9
+            id: 8owft64pvrr07
 x-internal: false

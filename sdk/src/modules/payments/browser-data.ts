@@ -6,7 +6,7 @@ import type { BrowserData } from '../../types/index.js';
  * Reads `navigator`, `screen`, and `Date` globals. Returns an empty object
  * when called outside a browser environment (e.g. Node.js / SSR).
  *
- * The result is automatically merged into every {@link PaymentsModule.charge}
+ * The result is automatically merged into every {@link chargePayment}
  * call. You can also call this directly to inspect or override individual
  * fields before passing them as `params.browser_data`.
  *
@@ -15,7 +15,7 @@ import type { BrowserData } from '../../types/index.js';
  *
  * @example
  * const data = collectBrowserData();
- * await sdk.payments.charge(paymentId, {
+ * await sdk.chargePayment(paymentId, {
  *   ...chargeParams,
  *   browser_data: { ...data, language: 'en-US' }, // override one field
  * });

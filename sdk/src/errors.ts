@@ -76,7 +76,7 @@ export class GoPaySDKError extends Error {
  * import { GoPayHTTPError } from 'gopay-js-sdk';
  *
  * try {
- *   await sdk.payments.create(goid, params);
+ *   await sdk.createPayment(goid, params);
  * } catch (err) {
  *   if (err instanceof GoPayHTTPError) {
  *     console.error(err.status, err.body);

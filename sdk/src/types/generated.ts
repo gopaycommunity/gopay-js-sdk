@@ -450,6 +450,7 @@ export interface components {
          *     - `scope` -> the scopes of the token
          *     - `iat` -> timestamp of token issuing
          *     - `exp` -> timestamp of token expiration
+         *     - `aud` -> the audience API for which the token has been issued
          * @example eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
          */
         JWT: string;
@@ -1957,10 +1958,11 @@ export interface components {
             /** @description Payment data for the payments created by clicking on the link */
             payment: components["schemas"]["Payment-Create-Request"];
             /**
+             * Format: date-time
              * @description Time (seconds) after which the link will become inactive
-             * @example 86400
+             * @example 2027-04-21T14:30:00
              */
-            expires_in?: number;
+            expires_at?: string;
             /**
              * @description Indicates whether the link should only allow one successful payment or may be reused
              * @default true
@@ -1971,10 +1973,11 @@ export interface components {
         /** Link-Details */
         "Link-Details": {
             /**
+             * Format: date-time
              * @description Time (seconds) after which the link will become inactive
-             * @example 86400
+             * @example 2026-04-21T14:30:00
              */
-            expires_in?: number;
+            expires_at?: string;
             /**
              * @description Indicates whether the link should only allow one successful payment or may be reused
              * @default true
@@ -1983,7 +1986,7 @@ export interface components {
             reusable: boolean;
             /**
              * @description Link identifier
-             * @example xfv56td3y5
+             * @example 123456
              */
             id: string;
             /**
@@ -1994,6 +1997,8 @@ export interface components {
             /** @description Whether the link is currently active */
             active: boolean;
             payment?: components["schemas"]["Payment-Create-Request"];
+            /** @enum {string} */
+            stop_reason?: "FROM_API" | "ALREADY_PAID" | "EXPIRED";
         };
         /** Recurrence-Schedule */
         "Recurrence-Schedule": {
@@ -2786,6 +2791,7 @@ export interface operations {
             401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];
             404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
             500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };

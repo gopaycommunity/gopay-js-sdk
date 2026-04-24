@@ -261,6 +261,126 @@
             <pre id="delete-card-output">—</pre>
         </section>
 
+        <!-- ── Recurrences ─────────────────────────────────────────── -->
+
+        <!-- Create recurrence -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.createRecurrence()</h2>
+            <p class="desc">POST /eshops/{goid}/recurrences — create a recurring payment agreement. The returned <code>id</code> is auto-filled into the status / start / next / stop fields below.</p>
+            <div class="fields">
+                <label>GoID<input id="rec-create-goid" type="text" value="8123456789" /></label>
+                <label>Type
+                    <select id="rec-create-type">
+                        <option value="ON_DEMAND">ON_DEMAND</option>
+                        <option value="AUTO">AUTO</option>
+                    </select>
+                </label>
+                <label>Amount (cents)<input id="rec-create-amount" type="number" value="1000" /></label>
+                <label>Currency<input id="rec-create-currency" type="text" value="CZK" /></label>
+                <label>Order Number<input id="rec-create-order-number" type="text" value="SUB-001" /></label>
+                <label>Customer Email<input id="rec-create-email" type="text" value="customer@example.com" /></label>
+                <label>Notification URL<input id="rec-create-notification-url" type="text" value="https://yourshop.example.com/notify" /></label>
+                <label>Return URL<input id="rec-create-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+            </div>
+            <button type="button" onclick="runCreateRecurrence()">Run</button>
+            <pre id="rec-create-output">—</pre>
+        </section>
+
+        <!-- Recurrence status -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.recurrenceStatus()</h2>
+            <p class="desc">GET /recurrences/{rec_id} — retrieve the current state of a recurrence (NEW, STARTED, STOPPED, etc.).</p>
+            <div class="fields">
+                <label>Recurrence ID<input id="rec-status-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
+            </div>
+            <button type="button" onclick="runRecurrenceStatus()">Run</button>
+            <pre id="rec-status-output">—</pre>
+        </section>
+
+        <!-- Start recurrence -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.startRecurrence()</h2>
+            <p class="desc">POST /recurrences/{rec_id}/start — trigger the first charge of a recurrence that is in the <code>NEW</code> state.</p>
+            <div class="fields">
+                <label>Recurrence ID<input id="rec-start-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
+            </div>
+            <button type="button" onclick="runStartRecurrence()">Run</button>
+            <pre id="rec-start-output">—</pre>
+        </section>
+
+        <!-- Recurrence next -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.recurrenceNext()</h2>
+            <p class="desc">POST /recurrences/{rec_id}/next — charge the next instalment of a <code>STARTED</code> recurrence. Amount and order number are optional overrides.</p>
+            <div class="fields">
+                <label>Recurrence ID<input id="rec-next-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
+                <label>Amount override (cents)<input id="rec-next-amount" type="number" placeholder="leave blank to keep original" /></label>
+                <label>Order Number override<input id="rec-next-order-number" type="text" placeholder="leave blank to keep original" /></label>
+            </div>
+            <button type="button" onclick="runRecurrenceNext()">Run</button>
+            <pre id="rec-next-output">—</pre>
+        </section>
+
+        <!-- Stop recurrence -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.stopRecurrence()</h2>
+            <p class="desc">DELETE /recurrences/{rec_id} — permanently stop a recurrence. This cannot be undone.</p>
+            <div class="fields">
+                <label>Recurrence ID<input id="rec-stop-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
+            </div>
+            <button type="button" onclick="runStopRecurrence()" class="!bg-[#FEECEB] !text-[#B71C1C] hover:!bg-[#FFCDD2]">Run</button>
+            <pre id="rec-stop-output">—</pre>
+        </section>
+
+        <!-- ── Payment Links ───────────────────────────────────────── -->
+
+        <!-- Create link -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">links.createPaymentLink()</h2>
+            <p class="desc">POST /eshops/{goid}/links — create a shareable payment link. The returned <code>id</code> and URL are auto-filled below.</p>
+            <div class="fields">
+                <label>GoID<input id="link-create-goid" type="text" value="8123456789" /></label>
+                <label>Reusable
+                    <select id="link-create-reusable">
+                        <option value="true">true — multiple payments</option>
+                        <option value="false">false — single use</option>
+                    </select>
+                </label>
+                <label>Expires at (ISO 8601, optional)<input id="link-create-expires-at" type="text" placeholder="2027-12-31T23:59:59" /></label>
+                <label>Amount (cents)<input id="link-create-amount" type="number" value="500" /></label>
+                <label>Currency<input id="link-create-currency" type="text" value="CZK" /></label>
+                <label>Order Number<input id="link-create-order-number" type="text" value="LINK-001" /></label>
+                <label>Customer Email<input id="link-create-email" type="text" value="customer@example.com" /></label>
+                <label>Notification URL<input id="link-create-notification-url" type="text" value="https://yourshop.example.com/notify" /></label>
+                <label>Return URL<input id="link-create-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+            </div>
+            <button type="button" onclick="runCreatePaymentLink()">Run</button>
+            <pre id="link-create-output">—</pre>
+            <p class="note">Link URL: <a id="link-create-url" href="#" target="_blank" rel="noopener" aria-label="Payment link URL" style="display:none"></a></p>
+        </section>
+
+        <!-- Link status -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">links.linkStatus()</h2>
+            <p class="desc">GET /links/{link_id} — retrieve the current state of a payment link (active, stop_reason, etc.).</p>
+            <div class="fields">
+                <label>Link ID<input id="link-status-id" type="text" placeholder="auto-filled by createPaymentLink()" /></label>
+            </div>
+            <button type="button" onclick="runLinkStatus()">Run</button>
+            <pre id="link-status-output">—</pre>
+        </section>
+
+        <!-- Disable link -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">links.disableLink()</h2>
+            <p class="desc">DELETE /links/{link_id} — disable a payment link so it can no longer be used.</p>
+            <div class="fields">
+                <label>Link ID<input id="link-disable-id" type="text" placeholder="auto-filled by createPaymentLink()" /></label>
+            </div>
+            <button type="button" onclick="runDisableLink()" class="!bg-[#FEECEB] !text-[#B71C1C] hover:!bg-[#FFCDD2]">Run</button>
+            <pre id="link-disable-output">—</pre>
+        </section>
+
     </main>
 
     <script type="module" src="./src/main.js"></script>

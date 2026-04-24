@@ -17,6 +17,11 @@ import {
 } from './card-pay.js';
 import { googlePayLoadInfo } from './google-pay.js';
 import {
+    runCreatePaymentLink,
+    runDisableLink,
+    runLinkStatus,
+} from './links.js';
+import {
     clearCharge,
     runCharge,
     runCreatePayment,
@@ -24,6 +29,13 @@ import {
     runGetPaymentStatus,
     runQRPaymentInfo,
 } from './payments.js';
+import {
+    runCreateRecurrence,
+    runRecurrenceNext,
+    runRecurrenceStatus,
+    runStartRecurrence,
+    runStopRecurrence,
+} from './recurrences.js';
 import { runDeleteCard, runGetCardDetails } from './saved-cards.js';
 import { clientId, clientSecret, goid, sdk } from './sdk.js';
 
@@ -34,7 +46,14 @@ if (clientId) document.getElementById('auth-client-id').value = clientId;
 if (clientSecret)
     document.getElementById('auth-client-secret').value = clientSecret;
 if (goid) {
-    document.getElementById('create-goid').value = goid;
+    for (const fieldId of [
+        'create-goid',
+        'rec-create-goid',
+        'link-create-goid',
+    ]) {
+        const el = document.getElementById(fieldId);
+        if (el) el.value = goid;
+    }
 }
 
 // -----------------------------------------------------------------------
@@ -126,3 +145,11 @@ window.runGetPaymentStatus = runGetPaymentStatus;
 window.runGetChargeState = runGetChargeState;
 window.runGetCardDetails = runGetCardDetails;
 window.runDeleteCard = runDeleteCard;
+window.runCreateRecurrence = runCreateRecurrence;
+window.runRecurrenceStatus = runRecurrenceStatus;
+window.runStartRecurrence = runStartRecurrence;
+window.runRecurrenceNext = runRecurrenceNext;
+window.runStopRecurrence = runStopRecurrence;
+window.runCreatePaymentLink = runCreatePaymentLink;
+window.runLinkStatus = runLinkStatus;
+window.runDisableLink = runDisableLink;
