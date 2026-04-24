@@ -8,12 +8,12 @@ export default defineConfig({
         ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ],
     use: {
-        baseURL: 'https://localhost:3000',
+        baseURL: 'https://localhost:8080',
         ignoreHTTPSErrors: true,
     },
     webServer: {
         command: 'yarn workspace gopay-js-sdk-example run dev',
-        url: 'https://localhost:3000',
+        url: 'https://localhost:8080',
         ignoreHTTPSErrors: true,
         reuseExistingServer: !process.env.CI,
         timeout: 60_000,
