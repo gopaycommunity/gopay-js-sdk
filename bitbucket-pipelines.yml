@@ -142,6 +142,7 @@ definitions:
         services:
           - docker2x
         script:
+          - ./scripts/bitbucket-config.sh
           - docker build -t repo.gopay.com/gopay/gp-gw-js-sdk-example:latest .
 
 pipelines:
