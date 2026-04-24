@@ -3,14 +3,16 @@ import { sdk } from './sdk.js';
 
 function prefillLinkId(result) {
     const id = result?.id;
-    if (!id) return;
     for (const fieldId of ['link-status-id', 'link-disable-id']) {
         const el = document.getElementById(fieldId);
-        if (el) el.value = id;
+        if (el) {
+            el.value = id ?? '';
+            el.disabled = !id;
+        }
     }
     const urlEl = document.getElementById('link-create-url');
     if (urlEl) {
-        if (result.url) {
+        if (id && result.url) {
             urlEl.href = result.url;
             urlEl.textContent = result.url;
             urlEl.setAttribute('aria-label', result.url);
