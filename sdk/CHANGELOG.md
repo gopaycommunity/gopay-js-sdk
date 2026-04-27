@@ -1,3 +1,31 @@
+# [1.3.0](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/v1.2.0...v1.3.0) (2026-04-27)
+
+
+### Bug Fixes
+
+* add example page docker image GPOMA-2252 ([a590793](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a590793fe473cd096a6b919288c7adf1a14f5e57))
+* allow iframe origin GPOMA-2252 ([4681791](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4681791d7bb256111999cbcddbade4a85a8625f2))
+* button color GPOMA-2252 ([537ee46](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/537ee466bd27f2da5e5a53a5265fa41ed6987494))
+* check for login info before attempting login GPOMA-2252 ([ce2c66b](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ce2c66b8776920d85097963e0a1df35f3333f458))
+* check for login info before attempting login GPOMA-2252 ([8e4a3e3](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8e4a3e354cb71c8f024ca1d68a02b3efcb118e72))
+* check linkId GPOMA-2252 ([c61e14b](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c61e14b8b8af07437febc40d2f8f65fee631ef3e))
+* clear client secret when setting clientId GPOMA-2252 ([b55bd7f](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b55bd7f7f106a04af72c5d8ceb3d8419eef3f987))
+* clear tokens when setting client secret GPOMA-2252 ([64f59fb](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/64f59fbc5d2a4bbd367c31b1006353d17222809c))
+* example logged-in badge lifecycle GPOMA-2252 ([a77e630](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a77e630895389ce25365883263a5c228edd32786))
+* input validation in example GPOMA-2252 ([3a7a63d](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3a7a63da82db500378154e535731956a209b65a5))
+* move function to upper scope GPOMA-2252 ([0e42144](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0e42144b6fe1176eda417dc8d1ff52ea4eeb29ae))
+* playwright server port GPOMA-2252 ([1f77ffa](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1f77ffa8c39cadf7a28d29f8a129cb6f4bda735e))
+* prevent example button inactive state GPOMA-2252 ([8642e75](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8642e75b543b64dc5839ff4448f0036ce3efce32))
+* replace class with function expression GPOMA-2252 ([32c0246](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/32c0246abe0921035ee0e8ad0f413fc33844c124))
+* serve extensionless files also GPOMA-2252 ([4df1c9e](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4df1c9e06e440c95a7b551fd183095bfe420c2a7))
+* update packages GPOMA-2252 ([9f85ac7](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9f85ac7728d964cf40291d78f0be144f170ca581))
+* use less memory for docker GPOMA-2252 ([25e0561](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/25e0561a8ffecc68f92e43a2eac466efdd5799e0))
+
+
+### Features
+
+* add recurrences GPOMA-2252 ([c17b959](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c17b95923debc72deaa73973df9ac6382cea2c9b))
+
 # [1.2.0](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/v1.1.0...v1.2.0) (2026-04-17)
 
 
