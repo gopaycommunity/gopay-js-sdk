@@ -1,3 +1,11 @@
+## [1.3.1](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/v1.3.0...v1.3.1) (2026-04-27)
+
+
+### Bug Fixes
+
+* make version artifact GPOMA-2252 ([f292d15](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/f292d15639b859dec14c171c5da9bfca247bf8ae))
+* update packages GPOMA-2252 ([99886ba](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/99886baf03b3c67bb7faf4c2d12e6ccc23b749e9))
+
 # [1.3.0](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/v1.2.0...v1.3.0) (2026-04-27)
 
 
