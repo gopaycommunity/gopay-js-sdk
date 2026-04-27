@@ -68,7 +68,7 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          - cd sdk && yarn dlx semantic-release --dry-run --no-ci
+          - (cd sdk && yarn dlx semantic-release --dry-run --no-ci)
 
     - step: &build
         name: Build SDK
@@ -109,7 +109,7 @@ definitions:
           # semantic-release: bumps version, tags commit, updates CHANGELOG
           # npm publish is currently disabled (npmPublish: false in release.config.cjs)
           # Bitbucket Pipelines implicit auth handles the git push back to repo
-          - cd sdk && yarn dlx semantic-release
+          - (cd sdk && yarn dlx semantic-release)
           - npm pkg get version --prefix sdk | tr -d '"' > version
         artifacts:
           - version
