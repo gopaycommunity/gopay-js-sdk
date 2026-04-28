@@ -1,3 +1,12 @@
+## [1.3.2](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.3.1...1.3.2) (2026-04-28)
+
+
+### Bug Fixes
+
+* docker image path GPOMA-2270 ([77d7b86](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/77d7b8693fb888590562fdd1b3b6b8392436d178))
+* don't put example in the docker name since i't only one docker GPOMA-2270 ([58c6afe](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/58c6afe3e06758627e5b5ced67eb31d273436c1f))
+* version tags without v GPOMA-2270 ([78023d7](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/78023d79088e94c1ffd9780b86796ddf9c9cc744))
+
 ## [1.3.1](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/v1.3.0...v1.3.1) (2026-04-27)
 
 
