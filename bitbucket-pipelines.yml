@@ -134,7 +134,7 @@ definitions:
           - VERSION=$(cat version)
           - IMAGE="repo.gopay.com/gp-gw-js-sdk:$VERSION"
           - IMAGE_NOT_EXISTS=true; docker pull "$IMAGE" > /dev/null 2>&1 && IMAGE_NOT_EXISTS=false
-          - if [ "$IMAGE_NOT_EXISTS" = true ]; then (docker build . -t "$IMAGE" && docker push "$IMAGE"); fi
+          - if [ "$IMAGE_NOT_EXISTS" = true ]; then (docker build --build-arg SDK_VERSION="$VERSION" . -t "$IMAGE" && docker push "$IMAGE"); fi
 
     - step: &docker-build-dry-run
         name: Build example Docker image (dry-run)
@@ -143,7 +143,7 @@ definitions:
           - docker2x
         script:
           - ./scripts/bitbucket-config.sh
-          - docker build -t repo.gopay.com/gp-gw-js-sdk:latest .
+          - docker build --build-arg SDK_VERSION=dev . -t repo.gopay.com/gp-gw-js-sdk:latest
 
 pipelines:
   branches:

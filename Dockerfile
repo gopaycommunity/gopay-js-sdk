@@ -24,7 +24,9 @@ FROM repo.gopay.com/base/node-24:1.0.0
 
 WORKDIR /app
 
+ARG SDK_VERSION=dev
 ENV NODE_ENV=production
+ENV SDK_VERSION=$SDK_VERSION
 
 COPY --from=builder /app/example/dist ./dist
 COPY --from=builder /app/example/serve.js ./serve.js

@@ -1,4 +1,4 @@
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,12 @@ const mime = {
 };
 
 createServer((req, res) => {
+    if (req.url === '/version') {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end(process.env.SDK_VERSION ?? 'dev');
+        return;
+    }
+
     if (req.url === '/env.js') {
         res.writeHead(200, { 'Content-Type': 'application/javascript' });
         res.end(
@@ -28,7 +34,7 @@ createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     let file = join(dist, url.pathname);
 
-    if (!existsSync(file)) {
+    if (!existsSync(file) || statSync(file).isDirectory()) {
         // Only fall back to index.html for extensionless paths (SPA routes).
         // Missing assets (e.g. .js, .css) get a 404 to avoid masking build errors.
         if (extname(file)) {
