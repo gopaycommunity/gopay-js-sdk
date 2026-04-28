@@ -1,6 +1,8 @@
 /** @type {import('semantic-release').GlobalConfig} */
 module.exports = {
     branches: ['master'],
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release template, not JS
+    tagFormat: '${version}',
     plugins: [
         // Analyze commits to determine version bump (feat → minor, fix → patch, BREAKING CHANGE → major)
         '@semantic-release/commit-analyzer',
