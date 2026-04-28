@@ -132,7 +132,7 @@ definitions:
         script:
           - ./scripts/bitbucket-config.sh
           - VERSION=$(cat version)
-          - IMAGE="repo.gopay.com/gopay/gp-gw-js-sdk-example:$VERSION"
+          - IMAGE="repo.gopay.com/gp-gw-js-sdk-example:$VERSION"
           - IMAGE_NOT_EXISTS=true; docker pull "$IMAGE" > /dev/null 2>&1 && IMAGE_NOT_EXISTS=false
           - if [ "$IMAGE_NOT_EXISTS" = true ]; then (docker build . -t "$IMAGE" && docker push "$IMAGE"); fi
 
@@ -143,7 +143,7 @@ definitions:
           - docker2x
         script:
           - ./scripts/bitbucket-config.sh
-          - docker build -t repo.gopay.com/gopay/gp-gw-js-sdk-example:latest .
+          - docker build -t repo.gopay.com/gp-gw-js-sdk-example:latest .
 
 pipelines:
   branches:
