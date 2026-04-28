@@ -1,3 +1,10 @@
+## [1.3.3](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.3.2...1.3.3) (2026-04-28)
+
+
+### Bug Fixes
+
+* add /version endpoint GPOMA-2270 ([d62e900](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d62e900d7c62436701b02a80b99a7af8ca13b993))
+
 ## [1.3.2](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.3.1...1.3.2) (2026-04-28)
 
 
