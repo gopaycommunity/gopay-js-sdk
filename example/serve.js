@@ -25,7 +25,10 @@ const server = createServer((req, res) => {
     // When deployed behind a reverse proxy that does NOT strip the base path
     // prefix (e.g. /gp-gw-js-sdk), normalise the incoming URL so the rest of
     // the handler can treat it as a root-relative path.
-    if (basePath && reqUrl.startsWith(basePath)) {
+    if (
+        basePath &&
+        (reqUrl === basePath || reqUrl.startsWith(`${basePath}/`))
+    ) {
         reqUrl = reqUrl.slice(basePath.length) || '/';
     }
 
