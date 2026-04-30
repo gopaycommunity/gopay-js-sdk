@@ -17,6 +17,7 @@ COPY example/ example/
 # Build SDK first (example workspace:* dep resolves via dist/)
 RUN yarn workspace gopay-js-sdk run build
 
+ENV GP_BASE_PATH=/gp-gw-js-sdk/
 RUN yarn workspace gopay-js-sdk-example run build
 
 # Production stage
@@ -27,6 +28,8 @@ WORKDIR /app
 ARG SDK_VERSION=dev
 ENV NODE_ENV=production
 ENV SDK_VERSION=$SDK_VERSION
+# Baked into the Vite build — do not override at runtime.
+ENV GP_BASE_PATH=/gp-gw-js-sdk/
 
 COPY --from=builder /app/example/dist ./dist
 COPY --from=builder /app/example/serve.js ./serve.js
