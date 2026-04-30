@@ -19,7 +19,7 @@ const mime = {
     '.woff2': 'font/woff2',
 };
 
-createServer((req, res) => {
+const server = createServer((req, res) => {
     let reqUrl = req.url ?? '/';
 
     // When deployed behind a reverse proxy that does NOT strip the base path
@@ -60,4 +60,10 @@ createServer((req, res) => {
     const type = mime[extname(file)] ?? 'application/octet-stream';
     res.writeHead(200, { 'Content-Type': type });
     createReadStream(file).pipe(res);
-}).listen(port, () => console.log(`Serving on http://localhost:${port}`));
+});
+
+const shutdown = () => server.close(() => process.exit(0));
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+
+server.listen(port, () => console.log(`Serving on http://localhost:${port}`));
