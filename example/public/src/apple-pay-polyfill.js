@@ -8,7 +8,7 @@
  * DO NOT ship this in production — it is a development-only stub.
  */
 // Always run — exposes MockApplePaySession on window for the dev mock button.
-// Also sets window.ApplePaySession when no native implementation is present.
+// Native window.ApplePaySession is left untouched; use MockApplePaySession explicitly for dev testing.
 (() => {
     // -------------------------------------------------------------------------
     // Modal helpers
@@ -223,6 +223,7 @@
             document.getElementById('ap-polyfill-pay').addEventListener(
                 'click',
                 () => {
+                    if (!this._modal) return; // aborted before click was processed
                     setButtonsEnabled(false);
                     showStatus('Authorising payment…');
                     if (typeof this.onpaymentauthorized === 'function') {
