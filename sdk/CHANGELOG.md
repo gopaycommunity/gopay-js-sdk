@@ -1,3 +1,16 @@
+## [1.3.4](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.3.3...1.3.4) (2026-04-30)
+
+
+### Bug Fixes
+
+* docker handle sigint as well as sigterm GPOMA-2270 ([f05fb97](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/f05fb97ae727f5dc8420255b12dda6593219f93e))
+* improve applepay cancel lifecycle GPOMA-2270 ([8964a7e](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8964a7e22e8489cf1f5cf472787d1322440cc1ec))
+* improve server url matching and shutdown GPOMA-2270 ([7c81cff](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/7c81cfff661684bc60de25242d04084e410db1f4))
+* lint GPOMA-2270 ([5dbc252](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5dbc2528b6050f0c0f0d9ae25991579f8a9b0239))
+* update apple polyfill comment GPOMA-2270 ([1ab1a40](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1ab1a400ae3d17e18ec8fef356c0721b7867874f))
+* use base path when docker is deployed behind a reverse proxy GPOMA-2270 ([99a25ac](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/99a25acb7e99037c5ae3931df0a8dfe4cf7a2fc1))
+* use base path when docker is deployed behind a reverse proxy GPOMA-2270 ([cfb4b23](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/cfb4b23205489986571b212dfa2f196ac46801f0))
+
 ## [1.3.3](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.3.2...1.3.3) (2026-04-28)
 
 
