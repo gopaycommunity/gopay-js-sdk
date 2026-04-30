@@ -5,7 +5,8 @@
  * Simulates the ApplePaySession lifecycle so the full flow can be exercised in
  * Chrome, Firefox, etc. during development and testing.
  *
- * DO NOT ship this in production — it is a development-only stub.
+ * DO NOT use this for real payments — it produces a fake token that will never
+ * result in an actual charge. For developer testing only.
  */
 // Always run — exposes MockApplePaySession on window for the dev mock button.
 // Native window.ApplePaySession is left untouched; use MockApplePaySession explicitly for dev testing.
