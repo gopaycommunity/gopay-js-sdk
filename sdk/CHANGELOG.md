@@ -1,3 +1,10 @@
+## [1.3.5](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.3.4...1.3.5) (2026-04-30)
+
+
+### Bug Fixes
+
+* force vite to rewrite env.js reference to base path GPOMA-2270 ([898227e](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/898227e0a2c229b50ebb7f23b642bd5f422baaa4))
+
 ## [1.3.4](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.3.3...1.3.4) (2026-04-30)
 
 
