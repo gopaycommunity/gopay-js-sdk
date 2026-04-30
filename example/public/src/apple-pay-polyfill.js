@@ -132,13 +132,17 @@
 
     function showStatus(text) {
         const el = document.getElementById('ap-polyfill-status');
-        if (el) el.textContent = text;
+        if (el) {
+            el.textContent = text;
+        }
     }
 
     function setButtonsEnabled(enabled) {
         ['ap-polyfill-pay', 'ap-polyfill-cancel'].forEach((id) => {
             const btn = document.getElementById(id);
-            if (btn) btn.disabled = !enabled;
+            if (btn) {
+                btn.disabled = !enabled;
+            }
         });
     }
 
@@ -211,8 +215,9 @@
                 .getElementById('ap-polyfill-cancel')
                 .addEventListener('click', () => {
                     this.abort();
-                    if (typeof this.oncancel === 'function')
+                    if (typeof this.oncancel === 'function') {
                         this.oncancel({ code: 'USER_CANCEL' });
+                    }
                 });
         }
 
@@ -224,7 +229,9 @@
             document.getElementById('ap-polyfill-pay').addEventListener(
                 'click',
                 () => {
-                    if (!this._modal) return; // aborted before click was processed
+                    if (!this._modal) {
+                        return;
+                    } // aborted before click was processed
                     setButtonsEnabled(false);
                     showStatus('Authorising payment…');
                     if (typeof this.onpaymentauthorized === 'function') {
