@@ -14,6 +14,7 @@ const hasMkcert = existsSync(certKey) && existsSync(certFile);
 
 export default defineConfig(() => {
     return {
+        // Vite requires a trailing slash; serve.js strips it for prefix matching.
         base: process.env.GP_BASE_PATH ?? '/',
         envDir: resolve(repoRoot, 'sdk'),
         envPrefix: 'GP_GW_JS_SDK_',

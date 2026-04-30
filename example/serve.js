@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 const dist = resolve(fileURLToPath(import.meta.url), '..', 'dist');
 const port = process.env.PORT ?? 8080;
 
-// Strip trailing slash so both '/gp-gw-js-sdk' and '/gp-gw-js-sdk/' work.
+// Normalise to no trailing slash for string prefix matching below.
+// vite.config.ts reads the same env var and passes it directly to Vite's `base`,
+// which expects a trailing slash — the two usages are intentionally different.
 const basePath = (process.env.GP_BASE_PATH ?? '').replace(/\/$/, '');
 
 const mime = {
@@ -20,25 +22,25 @@ const mime = {
 };
 
 const server = createServer((req, res) => {
-    let reqUrl = req.url ?? '/';
+    const url = new URL(req.url ?? '/', 'http://localhost');
 
     // When deployed behind a reverse proxy that does NOT strip the base path
-    // prefix (e.g. /gp-gw-js-sdk), normalise the incoming URL so the rest of
+    // prefix (e.g. /gp-gw-js-sdk), normalise the pathname so the rest of
     // the handler can treat it as a root-relative path.
     if (
         basePath &&
-        (reqUrl === basePath || reqUrl.startsWith(`${basePath}/`))
+        (url.pathname === basePath || url.pathname.startsWith(`${basePath}/`))
     ) {
-        reqUrl = reqUrl.slice(basePath.length) || '/';
+        url.pathname = url.pathname.slice(basePath.length) || '/';
     }
 
-    if (reqUrl === '/version') {
+    if (url.pathname === '/version') {
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         res.end(process.env.SDK_VERSION ?? 'dev');
         return;
     }
 
-    if (reqUrl === '/env.js') {
+    if (url.pathname === '/env.js') {
         res.writeHead(200, { 'Content-Type': 'application/javascript' });
         res.end(
             `window._gpConfig = ${JSON.stringify({ baseUrl: process.env.GP_GW_JS_SDK_BASE_URL ?? null })};`,
@@ -46,7 +48,6 @@ const server = createServer((req, res) => {
         return;
     }
 
-    const url = new URL(reqUrl, 'http://localhost');
     let file = join(dist, url.pathname);
 
     if (!existsSync(file) || statSync(file).isDirectory()) {
@@ -65,7 +66,10 @@ const server = createServer((req, res) => {
     createReadStream(file).pipe(res);
 });
 
-const shutdown = () => server.close(() => process.exit(0));
+const shutdown = () => {
+    server.closeIdleConnections();
+    server.close(() => process.exit(0));
+};
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
