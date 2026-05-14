@@ -1,9 +1,8 @@
-import type { HttpClient } from '../../http/client.js';
+import type { HttpClient } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type LinkCreateRequest = components['schemas']['Link-Create-Request'];
-type LinkDetails =
-    components['responses']['Link-Create-Response']['content']['application/json'];
+type LinkDetails = components['schemas']['Link-Details'];
 
 function requireLinkId(linkId: string): void {
     if (!linkId || linkId.trim().length === 0) {
@@ -15,7 +14,7 @@ export function createLinksApi(client: HttpClient) {
     return {
         /**
          * Create a payment link.
-         * Requires the `payment:create` OAuth2 scope.
+         * Requires the `payment:write` OAuth2 scope.
          *
          * POST /eshops/{goid}/links
          *
@@ -31,10 +30,7 @@ export function createLinksApi(client: HttpClient) {
 
         /**
          * Link status.
-         * Requires the `payment:create` OAuth2 scope.
-         *
-         * Note: this endpoint uses the `payment:create` scope (not a read scope) — this
-         * matches the spec and is intentional on the server side.
+         * Requires the `payment:read` OAuth2 scope.
          *
          * GET /links/{link_id}
          *
@@ -47,7 +43,7 @@ export function createLinksApi(client: HttpClient) {
 
         /**
          * Disable a link.
-         * Requires the `payment:create` OAuth2 scope.
+         * Requires the `payment:write` OAuth2 scope.
          *
          * DELETE /links/{link_id}
          *

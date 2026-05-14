@@ -4,11 +4,14 @@
     "packageManager": "yarn@4.13.0",
     "workspaces": [
         "sdk",
+        "browser-sdk",
+        "internal/*",
         "example"
     ],
     "scripts": {
         "lint": "biome check .",
-        "ci": "yarn biome ci . && yarn workspace gopay-js-sdk run typecheck && yarn workspace gopay-js-sdk run check:circular && yarn workspace gopay-js-sdk run check:exports",
+        "ci": "yarn biome ci . && yarn workspace gopay-js-sdk run typecheck && yarn workspace gopay-js-sdk run check:circular && yarn workspace gopay-js-sdk run check:exports && yarn workspace gopay-js-sdk-browser run typecheck && yarn workspace gopay-js-sdk-browser run check:circular && yarn workspace gopay-js-sdk-browser run check:exports",
+        "codegen": "yarn workspace @gopay-internal/core run codegen",
         "prepare": "husky",
         "test:e2e": "playwright test",
         "example": "yarn workspace gopay-js-sdk run build && yarn workspace gopay-js-sdk-example run dev",

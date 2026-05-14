@@ -18,9 +18,15 @@
 //     Call paymentResponse.complete('success'/'fail') after charging.
 //
 //   Path C — Dev mock (apple-pay-polyfill.js):
-//     A polyfill replaces ApplePaySession in non-Safari browsers for local testing.
-//     It simulates the full session lifecycle with a stub token.
+//     The polyfill adds window.MockApplePaySession (it does not touch window.ApplePaySession).
+//     It simulates the full session lifecycle with a stub token for local testing.
 
+import {
+    buildApplePayPaymentMethod,
+    buildPaymentDetails,
+    extractApplePayInstrument,
+    renderApplePayButtons,
+} from './apple-pay-shared.js';
 import { formatError, prefillCharge } from './helpers.js';
 import { sdk } from './sdk.js';
 
@@ -48,88 +54,13 @@ export async function applePayLoadInfo() {
         return;
     }
 
-    // Mock button — always shown, uses the polyfill stub
-    if (window.MockApplePaySession) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.id = 'applepay-mock-btn';
-        btn.textContent = ' Pay (Mock — dev only)';
-        btn.style.background = '#856404';
-        btn.onclick = () => applePayBeginSession(window.MockApplePaySession);
-        container.appendChild(btn);
-
-        // Official Apple Pay button (Apple Pay JS SDK web component)
-        const appleBtn = document.createElement('apple-pay-button');
-        appleBtn.setAttribute('buttonstyle', 'black');
-        appleBtn.setAttribute('type', 'buy');
-        appleBtn.setAttribute('locale', 'en-US');
-        appleBtn.onclick = () => applePayBeginSession(window.ApplePaySession);
-        container.appendChild(appleBtn);
-    }
-
-    // PaymentRequest (cross-device QR) button — only on non-Apple browsers.
-    // On Safari/WebKit, PaymentRequest just opens the same native sheet as ApplePaySession.
-    if (
-        !window.ApplePaySession &&
-        (await supportsPaymentRequestApplePay(_applePayInfo))
-    ) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = ' Pay (QR code)';
-        Object.assign(btn.style, {
-            background: '#1a1a2e',
-            color: '#fff',
-            borderRadius: '6px',
-            padding: '0.5rem 1.5rem',
-            fontSize: '1rem',
-            fontWeight: '600',
-            letterSpacing: '-0.3px',
-            border: 'none',
-            cursor: 'pointer',
-        });
-        btn.onclick = applePayPaymentRequestFlow;
-        container.appendChild(btn);
-    }
-}
-
-function buildApplePayPaymentMethod(info) {
-    const pr = info.applePayPaymentRequest;
-    return {
-        supportedMethods: 'https://apple.com/apple-pay',
-        data: {
-            version: info.applepayVersion,
-            merchantIdentifier: info.merchantIdentifier,
-            merchantCapabilities: pr.merchantCapabilities,
-            supportedNetworks: pr.supportedNetworks,
-            countryCode: pr.countryCode,
-        },
-    };
-}
-
-function buildPaymentDetails(info) {
-    const pr = info.applePayPaymentRequest;
-    return {
-        total: {
-            label: pr.total.label,
-            amount: {
-                currency: pr.currencyCode,
-                value: String(pr.total.amount),
-            },
-        },
-    };
-}
-
-async function supportsPaymentRequestApplePay(info) {
-    if (!window.PaymentRequest) return false;
-    try {
-        const req = new PaymentRequest(
-            [buildApplePayPaymentMethod(info)],
-            buildPaymentDetails(info),
-        );
-        return await req.canMakePayment();
-    } catch {
-        return false;
-    }
+    await renderApplePayButtons({
+        container,
+        info: _applePayInfo,
+        mockButtonId: 'applepay-mock-btn',
+        onBeginSession: applePayBeginSession,
+        onPaymentRequestFlow: applePayPaymentRequestFlow,
+    });
 }
 
 async function applePayPaymentRequestFlow() {
@@ -149,13 +80,10 @@ async function applePayPaymentRequestFlow() {
         return;
     }
 
-    const { data, signature, version, header } =
-        paymentResponse.details.token.paymentData;
+    const instrument = extractApplePayInstrument(
+        paymentResponse.details.token.paymentData,
+    );
     const returnUrl = document.getElementById('charge-return-url').value.trim();
-    const instrument = {
-        payment_instrument: 'PAYMENT_CARD',
-        input: { input_type: 'APPLE_PAY', data, signature, version, header },
-    };
     prefillCharge(_applePaymentId, instrument);
     try {
         const charge = await sdk.chargePayment(_applePaymentId, {
@@ -184,21 +112,12 @@ function applePayBeginSession(SessionClass = window.ApplePaySession) {
 
     session.onpaymentauthorized = async (event) => {
         pre.textContent += '\n\n── onpaymentauthorized ──';
-        const { data, signature, version, header } =
-            event.payment.token.paymentData;
+        const instrument = extractApplePayInstrument(
+            event.payment.token.paymentData,
+        );
         const returnUrl = document
             .getElementById('charge-return-url')
             .value.trim();
-        const instrument = {
-            payment_instrument: 'PAYMENT_CARD',
-            input: {
-                input_type: 'APPLE_PAY',
-                data,
-                signature,
-                version,
-                header,
-            },
-        };
         prefillCharge(_applePaymentId, instrument);
         try {
             const charge = await sdk.chargePayment(_applePaymentId, {

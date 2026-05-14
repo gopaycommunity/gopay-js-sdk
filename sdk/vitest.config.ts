@@ -46,6 +46,24 @@ function loadDotEnv(path: string): Record<string, string> {
 }
 
 export default defineConfig({
+    resolve: {
+        alias: [
+            {
+                find: '@gopay-internal/core/types/generated.js',
+                replacement: resolve(
+                    import.meta.dirname,
+                    '../internal/core/src/types/generated.ts',
+                ),
+            },
+            {
+                find: '@gopay-internal/core',
+                replacement: resolve(
+                    import.meta.dirname,
+                    '../internal/core/src/index.ts',
+                ),
+            },
+        ],
+    },
     test: {
         exclude: [...defaultExclude, 'tests/browser/**'],
         pool: 'forks',

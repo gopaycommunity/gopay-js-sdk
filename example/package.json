@@ -9,7 +9,8 @@
         "cert:check": "mkcert -CAROOT >/dev/null 2>&1 && security find-certificate -c mkcert -a 2>/dev/null | grep -q keychain && echo 'OK' || echo 'NOT INSTALLED'"
     },
     "dependencies": {
-        "gopay-js-sdk": "workspace:*"
+        "gopay-js-sdk": "workspace:*",
+        "gopay-js-sdk-browser": "workspace:*"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.2.4",

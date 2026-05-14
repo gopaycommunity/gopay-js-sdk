@@ -1,14 +1,12 @@
-import type { HttpClient } from '../../http/client.js';
+import type { HttpClient } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type RecurrenceCreateRequest =
     components['schemas']['Recurrence-Create-Request'];
-type RecurrenceDetails =
-    components['responses']['Recurrence-Details-Response']['content']['application/json'];
+type RecurrenceDetails = components['schemas']['Recurrence-Details'];
 type RecurrenceNextBody =
     components['requestBodies']['Recurrence-Next-Request']['content']['application/json'];
-type PaymentDetails =
-    components['responses']['Payment-Status-Response']['content']['application/json'];
+type PaymentDetails = components['schemas']['Payment-Details'];
 
 function requireRecId(recId: string): void {
     if (!recId) {
@@ -20,7 +18,7 @@ export function createRecurrencesApi(client: HttpClient) {
     return {
         /**
          * Create a recurrence.
-         * Requires the `payment:create` OAuth2 scope.
+         * Requires the `payment:write` OAuth2 scope.
          *
          * POST /eshops/{goid}/recurrences
          *
@@ -52,7 +50,7 @@ export function createRecurrencesApi(client: HttpClient) {
 
         /**
          * Stop a recurrence.
-         * Requires the `payment:create` OAuth2 scope.
+         * Requires the `payment:write` OAuth2 scope.
          *
          * DELETE /recurrences/{rec_id}
          *
@@ -66,7 +64,7 @@ export function createRecurrencesApi(client: HttpClient) {
         /**
          * Start a recurrence.
          * Triggers the first charge of a recurrence that is in the `NEW` state.
-         * Requires the `payment:create` OAuth2 scope.
+         * Requires the `payment:write` OAuth2 scope.
          *
          * POST /recurrences/{rec_id}/start
          *
@@ -87,7 +85,7 @@ export function createRecurrencesApi(client: HttpClient) {
         /**
          * Create a next payment for a recurrence.
          * Charges the next instalment for a recurrence that is already `STARTED`.
-         * Requires the `payment:create` OAuth2 scope.
+         * Requires the `payment:write` OAuth2 scope.
          *
          * POST /recurrences/{rec_id}/next
          *

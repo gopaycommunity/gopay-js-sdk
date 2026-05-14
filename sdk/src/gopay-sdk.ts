@@ -1,5 +1,5 @@
+import { createHttpClient } from '@gopay-internal/core';
 import type { GoPayConfig } from './config.js';
-import { createHttpClient } from './http/client.js';
 import { createAuthApi } from './modules/auth/auth.module.js';
 import { createCardsApi } from './modules/cards/cards.module.js';
 import { createLinksApi } from './modules/links/links.module.js';
@@ -7,20 +7,13 @@ import { createPaymentsApi } from './modules/payments/payments.module.js';
 import { createRecurrencesApi } from './modules/recurrences/recurrences.module.js';
 
 /**
- * Create a GoPay SDK instance.
- *
- * Browser (IIFE):
- * ```html
- * <script src="https://gopaycdn.com/js-sdk/gopay-sdk.min.js"></script>
- * <script>
- *   const sdk = GoPaySDK.createGoPaySDK({ environment: 'sandbox' });
- * </script>
- * ```
+ * Create a GoPay server-side SDK instance.
  *
  * ESM / CommonJS:
  * ```ts
  * import { createGoPaySDK } from 'gopay-js-sdk';
  * const sdk = createGoPaySDK({ environment: 'sandbox' });
+ * await sdk.authenticate({ grant_type: 'client_credentials', client_id: '...', client_secret: '...', scope: '...' });
  * ```
  */
 export function createGoPaySDK(config: GoPayConfig = {}) {

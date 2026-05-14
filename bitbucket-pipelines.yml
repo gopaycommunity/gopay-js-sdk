@@ -36,9 +36,12 @@ definitions:
           - corepack enable
           - yarn install --immutable
           - yarn workspace gopay-js-sdk run test
+          - yarn workspace gopay-js-sdk-browser run test
         artifacts:
           - sdk/coverage/**
           - sdk/test-results/**
+          - browser-sdk/coverage/**
+          - browser-sdk/test-results/**
 
     - step: &sonar
         name: Analyze on SonarCloud
@@ -53,11 +56,11 @@ definitions:
               SONAR_SCANNER_OPTS: -Xmx2560m
               EXTRA_ARGS: -Dsonar.projectKey=gp-gopay_gp-gw-js-sdk
                 -Dsonar.organization=gp-gopay
-                -Dsonar.sources=sdk/src
+                -Dsonar.sources=sdk/src,browser-sdk/src
                 -Dsonar.tests=sdk/tests
-                -Dsonar.inclusions=sdk/src/**/*.ts
-                -Dsonar.exclusions=**/*.spec.ts,**/*.test.ts,sdk/src/types/generated.ts
-                -Dsonar.javascript.lcov.reportPaths=sdk/coverage/lcov.info
+                -Dsonar.inclusions=sdk/src/**/*.ts,browser-sdk/src/**/*.ts
+                -Dsonar.exclusions=**/*.spec.ts,**/*.test.ts,sdk/src/types/generated.ts,browser-sdk/src/types/generated.ts
+                -Dsonar.javascript.lcov.reportPaths=sdk/coverage/lcov.info,browser-sdk/coverage/lcov.info
           - pipe: sonarsource/sonarcloud-quality-gate:0.2.0
 
     - step: &release-preview
@@ -79,8 +82,10 @@ definitions:
           - corepack enable
           - yarn install --immutable
           - yarn workspace gopay-js-sdk run build
+          - yarn workspace gopay-js-sdk-browser run build
         artifacts:
           - sdk/dist/**
+          - browser-sdk/dist/**
  
     - step: &test-playwright
         name: Browser smoke test (IIFE)

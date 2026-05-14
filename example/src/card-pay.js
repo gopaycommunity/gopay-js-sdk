@@ -1,29 +1,13 @@
-// Card payment via iframe tokenization — two steps:
-//
-// Step 1: call sdk.mountCardForm(container) to inject GoPay's card-entry iframe into
-//   a container element on your page. The SDK fetches the hosted iframe URL automatically
-//   from GET /encryption/card-form-url. The returned promise resolves when the customer
-//   submits the form (or rejects if they cancel / an error occurs).
-//
-// Step 2: mountCardForm resolves with { token, ... }. Pass the token to sdk.chargePayment()
-//   as input_type: 'CARD_TOKEN'. The raw card number never touches your server.
-//
-// Example:
-//   const cardForm = await sdk.mountCardForm(container);
-//   const { token } = await cardForm.result;
-//   await sdk.chargePayment(paymentId, {
-//     payment_instrument: { payment_instrument: 'PAYMENT_CARD', input: { input_type: 'CARD_TOKEN', card_token: token } },
-//     return_url: 'https://yourshop.example.com/return',
-//   });
-
-import { DARK_CARD_FORM_THEME, DEFAULT_CARD_FORM_THEME } from 'gopay-js-sdk';
-import { formatError, prefillCharge } from './helpers.js';
-import { sdk } from './sdk.js';
+import {
+    DARK_CARD_FORM_THEME,
+    DEFAULT_CARD_FORM_THEME,
+} from 'gopay-js-sdk-browser';
+import { getBrowserSDK } from './browser-sdk.js';
+import { formatError, prefillBrowserCharge } from './helpers.js';
 
 let currentLang = 'en';
 let currentTheme = 'default';
 let currentSubmitMode = 'internal';
-let currentPermanent = false;
 let cardFormController = null;
 
 export function cardPaySetLang(lang) {
@@ -74,28 +58,20 @@ export function cardPayExtSubmit() {
     cardFormController?.submit();
 }
 
-export function cardPaySetPermanent(permanent) {
-    currentPermanent = permanent;
-    document
-        .getElementById('cardpay-permanent-off')
-        .classList.toggle('js-btn-inactive', permanent);
-    document
-        .getElementById('cardpay-permanent-on')
-        .classList.toggle('js-btn-inactive', !permanent);
-}
-
 export async function cardPayOpenIframe() {
-    const paymentId = document
-        .getElementById('cardpay-payment-id')
-        .value.trim();
     const pre = document.getElementById('cardpay-output');
     const container = document.getElementById('cardpay-iframe-container');
     const extSubmitBtn = document.getElementById('cardpay-ext-submit');
-
     const extValidIndicator = document.getElementById('cardpay-ext-valid');
 
-    const isExternal = currentSubmitMode === 'external';
+    const browserSdk = getBrowserSDK();
+    if (!browserSdk) {
+        pre.textContent =
+            'Error: Browser SDK not initialized.\nRun auth.getBrowserKeys() or click "Initialize Browser SDK" first.';
+        return;
+    }
 
+    const isExternal = currentSubmitMode === 'external';
     container.style.display = 'block';
 
     if (isExternal) {
@@ -104,7 +80,7 @@ export async function cardPayOpenIframe() {
         extValidIndicator.textContent = 'false';
     }
 
-    pre.textContent = `── Step 1: iframe mounted (submitMode: '${currentSubmitMode}') ──\nPayment ID: ${paymentId || '(none)'}\n\nWaiting for card confirmation in iframe…`;
+    pre.textContent = 'Mounting card form…';
 
     const theme =
         currentTheme === 'dark'
@@ -112,11 +88,11 @@ export async function cardPayOpenIframe() {
             : DEFAULT_CARD_FORM_THEME;
 
     try {
-        cardFormController = await sdk.mountCardForm(container, {
+        cardFormController = await browserSdk.mountCardForm(container, {
+            flow: 'return-payload',
             theme,
             locale: currentLang,
             submitMode: currentSubmitMode,
-            permanent: currentPermanent,
             onValidityChange: isExternal
                 ? (isValid) => {
                       extValidIndicator.textContent = String(isValid);
@@ -129,18 +105,18 @@ export async function cardPayOpenIframe() {
                 : undefined,
         });
 
-        const tokenResult = await cardFormController.result;
+        pre.textContent += '\n\nWaiting for card entry…';
+
+        const result = await cardFormController.result;
         cardFormController = null;
         container.style.display = 'none';
-        pre.textContent += `\n\n── onSuccess (mountCardForm) ──\n${JSON.stringify(tokenResult, null, 2)}`;
-        prefillCharge(paymentId, {
-            payment_instrument: 'PAYMENT_CARD',
-            input: { input_type: 'CARD_TOKEN', card_token: tokenResult.token },
-        });
-        pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
+        pre.textContent += `\n\n── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
+        pre.textContent +=
+            '\n\nEncrypted payload auto-filled in the Browser charge section below.';
+        prefillBrowserCharge(result.encryptedPayload);
     } catch (err) {
         cardFormController = null;
         container.style.display = 'none';
-        pre.textContent += `\n\n── onError (mountCardForm) ──\n${formatError(err)}`;
+        pre.textContent += `\n\n── onError ──\n${formatError(err)}`;
     }
 }

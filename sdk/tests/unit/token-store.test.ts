@@ -1,5 +1,5 @@
+import { createTokenStore } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTokenStore } from '../../src/http/token-store.js';
 
 const pair = {
     access_token: 'at',

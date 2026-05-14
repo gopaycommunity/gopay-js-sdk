@@ -1,7 +1,7 @@
 {
     "name": "gopay-js-sdk",
-    "version": "1.3.5",
-    "description": "GoPay JavaScript SDK for browser and Node.js",
+    "version": "1.3.4",
+    "description": "GoPay JavaScript SDK for server-side use (Node.js)",
     "keywords": [
         "gopay",
         "payment",
@@ -29,15 +29,16 @@
         "src"
     ],
     "scripts": {
-        "build": "tsup",
+        "build": "yarn workspace @gopay-internal/core build && tsup",
         "test": "vitest run --coverage",
         "test:watch": "vitest",
         "typecheck": "tsc --noEmit",
         "check:circular": "madge --circular --extensions ts --ts-config tsconfig.json src/",
         "check:exports": "ts-unused-exports tsconfig.json --excludePathsFromReport='src/index' --ignoreFiles='types/generated'",
-        "codegen": "openapi-typescript ../Payments.yaml -o src/types/generated.ts"
+        "codegen": "yarn workspace @gopay-internal/core run codegen"
     },
     "devDependencies": {
+        "@gopay-internal/core": "workspace:*",
         "@semantic-release/changelog": "^6.0.3",
         "@semantic-release/exec": "^7.1.0",
         "@semantic-release/git": "^10.0.1",

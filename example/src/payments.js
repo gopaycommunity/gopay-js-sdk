@@ -1,11 +1,14 @@
-import { prefillPaymentId, run, show3dsPrompt, state } from './helpers.js';
+import { attachPaymentToSDK, getBrowserSDK } from './browser-sdk.js';
+import {
+    prefillPaymentId,
+    run,
+    show3dsPrompt,
+    state,
+    updateBrowserBadge,
+} from './helpers.js';
+import { renderQRImage } from './qr-render.js';
 import { sdk } from './sdk.js';
 
-// Create a payment — call this from your server after authentication.
-// Returns a payment object with an `id` you'll use for all subsequent steps (charge, Google Pay, etc.).
-// amount is in the smallest currency unit (e.g. 1000 = 10.00 CZK).
-// Example:
-//   const payment = await sdk.createPayment(goid, { amount: 1000, currency: 'CZK', ... });
 export function runCreatePayment() {
     const goid = document.getElementById('create-goid').value.trim();
     const amount = parseInt(document.getElementById('create-amount').value, 10);
@@ -32,7 +35,14 @@ export function runCreatePayment() {
                 customer: { email },
                 callback: { notification_url, return_url },
             }),
-        prefillPaymentId,
+        (result) => {
+            prefillPaymentId(result);
+            if (getBrowserSDK() && result?.id && result?.payment_secret) {
+                attachPaymentToSDK(result.id, result.payment_secret)
+                    .then(() => updateBrowserBadge())
+                    .catch(() => {});
+            }
+        },
     );
 }
 
@@ -63,6 +73,18 @@ export function runGetChargeState() {
 // Example:
 //   const result = await sdk.chargePayment(paymentId, { payment_instrument: instrument, return_url });
 //   if (result.action?.redirect_url) window.location.href = result.action.redirect_url;
+function collectBrowserData() {
+    return {
+        language: navigator.language,
+        timezone: new Date().getTimezoneOffset(),
+        screen_width: screen.width,
+        screen_height: screen.height,
+        color_depth: screen.colorDepth,
+        user_agent: navigator.userAgent,
+        javascript_enabled: true,
+    };
+}
+
 export function runCharge() {
     const paymentId = document.getElementById('charge-payment-id').value.trim();
     const return_url = document
@@ -78,12 +100,17 @@ export function runCharge() {
         },
     };
 
+    const chargeInstrument =
+        instrument?.payment_instrument === 'PAYMENT_CARD'
+            ? { ...instrument, browser_data: collectBrowserData() }
+            : instrument;
+
     run(
         'payment-charge-output',
         () =>
             sdk.chargePayment(paymentId, {
-                payment_instrument: instrument,
-                return_url,
+                payment_instrument: chargeInstrument,
+                ...(return_url && { return_url }),
             }),
         (result) =>
             show3dsPrompt(
@@ -117,27 +144,7 @@ export function runQRPaymentInfo() {
     run(
         'qr-output',
         () => sdk.getQRPaymentInfo(paymentId, format),
-        (result) => {
-            const pre = document.getElementById('qr-output');
-            if (pre.nextElementSibling?.dataset.qrImg)
-                pre.nextElementSibling.remove();
-            const data = result?.qr_code;
-            if (!data) return;
-            const b64 =
-                data.spayd ?? data.paybysquare ?? data.sepa ?? data.mnb_qr;
-            if (!b64) return;
-            const isSvg = format === 'svg';
-            const img = document.createElement('img');
-            img.dataset.qrImg = '1';
-            img.src = isSvg
-                ? `data:image/svg+xml;base64,${b64}`
-                : `data:image/png;base64,${b64}`;
-            Object.assign(img.style, {
-                display: 'block',
-                marginTop: '0.6rem',
-                maxWidth: '200px',
-            });
-            pre.insertAdjacentElement('afterend', img);
-        },
+        (result) =>
+            renderQRImage(document.getElementById('qr-output'), result, format),
     );
 }

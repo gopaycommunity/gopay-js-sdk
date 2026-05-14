@@ -1,5 +1,5 @@
+import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHttpClient } from '../../src/http/client.js';
 import { createLinksApi } from '../../src/modules/links/links.module.js';
 
 const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>

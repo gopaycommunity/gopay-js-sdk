@@ -13,6 +13,12 @@
 // Note: load the Google Pay script in your HTML:
 //   <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
 
+import {
+    createGooglePayButton,
+    ensureGooglePayLoaded,
+    extractGooglePayInstrument,
+    loadGooglePayData,
+} from './google-pay-shared.js';
 import { formatError, prefillCharge } from './helpers.js';
 import { sdk } from './sdk.js';
 
@@ -30,11 +36,7 @@ export async function googlePayLoadInfo() {
     _googlePayInfo = null;
     _googlePaymentId = null;
 
-    if (!window.google) {
-        pre.textContent =
-            'Google Pay script not loaded yet — please wait a moment and try again.';
-        return;
-    }
+    if (!ensureGooglePayLoaded(pre)) return;
 
     pre.textContent = 'Step 1: Fetching Google Pay info…';
     try {
@@ -47,10 +49,7 @@ export async function googlePayLoadInfo() {
     }
 
     // Render the Google Pay button — loadPaymentData must be called directly from its click
-    const paymentsClient = new window.google.payments.api.PaymentsClient({
-        environment: _googlePayInfo.environment,
-    });
-    const btn = paymentsClient.createButton({ onClick: googlePayOpenSheet });
+    const btn = createGooglePayButton(_googlePayInfo, googlePayOpenSheet);
     container.appendChild(btn);
 }
 
@@ -58,38 +57,11 @@ async function googlePayOpenSheet() {
     const pre = document.getElementById('googlepay-output');
     if (!_googlePayInfo || !_googlePaymentId) return;
 
-    const paymentsClient = new window.google.payments.api.PaymentsClient({
-        environment: _googlePayInfo.environment,
-    });
-
-    let paymentData;
-    try {
-        pre.textContent += '\n\nOpening Google Pay sheet…';
-        paymentData = await paymentsClient.loadPaymentData(
-            _googlePayInfo.paymentDataRequest,
-        );
-    } catch (err) {
-        const isCancel =
-            err?.statusCode === 'CANCELED' ||
-            (err instanceof DOMException && err.name === 'AbortError');
-        const label = isCancel ? 'onCancel' : 'onError';
-        pre.textContent += `\n\n── ${label} (loadPaymentData) ──\n${formatError(err)}`;
-        return;
-    }
+    const paymentData = await loadGooglePayData(_googlePayInfo, pre);
+    if (!paymentData) return;
 
     pre.textContent += '\n\n── onSuccess (loadPaymentData) ──';
     // tokenizationData.token is a JSON string: { protocolVersion, signature, signedMessage, ... }
-    const tokenData = JSON.parse(
-        paymentData.paymentMethodData.tokenizationData.token,
-    );
-    prefillCharge(_googlePaymentId, {
-        payment_instrument: 'PAYMENT_CARD',
-        input: {
-            input_type: 'GOOGLE_PAY',
-            protocolVersion: tokenData.protocolVersion,
-            signature: tokenData.signature,
-            signedMessage: tokenData.signedMessage,
-        },
-    });
+    prefillCharge(_googlePaymentId, extractGooglePayInstrument(paymentData));
     pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
 }

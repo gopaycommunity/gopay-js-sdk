@@ -1,25 +1,27 @@
-import type { HttpClient } from '../../http/client.js';
+import {
+    awaitCharge,
+    type AwaitChargeOptions as CoreAwaitChargeOptions,
+    type HttpClient,
+} from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
-import { collectBrowserData } from './browser-data.js';
 
 type PaymentCreateRequest = components['schemas']['Payment-Create-Request'];
-type PaymentCreateResponse =
-    components['responses']['Payment-Status-Response']['content']['application/json'];
+type PaymentDetails = components['schemas']['Payment-Details'];
 type PaymentChargeRequest = components['schemas']['Payment-Charge-Input'];
-type PaymentChargeResponse =
-    components['responses']['Payment-Charge-Response']['content']['application/json'];
+type PaymentChargeResponse = components['schemas']['Payment-Charge-Response'];
+type PaymentChargeStatusResponse =
+    components['schemas']['Payment-Charge-Status-Response'];
+
+/** Options for {@link awaitChargeState}. */
+export type AwaitChargeOptions =
+    CoreAwaitChargeOptions<PaymentChargeStatusResponse>;
 type GooglePayInfoResponse =
     components['responses']['Google-Pay-Info-Response']['content']['application/json'];
-type ValidateMerchantResponse =
-    components['responses']['Validate-Merchant-Response']['content']['application/json'];
 type ApplePayInfoResponse =
     components['responses']['Apple-Pay-Info-Response']['content']['application/json'];
-type QRPaymentInfoResponse =
-    components['responses']['QR-Payment-Info-Response']['content']['application/json'];
-type PaymentStatusResponse =
-    components['responses']['Payment-Status-Response']['content']['application/json'];
-type PaymentChargeStateResponse =
-    components['responses']['Payment-Charge-State-Response']['content']['application/json'];
+type ValidateMerchantResponse =
+    components['responses']['Validate-Merchant-Response']['content']['application/json'];
+type QRPaymentDetails = components['schemas']['QR-Payment-Details'];
 
 function requirePaymentId(paymentId: string): void {
     if (!paymentId) {
@@ -28,18 +30,6 @@ function requirePaymentId(paymentId: string): void {
 }
 
 export function createPaymentsApi(client: HttpClient) {
-    async function validateApplePayMerchant(
-        paymentId: string,
-        origin: string,
-    ): Promise<ValidateMerchantResponse> {
-        requirePaymentId(paymentId);
-        return client.post<ValidateMerchantResponse>(
-            `/payments/${paymentId}/apple-pay/validate`,
-            undefined,
-            { headers: { Origin: origin } },
-        );
-    }
-
     return {
         /**
          * Retrieve the current status of an existing payment.
@@ -48,11 +38,9 @@ export function createPaymentsApi(client: HttpClient) {
          *
          * @param paymentId - Payment session ID returned by {@link createPayment}
          */
-        async getPaymentStatus(
-            paymentId: string,
-        ): Promise<PaymentStatusResponse> {
+        async getPaymentStatus(paymentId: string): Promise<PaymentDetails> {
             requirePaymentId(paymentId);
-            return client.get<PaymentStatusResponse>(`/payments/${paymentId}`);
+            return client.get<PaymentDetails>(`/payments/${paymentId}`);
         },
 
         /**
@@ -70,8 +58,8 @@ export function createPaymentsApi(client: HttpClient) {
         async createPayment(
             goid: string,
             params: PaymentCreateRequest,
-        ): Promise<PaymentCreateResponse> {
-            return client.post<PaymentCreateResponse>(
+        ): Promise<PaymentDetails> {
+            return client.post<PaymentDetails>(
                 `/eshops/${goid}/payments`,
                 params,
             );
@@ -79,11 +67,6 @@ export function createPaymentsApi(client: HttpClient) {
 
         /**
          * Charge a payment using a payment instrument.
-         * Requires the `payment:create` OAuth2 scope.
-         *
-         * Browser context (`browser_data`) is collected automatically via
-         * {@link collectBrowserData} and merged into the request. Any fields
-         * supplied in `params.browser_data` take precedence over the collected values.
          *
          * POST /payments/{payment_id}/charge
          *
@@ -95,16 +78,9 @@ export function createPaymentsApi(client: HttpClient) {
             params: PaymentChargeRequest,
         ): Promise<PaymentChargeResponse> {
             requirePaymentId(paymentId);
-            const mergedParams = {
-                ...params,
-                browser_data: {
-                    ...collectBrowserData(),
-                    ...params.browser_data,
-                },
-            };
             return client.post<PaymentChargeResponse>(
                 `/payments/${paymentId}/charge`,
-                mergedParams,
+                params,
             );
         },
 
@@ -117,9 +93,9 @@ export function createPaymentsApi(client: HttpClient) {
          */
         async getChargeState(
             paymentId: string,
-        ): Promise<PaymentChargeStateResponse> {
+        ): Promise<PaymentChargeStatusResponse> {
             requirePaymentId(paymentId);
-            return client.get<PaymentChargeStateResponse>(
+            return client.get<PaymentChargeStatusResponse>(
                 `/payments/${paymentId}/charge`,
             );
         },
@@ -157,14 +133,13 @@ export function createPaymentsApi(client: HttpClient) {
         },
 
         /**
-         * Wire merchant validation onto an `ApplePaySession` and begin it.
-         *
-         * Handles the `onvalidatemerchant` callback automatically.
+         * Wire merchant validation onto an ApplePaySession and begin it.
+         * Handles the onvalidatemerchant callback via POST /payments/{payment_id}/apple-pay/validate.
          *
          * @param paymentId - Payment session ID
-         * @param session   - `ApplePaySession` instance created by the caller
-         * @param origin    - Origin of the page; defaults to `window.location.origin`
-         * @param callbacks - Optional event callbacks (`oncancel`)
+         * @param session   - ApplePaySession instance
+         * @param origin    - Merchant origin (https:); defaults to current page origin
+         * @param callbacks - Optional lifecycle callbacks
          */
         startApplePaySession(
             paymentId: string,
@@ -176,9 +151,7 @@ export function createPaymentsApi(client: HttpClient) {
                 begin(): void;
             },
             origin: string = globalThis.location?.origin ?? '',
-            callbacks?: {
-                oncancel?: (event: unknown) => void;
-            },
+            callbacks?: { oncancel?: (event: unknown) => void },
         ): void {
             requirePaymentId(paymentId);
             if (origin) {
@@ -187,17 +160,28 @@ export function createPaymentsApi(client: HttpClient) {
                     parsed = new URL(origin);
                 } catch {
                     throw new Error(
-                        `[GoPaySDK] startApplePaySession: invalid origin "${origin}"`,
+                        `startApplePaySession: invalid origin "${origin}"`,
                     );
                 }
                 if (parsed.protocol !== 'https:' || parsed.origin !== origin) {
                     throw new Error(
-                        `[GoPaySDK] startApplePaySession: origin must be an https: origin (e.g. "https://example.com"). Got "${origin}"`,
+                        `startApplePaySession: origin must be an https: origin. Got "${origin}"`,
                     );
                 }
             }
-            session.onvalidatemerchant = () => {
-                validateApplePayMerchant(paymentId, origin)
+            session.onvalidatemerchant = (event: unknown) => {
+                const validationURL = (event as { validationURL?: string })
+                    ?.validationURL;
+                const headers: Record<string, string> = { Origin: origin };
+                // TODO: move Apple-Validation-Url from header to request body once the revised spec lands
+                if (validationURL)
+                    headers['Apple-Validation-Url'] = validationURL;
+                client
+                    .post<ValidateMerchantResponse>(
+                        `/payments/${paymentId}/apple-pay/validate`,
+                        undefined,
+                        { headers },
+                    )
                     .then((merchantSession) =>
                         session.completeMerchantValidation(merchantSession),
                     )
@@ -221,12 +205,39 @@ export function createPaymentsApi(client: HttpClient) {
         async getQRPaymentInfo(
             paymentId: string,
             format?: 'png' | 'svg',
-        ): Promise<QRPaymentInfoResponse> {
+        ): Promise<QRPaymentDetails> {
             requirePaymentId(paymentId);
             const path = format
                 ? `/payments/${paymentId}/qr-payment/info?format=${format}`
                 : `/payments/${paymentId}/qr-payment/info`;
-            return client.get<QRPaymentInfoResponse>(path);
+            return client.get<QRPaymentDetails>(path);
+        },
+
+        /**
+         * Poll the charge state until a terminal outcome.
+         *
+         * Resolves on `SUCCEEDED`. Rejects with `CHARGE_FAILED` on `FAILED`,
+         * or `CHARGE_TIMEOUT` if the charge does not leave `REQUESTED`/
+         * `PROCESSING` within `initialTimeoutMs` (default 30 s).
+         *
+         * Use `options.onActionRequired` to handle 3DS redirects
+         * (e.g. redirect the customer or open a popup).
+         *
+         * @param paymentId - Payment session ID
+         * @param options   - Polling configuration and callbacks
+         */
+        awaitChargeState(
+            paymentId: string,
+            options?: AwaitChargeOptions,
+        ): Promise<PaymentChargeStatusResponse> {
+            requirePaymentId(paymentId);
+            return awaitCharge(
+                () =>
+                    client.get<PaymentChargeStatusResponse>(
+                        `/payments/${paymentId}/charge`,
+                    ),
+                options,
+            );
         },
     };
 }

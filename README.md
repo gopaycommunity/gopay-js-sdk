@@ -124,13 +124,6 @@ Write commits following the [Conventional Commits](https://www.conventionalcommi
 | `feat:`            | minor        | `feat: add refund support`       |
 | `BREAKING CHANGE:` | major        | `feat!: rename GoPaySDK to ...`  |
 
-On merge to `master` the pipeline will:
-1. Determine the next version from commit history
-2. Update `package.json` and `CHANGELOG.md`
-3. Create a git tag
-4. Publish to npm
-5. Upload the IIFE bundle to gopaycdn.com
-
 ## License
 
 MIT

@@ -1,10 +1,9 @@
+import { buildUrl } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildUrl } from '../../src/http/build-url.js';
 import { createGoPaySDK } from '../../src/index.js';
 import type { components } from '../../src/types/generated.js';
 
-type TokenPair =
-    components['responses']['Token-Pair-Response']['content']['application/json'];
+type TokenPair = components['schemas']['Token-Pair'];
 
 describe('buildUrl', () => {
     it.each([
@@ -73,14 +72,12 @@ describe('GoPaySDK', () => {
     it('exposes flat methods', () => {
         const sdk = createGoPaySDK({ environment: 'sandbox' });
         expect(typeof sdk.authenticate).toBe('function');
-        expect(typeof sdk.issueClientToken).toBe('function');
-        expect(typeof sdk.setClientToken).toBe('function');
         expect(typeof sdk.isAuthenticated).toBe('function');
         expect(typeof sdk.logout).toBe('function');
         expect(typeof sdk.createPayment).toBe('function');
         expect(typeof sdk.getPaymentStatus).toBe('function');
         expect(typeof sdk.chargePayment).toBe('function');
-        expect(typeof sdk.mountCardForm).toBe('function');
+        expect(typeof sdk.tokenizeEncryptedCard).toBe('function');
         expect(typeof sdk.getCardDetails).toBe('function');
         expect(typeof sdk.deleteCard).toBe('function');
     });
@@ -159,47 +156,6 @@ describe('GoPaySDK', () => {
             expect(body.get('scope')).toBe('payment:create');
         });
 
-        it('exposes issueClientToken() and setClientToken()', () => {
-            const sdk = createGoPaySDK();
-            expect(typeof sdk.issueClientToken).toBe('function');
-            expect(typeof sdk.setClientToken).toBe('function');
-        });
-
-        it('issueClientToken() returns a ClientToken without changing the server session', async () => {
-            const clientTokenPair = {
-                ...mockTokenPair,
-                access_token: 'client-at',
-                refresh_token: 'client-rt',
-            };
-            let callCount = 0;
-            vi.stubGlobal(
-                'fetch',
-                vi.fn().mockImplementation(async (req: Request) => {
-                    await req.text();
-                    callCount++;
-                    // First call: authenticate (server session)
-                    // Second call: issueClientToken
-                    return makeMockResponse(
-                        callCount === 1 ? mockTokenPair : clientTokenPair,
-                    );
-                }),
-            );
-
-            const sdk = createGoPaySDK({ environment: 'sandbox' });
-            await sdk.authenticate({
-                grant_type: 'client_credentials',
-                client_id: 'my-client',
-                client_secret: 'my-secret',
-                scope: 'payment:create payment:read',
-            });
-
-            const token = await sdk.issueClientToken('payment:create');
-            expect(token.access_token).toBe('client-at');
-            expect(token.refresh_token).toBe('client-rt');
-            expect(typeof token.expires_in).toBe('number');
-            expect(typeof token.refresh_expires_in).toBe('number');
-        });
-
         it('authenticate() throws on non-ok HTTP response', async () => {
             vi.stubGlobal(
                 'fetch',
@@ -222,9 +178,9 @@ describe('GoPaySDK', () => {
     });
 
     describe('CardsModule', () => {
-        it('exposes mountCardForm()', () => {
+        it('exposes tokenizeEncryptedCard()', () => {
             const sdk = createGoPaySDK();
-            expect(typeof sdk.mountCardForm).toBe('function');
+            expect(typeof sdk.tokenizeEncryptedCard).toBe('function');
         });
 
         it('exposes getCardDetails()', () => {
@@ -246,7 +202,6 @@ describe('GoPaySDK', () => {
             'getChargeState',
             'getGooglePayInfo',
             'getApplePayInfo',
-            'startApplePaySession',
         ] as const;
 
         it.each(paymentMethods)('exposes %s()', (method) => {

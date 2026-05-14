@@ -1,10 +1,10 @@
+import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     GoPayErrorCodes,
     GoPayHTTPError,
     GoPaySDKError,
 } from '../../src/errors.js';
-import { createHttpClient } from '../../src/http/client.js';
 
 const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
     new Response(JSON.stringify(data), {

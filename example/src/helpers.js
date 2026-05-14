@@ -1,8 +1,8 @@
 import { GoPayHTTPError, GoPaySDKError } from 'gopay-js-sdk';
+import { getBrowserSDK, isSdkAttached } from './browser-sdk.js';
 
 // Shared mutable state across modules
 export const state = {
-    lastClientToken: null,
     pendingInstrument: null,
 };
 
@@ -80,6 +80,25 @@ export function formatError(err) {
     }
 }
 
+export function updateBrowserBadge() {
+    const badge = document.getElementById('browser-sdk-badge');
+    if (!badge) return;
+    const sdk = getBrowserSDK();
+    if (!sdk) {
+        badge.textContent = 'not initialized';
+        badge.style.background = '#e2e3e5';
+        badge.style.color = '#383d41';
+    } else if (isSdkAttached()) {
+        badge.textContent = 'payment attached';
+        badge.style.background = '#d4edda';
+        badge.style.color = '#155724';
+    } else {
+        badge.textContent = 'initialized';
+        badge.style.background = '#cce5ff';
+        badge.style.color = '#004085';
+    }
+}
+
 export function prefillPaymentId(result) {
     const id = result?.id;
     if (!id) return;
@@ -90,14 +109,51 @@ export function prefillPaymentId(result) {
         'googlepay-payment-id',
         'applepay-payment-id',
         'qr-payment-id',
-        'cardpay-payment-id',
     ]) {
         const el = document.getElementById(fieldId);
         if (el) el.value = id;
     }
+    updateBrowserBadge();
     state.pendingInstrument = null;
     document.getElementById('charge-instrument-info').textContent = '';
     document.getElementById('charge-token-fields').style.display = '';
+}
+
+/**
+ * Drive a charge-state poll loop via a browser SDK `awaitChargeState` call,
+ * writing intermediate states and the terminal result into `pre`.
+ *
+ * `awaitFn` should be a partially-applied SDK method:
+ *   `(opts) => browserSdk.awaitChargeState(opts)`
+ */
+export async function pollChargeState(awaitFn, pre) {
+    pre.textContent += '\n── polling charge state ──';
+    try {
+        await awaitFn({
+            onStateChange: (state) => {
+                if (state.state === 'SUCCEEDED' || state.state === 'FAILED') {
+                    pre.textContent += `\n\n── ${state.state} ──\n${JSON.stringify(state, null, 2)}`;
+                } else {
+                    pre.textContent += `\n${state.state}`;
+                }
+            },
+            onActionRequired: (url) => show3dsPrompt(pre, url),
+        });
+    } catch (err) {
+        if (err?.errorCode === 'CHARGE_FAILED') {
+            // terminal state already shown by onStateChange
+        } else if (err?.errorCode === 'CHARGE_TIMEOUT') {
+            pre.textContent +=
+                '\n\nPolling timed out — check charge state manually.';
+        } else {
+            pre.textContent += `\n\n── onError ──\n${formatError(err)}`;
+        }
+    }
+}
+
+export function prefillBrowserCharge(encryptedPayload) {
+    const el = document.getElementById('bcharge-encrypted-payload');
+    if (el && encryptedPayload) el.value = encryptedPayload;
 }
 
 export function prefillCharge(paymentId, instrument) {

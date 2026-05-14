@@ -1,10 +1,12 @@
-import { GoPayErrorCodes, GoPaySDKError } from '../../errors.js';
-import type { HttpClient } from '../../http/client.js';
+import {
+    GoPayErrorCodes,
+    GoPaySDKError,
+    type HttpClient,
+} from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
-import type { AuthenticateRequest, ClientToken } from '../../types/index.js';
+import type { AuthenticateRequest } from '../../types/index.js';
 
-type TokenPair =
-    components['responses']['Token-Pair-Response']['content']['application/json'];
+type TokenPair = components['schemas']['Token-Pair'];
 
 export function createAuthApi(client: HttpClient) {
     return {
@@ -64,107 +66,6 @@ export function createAuthApi(client: HttpClient) {
         },
 
         /**
-         * Issue a token pair for a browser client without affecting the server's
-         * own session.
-         *
-         * The server calls this after `authenticate()` to obtain a fresh token
-         * pair — typically with a reduced scope — that it can hand to a browser
-         * client. The returned `ClientToken` should be sent to the browser (e.g.
-         * via a session endpoint) and passed to `setClientToken()` there.
-         *
-         * POST /oauth2/token (`client_credentials` grant, does **not** store tokens)
-         *
-         * @throws {@link GoPaySDKError} with `AUTH_CREDENTIALS_MISSING` if
-         *   `authenticate()` has not been called yet.
-         * @throws {@link GoPaySDKError} with `AUTH_INVALID_RESPONSE` if the token
-         *   response is missing required fields.
-         */
-        async issueClientToken(scope?: string): Promise<ClientToken> {
-            const creds = client.getClientCredentials();
-            if (!creds) {
-                throw client.emitError(
-                    new GoPaySDKError(
-                        '[GoPaySDK] No client credentials stored. Call authenticate() first.',
-                        { errorCode: GoPayErrorCodes.AUTH_CREDENTIALS_MISSING },
-                    ),
-                );
-            }
-
-            const form: Record<string, string> = {
-                grant_type: 'client_credentials',
-            };
-            if (scope) form.scope = scope;
-            const raw = `${creds.clientId}:${creds.clientSecret}`;
-            const headers = { Authorization: `Basic ${globalThis.btoa(raw)}` };
-
-            const tokenPair = await client.postForm<TokenPair>(
-                '/oauth2/token',
-                form,
-                { headers },
-            );
-
-            if (
-                !tokenPair.access_token ||
-                !tokenPair.refresh_token ||
-                tokenPair.expires_in === undefined ||
-                tokenPair.refresh_expires_in === undefined
-            ) {
-                throw client.emitError(
-                    new GoPaySDKError(
-                        '[GoPaySDK] Invalid token response: missing required fields.',
-                        { errorCode: GoPayErrorCodes.AUTH_INVALID_RESPONSE },
-                    ),
-                );
-            }
-
-            return {
-                access_token: tokenPair.access_token,
-                refresh_token: tokenPair.refresh_token,
-                expires_in: tokenPair.expires_in,
-                refresh_expires_in: tokenPair.refresh_expires_in,
-            };
-        },
-
-        /**
-         * Seed a browser SDK instance with a token pair obtained from the server
-         * via `issueClientToken()`.
-         *
-         * The `client_id` is extracted automatically from the `sub` claim of the
-         * JWT access token — no credentials are required in the browser.
-         *
-         * @throws {@link GoPaySDKError} with `AUTH_INVALID_TOKEN` if the access
-         *   token is not a valid JWT or is missing the `sub` claim.
-         */
-        setClientToken(token: ClientToken): void {
-            let clientId: string;
-            try {
-                const payload = JSON.parse(
-                    globalThis.atob(token.access_token.split('.')[1]),
-                ) as Record<string, unknown>;
-                if (!payload.sub || typeof payload.sub !== 'string') {
-                    throw new Error('missing sub claim');
-                }
-                clientId = payload.sub;
-            } catch {
-                throw client.emitError(
-                    new GoPaySDKError(
-                        '[GoPaySDK] Cannot extract client_id from access_token JWT. Ensure the token is a valid JWT with a "sub" claim.',
-                        { errorCode: GoPayErrorCodes.AUTH_INVALID_TOKEN },
-                    ),
-                );
-            }
-
-            client.setToken({
-                access_token: token.access_token,
-                refresh_token: token.refresh_token,
-                expires_in: token.expires_in,
-                refresh_expires_in: token.refresh_expires_in,
-                token_type: 'bearer',
-            });
-            client.setClientId(clientId);
-        },
-
-        /**
          * Returns `true` if a token pair is currently stored (the SDK is
          * authenticated). Does not check expiry — expired tokens are refreshed
          * transparently on the next API call.
@@ -176,10 +77,49 @@ export function createAuthApi(client: HttpClient) {
         /**
          * Clear all stored tokens and credentials.
          * After calling this, all API calls will throw until the SDK is
-         * re-authenticated via `authenticate()` or `setClientToken()`.
+         * re-authenticated via `authenticate()`.
          */
         logout(): void {
             client.clearTokens();
+        },
+
+        /**
+         * Return the `publishable_key` and `client_id` bundle for initializing
+         * the browser SDK (`createGoPayBrowserSDK`).
+         *
+         * Requires:
+         * - `publishableKey` set in the server SDK config.
+         * - The SDK to have been authenticated via `authenticate()` (so `client_id`
+         *   is known).
+         *
+         * Ship the returned object to the browser through your own API endpoint —
+         * both values are public and safe to expose.
+         *
+         * @throws {@link GoPaySDKError} with `AUTH_CREDENTIALS_MISSING` if
+         *   `publishableKey` was not provided in config or `authenticate()` has not
+         *   been called yet.
+         */
+        /**
+         * Store the publishable key on the SDK instance.
+         * Useful when the key is obtained separately from the SDK config
+         * (e.g. entered at runtime in a dev tool or fetched from an admin API).
+         */
+        setPublishableKey(key: string): void {
+            client.setPublishableKey(key);
+        },
+
+        getBrowserKeys(): { publishable_key: string; client_id: string } {
+            const publishableKey = client.getPublishableKey();
+            const clientId = client.getClientId();
+            if (!publishableKey || !clientId) {
+                throw client.emitError(
+                    new GoPaySDKError(
+                        '[GoPaySDK] getBrowserKeys() requires publishableKey in config and a prior authenticate() call.',
+                        { errorCode: GoPayErrorCodes.AUTH_CREDENTIALS_MISSING },
+                    ),
+                );
+            }
+            return { publishable_key: publishableKey, client_id: clientId };
         },
     };
 }
