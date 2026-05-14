@@ -1,0 +1,27 @@
+{
+    "name": "@gopay-internal/core",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "import": "./dist/index.js"
+        },
+        "./types/generated.js": {
+            "types": "./src/types/generated.ts",
+            "import": "./dist/types/generated.js"
+        }
+    },
+    "scripts": {
+        "build": "tsup",
+        "typecheck": "tsc --noEmit",
+        "codegen": "openapi-typescript ../../Payments.yaml -o src/types/generated.ts"
+    },
+    "devDependencies": {
+        "@types/node": "^24.12.2",
+        "openapi-typescript": "^7.13.0",
+        "tsup": "^8.5.1",
+        "typescript": "~6.0.3"
+    }
+}

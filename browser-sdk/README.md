@@ -1,0 +1,256 @@
+# gopay-js-sdk-browser
+
+GoPay browser SDK for card encryption and in-browser payments.
+
+## Installation
+
+```bash
+npm install gopay-js-sdk-browser
+# or
+yarn add gopay-js-sdk-browser
+```
+
+CDN (IIFE — exposes `window.GoPayBrowserSDK`):
+
+```html
+<script src="https://unpkg.com/gopay-js-sdk-browser@1/dist/gopay-browser-sdk.min.js"></script>
+```
+
+---
+
+## The two flows at a glance
+
+| | Flow A — encrypt-only | Flow B — full browser payments |
+|---|---|---|
+| **Required inputs** | `publishableKey`, `clientId` | + `paymentId`, `paymentSecret` |
+| **Browser methods** | `mountCardForm({ flow: 'return-payload' })` | + `chargePayment`, Apple Pay, Google Pay, `getStatus` |
+| **Iframe auth** | `X-API-Key: publishableKey` | same — iframe never sees JWT |
+| **Server handles** | tokenize + charge (or save token for later) | — (browser charges directly) |
+
+---
+
+## Where the inputs come from
+
+### `publishableKey` and `clientId`
+
+Both are issued in the GoPay admin alongside your `client_id` / `client_secret`.
+
+**With the server SDK** (easiest):
+
+```ts
+// On your server:
+const { publishable_key, client_id } = await serverSdk.getBrowserKeys();
+// Ship both to the browser through your own API endpoint.
+```
+
+**Without the server SDK:** implement the equivalent server call yourself — see the [server SDK README § Browser keys](../sdk/README.md) for the API endpoint and auth scheme.
+
+`publishableKey` is public and safe to embed in client-side code. It carries no payment-action authority on its own.
+
+### `paymentId` and `paymentSecret` (Flow B only)
+
+Returned by `serverSdk.createPayment(goid, params)` as `payment_id` and `payment_secret`.
+
+**Without the server SDK:** call `POST /eshops/{goid}/payments` with backend credentials — see [server SDK README § Creating payments](../sdk/README.md).
+
+> **Security:** treat `payment_secret` like a short-lived bearer credential. TLS-only, never log, never embed in URLs.
+
+The browser SDK has no way to obtain any of these values on its own — they must come from your server.
+
+---
+
+## Flow A — encrypt-only
+
+Card data is encrypted inside the GoPay-hosted iframe. The SDK returns the encrypted payload; your server handles tokenization and charge.
+
+Flow A covers two server-side use cases with the same browser code:
+
+- **One-time charge** — tokenize the payload and immediately charge the payment.
+- **Save card for future payments** — tokenize the payload and store the returned card token; skip the charge or charge later. Use the saved token in future `chargePayment` calls without asking the customer to re-enter their card.
+
+```ts
+import { createGoPayBrowserSDK } from 'gopay-js-sdk-browser';
+
+// 1. Create the browser SDK (synchronous).
+//    publishableKey + clientId come from your server via getBrowserKeys().
+const sdk = createGoPayBrowserSDK({
+    environment: 'production', // or 'sandbox'
+    publishableKey: 'pk_live_…',
+    clientId: 'your-client-id',
+});
+
+// 2. Mount the card form.
+const container = document.getElementById('card-form-container');
+const controller = await sdk.mountCardForm(container, {
+    flow: 'return-payload',
+    locale: 'en',
+});
+
+// 3. Wait for the encrypted payload.
+const { encryptedPayload } = await controller.result;
+
+// 4. Forward to your server.
+const response = await fetch('/api/charge', {
+    method: 'POST',
+    body: JSON.stringify({ encryptedPayload, paymentId }),
+});
+// Server calls: serverSdk.tokenizeEncryptedCard(encryptedPayload)
+//               serverSdk.chargePayment(paymentId, { input_type: 'Card-Token', ... })
+```
+
+---
+
+## Flow B — full browser payments
+
+Adds payment-scoped operations (charge, Apple/Google Pay, status) by exchanging the `payment_secret` for a short-lived JWT directly in the browser.
+
+```ts
+import { createGoPayBrowserSDK } from 'gopay-js-sdk-browser';
+
+// 1. Create the browser SDK (same as Flow A).
+const sdk = createGoPayBrowserSDK({
+    environment: 'production',
+    publishableKey: 'pk_live_…',
+    clientId: 'your-client-id',
+});
+
+// 2. Attach a payment — exchanges payment_secret for a JWT.
+//    paymentId + paymentSecret come from serverSdk.createPayment() on your server.
+await sdk.attachPayment({
+    paymentId: 'PAY-123',
+    paymentSecret: '2f53a04d4dd749f6a2a81285da72f67a',
+});
+
+// 3. Mount and charge.
+const redirectContainer = document.getElementById('redirect-container');
+const controller = await sdk.mountCardForm(container, {
+    flow: 'direct-charge',
+    redirectContainer, // required for 3DS redirect
+    locale: 'en',
+});
+
+const chargeResult = await controller.result; // PaymentChargeResponseData
+```
+
+### Other Flow B methods (available after `attachPayment`)
+
+| Method | Description |
+|---|---|
+| `getStatus()` | `GET /payments/{id}` — payment details |
+| `getChargeState()` | `GET /payments/{id}/charge` — current charge state |
+| `getGooglePayInfo()` | `GET /payments/{id}/google-pay/info` |
+| `getApplePayInfo()` | `GET /payments/{id}/apple-pay/info` |
+| `startApplePaySession(session, origin?)` | Wires merchant validation and begins an `ApplePaySession` |
+| `getQRPaymentInfo(format?)` | `GET /payments/{id}/qr-payment/info` |
+
+For the equivalent server-side methods and their request/response shapes, see the [server SDK README](../sdk/README.md).
+
+---
+
+## Integrators without the server SDK
+
+The browser SDK is server-agnostic. You need two things from your server:
+
+1. **Browser key bundle** — an HTTPS endpoint that returns `publishable_key` and `client_id`.
+2. **Payment creation** (Flow B only) — an HTTPS endpoint that creates a payment and returns `payment_id` and `payment_secret`.
+
+The exact API contracts are documented in the [server SDK README](../sdk/README.md). You can implement these calls in any server language.
+
+---
+
+## API reference
+
+### `createGoPayBrowserSDK(config)`
+
+```ts
+createGoPayBrowserSDK(config: {
+    publishableKey: string;
+    clientId: string;
+    environment?: 'sandbox' | 'production'; // default: 'sandbox'
+    baseUrl?: string;                        // override for mock servers
+    requestTimeoutMs?: number;               // default: 10 000
+    onError?: (err: GoPaySDKError | GoPayHTTPError) => void;
+}): GoPayBrowserSDK
+```
+
+Returns the SDK instance synchronously. No network calls are made at this stage.
+
+### `sdk.attachPayment({ paymentId, paymentSecret })`
+
+```ts
+attachPayment(args: {
+    paymentId: string;
+    paymentSecret: string;
+}): Promise<void>
+```
+
+Exchanges `paymentSecret` for a payment-scoped JWT (`authorization_code` grant, scopes `payment:read payment:charge`). Must be called before `mountCardForm({ flow: 'direct-charge' })` or any payment-action methods.
+
+Throws `GoPaySDKError(PAYMENT_NOT_ATTACHED)` if these methods are called first.
+
+### `sdk.mountCardForm(container, options)`
+
+```ts
+mountCardForm(
+    container: HTMLElement,
+    options: CardFormOptions,
+): Promise<CardFormController>
+```
+
+**`options`:**
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `flow` | `'return-payload' \| 'direct-charge'` | required | `direct-charge` requires prior `attachPayment()` |
+| `redirectContainer` | `Element` | — | Required when `flow: 'direct-charge'` — 3DS iframe mounts here |
+| `theme` | `CardFormTheme` | built-in | See type definition in [iframe-protocol.ts](src/modules/cards/iframe-protocol.ts) |
+| `locale` | `string` | `navigator.language` | BCP 47, e.g. `'cs-CZ'` |
+| `submitMode` | `'internal' \| 'external'` | `'internal'` | `'external'` hides the iframe button; use `controller.submit()` |
+| `onValidityChange` | `(isValid: boolean) => void` | — | External submit mode only |
+
+**`CardFormController`:**
+
+| Member | Description |
+|---|---|
+| `result` | `Promise` — resolves with `{ encryptedPayload }` (return-payload) or `PaymentChargeResponseData` (direct-charge) |
+| `setTheme(theme)` | Update theme at runtime |
+| `setLocale(locale)` | Update locale at runtime |
+| `submit()` | Trigger submission (external submit mode only) |
+| `isValid` | Current validity (external submit mode only) |
+
+### Error codes
+
+| Code | Thrown by |
+|---|---|
+| `PAYMENT_NOT_ATTACHED` | Payment-action methods called before `attachPayment()` |
+| `CARD_FORM_ERROR` | Iframe error or untrusted card-form origin |
+| `AUTH_INVALID_RESPONSE` | `/oauth2/token` response missing required fields |
+| `CHARGE_TIMEOUT` | Charge polling exceeded initial timeout |
+| `CHARGE_FAILED` | Payment reached terminal `FAILED` state |
+
+For shared error types (`GoPaySDKError`, `GoPayHTTPError`, network codes) see the [server SDK README § Errors](../sdk/README.md).
+
+---
+
+## CDN / IIFE
+
+```html
+<script src="https://unpkg.com/gopay-js-sdk-browser@1/dist/gopay-browser-sdk.min.js"></script>
+<script>
+    const sdk = GoPayBrowserSDK.createGoPayBrowserSDK({
+        environment: 'production',
+        publishableKey: 'pk_live_…',
+        clientId: 'your-client-id',
+    });
+    await sdk.attachPayment({ paymentId, paymentSecret });
+</script>
+```
+
+---
+
+## Security notes
+
+- Card data is encrypted inside a GoPay-hosted iframe (`sandbox="allow-scripts allow-forms allow-same-origin"`). The SDK never sees PAN or CVV.
+- `publishableKey` is public; embed it freely.
+- `paymentSecret` is short-lived but server-confidential — never log it, never embed it in URLs. Forward it from your server to the browser over your own authenticated HTTPS endpoint.
+- JWE plaintext contains `client_id` for backend merchant identification.

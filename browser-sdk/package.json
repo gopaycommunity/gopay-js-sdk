@@ -1,0 +1,55 @@
+{
+    "name": "gopay-js-sdk-browser",
+    "version": "1.0.0",
+    "description": "GoPay JavaScript SDK for browser use (payment_secret / authorization_code flow)",
+    "keywords": [
+        "gopay",
+        "payment",
+        "sdk",
+        "javascript",
+        "typescript",
+        "browser"
+    ],
+    "license": "MIT",
+    "browser": "./dist/gopay-browser-sdk.min.js",
+    "type": "module",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "src"
+    ],
+    "scripts": {
+        "build": "yarn workspace @gopay-internal/core build && tsup",
+        "test": "vitest run --coverage",
+        "test:watch": "vitest",
+        "typecheck": "tsc --noEmit",
+        "check:circular": "madge --circular --extensions ts --ts-config tsconfig.json src/",
+        "check:exports": "ts-unused-exports tsconfig.json --excludePathsFromReport='src/index' --ignoreFiles='types/generated'"
+    },
+    "devDependencies": {
+        "@gopay-internal/core": "workspace:*",
+        "@semantic-release/changelog": "^6.0.3",
+        "@semantic-release/exec": "^7.1.0",
+        "@semantic-release/git": "^10.0.1",
+        "@types/jsdom": "^28.0.1",
+        "@types/node": "^24.12.2",
+        "@vitest/coverage-v8": "^4.1.5",
+        "jsdom": "^29.1.0",
+        "madge": "^8.0.0",
+        "semantic-release": "^25.0.3",
+        "ts-unused-exports": "^11.0.1",
+        "tsup": "^8.5.1",
+        "typescript": "~6.0.3",
+        "vitest": "^4.1.5"
+    }
+}

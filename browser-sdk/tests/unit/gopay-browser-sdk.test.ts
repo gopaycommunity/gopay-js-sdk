@@ -1,0 +1,196 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
+import { createGoPayBrowserSDK } from '../../src/gopay-browser-sdk.js';
+
+const CARD_FORM_URL = 'https://test.gopay.com/card-form';
+
+const makeResponse = (data: unknown, status = 200) =>
+    new Response(JSON.stringify(data), {
+        status,
+        headers: { 'content-type': 'application/json' },
+    });
+
+const validTokenPair = {
+    access_token: 'at-attach',
+    refresh_token: 'rt-attach',
+    expires_in: 1800,
+    refresh_expires_in: 86400,
+    token_type: 'bearer',
+};
+
+describe('createGoPayBrowserSDK()', () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+    let sdk: ReturnType<typeof createGoPayBrowserSDK>;
+
+    beforeEach(() => {
+        fetchMock = vi.fn().mockResolvedValue(makeResponse({}));
+        vi.stubGlobal('fetch', fetchMock);
+        sdk = createGoPayBrowserSDK({
+            baseUrl: 'https://example.com',
+            publishableKey: 'pk_test',
+            clientId: 'cid_test',
+        });
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    // -------------------------------------------------------------------------
+    // notAttached guard — payment methods before attachPayment
+    // -------------------------------------------------------------------------
+
+    describe('payment methods before attachPayment()', () => {
+        it.each([
+            ['getStatus', () => sdk.getStatus()],
+            ['chargePayment', () => sdk.chargePayment({})],
+            ['getChargeState', () => sdk.getChargeState()],
+            ['getGooglePayInfo', () => sdk.getGooglePayInfo()],
+            ['getApplePayInfo', () => sdk.getApplePayInfo()],
+            ['getApplePayAppInfo', () => sdk.getApplePayAppInfo()],
+            ['getQRPaymentInfo', () => sdk.getQRPaymentInfo()],
+        ])('%s() throws PAYMENT_NOT_ATTACHED', async (_, call) => {
+            const err = await (call() as Promise<unknown>).catch(
+                (e: unknown) => e,
+            );
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+            );
+        });
+
+        it('awaitChargeState() throws PAYMENT_NOT_ATTACHED synchronously', () => {
+            expect(() => sdk.awaitChargeState()).toThrow(GoPaySDKError);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // isAuthenticated() / logout()
+    // -------------------------------------------------------------------------
+
+    describe('isAuthenticated()', () => {
+        it('returns false before attachPayment', () => {
+            expect(sdk.isAuthenticated()).toBe(false);
+        });
+
+        it('returns true after successful attachPayment', async () => {
+            fetchMock.mockResolvedValue(makeResponse(validTokenPair));
+            await sdk.attachPayment({
+                paymentId: 'pay_001',
+                paymentSecret: 'secret',
+            });
+            expect(sdk.isAuthenticated()).toBe(true);
+        });
+    });
+
+    describe('logout()', () => {
+        it('clears the stored token so isAuthenticated returns false', async () => {
+            fetchMock.mockResolvedValue(makeResponse(validTokenPair));
+            await sdk.attachPayment({
+                paymentId: 'pay_001',
+                paymentSecret: 'secret',
+            });
+            sdk.logout();
+            expect(sdk.isAuthenticated()).toBe(false);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // attachPayment()
+    // -------------------------------------------------------------------------
+
+    describe('attachPayment()', () => {
+        it('exchanges the payment secret via authorization_code grant', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(validTokenPair);
+            });
+
+            await sdk.attachPayment({
+                paymentId: 'pay_001',
+                paymentSecret: 'payment_secret_xyz',
+            });
+
+            const params = new URLSearchParams(capturedBody);
+            expect(params.get('grant_type')).toBe('authorization_code');
+            expect(params.get('authorization_code')).toBe('payment_secret_xyz');
+        });
+
+        it('includes clientId in the token request', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(validTokenPair);
+            });
+
+            await sdk.attachPayment({
+                paymentId: 'pay_001',
+                paymentSecret: 'secret',
+            });
+
+            expect(new URLSearchParams(capturedBody).get('client_id')).toBe(
+                'cid_test',
+            );
+        });
+
+        it('enables getStatus() after attachment', async () => {
+            fetchMock.mockImplementation(async (req: Request) => {
+                if (req.url.includes('/oauth2/token')) {
+                    await req.text();
+                    return makeResponse(validTokenPair);
+                }
+                return makeResponse({ state: 'CREATED' });
+            });
+
+            await sdk.attachPayment({
+                paymentId: 'pay_status',
+                paymentSecret: 'secret',
+            });
+            const result = await sdk.getStatus();
+            expect(result).toEqual({ state: 'CREATED' });
+        });
+
+        it('getStatus() hits the URL for the attached paymentId', async () => {
+            let capturedUrl = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                if (req.url.includes('/oauth2/token')) {
+                    await req.text();
+                    return makeResponse(validTokenPair);
+                }
+                capturedUrl = req.url;
+                return makeResponse({});
+            });
+
+            await sdk.attachPayment({
+                paymentId: 'pay_xyz',
+                paymentSecret: 'secret',
+            });
+            await sdk.getStatus();
+            expect(capturedUrl).toContain('/payments/pay_xyz');
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // mountCardForm() delegation
+    // -------------------------------------------------------------------------
+
+    describe('mountCardForm()', () => {
+        it('mounts an iframe for the return-payload flow', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            const container = document.createElement('div');
+            document.body.appendChild(container);
+
+            const ctrl = await sdk.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl.result.catch(() => {});
+
+            expect(container.querySelector('iframe')).not.toBeNull();
+            container.remove();
+        });
+    });
+});

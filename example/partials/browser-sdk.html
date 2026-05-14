@@ -1,0 +1,107 @@
+<!-- ── Browser SDK ─────────────────────────────────────────────── -->
+<div class="flex items-center gap-4 pt-1">
+    <div class="h-px flex-1 bg-[#3B82F6]"></div>
+    <span class="text-[0.68rem] font-semibold text-blue-600 tracking-widest uppercase shrink-0">Browser SDK · gopay-js-sdk-browser</span>
+    <div class="h-px flex-1 bg-[#3B82F6]"></div>
+</div>
+
+<!-- Browser SDK status -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">Browser SDK</h2>
+    <div class="flex items-center gap-2 mb-3">
+        <span class="badge" id="browser-sdk-badge" style="background:#e2e3e5;color:#383d41;">not initialized</span>
+    </div>
+    <p class="desc">The browser SDK is initialized once with a <code>publishableKey</code> and <code>clientId</code> from your server. Run <code>auth.getBrowserKeys()</code> to auto-fill and initialize, or enter the values manually and click Initialize.</p>
+    <div class="fields">
+        <label>Publishable Key<input id="cardpay-publishable-key" type="text" placeholder="from serverSdk.getBrowserKeys()" /></label>
+        <label>Client ID<input id="cardpay-client-id" type="text" placeholder="auto-filled from config" /></label>
+    </div>
+    <button type="button" onclick="runInitBrowserSDK()">Initialize Browser SDK</button>
+    <p class="note">After initializing, run <code>payments.create()</code> to create a payment — the browser SDK will attach to it automatically.</p>
+    <pre id="browser-sdk-log" hidden class="mt-3 !text-red-700"></pre>
+</section>
+
+<!-- Card Pay -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.mountCardForm()</h2>
+    <p class="desc">Mounts the GoPay-hosted card encryption iframe. Resolves with <code>{ encryptedPayload }</code> — auto-filled into the Browser charge section below. To store the card server-side as a reusable token, forward the payload to your server and call <code>serverSdk.tokenizeEncryptedCard()</code>.</p>
+    <p class="note">Test card: <code>4111 1111 1111 1111</code> — any future expiry (e.g. <code>12/30</code>), any 3-digit CVV.</p>
+    <div class="flex items-center gap-2 flex-wrap mb-3">
+        <span class="text-xs text-[#6B7280] font-medium">Language:</span>
+        <button type="button" id="cardpay-lang-en" onclick="cardPaySetLang('en')" class="!text-xs !py-1 !px-3">EN</button>
+        <button type="button" id="cardpay-lang-cs" onclick="cardPaySetLang('cs')" class="!text-xs !py-1 !px-3 js-btn-inactive">CS</button>
+        <span class="text-xs text-[#6B7280] font-medium ml-3">Theme:</span>
+        <button type="button" id="cardpay-theme-default" onclick="cardPaySetTheme('default')" class="!text-xs !py-1 !px-3">Default</button>
+        <button type="button" id="cardpay-theme-dark" onclick="cardPaySetTheme('dark')" class="!text-xs !py-1 !px-3 js-btn-inactive">Dark</button>
+        <span class="text-xs text-[#6B7280] font-medium ml-3">Submit:</span>
+        <button type="button" id="cardpay-submit-internal" onclick="cardPaySetSubmitMode('internal')" class="!text-xs !py-1 !px-3">Internal</button>
+        <button type="button" id="cardpay-submit-external" onclick="cardPaySetSubmitMode('external')" class="!text-xs !py-1 !px-3 js-btn-inactive">External</button>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap mb-3">
+        <button type="button" onclick="cardPayOpenIframe()">Open Card Payment</button>
+        <button type="button" id="cardpay-ext-submit" disabled onclick="cardPayExtSubmit()" class="hidden opacity-50 cursor-not-allowed">Pay Now</button>
+        <span id="cardpay-ext-valid-row" class="hidden text-xs text-[#6B7280]">Valid: <span id="cardpay-ext-valid">false</span></span>
+    </div>
+    <div id="cardpay-iframe-container" class="hidden my-3 border border-[#E1E5EB] rounded-2xl overflow-hidden"></div>
+    <pre id="cardpay-output">—</pre>
+</section>
+
+<!-- Browser Google Pay -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">Google Pay (Browser SDK)</h2>
+    <p class="desc">
+        Step 1: <code>getGooglePayInfo()</code> — attach the payment and fetch config, render Google Pay button.<br>
+        Step 2: Click the Google Pay button — user selects a card. Charges via <code>chargePayment()</code> and polls <code>getChargeState()</code> to completion.
+    </p>
+    <div class="flex items-center gap-2 flex-wrap">
+        <button type="button" onclick="browserGooglePayLoadInfo()">Load Google Pay Config</button>
+        <div id="bgpay-button-container" class="flex items-center gap-2"></div>
+    </div>
+    <pre id="bgpay-output">—</pre>
+    <p class="note">Requires a payment created with Google Pay as an allowed instrument. In sandbox the Google Pay sheet runs in <code>TEST</code> mode — no real card data is used.</p>
+</section>
+
+<!-- Browser Apple Pay -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">Apple Pay (Browser SDK)</h2>
+    <p class="desc">
+        Step 1: <code>getApplePayInfo()</code> — attach the payment and fetch config, render Apple Pay button.<br>
+        Step 2: Click the Apple Pay button — merchant validation runs automatically via <code>startApplePaySession()</code>. Charges via <code>chargePayment()</code> and polls <code>getChargeState()</code> to completion.
+    </p>
+    <div class="flex items-center gap-2 flex-wrap">
+        <button type="button" onclick="browserApplePayLoadInfo()">Load Apple Pay Config</button>
+        <div id="bapplepay-button-container" class="flex items-center gap-2"></div>
+    </div>
+    <pre id="bapplepay-output">—</pre>
+    <p class="note">Requires a payment created with Apple Pay as an allowed instrument.
+        <strong>ApplePaySession</strong>: native on Safari; simulated by a dev polyfill in other browsers.
+        <strong>PaymentRequest</strong>: shown on Chrome/Edge when the browser supports Apple Pay — triggers a cross-device QR code flow authenticated via iPhone or Apple Watch.</p>
+</section>
+
+<!-- Browser QR Payment Info -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">QR Payment Info (Browser SDK)</h2>
+    <p class="desc">Attach the payment and call <code>getQRPaymentInfo()</code> — returns QR code (base64) and recipient info.</p>
+    <div class="fields">
+        <label>Format
+            <select id="bqr-format">
+                <option value="">png (default)</option>
+                <option value="svg">svg</option>
+            </select>
+        </label>
+    </div>
+    <button type="button" onclick="browserQRPaymentInfo()">Run</button>
+    <pre id="bqr-output">—</pre>
+    <p class="note">QR codes are returned base64-encoded. The available field depends on currency: <code>spayd</code> (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
+</section>
+
+<!-- Browser charge -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">chargePayment()</h2>
+    <p class="desc">Charge the attached payment using the encrypted card payload from the card form above. <code>attachPayment()</code> is called automatically after <code>payments.create()</code>. Polls <code>getChargeState()</code> automatically until SUCCEEDED or FAILED.</p>
+    <div class="fields">
+        <label class="w-full">Encrypted Payload<input id="bcharge-encrypted-payload" type="text" placeholder="auto-filled by card form" /></label>
+    </div>
+    <button type="button" onclick="runBrowserCharge()">Charge</button>
+    <pre id="bcharge-output">—</pre>
+</section>

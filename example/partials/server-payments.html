@@ -1,0 +1,133 @@
+<!-- Create payment -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.create()</h2>
+    <p class="desc">POST /eshops/{goid}/payments — create a payment session. Returns <code>id</code> and <code>payment_secret</code>; both are auto-filled into the sections below.</p>
+    <div class="fields">
+        <label>GoID<input id="create-goid" type="text" value="8123456789" /></label>
+        <label>Amount (cents)<input id="create-amount" type="number" value="1000" /></label>
+        <label>Currency<input id="create-currency" type="text" value="CZK" /></label>
+        <label>Order Number<input id="create-order-number" type="text" value="ORDER-001" /></label>
+        <label>Customer Email<input id="create-customer-email" type="text" value="customer@example.com" /></label>
+        <label>Notification URL<input id="create-notification-url" type="text" value="https://yourshop.example.com/notify" /></label>
+        <label>Return URL<input id="create-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+    </div>
+    <button type="button" onclick="runCreatePayment()">Run</button>
+    <pre id="payment-create-output">—</pre>
+</section>
+
+<!-- Payment status -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getStatus()</h2>
+    <p class="desc">GET /payments/{id} — retrieve the current state of a payment (CREATED, PAID, CANCELED, etc.).</p>
+    <div class="fields">
+        <label>Payment ID<input id="status-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+    </div>
+    <button type="button" onclick="runGetPaymentStatus()">Run</button>
+    <pre id="status-output">—</pre>
+</section>
+
+<!-- Google Pay -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">Google Pay</h2>
+    <p class="desc">
+        Step 1: <code>payments.getGooglePayInfo()</code> — fetch config, render Google Pay button.<br>
+        Step 2: Click the Google Pay button — user selects a card. Token is prefilled into <em>payments.charge()</em> above.
+    </p>
+    <div class="fields">
+        <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+        <button type="button" onclick="googlePayLoadInfo()">Load Google Pay Config</button>
+        <div id="googlepay-button-container" class="flex items-center gap-2"></div>
+    </div>
+    <pre id="googlepay-output">—</pre>
+    <p class="note">Requires a payment created with Google Pay as an allowed instrument. In sandbox the Google Pay sheet runs in <code>TEST</code> mode — no real card data is used.</p>
+</section>
+
+<!-- Apple Pay -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">Apple Pay</h2>
+    <p class="desc">
+        Step 1: <code>payments.getApplePayInfo()</code> — fetch config, render Apple Pay button.<br>
+        Step 2: Click the Apple Pay button — merchant validation runs automatically via <code>payments.startApplePaySession()</code>. The charge fires inside <code>onpaymentauthorized</code> (required by Apple's API) and the instrument is also prefilled into <em>payments.charge()</em> above for reference.
+    </p>
+    <div class="fields">
+        <label>Payment ID<input id="applepay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+        <button type="button" onclick="applePayLoadInfo()">Load Apple Pay Config</button>
+        <div id="applepay-button-container" class="flex items-center gap-2"></div>
+    </div>
+    <pre id="applepay-output">—</pre>
+    <p class="note">Requires a payment created with Apple Pay as an allowed instrument.
+        <strong>ApplePaySession</strong>: native on Safari; simulated by a dev polyfill in other browsers.
+        <strong>PaymentRequest</strong>: shown on Chrome/Edge when the browser supports Apple Pay — triggers a cross-device QR code flow authenticated via iPhone or Apple Watch.</p>
+</section>
+
+<!-- Charge payment -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.charge()</h2>
+    <p class="desc">POST /payments/{id}/charge — submit a payment instrument token obtained from Google Pay, Apple Pay, or a saved card token. Google Pay and Apple Pay flows above prefill the instrument automatically. For one-time card payments use the Browser SDK's Card Pay section below.</p>
+    <div class="fields">
+        <label>Payment ID<input id="charge-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+        <label>Return URL<input id="charge-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+    </div>
+    <pre id="charge-instrument-info" class="mb-2 text-[0.78rem]">No instrument prefilled — complete a Google Pay or Apple Pay flow above, or enter a card token manually.</pre>
+    <div class="fields" id="charge-token-fields">
+        <label>Card Token<input id="charge-card-token" type="text" placeholder="card token" /></label>
+    </div>
+    <button type="button" onclick="runCharge()">Run</button>
+    <button type="button" onclick="clearCharge()" class="!bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">Clear</button>
+    <pre id="payment-charge-output">—</pre>
+</section>
+
+<!-- Charge state -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getChargeState()</h2>
+    <p class="desc">GET /payments/{id}/charge — retrieve the current state of a charge (REQUESTED, PROCESSING, SUCCEEDED, FAILED, etc.).</p>
+    <div class="fields">
+        <label>Payment ID<input id="charge-state-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+    </div>
+    <button type="button" onclick="runGetChargeState()">Run</button>
+    <pre id="charge-state-output">—</pre>
+</section>
+
+<!-- QR Payment info -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getQRPaymentInfo()</h2>
+    <p class="desc">GET /payments/{id}/qr-payment/info — fetch QR code (base64) and recipient info.</p>
+    <div class="fields">
+        <label>Payment ID<input id="qr-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+        <label>Format
+            <select id="qr-format">
+                <option value="">png (default)</option>
+                <option value="svg">svg</option>
+            </select>
+        </label>
+    </div>
+    <button type="button" onclick="runQRPaymentInfo()">Run</button>
+    <pre id="qr-output">—</pre>
+    <p class="note">QR codes are returned base64-encoded. The available field depends on currency: <code>spayd</code> (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
+</section>
+
+<!-- Card details -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.getDetails()</h2>
+    <p class="desc">GET /cards/tokens/{card_id} — retrieve details of a stored permanent card token (masked PAN, expiry, scheme, fingerprint). Requires <code>card:read</code> scope.</p>
+    <div class="fields">
+        <label>Card ID<input id="card-details-id" type="text" placeholder="8007127320" /></label>
+    </div>
+    <button type="button" onclick="runGetCardDetails()">Run</button>
+    <pre id="card-details-output">—</pre>
+</section>
+
+<!-- Delete card -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.deleteCard()</h2>
+    <p class="desc">DELETE /cards/tokens/{card_id} — permanently remove a stored card token. Returns no content on success.</p>
+    <div class="fields">
+        <label>Card ID<input id="delete-card-id" type="text" placeholder="8007127320" /></label>
+    </div>
+    <button type="button" onclick="runDeleteCard()">Run</button>
+    <pre id="delete-card-output">—</pre>
+</section>
