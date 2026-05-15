@@ -1,3 +1,6 @@
+// Dev-only postMessage spy. Logs full payloads, including GOPAY_CARD_FORM_INIT
+// (carries publishable_key and client tokens) and GOPAY_CARD_ENCRYPT_RESULT
+// (carries the encrypted JWE card_token). Never used in production builds.
 function logPostMessage(direction, data) {
     const pre = document.getElementById('cardpay-output');
     if (!pre) return;
