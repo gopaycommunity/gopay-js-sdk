@@ -173,6 +173,7 @@ export function createAuthApi(client: HttpClient) {
          */
         setClientToken(accessToken: string): { authenticated: true } {
             let sub: string;
+            let expiresIn = 3600;
             try {
                 const parts = accessToken.split('.');
                 if (parts.length < 2) throw new Error('not a JWT');
@@ -187,6 +188,15 @@ export function createAuthApi(client: HttpClient) {
                 >;
                 sub = String(payload.sub ?? '');
                 if (!sub) throw new Error('sub claim is empty');
+                if (
+                    typeof payload.exp === 'number' &&
+                    Number.isFinite(payload.exp)
+                ) {
+                    expiresIn = Math.max(
+                        0,
+                        Math.floor(payload.exp) - Math.floor(Date.now() / 1000),
+                    );
+                }
             } catch {
                 throw client.emitError(
                     new GoPaySDKError(
@@ -199,7 +209,7 @@ export function createAuthApi(client: HttpClient) {
             client.setToken({
                 access_token: accessToken,
                 refresh_token: '',
-                expires_in: 3600,
+                expires_in: expiresIn,
                 refresh_expires_in: 0,
                 token_type: 'bearer',
             });
