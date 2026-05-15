@@ -44,6 +44,8 @@
             "!**/playwright-report",
             "!**/test-results",
             "!sdk/src/types/generated.ts",
+            "!browser-sdk/src/types/generated.ts",
+            "!internal/core/src/types/generated.ts",
             "!example/iframe/index.html"
         ]
     }
