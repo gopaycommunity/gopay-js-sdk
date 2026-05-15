@@ -29,7 +29,7 @@ export function awaitCharge<
 
     return new Promise<T>((resolve, reject) => {
         let stopped = false;
-        let actionRequiredSeen = false;
+        let lastActionRequiredUrl: string | null = null;
 
         const stop = (fn: () => void) => {
             if (stopped) return;
@@ -74,8 +74,11 @@ export function awaitCharge<
 
                     if (state.state === 'ACTION_REQUIRED') {
                         clearTimeout(initialTimer);
-                        if (state.action?.redirect_url && !actionRequiredSeen) {
-                            actionRequiredSeen = true;
+                        if (
+                            state.action?.redirect_url &&
+                            state.action.redirect_url !== lastActionRequiredUrl
+                        ) {
+                            lastActionRequiredUrl = state.action.redirect_url;
                             options?.onActionRequired?.(
                                 state.action.redirect_url,
                             );
