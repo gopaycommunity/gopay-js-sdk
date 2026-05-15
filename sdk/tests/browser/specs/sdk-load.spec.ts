@@ -26,5 +26,7 @@ test('SDK exposes expected modules and methods', async ({ page }) => {
     expect(info.methods).toContain('getGooglePayInfo');
     expect(info.methods).toContain('getApplePayInfo');
     expect(info.methods).toContain('startApplePaySession');
-    expect(info.methods).toContain('mountCardForm');
+    // mountCardForm lives on the browser SDK (gopay-js-sdk-browser) after the
+    // server/client split; the server SDK exposes tokenizeEncryptedCard instead.
+    expect(info.methods).toContain('tokenizeEncryptedCard');
 });

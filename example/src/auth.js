@@ -51,6 +51,26 @@ export function runLogout() {
     document.getElementById('auth-output').textContent = 'Logged out.';
 }
 
+let lastIssuedToken = null;
+
+export function runIssueClientToken() {
+    run('issue-client-token-output', async () => {
+        const tokenPair = await sdk.issueClientToken();
+        lastIssuedToken = tokenPair;
+        return tokenPair;
+    });
+}
+
+export function runSetClientTokenFlow() {
+    run('set-client-token-output', async () => {
+        const accessToken = lastIssuedToken?.access_token;
+        if (!accessToken) {
+            throw new Error('No issued token — run issueClientToken() first.');
+        }
+        return sdk.setClientToken(accessToken);
+    });
+}
+
 export function runGetBrowserKeys() {
     run('get-browser-keys-output', async () => {
         const keys = sdk.getBrowserKeys();

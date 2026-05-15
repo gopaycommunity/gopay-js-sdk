@@ -42,6 +42,22 @@
     <pre id="auth-output">—</pre>
 </section>
 
+<!-- issueClientToken -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">auth.issueClientToken() <span class="text-xs text-red-700 font-normal">(server-only — never call from a browser)</span></h2>
+    <p class="desc">POST /oauth2/token — issue a short-lived token pair scoped for browser use. Returns <code>{ access_token, ... }</code> — forward this to the browser. Requires prior authentication.</p>
+    <button type="button" onclick="runIssueClientToken()">Run</button>
+    <pre id="issue-client-token-output">—</pre>
+</section>
+
+<!-- setClientToken -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">auth.setClientToken()</h2>
+    <p class="desc">Seed the SDK with the <code>access_token</code> from <code>issueClientToken()</code>. Extracts <code>client_id</code> from the JWT <code>sub</code> claim. Run <code>issueClientToken()</code> first.</p>
+    <button type="button" onclick="runSetClientTokenFlow()">Run</button>
+    <pre id="set-client-token-output">—</pre>
+</section>
+
 <!-- getBrowserKeys -->
 <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
     <h2 class="text-base font-semibold text-[#2D3643] mb-4">auth.getBrowserKeys()</h2>

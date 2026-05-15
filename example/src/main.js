@@ -4,7 +4,9 @@ import { applePayLoadInfo } from './apple-pay.js';
 import {
     runAuthenticate,
     runGetBrowserKeys,
+    runIssueClientToken,
     runLogout,
+    runSetClientTokenFlow,
     updateAuthBadge,
 } from './auth.js';
 import { browserApplePayLoadInfo } from './browser-apple-pay.js';
@@ -113,6 +115,8 @@ window.runInitBrowserSDK = () => {
 
 window.runAuthenticate = runAuthenticate;
 window.runLogout = runLogout;
+window.runIssueClientToken = runIssueClientToken;
+window.runSetClientTokenFlow = runSetClientTokenFlow;
 window.runGetBrowserKeys = runGetBrowserKeys;
 window.runCreatePayment = runCreatePayment;
 window.runCharge = runCharge;

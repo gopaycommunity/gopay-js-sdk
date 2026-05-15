@@ -105,7 +105,7 @@ export async function cardPayOpenIframe() {
                 : undefined,
         });
 
-        pre.textContent += '\n\nWaiting for card entry…';
+        pre.textContent += '\n\nWaiting for card confirmation in iframe';
 
         const result = await cardFormController.result;
         cardFormController = null;
