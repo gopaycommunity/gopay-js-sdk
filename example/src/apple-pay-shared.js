@@ -61,7 +61,9 @@ export async function renderApplePayButtons({
         btn.style.background = '#856404';
         btn.onclick = () => onBeginSession(window.MockApplePaySession);
         container.appendChild(btn);
+    }
 
+    if (window.ApplePaySession) {
         const appleBtn = document.createElement('apple-pay-button');
         appleBtn.setAttribute('buttonstyle', 'black');
         appleBtn.setAttribute('type', 'buy');
