@@ -47,6 +47,7 @@ export function runAuthenticate() {
 
 export function runLogout() {
     sdk.logout();
+    lastIssuedToken = null;
     updateAuthBadge();
     document.getElementById('auth-output').textContent = 'Logged out.';
 }
