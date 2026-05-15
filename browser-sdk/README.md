@@ -248,6 +248,14 @@ For shared error types (`GoPaySDKError`, `GoPayHTTPError`, network codes) see th
 
 ---
 
+## Interactive example
+
+An interactive developer page in the repository exercises both SDK packages against the real API.
+
+Browse the source at [github.com/gopaycommunity/gopay-js-sdk](https://github.com/gopaycommunity/gopay-js-sdk) (`example/` directory).
+
+---
+
 ## Security notes
 
 - Card data is encrypted inside a GoPay-hosted iframe (`sandbox="allow-scripts allow-forms allow-same-origin"`). The SDK never sees PAN or CVV.

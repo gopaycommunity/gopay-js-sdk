@@ -1,13 +1,15 @@
+const monorepo = require('semantic-release-monorepo');
+
 /** @type {import('semantic-release').GlobalConfig} */
-module.exports = {
+module.exports = monorepo({
     branches: ['master'],
     // biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release template, not JS
     tagFormat: '${version}',
     plugins: [
-        // Analyze commits to determine version bump (feat → minor, fix → patch, BREAKING CHANGE → major)
+        // Analyze commits that touched sdk/ (or internal/core via workspace dep) to determine version bump
         '@semantic-release/commit-analyzer',
 
-        // Generate release notes from commits
+        // Generate release notes from those commits
         '@semantic-release/release-notes-generator',
 
         // Update CHANGELOG.md
@@ -18,19 +20,12 @@ module.exports = {
             },
         ],
 
-        // Bump version in package.json.
-        // We use exec+node instead of @semantic-release/npm because `npm version` (used
-        // internally by @semantic-release/npm) does not understand Yarn's `workspace:*`
-        // protocol used in example/package.json.
-        //
-        // When ready to publish to npm, replace this block with:
-        //   ['@semantic-release/npm', { npmPublish: true }]
-        // and ensure NPM_TOKEN is set in Bitbucket repository variables.
+        // Bump version in package.json. npmPublish: false until NPM_TOKEN is added and sign-off given.
+        // To enable real publishing: set npmPublish: true and add NPM_TOKEN to Bitbucket repository variables.
         [
-            '@semantic-release/exec',
+            '@semantic-release/npm',
             {
-                // biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release template, not JS
-                prepareCmd: 'npm pkg set version=${nextRelease.version}',
+                npmPublish: false,
             },
         ],
 
@@ -45,4 +40,4 @@ module.exports = {
             },
         ],
     ],
-};
+});

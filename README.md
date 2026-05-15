@@ -1,19 +1,25 @@
 # gp-gw-js-sdk
 
-Monorepo for the [gopay-js-sdk](sdk/) npm package — a JavaScript/TypeScript SDK for the GoPay Payments API v4.0.
+Monorepo for the GoPay JavaScript SDKs — two npm packages wrapping the GoPay Payments API v4.0.
 
-> **Integrating the SDK?** See [sdk/README.md](sdk/README.md).
+> **Integrating the server SDK?** See [sdk/README.md](sdk/README.md).\
+> **Integrating the browser SDK?** See [browser-sdk/README.md](browser-sdk/README.md).
 
 ## Structure
 
 ```
 gp-gw-js-sdk/
-├── sdk/                  # npm package (gopay-js-sdk)
+├── sdk/                  # npm: gopay-js-sdk (server-side / Node.js)
 │   ├── src/              # TypeScript source
 │   ├── tests/            # Unit + E2E tests (vitest)
 │   └── dist/             # Build output (git-ignored)
-├── tests/browser/        # Playwright browser tests
-├── example/              # Demo page (loads sdk/dist/gopay-sdk.min.js)
+├── browser-sdk/          # npm: gopay-js-sdk-browser (in-browser payments)
+│   ├── src/              # TypeScript source
+│   ├── tests/            # Unit tests (vitest)
+│   └── dist/             # Build output — includes IIFE for CDN use (git-ignored)
+├── internal/core/        # Private shared package — inlined into both SDKs at build time, not published
+├── tests/browser/        # Playwright end-to-end tests
+├── example/              # Interactive developer page (private, not published)
 └── Payments.yaml         # OpenAPI 3.1 spec (source of truth)
 ```
 
@@ -24,7 +30,7 @@ Before merging to master, check whether any public API changes are breaking (req
 Consumer-facing breaking changes (bump major):
 - Removed or renamed exported functions, classes, types, or constants
 - Changed method signatures (added required params, changed return types)
-- Changed `window.GoPaySDK` global shape (IIFE consumers on unpkg pin to `@1`)
+- Changed `window.GoPayBrowserSDK` global shape — affects `gopay-js-sdk-browser` IIFE consumers pinned via unpkg (`@1`)
 - Changed error codes in `GoPayErrorCodes`
 
 **postMessage protocol** (`sdk/src/modules/cards/iframe-protocol.ts`) changes are **not** consumer-facing — the wire protocol between the SDK and the GoPay-hosted iframe is invisible to e-shops. However, they require **coordinated deployment** with `gw-ui-cc-v4`: deploy the iframe side first, or make the change backward-compatible, to avoid a compatibility gap between the two.
@@ -114,7 +120,12 @@ cd sdk && yarn codegen
 
 ## Releasing
 
-Releases are fully automated via [semantic-release](https://semantic-release.gitbook.io/semantic-release/) on the `master` branch.
+Releases are fully automated via [semantic-release](https://semantic-release.gitbook.io/semantic-release/) on the `master` branch. Each package releases independently — only the package(s) whose files changed get a new version.
+
+| Package | Tag format | npm |
+|---|---|---|
+| `gopay-js-sdk` | `1.3.5` | [npmjs.com/package/gopay-js-sdk](https://www.npmjs.com/package/gopay-js-sdk) |
+| `gopay-js-sdk-browser` | `browser-sdk-1.0.0` | [npmjs.com/package/gopay-js-sdk-browser](https://www.npmjs.com/package/gopay-js-sdk-browser) |
 
 Write commits following the [Conventional Commits](https://www.conventionalcommits.org/) spec:
 

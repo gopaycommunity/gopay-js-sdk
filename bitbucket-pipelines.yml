@@ -72,6 +72,7 @@ definitions:
           - corepack enable
           - yarn install --immutable
           - (cd sdk && yarn dlx semantic-release --dry-run --no-ci)
+          - (cd browser-sdk && yarn dlx semantic-release --dry-run --no-ci)
 
     - step: &build
         name: Build SDK
@@ -111,10 +112,12 @@ definitions:
           - corepack enable
           - yarn install --immutable
           - yarn workspace gopay-js-sdk run build
+          - yarn workspace gopay-js-sdk-browser run build
           # semantic-release: bumps version, tags commit, updates CHANGELOG
-          # npm publish is currently disabled (npmPublish: false in release.config.cjs)
-          # Bitbucket Pipelines implicit auth handles the git push back to repo
+          # npmPublish: false in both release.config.cjs — flip to true once NPM_TOKEN is set in Bitbucket variables
+          # Each package only releases when its own files changed (filtered by semantic-release-monorepo)
           - (cd sdk && yarn dlx semantic-release)
+          - (cd browser-sdk && yarn dlx semantic-release)
           - npm pkg get version --prefix sdk | tr -d '"' > version
         artifacts:
           - version

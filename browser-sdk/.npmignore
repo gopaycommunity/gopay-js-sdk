@@ -1,0 +1,11 @@
+tests/
+tsup.config.ts
+tsconfig.json
+release.config.cjs
+.yarnrc.yml
+*.yaml
+*.yml
+.env
+.env*
+.env.*
+!dist/

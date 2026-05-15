@@ -1,6 +1,8 @@
 # gopay-js-sdk
 
-GoPay JavaScript SDK for browser and Node.js — wraps the GoPay Payments API v4.0.
+GoPay JavaScript SDK for server-side use (Node.js) — wraps the GoPay Payments API v4.0.
+
+> **Building a browser integration?** Use [`gopay-js-sdk-browser`](../browser-sdk/README.md) — it handles in-browser card encryption, direct-charge flows, and exposes an IIFE bundle for CDN use.
 
 ## Installation
 
@@ -9,22 +11,6 @@ npm install gopay-js-sdk
 # or
 yarn add gopay-js-sdk
 ```
-
-Browser (CDN via unpkg):
-
-```html
-<!-- Pin to a specific version (recommended for production) -->
-<script src="https://unpkg.com/gopay-js-sdk@1.1.0/dist/gopay-sdk.min.js"></script>
-```
-
-Pin to a major version to receive minor and patch updates automatically while staying protected from breaking changes:
-
-```html
-<!-- Auto-updates within the same major version -->
-<script src="https://unpkg.com/gopay-js-sdk@1/dist/gopay-sdk.min.js"></script>
-```
-
-Avoid the bare package name without a version — it resolves to `latest` and will include future major (breaking) releases.
 
 ---
 
@@ -132,22 +118,6 @@ app.get('/session/gopay-token', async (req, res) => {
   const clientToken = await sdk.issueClientToken('payment:create payment:read card:save card:read');
   res.json(clientToken);
 });
-```
-
-```html
-<!-- Browser (IIFE) -->
-<script src="https://unpkg.com/gopay-js-sdk@1.1.0/dist/gopay-sdk.min.js"></script>
-<script>
-  const browserSdk = GoPaySDK.createGoPaySDK({ environment: 'production' });
-
-  // Fetch the token pair from your server — never hardcode credentials here.
-  const clientToken = await fetch('/session/gopay-token').then(r => r.json());
-
-  // client_id is extracted automatically from the JWT access_token.
-  browserSdk.setClientToken(clientToken);
-
-  // SDK is now authenticated — make API calls as normal.
-</script>
 ```
 
 ESM / bundler:
@@ -690,4 +660,6 @@ The callback fires synchronously before the error propagates to the caller.
 
 ## Interactive example
 
-An interactive developer page is included in the repository. It exercises every SDK method against the real API.
+An interactive developer page is included in the repository — it exercises every SDK method against the real API.
+
+Browse the source at [github.com/gopaycommunity/gopay-js-sdk](https://github.com/gopaycommunity/gopay-js-sdk) (`example/` directory).
