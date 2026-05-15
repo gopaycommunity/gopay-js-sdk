@@ -39,6 +39,7 @@ export function createTokenStore() {
         setClientId(id: string): void {
             clientId = id;
             clientSecret = null;
+            tokens = null;
         },
 
         set(pair: Omit<StoredTokenPair, 'issued_at'>): void {
