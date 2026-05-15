@@ -10,7 +10,7 @@
     ],
     "scripts": {
         "lint": "biome check .",
-        "ci": "yarn biome ci . && yarn workspace gopay-js-sdk run typecheck && yarn workspace gopay-js-sdk run check:circular && yarn workspace gopay-js-sdk run check:exports && yarn workspace gopay-js-sdk-browser run typecheck && yarn workspace gopay-js-sdk-browser run check:circular && yarn workspace gopay-js-sdk-browser run check:exports",
+        "ci": "yarn biome ci . && yarn workspace @gopay-internal/core run typecheck && yarn workspace gopay-js-sdk run typecheck && yarn workspace gopay-js-sdk run check:circular && yarn workspace gopay-js-sdk run check:exports && yarn workspace gopay-js-sdk-browser run typecheck && yarn workspace gopay-js-sdk-browser run check:circular && yarn workspace gopay-js-sdk-browser run check:exports",
         "codegen": "yarn workspace @gopay-internal/core run codegen",
         "prepare": "husky",
         "test:e2e": "playwright test",
