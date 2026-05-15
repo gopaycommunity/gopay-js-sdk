@@ -136,9 +136,9 @@ export function createCardsApi(
                 };
             }
 
-            activeCleanup?.();
-            activeCleanup = undefined;
-
+            // Defer tearing down the previous session until the new iframe is
+            // fully created and origin-validated. If getCardFormUrl() or origin
+            // validation throws, the previous controller stays alive.
             const iframeSrc = await getCardFormUrl();
             const expectedOrigin = new URL(iframeSrc, globalThis.location?.href)
                 .origin;
@@ -188,14 +188,8 @@ export function createCardsApi(
                 | ((e: MessageEvent<OutboundMessage>) => Promise<void>)
                 | undefined;
 
-            const cleanup = () => {
-                active = false;
-                if (onMessage) window.removeEventListener('message', onMessage);
-                iframe.remove();
-                activeCleanup = undefined;
-            };
-            activeCleanup = cleanup;
-
+            // Create the result promise before defining cleanup so rejectResult
+            // is captured in the activeCleanup closure below.
             let resolveResult!: (
                 value: EncryptedCardPayload | PaymentChargeStatusResponse,
             ) => void;
@@ -206,6 +200,27 @@ export function createCardsApi(
                 resolveResult = res;
                 rejectResult = rej;
             });
+
+            const cleanup = () => {
+                active = false;
+                if (onMessage) window.removeEventListener('message', onMessage);
+                iframe.remove();
+                activeCleanup = undefined;
+            };
+
+            // Tear down the previous session now that this one is ready.
+            // activeCleanup from the previous call rejects that session's result
+            // promise so it cannot hang.
+            activeCleanup?.();
+            activeCleanup = () => {
+                cleanup();
+                rejectResult(
+                    new GoPaySDKError(
+                        '[GoPayBrowserSDK] Card form replaced by a new mountCardForm call.',
+                        { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                    ),
+                );
+            };
 
             iframe.onload = () => {
                 iframe.contentWindow?.postMessage(
