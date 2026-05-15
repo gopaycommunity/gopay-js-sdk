@@ -1,4 +1,4 @@
-import type { HttpClient } from '@gopay-internal/core';
+import { GoPaySDKError, type HttpClient } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type EncryptedCardRequest =
@@ -16,7 +16,8 @@ export function createCardsApi(client: HttpClient) {
          * @param cardId - Unique identifier of the stored card token
          */
         async getCardDetails(cardId: string): Promise<PermanentCardToken> {
-            if (!cardId) throw new Error('cardId is required');
+            if (!cardId)
+                throw client.emitError(new GoPaySDKError('cardId is required'));
             return client.get<PermanentCardToken>(`/cards/tokens/${cardId}`);
         },
 
@@ -28,7 +29,8 @@ export function createCardsApi(client: HttpClient) {
          * @param cardId - Unique identifier of the stored card token
          */
         async deleteCard(cardId: string): Promise<void> {
-            if (!cardId) throw new Error('cardId is required');
+            if (!cardId)
+                throw client.emitError(new GoPaySDKError('cardId is required'));
             return client.delete(`/cards/tokens/${cardId}`);
         },
 
@@ -48,7 +50,10 @@ export function createCardsApi(client: HttpClient) {
         async tokenizeEncryptedCard(
             payload: string,
         ): Promise<PermanentCardToken> {
-            if (!payload) throw new Error('payload is required');
+            if (!payload)
+                throw client.emitError(
+                    new GoPaySDKError('payload is required'),
+                );
             const body: EncryptedCardRequest = { payload };
             return client.post<PermanentCardToken>('/cards/tokens', body);
         },
