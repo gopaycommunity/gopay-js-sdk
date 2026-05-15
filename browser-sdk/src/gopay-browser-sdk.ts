@@ -74,6 +74,7 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
             paymentId,
             paymentSecret,
         }: AttachPaymentArgs): Promise<void> {
+            paymentsApi = null;
             await exchangeAuthorizationCode(client, paymentSecret, clientId);
             paymentsApi = createPaymentsApi(client, paymentId);
         },
