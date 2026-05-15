@@ -6,12 +6,16 @@ WORKDIR /app
 # Copy workspace manifests first for layer caching
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY sdk/package.json sdk/
+COPY browser-sdk/package.json browser-sdk/
+COPY internal/core/package.json internal/core/
 COPY example/package.json example/
 
 RUN corepack enable && yarn install --immutable
 
 # Copy source
+COPY internal/core/ internal/core/
 COPY sdk/ sdk/
+COPY browser-sdk/ browser-sdk/
 COPY example/ example/
 
 # Build SDK first (example workspace:* dep resolves via dist/)

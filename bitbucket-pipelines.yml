@@ -26,7 +26,8 @@ definitions:
 
     # --- unit + e2e tests + coverage ---------------------------------
     # E2E requires repository variables (mark as Secured in Bitbucket settings):
-    #   GP_GW_JS_SDK_BASE_URL, GP_GW_JS_SDK_CLIENT_ID, GP_GW_JS_SDK_CLIENT_SECRET
+    #   GP_GW_JS_SDK_BASE_URL, GP_GW_JS_SDK_CLIENT_ID, GP_GW_JS_SDK_CLIENT_SECRET,
+    #   GP_GW_JS_SDK_GOID, GP_GW_JS_SDK_PUBLISHABLE_KEY
     - step: &test-vitest
         name: Tests & coverage
         caches:

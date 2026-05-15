@@ -1,15 +1,25 @@
-const monorepo = require('semantic-release-monorepo');
+import { analyzeCommits } from 'semantic-release-monorepo';
 
 /** @type {import('semantic-release').GlobalConfig} */
-module.exports = monorepo({
+export default {
     branches: ['master'],
     // biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release template, not JS
     tagFormat: 'browser-sdk-${version}',
+
+    // analyzeCommits is set at the top level (not inside plugins) so the monorepo
+    // decorator can intercept plugins[0] (@semantic-release/commit-analyzer) and
+    // filter commits to only those that touched browser-sdk/ or internal/core/ before
+    // letting the analyzer decide the version bump. If no relevant commits exist,
+    // the entire release is skipped — this package only releases when its files change.
+    analyzeCommits,
+
     plugins: [
-        // Analyze commits that touched browser-sdk/ (or internal/core via workspace dep) to determine version bump
+        // analyzeCommits above calls this at index 0 with path-filtered commits
         '@semantic-release/commit-analyzer',
 
-        // Generate release notes from those commits
+        // Generate release notes (uses all commits since last tag — see note below)
+        // Note: release notes may include commits from sdk/ or internal/core/,
+        // but the version bump and release gate are controlled by the filtered analyzeCommits above.
         '@semantic-release/release-notes-generator',
 
         // Update CHANGELOG.md
@@ -40,4 +50,4 @@ module.exports = monorepo({
             },
         ],
     ],
-});
+};

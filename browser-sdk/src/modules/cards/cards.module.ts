@@ -243,7 +243,7 @@ export function createCardsApi(
 
                 if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
                     const { height } = event.data;
-                    if (typeof height === 'number' && !Number.isNaN(height)) {
+                    if (Number.isFinite(height)) {
                         iframe.style.height = `${Math.max(0, Math.min(500, height))}px`;
                     }
                     return;

@@ -186,7 +186,7 @@ export function createAuthApi(client: HttpClient) {
                     string,
                     unknown
                 >;
-                sub = String(payload.sub ?? '');
+                sub = typeof payload.sub === 'string' ? payload.sub : '';
                 if (!sub) throw new Error('sub claim is empty');
                 if (
                     typeof payload.exp === 'number' &&

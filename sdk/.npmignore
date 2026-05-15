@@ -1,7 +1,7 @@
 tests/
 tsup.config.ts
 tsconfig.json
-release.config.cjs
+release.config.mjs
 .yarnrc.yml
 *.yaml
 *.yml
