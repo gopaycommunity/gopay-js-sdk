@@ -1,5 +1,6 @@
 import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
 import { createPaymentsApi } from '../../src/modules/payments/payments.module.js';
 
 const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
@@ -818,6 +819,293 @@ describe('PaymentsModule', () => {
         it('throws when paymentId is empty', async () => {
             await expect(payments.getChargeState('')).rejects.toThrow(
                 'paymentId is required',
+            );
+        });
+    });
+
+    describe('startApplePaySession()', () => {
+        let mockSession: {
+            onvalidatemerchant: ((event: unknown) => void) | null;
+            oncancel: ((event: unknown) => void) | null;
+            completeMerchantValidation: ReturnType<
+                typeof vi.fn<(merchantSession: unknown) => void>
+            >;
+            abort: ReturnType<typeof vi.fn<() => void>>;
+            begin: ReturnType<typeof vi.fn<() => void>>;
+        };
+
+        beforeEach(() => {
+            mockSession = {
+                onvalidatemerchant: null,
+                oncancel: null,
+                completeMerchantValidation:
+                    vi.fn<(merchantSession: unknown) => void>(),
+                abort: vi.fn<() => void>(),
+                begin: vi.fn<() => void>(),
+            };
+        });
+
+        it('throws when paymentId is empty', () => {
+            expect(() =>
+                payments.startApplePaySession(
+                    '',
+                    mockSession,
+                    'https://merchant.example.com',
+                ),
+            ).toThrow('paymentId is required');
+        });
+
+        it('throws for a non-https origin', () => {
+            expect(() =>
+                payments.startApplePaySession(
+                    'pay_123',
+                    mockSession,
+                    'http://merchant.example.com',
+                ),
+            ).toThrow('origin must be an https: origin');
+        });
+
+        it('throws for an invalid URL origin', () => {
+            expect(() =>
+                payments.startApplePaySession(
+                    'pay_123',
+                    mockSession,
+                    'not-a-url',
+                ),
+            ).toThrow('invalid origin');
+        });
+
+        it('throws when origin includes a path', () => {
+            expect(() =>
+                payments.startApplePaySession(
+                    'pay_123',
+                    mockSession,
+                    'https://merchant.example.com/path',
+                ),
+            ).toThrow('origin must be an https: origin');
+        });
+
+        it('accepts an empty origin string and skips validation', () => {
+            expect(() =>
+                payments.startApplePaySession('pay_123', mockSession, ''),
+            ).not.toThrow();
+            expect(mockSession.begin).toHaveBeenCalledOnce();
+        });
+
+        it('calls session.begin()', () => {
+            payments.startApplePaySession(
+                'pay_123',
+                mockSession,
+                'https://merchant.example.com',
+            );
+
+            expect(mockSession.begin).toHaveBeenCalledOnce();
+        });
+
+        it('wires up onvalidatemerchant', () => {
+            payments.startApplePaySession(
+                'pay_123',
+                mockSession,
+                'https://merchant.example.com',
+            );
+
+            expect(mockSession.onvalidatemerchant).toBeTypeOf('function');
+        });
+
+        it('wires up oncancel', () => {
+            payments.startApplePaySession(
+                'pay_123',
+                mockSession,
+                'https://merchant.example.com',
+            );
+
+            expect(mockSession.oncancel).toBeTypeOf('function');
+        });
+
+        it('oncancel fires the provided callback', () => {
+            const oncancel = vi.fn();
+            payments.startApplePaySession(
+                'pay_123',
+                mockSession,
+                'https://merchant.example.com',
+                { oncancel },
+            );
+
+            const event = { type: 'cancel' };
+            mockSession.oncancel?.(event);
+
+            expect(oncancel).toHaveBeenCalledWith(event);
+        });
+
+        it('oncancel does not throw when no callback is provided', () => {
+            payments.startApplePaySession(
+                'pay_123',
+                mockSession,
+                'https://merchant.example.com',
+            );
+
+            expect(() => mockSession.oncancel?.({})).not.toThrow();
+        });
+
+        it('onvalidatemerchant POSTs to apple-pay/validate', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse({ token: 'merchant-token' });
+            });
+
+            payments.startApplePaySession(
+                'pay_300000001',
+                mockSession,
+                'https://merchant.example.com',
+            );
+            mockSession.onvalidatemerchant?.({
+                validationURL: 'https://apple.com/validate',
+            });
+
+            await vi.waitFor(() => expect(capturedReq).toBeDefined());
+
+            expect(capturedReq.method).toBe('POST');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001/apple-pay/validate',
+            );
+        });
+
+        it('onvalidatemerchant sends Origin header', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse({});
+            });
+
+            payments.startApplePaySession(
+                'pay_300000001',
+                mockSession,
+                'https://merchant.example.com',
+            );
+            mockSession.onvalidatemerchant?.({
+                validationURL: 'https://apple.com/validate',
+            });
+
+            await vi.waitFor(() => expect(capturedReq).toBeDefined());
+
+            expect(capturedReq.headers.get('Origin')).toBe(
+                'https://merchant.example.com',
+            );
+        });
+
+        it('onvalidatemerchant sends Apple-Validation-Url header', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse({});
+            });
+
+            payments.startApplePaySession(
+                'pay_300000001',
+                mockSession,
+                'https://merchant.example.com',
+            );
+            mockSession.onvalidatemerchant?.({
+                validationURL: 'https://apple.com/validate',
+            });
+
+            await vi.waitFor(() => expect(capturedReq).toBeDefined());
+
+            expect(capturedReq.headers.get('Apple-Validation-Url')).toBe(
+                'https://apple.com/validate',
+            );
+        });
+
+        it('calls completeMerchantValidation with the server response', async () => {
+            const merchantSession = { token: 'ms-token' };
+            fetchMock.mockResolvedValue(makeResponse(merchantSession));
+
+            payments.startApplePaySession(
+                'pay_300000001',
+                mockSession,
+                'https://merchant.example.com',
+            );
+            mockSession.onvalidatemerchant?.({
+                validationURL: 'https://apple.com/validate',
+            });
+
+            await vi.waitFor(() =>
+                expect(
+                    mockSession.completeMerchantValidation,
+                ).toHaveBeenCalledWith(merchantSession),
+            );
+        });
+
+        it('calls session.abort() when the validation POST fails', async () => {
+            fetchMock.mockRejectedValue(new Error('network error'));
+
+            payments.startApplePaySession(
+                'pay_300000001',
+                mockSession,
+                'https://merchant.example.com',
+            );
+            mockSession.onvalidatemerchant?.({
+                validationURL: 'https://apple.com/validate',
+            });
+
+            await vi.waitFor(() =>
+                expect(mockSession.abort).toHaveBeenCalledOnce(),
+            );
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // awaitChargeState()
+    // -------------------------------------------------------------------------
+
+    describe('awaitChargeState()', () => {
+        it('throws synchronously when paymentId is empty', () => {
+            expect(() => payments.awaitChargeState('')).toThrow(
+                'paymentId is required',
+            );
+        });
+
+        it('resolves with charge state when SUCCEEDED on first poll', async () => {
+            const succeededState = {
+                id: 'pay_300000001',
+                state: 'SUCCEEDED',
+                payment_instrument: { payment_instrument: 'PAYMENT_CARD' },
+                return_url: 'https://example.com/return',
+            };
+            fetchMock.mockResolvedValue(makeResponse(succeededState));
+
+            const result = await payments.awaitChargeState('pay_300000001', {
+                intervalMs: 10,
+                initialTimeoutMs: 5000,
+            });
+
+            expect(result.state).toBe('SUCCEEDED');
+            expect(result.id).toBe('pay_300000001');
+        });
+
+        it('rejects with CHARGE_FAILED when charge state is FAILED', async () => {
+            const failedState = {
+                id: 'pay_300000001',
+                state: 'FAILED',
+                payment_instrument: { payment_instrument: 'PAYMENT_CARD' },
+                return_url: 'https://example.com/return',
+            };
+            fetchMock.mockResolvedValue(makeResponse(failedState));
+
+            const err = await payments
+                .awaitChargeState('pay_300000001', {
+                    intervalMs: 10,
+                    initialTimeoutMs: 5000,
+                })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CHARGE_FAILED,
             );
         });
     });

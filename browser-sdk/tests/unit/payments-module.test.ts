@@ -1,5 +1,6 @@
 import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
 import { createPaymentsApi } from '../../src/modules/payments/payments.module.js';
 
 const makeResponse = (data: unknown, status = 200) =>
@@ -325,6 +326,140 @@ describe('createPaymentsApi() — browser SDK', () => {
 
             session.oncancel?.({ type: 'cancel' });
             expect(oncancel).toHaveBeenCalledWith({ type: 'cancel' });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // awaitChargeState()
+    // -------------------------------------------------------------------------
+
+    describe('awaitChargeState()', () => {
+        it('resolves with SUCCEEDED state when container is null', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ state: 'SUCCEEDED', id: 'pay_001' }),
+            );
+
+            const result = await api.awaitChargeState(null, {
+                intervalMs: 5,
+                initialTimeoutMs: 5000,
+            });
+            expect(result).toMatchObject({ state: 'SUCCEEDED' });
+        });
+
+        it('rejects with CHARGE_FAILED when state is FAILED', async () => {
+            fetchMock.mockResolvedValue(makeResponse({ state: 'FAILED' }));
+
+            const err = await api
+                .awaitChargeState(null, {
+                    intervalMs: 5,
+                    initialTimeoutMs: 5000,
+                })
+                .catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CHARGE_FAILED,
+            );
+        });
+
+        it('mounts a redirect iframe in the container on ACTION_REQUIRED and removes it on success', async () => {
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({
+                        state: 'ACTION_REQUIRED',
+                        action: { redirect_url: 'https://3ds.example.com' },
+                    }),
+                )
+                .mockResolvedValue(makeResponse({ state: 'SUCCEEDED' }));
+
+            const redirectContainer = document.createElement('div');
+            document.body.appendChild(redirectContainer);
+
+            let iframeAtCallback: Element | null = null;
+            const onActionRequired = vi.fn(() => {
+                iframeAtCallback = redirectContainer.querySelector('iframe');
+            });
+
+            await api.awaitChargeState(redirectContainer, {
+                intervalMs: 5,
+                initialTimeoutMs: 5000,
+                onActionRequired,
+            });
+
+            // iframe was present during ACTION_REQUIRED callback
+            expect(iframeAtCallback).not.toBeNull();
+            // iframe is removed after success
+            expect(redirectContainer.querySelector('iframe')).toBeNull();
+            redirectContainer.remove();
+        });
+
+        it('does not mount an iframe when container is null on ACTION_REQUIRED', async () => {
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({
+                        state: 'ACTION_REQUIRED',
+                        action: { redirect_url: 'https://3ds.example.com' },
+                    }),
+                )
+                .mockResolvedValue(makeResponse({ state: 'SUCCEEDED' }));
+
+            const onActionRequired = vi.fn();
+            await api.awaitChargeState(null, {
+                intervalMs: 5,
+                initialTimeoutMs: 5000,
+                onActionRequired,
+            });
+
+            // callback still fires, but no DOM side-effect possible with null container
+            expect(onActionRequired).toHaveBeenCalledWith(
+                'https://3ds.example.com',
+            );
+        });
+
+        it('removes the redirect iframe on failure (CHARGE_FAILED)', async () => {
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({
+                        state: 'ACTION_REQUIRED',
+                        action: { redirect_url: 'https://3ds.example.com' },
+                    }),
+                )
+                .mockResolvedValue(makeResponse({ state: 'FAILED' }));
+
+            const redirectContainer = document.createElement('div');
+            document.body.appendChild(redirectContainer);
+
+            await api
+                .awaitChargeState(redirectContainer, {
+                    intervalMs: 5,
+                    initialTimeoutMs: 5000,
+                })
+                .catch(() => {});
+
+            await new Promise((r) => setTimeout(r, 20));
+            expect(redirectContainer.querySelector('iframe')).toBeNull();
+            redirectContainer.remove();
+        });
+
+        it('fires the user-provided onActionRequired callback', async () => {
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({
+                        state: 'ACTION_REQUIRED',
+                        action: { redirect_url: 'https://3ds.example.com' },
+                    }),
+                )
+                .mockResolvedValue(makeResponse({ state: 'SUCCEEDED' }));
+
+            const onActionRequired = vi.fn();
+            await api.awaitChargeState(null, {
+                intervalMs: 5,
+                initialTimeoutMs: 5000,
+                onActionRequired,
+            });
+
+            expect(onActionRequired).toHaveBeenCalledWith(
+                'https://3ds.example.com',
+            );
         });
     });
 });

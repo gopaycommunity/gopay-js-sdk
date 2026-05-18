@@ -62,6 +62,23 @@ describe('createGoPayBrowserSDK()', () => {
         it('awaitChargeState() throws PAYMENT_NOT_ATTACHED synchronously', () => {
             expect(() => sdk.awaitChargeState()).toThrow(GoPaySDKError);
         });
+
+        it('startApplePaySession() throws PAYMENT_NOT_ATTACHED before attachPayment', () => {
+            const session = {
+                onvalidatemerchant: null as ((e: unknown) => void) | null,
+                oncancel: null as ((e: unknown) => void) | null,
+                completeMerchantValidation: vi.fn(),
+                abort: vi.fn(),
+                begin: vi.fn(),
+            };
+            expect(() =>
+                sdk.startApplePaySession(session, 'https://example.com'),
+            ).toThrow(
+                expect.objectContaining({
+                    errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+                }),
+            );
+        });
     });
 
     // -------------------------------------------------------------------------

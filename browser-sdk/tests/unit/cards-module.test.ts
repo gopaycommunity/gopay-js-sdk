@@ -2,6 +2,7 @@ import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
 import { createCardsApi } from '../../src/modules/cards/cards.module.js';
+import type { createPaymentsApi } from '../../src/modules/payments/payments.module.js';
 
 const CARD_FORM_URL = 'https://test.gopay.com/card-form';
 const CARD_FORM_ORIGIN = 'https://test.gopay.com';
@@ -404,6 +405,132 @@ describe('createCardsApi() — browser SDK', () => {
     });
 
     // -------------------------------------------------------------------------
+    // mountCardForm() — flow: direct-charge (with attached payment)
+    // -------------------------------------------------------------------------
+
+    describe('mountCardForm() with flow: direct-charge after attachPayment', () => {
+        const chargePaymentMock = vi.fn<() => Promise<unknown>>();
+        const awaitChargeStateMock = vi.fn<() => Promise<unknown>>();
+        const mockPaymentsApi = {
+            chargePayment: chargePaymentMock,
+            awaitChargeState: awaitChargeStateMock,
+            getStatus: vi.fn(),
+            getChargeState: vi.fn(),
+            getGooglePayInfo: vi.fn(),
+            getApplePayInfo: vi.fn(),
+            getApplePayAppInfo: vi.fn(),
+            startApplePaySession: vi.fn(),
+            getQRPaymentInfo: vi.fn(),
+        };
+
+        beforeEach(() => {
+            chargePaymentMock.mockResolvedValue({});
+            awaitChargeStateMock.mockResolvedValue({
+                state: 'SUCCEEDED',
+                id: 'pay_001',
+            });
+        });
+
+        it('GOPAY_CARD_ENCRYPT_RESULT triggers chargePayment and resolves result with charge state', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            const cards = createCardsApi(
+                client,
+                () =>
+                    mockPaymentsApi as unknown as ReturnType<
+                        typeof createPaymentsApi
+                    >,
+            );
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+                redirectContainer: container,
+            });
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+
+            await new Promise((r) => setTimeout(r, 10));
+
+            const result = await ctrl.result;
+            expect(chargePaymentMock).toHaveBeenCalledOnce();
+            expect(awaitChargeStateMock).toHaveBeenCalledOnce();
+            expect(result).toMatchObject({ state: 'SUCCEEDED' });
+        });
+
+        it('GOPAY_CARD_ENCRYPT_RESULT when paymentsApi becomes null → result rejects with PAYMENT_NOT_ATTACHED', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            let returnApi: ReturnType<typeof createPaymentsApi> | null =
+                mockPaymentsApi as unknown as ReturnType<
+                    typeof createPaymentsApi
+                >;
+            const cards = createCardsApi(client, () => returnApi);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+                redirectContainer: container,
+            });
+
+            // Detach before the message fires
+            returnApi = null;
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+
+            const err = await ctrl.result.catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+            );
+        });
+
+        it('error during chargePayment → result rejects with that error', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            const chargeError = new Error('charge network error');
+            chargePaymentMock.mockRejectedValue(chargeError);
+
+            const cards = createCardsApi(
+                client,
+                () =>
+                    mockPaymentsApi as unknown as ReturnType<
+                        typeof createPaymentsApi
+                    >,
+            );
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+                redirectContainer: container,
+            });
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+
+            const err = await ctrl.result.catch((e: unknown) => e);
+            expect(err).toBe(chargeError);
+        });
+    });
+
+    // -------------------------------------------------------------------------
     // CardFormController — setTheme, setLocale, submit
     // -------------------------------------------------------------------------
 
@@ -439,6 +566,17 @@ describe('createCardsApi() — browser SDK', () => {
             ctrl.result.catch(() => {});
 
             expect(() => ctrl.setLocale('de-DE')).not.toThrow();
+        });
+
+        it('submit() sends GOPAY_CARD_REQUEST_SUBMIT postMessage in external submit mode', async () => {
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+                submitMode: 'external',
+            });
+            ctrl.result.catch(() => {});
+
+            expect(() => ctrl.submit()).not.toThrow();
         });
     });
 

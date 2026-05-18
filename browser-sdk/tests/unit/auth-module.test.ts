@@ -148,6 +148,18 @@ describe('exchangeAuthorizationCode()', () => {
         );
         expect(client.tokenStore.get()).toBeNull();
     });
+
+    it('defaults refresh_expires_in to 0 when absent in the response', async () => {
+        fetchMock.mockImplementation(async (req: Request) => {
+            await req.text();
+            return makeResponse({
+                ...validTokenPair,
+                refresh_expires_in: undefined,
+            });
+        });
+        await exchangeAuthorizationCode(client, 'secret', 'cid');
+        expect(client.tokenStore.get()?.refresh_expires_in).toBe(0);
+    });
 });
 
 describe('createAuthApi()', () => {
