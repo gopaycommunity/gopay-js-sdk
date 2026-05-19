@@ -30,6 +30,11 @@ export const GoPayErrorCodes = {
     // Browser SDK payment attachment
     /** attachPayment() must be called before payment-scoped operations (charge, Apple/Google Pay, status) */
     PAYMENT_NOT_ATTACHED: 'PAYMENT_NOT_ATTACHED',
+    // Usage errors
+    /** SDK configuration is invalid (e.g. malformed baseUrl, wrong runtime environment) */
+    INVALID_CONFIG: 'INVALID_CONFIG',
+    /** A required argument is missing or invalid */
+    INVALID_ARGUMENT: 'INVALID_ARGUMENT',
 } as const;
 
 export type GoPayErrorCode =

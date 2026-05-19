@@ -1,4 +1,5 @@
 import { BASE_URLS, type CoreConfig } from '../config.js';
+import { GoPayErrorCodes, GoPaySDKError } from '../errors.js';
 
 export function resolveBaseUrl(
     config: Pick<CoreConfig, 'baseUrl' | 'environment'>,
@@ -11,8 +12,9 @@ export function resolveBaseUrl(
         try {
             parsed = new URL(config.baseUrl);
         } catch {
-            throw new Error(
+            throw new GoPaySDKError(
                 `[GoPaySDK] config.baseUrl is not a valid URL: "${config.baseUrl}"`,
+                { errorCode: GoPayErrorCodes.INVALID_CONFIG },
             );
         }
         const isLocalhost =
@@ -22,9 +24,10 @@ export function resolveBaseUrl(
         const isInsecureAllowed =
             (config.environment ?? 'sandbox') === 'sandbox' && isLocalhost;
         if (parsed.protocol !== 'https:' && !isInsecureAllowed) {
-            throw new Error(
+            throw new GoPaySDKError(
                 `[GoPaySDK] config.baseUrl must use HTTPS. Got "${config.baseUrl}". ` +
                     `Plain HTTP is only permitted for localhost in the sandbox environment.`,
+                { errorCode: GoPayErrorCodes.INVALID_CONFIG },
             );
         }
     }

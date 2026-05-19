@@ -1,6 +1,8 @@
 import {
     awaitCharge,
     type AwaitChargeOptions as CoreAwaitChargeOptions,
+    GoPayErrorCodes,
+    GoPaySDKError,
     type HttpClient,
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
@@ -25,7 +27,9 @@ type QRPaymentDetails = components['schemas']['QR-Payment-Details'];
 
 function requirePaymentId(paymentId: string): void {
     if (!paymentId) {
-        throw new Error('paymentId is required');
+        throw new GoPaySDKError('[GoPaySDK] paymentId is required', {
+            errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
+        });
     }
 }
 
@@ -159,13 +163,19 @@ export function createPaymentsApi(client: HttpClient) {
                 try {
                     parsed = new URL(origin);
                 } catch {
-                    throw new Error(
-                        `startApplePaySession: invalid origin "${origin}"`,
+                    throw client.emitError(
+                        new GoPaySDKError(
+                            `[GoPaySDK] startApplePaySession: invalid origin "${origin}"`,
+                            { errorCode: GoPayErrorCodes.INVALID_ARGUMENT },
+                        ),
                     );
                 }
                 if (parsed.protocol !== 'https:' || parsed.origin !== origin) {
-                    throw new Error(
-                        `startApplePaySession: origin must be an https: origin. Got "${origin}"`,
+                    throw client.emitError(
+                        new GoPaySDKError(
+                            `[GoPaySDK] startApplePaySession: origin must be an https: origin. Got "${origin}"`,
+                            { errorCode: GoPayErrorCodes.INVALID_ARGUMENT },
+                        ),
                     );
                 }
             }

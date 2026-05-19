@@ -1,4 +1,8 @@
-import type { HttpClient } from '@gopay-internal/core';
+import {
+    GoPayErrorCodes,
+    GoPaySDKError,
+    type HttpClient,
+} from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type LinkCreateRequest = components['schemas']['Link-Create-Request'];
@@ -6,7 +10,9 @@ type LinkDetails = components['schemas']['Link-Details'];
 
 function requireLinkId(linkId: string): void {
     if (!linkId || linkId.trim().length === 0) {
-        throw new Error('linkId is required');
+        throw new GoPaySDKError('[GoPaySDK] linkId is required', {
+            errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
+        });
     }
 }
 

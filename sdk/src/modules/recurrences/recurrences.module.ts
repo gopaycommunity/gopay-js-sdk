@@ -1,4 +1,8 @@
-import type { HttpClient } from '@gopay-internal/core';
+import {
+    GoPayErrorCodes,
+    GoPaySDKError,
+    type HttpClient,
+} from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type RecurrenceCreateRequest =
@@ -10,7 +14,9 @@ type PaymentDetails = components['schemas']['Payment-Details'];
 
 function requireRecId(recId: string): void {
     if (!recId) {
-        throw new Error('recId is required');
+        throw new GoPaySDKError('[GoPaySDK] recId is required', {
+            errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
+        });
     }
 }
 

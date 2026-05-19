@@ -1,3 +1,4 @@
+import { GoPayErrorCodes, GoPaySDKError } from '@gopay-internal/core';
 import type { BrowserData } from '../../types/index.js';
 
 /**
@@ -21,8 +22,9 @@ import type { BrowserData } from '../../types/index.js';
  */
 export function collectBrowserData(): BrowserData {
     if (typeof navigator === 'undefined' || typeof screen === 'undefined') {
-        throw new Error(
-            'collectBrowserData() must be called in a browser environment',
+        throw new GoPaySDKError(
+            '[GoPaySDK] collectBrowserData() must be called in a browser environment.',
+            { errorCode: GoPayErrorCodes.INVALID_CONFIG },
         );
     }
 
