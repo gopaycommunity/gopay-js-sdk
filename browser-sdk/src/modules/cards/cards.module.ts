@@ -259,55 +259,9 @@ export function createCardsApi(
                 );
             };
 
-            onMessage = async (event: MessageEvent<OutboundMessage>) => {
-                if (event.source !== iframe.contentWindow) {
-                    return;
-                }
-                if (event.origin !== expectedOrigin) {
-                    return;
-                }
-
-                if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
-                    const { height } = event.data;
-                    if (Number.isFinite(height) && height >= 0) {
-                        iframe.style.height = `${height}px`;
-                    }
-                    return;
-                }
-
-                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') {
-                    return;
-                }
-
-                if (event.data?.type === 'GOPAY_CARD_FORM_VALIDITY') {
-                    if (
-                        typeof event.data.isValid === 'boolean' &&
-                        event.data.isValid !== isValid
-                    ) {
-                        isValid = event.data.isValid;
-                        options.onValidityChange?.(isValid);
-                    }
-                    return;
-                }
-
-                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_ERROR') {
-                    cleanup();
-                    rejectResult(
-                        new GoPaySDKError(
-                            `[GoPayBrowserSDK] Card form error: ${event.data.error}`,
-                            { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
-                        ),
-                    );
-                    return;
-                }
-
-                if (event.data?.type !== 'GOPAY_CARD_ENCRYPT_RESULT') {
-                    return;
-                }
-
-                cleanup();
-                const encryptedPayload = event.data.card_token;
-
+            const handleEncryptResult = async (
+                encryptedPayload: string,
+            ): Promise<void> => {
                 if (options.flow === 'return-payload') {
                     resolveResult({ encryptedPayload });
                     return;
@@ -366,6 +320,56 @@ export function createCardsApi(
                     spinner.remove();
                     rejectResult(err);
                 }
+            };
+
+            onMessage = async (event: MessageEvent<OutboundMessage>) => {
+                if (event.source !== iframe.contentWindow) {
+                    return;
+                }
+                if (event.origin !== expectedOrigin) {
+                    return;
+                }
+
+                if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
+                    const { height } = event.data;
+                    if (Number.isFinite(height) && height >= 0) {
+                        iframe.style.height = `${height}px`;
+                    }
+                    return;
+                }
+
+                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') {
+                    return;
+                }
+
+                if (event.data?.type === 'GOPAY_CARD_FORM_VALIDITY') {
+                    if (
+                        typeof event.data.isValid === 'boolean' &&
+                        event.data.isValid !== isValid
+                    ) {
+                        isValid = event.data.isValid;
+                        options.onValidityChange?.(isValid);
+                    }
+                    return;
+                }
+
+                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_ERROR') {
+                    cleanup();
+                    rejectResult(
+                        new GoPaySDKError(
+                            `[GoPayBrowserSDK] Card form error: ${event.data.error}`,
+                            { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                        ),
+                    );
+                    return;
+                }
+
+                if (event.data?.type !== 'GOPAY_CARD_ENCRYPT_RESULT') {
+                    return;
+                }
+
+                cleanup();
+                await handleEncryptResult(event.data.card_token);
             };
 
             window.addEventListener('message', onMessage);
