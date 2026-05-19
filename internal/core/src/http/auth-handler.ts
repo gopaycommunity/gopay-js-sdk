@@ -2,7 +2,7 @@ import { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from '../errors.js';
 import { buildUrl } from './build-url.js';
 import { fetchWithRetry } from './fetch-with-retry.js';
 import { parseBody } from './response.js';
-import type { StoredTokenPair, TokenStore } from './token-store.js';
+import type { TokenStore } from './token-store.js';
 import type { RequestOptions } from './types.js';
 
 const AUTH_PATH = '/oauth2/token';
@@ -87,7 +87,10 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
 
         await refresh();
 
-        const fresh = store.get() as StoredTokenPair;
+        const fresh = store.get();
+        if (!fresh) {
+            return response;
+        }
         const retryHeaders = new Headers(init.headers);
         retryHeaders.set('Authorization', `Bearer ${fresh.access_token}`);
 
@@ -172,11 +175,31 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
                     await parseBody(response),
                 );
             }
-            const fresh = (await response.json()) as Omit<
-                StoredTokenPair,
-                'issued_at'
-            >;
-            store.set(fresh);
+            const body = (await response.json()) as Record<string, unknown>;
+            const { access_token, expires_in } = body;
+            if (
+                typeof access_token !== 'string' ||
+                !access_token ||
+                typeof expires_in !== 'number'
+            ) {
+                throw new GoPaySDKError(
+                    '[GoPaySDK] Invalid token response: missing required fields.',
+                    { errorCode: GoPayErrorCodes.AUTH_INVALID_RESPONSE },
+                );
+            }
+            store.set({
+                access_token,
+                expires_in,
+                refresh_token:
+                    typeof body.refresh_token === 'string'
+                        ? body.refresh_token
+                        : '',
+                refresh_expires_in:
+                    typeof body.refresh_expires_in === 'number'
+                        ? body.refresh_expires_in
+                        : 0,
+                token_type: 'bearer',
+            });
         } catch (cause) {
             store.clear();
             emitError(
