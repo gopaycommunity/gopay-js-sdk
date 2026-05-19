@@ -22,11 +22,15 @@ export function createLoadingSpinner(color: string): HTMLElement {
     const wrapper = document.createElement('div');
     wrapper.style.cssText =
         'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+    wrapper.setAttribute('role', 'status');
+    wrapper.setAttribute('aria-live', 'polite');
+    wrapper.setAttribute('aria-label', 'Loading');
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 126 126');
     svg.setAttribute('width', '80');
     svg.setAttribute('height', '80');
+    svg.setAttribute('aria-hidden', 'true');
 
     const circle = document.createElementNS(
         'http://www.w3.org/2000/svg',

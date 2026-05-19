@@ -190,6 +190,7 @@ export function createCardsApi(
                 'allow-scripts allow-forms allow-same-origin',
             );
             iframe.style.cssText = 'width:100%;height:100%;border:none;';
+            iframe.title = 'GoPay card payment form';
             container.appendChild(iframe);
             const publishableKey = client.getPublishableKey() ?? '';
             const clientId = client.getClientId() ?? '';
