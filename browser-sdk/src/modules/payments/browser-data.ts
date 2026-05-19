@@ -3,8 +3,7 @@ import type { BrowserData } from '../../types/index.js';
 /**
  * Collect browser context data for 3D Secure and fraud detection.
  *
- * Reads `navigator`, `screen`, and `Date` globals. Returns an empty object
- * when called outside a browser environment (e.g. Node.js / SSR).
+ * Reads `navigator`, `screen`, and `Date` globals.
  *
  * The result is automatically merged into every {@link chargePayment}
  * call. You can also call this directly to inspect or override individual
@@ -20,25 +19,20 @@ import type { BrowserData } from '../../types/index.js';
  *   browser_data: { ...data, language: 'en-US' }, // override one field
  * });
  */
-export function collectBrowserData(): Partial<BrowserData> {
-    // Return early if not in a browser-like environment
-    if (typeof navigator === 'undefined') {
-        return {};
+export function collectBrowserData(): BrowserData {
+    if (typeof navigator === 'undefined' || typeof screen === 'undefined') {
+        throw new Error(
+            'collectBrowserData() must be called in a browser environment',
+        );
     }
 
-    const data: Partial<BrowserData> = {
+    return {
         language: navigator.language,
         timezone: new Date().getTimezoneOffset(),
         user_agent: navigator.userAgent,
         javascript_enabled: true,
+        screen_width: screen.width,
+        screen_height: screen.height,
+        color_depth: screen.colorDepth,
     };
-
-    // Safely add screen data only if it exists
-    if (typeof screen !== 'undefined') {
-        data.screen_width = screen.width;
-        data.screen_height = screen.height;
-        data.color_depth = screen.colorDepth;
-    }
-
-    return data;
 }

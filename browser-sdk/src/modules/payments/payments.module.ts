@@ -105,7 +105,7 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
                             browser_data: {
                                 ...collected,
                                 ...pi.browser_data,
-                            } as BrowserDataSchema,
+                            },
                         },
                     },
                 );
