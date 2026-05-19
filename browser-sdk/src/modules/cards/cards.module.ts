@@ -54,6 +54,12 @@ export interface CardFormController<R = EncryptedCardPayload> {
     submit: () => void;
     /** Current validity state reported by the iframe (external submit mode only). */
     readonly isValid: boolean;
+    /**
+     * Tear down the mounted iframe, remove the message listener, and reject
+     * `result`. Call this when the parent component unmounts or navigates away.
+     * No-op if the controller is no longer active.
+     */
+    unmount: () => void;
 }
 
 type DirectChargeOptions = {
@@ -82,18 +88,29 @@ export function createCardsApi(
     getPaymentsApi: () => PaymentsApi | null,
 ) {
     let activeCleanup: (() => void) | undefined;
+    let cardFormUrlPromise: Promise<string> | undefined;
 
-    async function getCardFormUrl(): Promise<string> {
-        const result = await client.get<components['schemas']['Card-Form-URL']>(
-            '/cards/card-form-url',
-        );
-        if (!result.card_form_url) {
-            throw new GoPaySDKError(
-                '[GoPayBrowserSDK] Card form URL not available. Ensure the publishable key has the required scope.',
-                { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
-            );
+    function getCardFormUrl(): Promise<string> {
+        if (!cardFormUrlPromise) {
+            const p = client
+                .get<components['schemas']['Card-Form-URL']>(
+                    '/cards/card-form-url',
+                )
+                .then((result) => {
+                    if (!result.card_form_url) {
+                        throw new GoPaySDKError(
+                            '[GoPayBrowserSDK] Card form URL not available. Ensure the publishable key has the required scope.',
+                            { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                        );
+                    }
+                    return result.card_form_url;
+                });
+            p.catch(() => {
+                cardFormUrlPromise = undefined;
+            });
+            cardFormUrlPromise = p;
         }
-        return result.card_form_url;
+        return cardFormUrlPromise;
     }
 
     return {
@@ -132,6 +149,7 @@ export function createCardsApi(
                     setTheme: () => {},
                     setLocale: () => {},
                     submit: () => {},
+                    unmount: () => {},
                     isValid: false,
                 };
             }
@@ -143,8 +161,8 @@ export function createCardsApi(
             const expectedOrigin = new URL(iframeSrc, globalThis.location?.href)
                 .origin;
 
-            const env = client.getEnvironment();
-            if (env === 'production') {
+            const environment = client.getEnvironment();
+            if (environment === 'production') {
                 if (
                     !TRUSTED_CARD_FORM_ORIGINS.production.includes(
                         expectedOrigin,
@@ -173,8 +191,6 @@ export function createCardsApi(
             );
             iframe.style.cssText = 'width:100%;height:100%;border:none;';
             container.appendChild(iframe);
-
-            const environment = client.getEnvironment();
             const publishableKey = client.getPublishableKey() ?? '';
             const clientId = client.getClientId() ?? '';
             const theme = options.theme ?? DEFAULT_CARD_FORM_THEME;
@@ -207,15 +223,17 @@ export function createCardsApi(
                     window.removeEventListener('message', onMessage);
                 }
                 iframe.remove();
-                activeCleanup = undefined;
             };
 
             // Tear down the previous session now that this one is ready.
             // activeCleanup from the previous call rejects that session's result
             // promise so it cannot hang.
             activeCleanup?.();
-            activeCleanup = () => {
+            // Capture reference so unmount() can compare and avoid clobbering a
+            // newer session's activeCleanup if called after remount.
+            const teardownThisSession = () => {
                 cleanup();
+                activeCleanup = undefined;
                 rejectResult(
                     new GoPaySDKError(
                         '[GoPayBrowserSDK] Card form replaced by a new mountCardForm call.',
@@ -223,6 +241,7 @@ export function createCardsApi(
                     ),
                 );
             };
+            activeCleanup = teardownThisSession;
 
             iframe.onload = () => {
                 iframe.contentWindow?.postMessage(
@@ -393,6 +412,21 @@ export function createCardsApi(
                 get isValid() {
                     return isValid;
                 },
+                unmount: () => {
+                    if (!active) {
+                        return;
+                    }
+                    if (activeCleanup === teardownThisSession) {
+                        activeCleanup = undefined;
+                    }
+                    cleanup();
+                    rejectResult(
+                        new GoPaySDKError(
+                            '[GoPayBrowserSDK] Card form unmounted.',
+                            { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                        ),
+                    );
+                },
             };
         },
 
@@ -402,7 +436,12 @@ export function createCardsApi(
          */
         async lookupCard(payload: string): Promise<CardLookupDetails> {
             if (!payload) {
-                throw new Error('payload is required');
+                throw new GoPaySDKError(
+                    '[GoPayBrowserSDK] lookupCard: payload is required',
+                    {
+                        errorCode: GoPayErrorCodes.CARD_FORM_ERROR,
+                    },
+                );
             }
             return client.post<CardLookupDetails>('/cards/lookup', { payload });
         },
