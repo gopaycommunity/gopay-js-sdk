@@ -6,7 +6,6 @@ import {
     state,
     updateBrowserBadge,
 } from './helpers.js';
-import { renderQRImage } from './qr-render.js';
 import { sdk } from './sdk.js';
 
 export function runCreatePayment() {
@@ -134,18 +133,22 @@ export function clearCharge() {
     }
 }
 
-// Fetch QR payment info for a payment. Returns image data (base64 PNG or SVG).
-// Render the image in your UI so the customer can scan it with their banking app.
-// Example:
-//   const qr = await sdk.getQRPaymentInfo(paymentId, 'png'); // or 'svg'
-//   img.src = `data:image/png;base64,${qr.qr_code?.spayd}`; // CZK PNG; use paybysquare/sepa/mnb_qr for other currencies
-//   img.src = `data:image/svg+xml;base64,${qr.qr_code?.spayd}`; // CZK SVG
 export function runQRPaymentInfo() {
     const paymentId = document.getElementById('qr-payment-id').value.trim();
     const format = document.getElementById('qr-format').value || undefined;
-    run(
-        'qr-output',
-        () => sdk.getQRPaymentInfo(paymentId, format),
-        (result) => renderQRImage(document.getElementById('qr-output'), result),
-    );
+    run('qr-output', () => sdk.getQRPaymentInfo(paymentId, format));
+}
+
+export function runGetGooglePayInfo() {
+    const paymentId = document
+        .getElementById('googlepay-payment-id')
+        .value.trim();
+    run('googlepay-output', () => sdk.getGooglePayInfo(paymentId));
+}
+
+export function runGetApplePayInfo() {
+    const paymentId = document
+        .getElementById('applepay-payment-id')
+        .value.trim();
+    run('applepay-output', () => sdk.getApplePayInfo(paymentId));
 }

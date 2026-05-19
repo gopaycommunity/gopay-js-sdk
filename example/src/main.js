@@ -1,6 +1,5 @@
 import './styles/main.css';
 import './card-form-logger.js';
-import { applePayLoadInfo } from './apple-pay.js';
 import {
     runAuthenticate,
     runGetBrowserKeys,
@@ -21,7 +20,6 @@ import {
     cardPaySetSubmitMode,
     cardPaySetTheme,
 } from './card-pay.js';
-import { googlePayLoadInfo } from './google-pay.js';
 import { updateBrowserBadge } from './helpers.js';
 import {
     runCreatePaymentLink,
@@ -32,7 +30,9 @@ import {
     clearCharge,
     runCharge,
     runCreatePayment,
+    runGetApplePayInfo,
     runGetChargeState,
+    runGetGooglePayInfo,
     runGetPaymentStatus,
     runQRPaymentInfo,
 } from './payments.js';
@@ -129,8 +129,8 @@ window.runCreatePayment = runCreatePayment;
 window.runCharge = runCharge;
 window.clearCharge = clearCharge;
 window.runQRPaymentInfo = runQRPaymentInfo;
-window.googlePayLoadInfo = googlePayLoadInfo;
-window.applePayLoadInfo = applePayLoadInfo;
+window.runGetGooglePayInfo = runGetGooglePayInfo;
+window.runGetApplePayInfo = runGetApplePayInfo;
 window.cardPayOpenIframe = cardPayOpenIframe;
 window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;

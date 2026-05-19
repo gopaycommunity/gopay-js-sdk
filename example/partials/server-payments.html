@@ -28,40 +28,44 @@
 
 <!-- Google Pay -->
 <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-    <h2 class="text-base font-semibold text-[#2D3643] mb-4">Google Pay</h2>
-    <p class="desc">
-        Step 1: <code>payments.getGooglePayInfo()</code> — fetch config, render Google Pay button.<br>
-        Step 2: Click the Google Pay button — user selects a card. Token is prefilled into <em>payments.charge()</em> above.
-    </p>
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getGooglePayInfo()</h2>
+    <p class="desc">GET /payments/{id}/google-pay/info — fetch the PaymentsClient config and paymentDataRequest needed to render a Google Pay button.</p>
     <div class="fields">
         <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
     </div>
-    <div class="flex items-center gap-2 flex-wrap">
-        <button type="button" onclick="googlePayLoadInfo()">Load Google Pay Config</button>
-        <div id="googlepay-button-container" class="flex items-center gap-2"></div>
-    </div>
+    <button type="button" onclick="runGetGooglePayInfo()">Run</button>
     <pre id="googlepay-output">—</pre>
-    <p class="note">Requires a payment created with Google Pay as an allowed instrument. In sandbox the Google Pay sheet runs in <code>TEST</code> mode — no real card data is used.</p>
+    <p class="note">Requires a payment created with Google Pay as an allowed instrument. The full button flow (render + charge) is in the Browser SDK section below.</p>
 </section>
 
 <!-- Apple Pay -->
 <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-    <h2 class="text-base font-semibold text-[#2D3643] mb-4">Apple Pay</h2>
-    <p class="desc">
-        Step 1: <code>payments.getApplePayInfo()</code> — fetch config, render Apple Pay button.<br>
-        Step 2: Click the Apple Pay button — merchant validation runs automatically via <code>payments.startApplePaySession()</code>. The charge fires inside <code>onpaymentauthorized</code> (required by Apple's API) and the instrument is also prefilled into <em>payments.charge()</em> above for reference.
-    </p>
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getApplePayInfo()</h2>
+    <p class="desc">GET /payments/{id}/apple-pay/info — fetch merchant config (merchantIdentifier, applepayVersion, applePayPaymentRequest) needed to start an Apple Pay session.</p>
     <div class="fields">
         <label>Payment ID<input id="applepay-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
     </div>
-    <div class="flex items-center gap-2 flex-wrap">
-        <button type="button" onclick="applePayLoadInfo()">Load Apple Pay Config</button>
-        <div id="applepay-button-container" class="flex items-center gap-2"></div>
-    </div>
+    <button type="button" onclick="runGetApplePayInfo()">Run</button>
     <pre id="applepay-output">—</pre>
-    <p class="note">Requires a payment created with Apple Pay as an allowed instrument.
-        <strong>ApplePaySession</strong>: native on Safari; simulated by a dev polyfill in other browsers.
-        <strong>PaymentRequest</strong>: shown on Chrome/Edge when the browser supports Apple Pay — triggers a cross-device QR code flow authenticated via iPhone or Apple Watch.</p>
+    <p class="note">Requires a payment created with Apple Pay as an allowed instrument. The full session flow (validate merchant + charge) is in the Browser SDK section below.</p>
+</section>
+
+<!-- QR Payment info -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getQRPaymentInfo()</h2>
+    <p class="desc">GET /payments/{id}/qr-payment/info — fetch QR code (base64) and recipient info.</p>
+    <div class="fields">
+        <label>Payment ID<input id="qr-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+        <label>Format
+            <select id="qr-format">
+                <option value="">png (default)</option>
+                <option value="svg">svg</option>
+            </select>
+        </label>
+    </div>
+    <button type="button" onclick="runQRPaymentInfo()">Run</button>
+    <pre id="qr-output">—</pre>
+    <p class="note">QR codes are returned base64-encoded. The available field depends on currency: <code>spayd</code> (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
 </section>
 
 <!-- Charge payment -->
@@ -90,24 +94,6 @@
     </div>
     <button type="button" onclick="runGetChargeState()">Run</button>
     <pre id="charge-state-output">—</pre>
-</section>
-
-<!-- QR Payment info -->
-<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-    <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getQRPaymentInfo()</h2>
-    <p class="desc">GET /payments/{id}/qr-payment/info — fetch QR code (base64) and recipient info.</p>
-    <div class="fields">
-        <label>Payment ID<input id="qr-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
-        <label>Format
-            <select id="qr-format">
-                <option value="">png (default)</option>
-                <option value="svg">svg</option>
-            </select>
-        </label>
-    </div>
-    <button type="button" onclick="runQRPaymentInfo()">Run</button>
-    <pre id="qr-output">—</pre>
-    <p class="note">QR codes are returned base64-encoded. The available field depends on currency: <code>spayd</code> (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
 </section>
 
 <!-- Card details -->

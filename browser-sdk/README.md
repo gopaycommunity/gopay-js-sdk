@@ -69,7 +69,7 @@ Flow A covers two server-side use cases with the same browser code:
 - **Save card for future payments** — tokenize the payload and store the returned card token; skip the charge or charge later. Use the saved token in future `chargePayment` calls without asking the customer to re-enter their card.
 
 ```ts
-import { createGoPayBrowserSDK } from 'gopay-js-sdk-browser';
+import { createGoPayBrowserSDK, collectBrowserData } from 'gopay-js-sdk-browser';
 
 // 1. Create the browser SDK (synchronous).
 //    publishableKey + clientId come from your server via getBrowserKeys().
@@ -89,13 +89,14 @@ const controller = await sdk.mountCardForm(container, {
 // 3. Wait for the encrypted payload.
 const { encryptedPayload } = await controller.result;
 
-// 4. Forward to your server.
+// 4. Forward to your server — include browserData for charging on the server.
+const browserData = collectBrowserData();
 const response = await fetch('/api/charge', {
     method: 'POST',
-    body: JSON.stringify({ encryptedPayload, paymentId }),
+    body: JSON.stringify({ encryptedPayload, paymentId, browserData }),
 });
 // Server calls: serverSdk.tokenizeEncryptedCard(encryptedPayload)
-//               serverSdk.chargePayment(paymentId, { input_type: 'Card-Token', ... })
+//               serverSdk.chargePayment(paymentId, { input_type: 'Card-Token', browser_data: browserData, ... })
 ```
 
 ---
@@ -217,6 +218,28 @@ mountCardForm(
 | `setLocale(locale)` | Update locale at runtime |
 | `submit()` | Trigger submission (external submit mode only) |
 | `isValid` | Current validity (external submit mode only) |
+
+### `collectBrowserData()`
+
+```ts
+collectBrowserData(): Partial<BrowserData>
+```
+
+Collects browser context required for 3D Secure and fraud detection. Call this in the browser and forward the result to your server as `browser_data` in the `chargePayment` call.
+
+| Field | Source |
+|---|---|
+| `language` | `navigator.language` |
+| `user_agent` | `navigator.userAgent` |
+| `timezone` | `new Date().getTimezoneOffset()` |
+| `javascript_enabled` | always `true` |
+| `screen_width` / `screen_height` / `color_depth` | `screen.*` |
+
+Fields not collectable in JavaScript (`ip`, `accept_header`) are omitted — the GoPay backend fills them from the HTTP request.
+
+Returns an empty object when called outside a browser (Node.js / SSR).
+
+---
 
 ### Error codes
 
