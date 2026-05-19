@@ -203,7 +203,9 @@ export function createCardsApi(
 
             const cleanup = () => {
                 active = false;
-                if (onMessage) window.removeEventListener('message', onMessage);
+                if (onMessage) {
+                    window.removeEventListener('message', onMessage);
+                }
                 iframe.remove();
                 activeCleanup = undefined;
             };
@@ -238,8 +240,12 @@ export function createCardsApi(
             };
 
             onMessage = async (event: MessageEvent<OutboundMessage>) => {
-                if (event.source !== iframe.contentWindow) return;
-                if (event.origin !== expectedOrigin) return;
+                if (event.source !== iframe.contentWindow) {
+                    return;
+                }
+                if (event.origin !== expectedOrigin) {
+                    return;
+                }
 
                 if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
                     const { height } = event.data;
@@ -249,7 +255,9 @@ export function createCardsApi(
                     return;
                 }
 
-                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') return;
+                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') {
+                    return;
+                }
 
                 if (event.data?.type === 'GOPAY_CARD_FORM_VALIDITY') {
                     if (
@@ -273,7 +281,9 @@ export function createCardsApi(
                     return;
                 }
 
-                if (event.data?.type !== 'GOPAY_CARD_ENCRYPT_RESULT') return;
+                if (event.data?.type !== 'GOPAY_CARD_ENCRYPT_RESULT') {
+                    return;
+                }
 
                 cleanup();
                 const encryptedPayload = event.data.card_token;
@@ -391,7 +401,9 @@ export function createCardsApi(
          * POST /cards/lookup
          */
         async lookupCard(payload: string): Promise<CardLookupDetails> {
-            if (!payload) throw new Error('payload is required');
+            if (!payload) {
+                throw new Error('payload is required');
+            }
             return client.post<CardLookupDetails>('/cards/lookup', { payload });
         },
     };

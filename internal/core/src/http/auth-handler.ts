@@ -34,8 +34,12 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
             }
         }
 
-        if (url.includes(AUTH_PATH)) return;
-        if (headers.has('Authorization')) return;
+        if (url.includes(AUTH_PATH)) {
+            return;
+        }
+        if (headers.has('Authorization')) {
+            return;
+        }
 
         if (options?.accessToken) {
             headers.set('Authorization', `Bearer ${options.accessToken}`);
@@ -110,7 +114,9 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
     }
 
     async function refresh(): Promise<void> {
-        if (refreshPromise) return refreshPromise;
+        if (refreshPromise) {
+            return refreshPromise;
+        }
         refreshPromise = doRefresh().finally(() => {
             refreshPromise = null;
         });

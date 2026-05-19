@@ -1,9 +1,15 @@
 export function renderQRImage(pre, result, format) {
-    if (pre.nextElementSibling?.dataset.qrImg) pre.nextElementSibling.remove();
+    if (pre.nextElementSibling?.dataset.qrImg) {
+        pre.nextElementSibling.remove();
+    }
     const data = result?.qr_code;
-    if (!data) return;
+    if (!data) {
+        return;
+    }
     const b64 = data.spayd ?? data.paybysquare ?? data.sepa ?? data.mnb_qr;
-    if (!b64) return;
+    if (!b64) {
+        return;
+    }
     const img = document.createElement('img');
     img.dataset.qrImg = '1';
     img.src =

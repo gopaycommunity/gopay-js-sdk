@@ -57,7 +57,9 @@ export function createTokenStore() {
         },
 
         isExpiringSoon(bufferSeconds = 30): boolean {
-            if (!tokens) return false;
+            if (!tokens) {
+                return false;
+            }
             const expiresAt = tokens.issued_at + tokens.expires_in * 1000;
             return Date.now() >= expiresAt - bufferSeconds * 1000;
         },

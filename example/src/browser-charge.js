@@ -41,7 +41,9 @@ export async function runBrowserCharge() {
 
         pre.textContent += `\n${JSON.stringify(chargeResult, null, 2)}`;
 
-        if (TERMINAL_STATES.has(chargeResult.state)) return;
+        if (TERMINAL_STATES.has(chargeResult.state)) {
+            return;
+        }
 
         if (
             chargeResult.state === 'ACTION_REQUIRED' &&

@@ -7,7 +7,9 @@ export async function browserQRPaymentInfo() {
     const format = document.getElementById('bqr-format').value || undefined;
 
     const browserSdk = requireAttachedSDK(pre);
-    if (!browserSdk) return;
+    if (!browserSdk) {
+        return;
+    }
 
     pre.textContent = '── fetching QR info ──';
     try {

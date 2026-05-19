@@ -19,10 +19,11 @@ function loadDotEnv(path: string): Record<string, string> {
                 .filter((line) => line && !line.startsWith('#'))
                 .map((line) => {
                     const eq = line.indexOf('=');
-                    if (eq === -1)
+                    if (eq === -1) {
                         throw new Error(
                             `Invalid .env line (missing '='): "${line}"`,
                         );
+                    }
                     return [
                         line.slice(0, eq).trim(),
                         line.slice(eq + 1).trim(),
@@ -31,17 +32,21 @@ function loadDotEnv(path: string): Record<string, string> {
                 .filter(([key]) => key),
         );
     } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+            throw err;
+        }
         // file not found — fall back to process.env (CI secrets)
     }
     const env = { ...fileEnv };
     for (const key of REQUIRED_E2E_ENV_KEYS) {
-        if (!env[key] && process.env[key])
+        if (!env[key] && process.env[key]) {
             env[key] = process.env[key] as string;
+        }
     }
     const missing = REQUIRED_E2E_ENV_KEYS.filter((key) => !env[key]);
-    if (missing.length > 0)
+    if (missing.length > 0) {
         throw new Error(`Missing required E2E env vars: ${missing.join(', ')}`);
+    }
     return env;
 }
 

@@ -36,7 +36,9 @@ export async function googlePayLoadInfo() {
     _googlePayInfo = null;
     _googlePaymentId = null;
 
-    if (!ensureGooglePayLoaded(pre)) return;
+    if (!ensureGooglePayLoaded(pre)) {
+        return;
+    }
 
     pre.textContent = 'Step 1: Fetching Google Pay info…';
     try {
@@ -55,10 +57,14 @@ export async function googlePayLoadInfo() {
 
 async function googlePayOpenSheet() {
     const pre = document.getElementById('googlepay-output');
-    if (!_googlePayInfo || !_googlePaymentId) return;
+    if (!_googlePayInfo || !_googlePaymentId) {
+        return;
+    }
 
     const paymentData = await loadGooglePayData(_googlePayInfo, pre);
-    if (!paymentData) return;
+    if (!paymentData) {
+        return;
+    }
 
     pre.textContent += '\n\n── onSuccess (loadPaymentData) ──';
     // tokenizationData.token is a JSON string: { protocolVersion, signature, signedMessage, ... }

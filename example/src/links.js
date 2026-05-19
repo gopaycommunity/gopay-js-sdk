@@ -60,7 +60,9 @@ export function runCreatePaymentLink() {
             callback: { notification_url, return_url },
         },
     };
-    if (expires_at) params.expires_at = expires_at;
+    if (expires_at) {
+        params.expires_at = expires_at;
+    }
 
     run(
         'link-create-output',

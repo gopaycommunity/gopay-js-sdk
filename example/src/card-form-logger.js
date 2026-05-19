@@ -3,7 +3,9 @@
 // (carries the encrypted JWE card_token). Never used in production builds.
 function logPostMessage(direction, data) {
     const pre = document.getElementById('cardpay-output');
-    if (!pre) return;
+    if (!pre) {
+        return;
+    }
     pre.textContent += `\n${direction} ${JSON.stringify(data)}`;
     pre.scrollTop = pre.scrollHeight;
 }
@@ -13,7 +15,9 @@ const isGoPay = (data) =>
 
 // iframe → parent
 window.addEventListener('message', (e) => {
-    if (isGoPay(e.data)) logPostMessage('←', e.data);
+    if (isGoPay(e.data)) {
+        logPostMessage('←', e.data);
+    }
 });
 
 // parent → iframe: patch contentWindow.postMessage once the iframe is mounted.
@@ -30,12 +34,16 @@ if (iframeContainer) {
     new MutationObserver((mutations) => {
         for (const { addedNodes } of mutations) {
             for (const node of addedNodes) {
-                if (!(node instanceof HTMLIFrameElement)) continue;
+                if (!(node instanceof HTMLIFrameElement)) {
+                    continue;
+                }
                 try {
                     const cw = node.contentWindow;
                     const orig = cw.postMessage.bind(cw);
                     cw.postMessage = (data, ...args) => {
-                        if (isGoPay(data)) logPostMessage('→', data);
+                        if (isGoPay(data)) {
+                            logPostMessage('→', data);
+                        }
                         return orig(data, ...args);
                     };
                 } catch (_) {}

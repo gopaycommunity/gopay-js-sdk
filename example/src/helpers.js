@@ -7,8 +7,12 @@ export const state = {
 };
 
 export function show3dsPrompt(pre, redirectUrl) {
-    if (pre.nextElementSibling?.dataset.tds) pre.nextElementSibling.remove();
-    if (!redirectUrl) return;
+    if (pre.nextElementSibling?.dataset.tds) {
+        pre.nextElementSibling.remove();
+    }
+    if (!redirectUrl) {
+        return;
+    }
     const div = document.createElement('div');
     div.dataset.tds = '1';
     Object.assign(div.style, {
@@ -54,7 +58,9 @@ export async function run(outputId, fn, onSuccess) {
     try {
         const result = await fn();
         pre.textContent = `── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
-        if (onSuccess) onSuccess(result);
+        if (onSuccess) {
+            onSuccess(result);
+        }
     } catch (err) {
         pre.textContent = `── onError ──\n${formatError(err)}`;
     }
@@ -81,7 +87,9 @@ const SENSITIVE_KEYS = new Set([
 const PAN_PATTERN = /^\d{16,}$/;
 
 function sanitizeBody(value) {
-    if (Array.isArray(value)) return value.map(sanitizeBody);
+    if (Array.isArray(value)) {
+        return value.map(sanitizeBody);
+    }
     if (value !== null && typeof value === 'object') {
         const out = {};
         for (const [k, v] of Object.entries(value)) {
@@ -89,8 +97,9 @@ function sanitizeBody(value) {
         }
         return out;
     }
-    if (typeof value === 'string' && PAN_PATTERN.test(value))
+    if (typeof value === 'string' && PAN_PATTERN.test(value)) {
         return '[REDACTED]';
+    }
     return value;
 }
 
@@ -116,7 +125,9 @@ export function formatError(err) {
 
 export function updateBrowserBadge() {
     const badge = document.getElementById('browser-sdk-badge');
-    if (!badge) return;
+    if (!badge) {
+        return;
+    }
     const sdk = getBrowserSDK();
     if (!sdk) {
         badge.textContent = 'not initialized';
@@ -135,7 +146,9 @@ export function updateBrowserBadge() {
 
 export function prefillPaymentId(result) {
     const id = result?.id;
-    if (!id) return;
+    if (!id) {
+        return;
+    }
     for (const fieldId of [
         'charge-payment-id',
         'status-payment-id',
@@ -145,7 +158,9 @@ export function prefillPaymentId(result) {
         'qr-payment-id',
     ]) {
         const el = document.getElementById(fieldId);
-        if (el) el.value = id;
+        if (el) {
+            el.value = id;
+        }
     }
     updateBrowserBadge();
     state.pendingInstrument = null;
@@ -187,13 +202,16 @@ export async function pollChargeState(awaitFn, pre) {
 
 export function prefillBrowserCharge(encryptedPayload) {
     const el = document.getElementById('bcharge-encrypted-payload');
-    if (el && encryptedPayload) el.value = encryptedPayload;
+    if (el && encryptedPayload) {
+        el.value = encryptedPayload;
+    }
 }
 
 export function prefillCharge(paymentId, instrument) {
     state.pendingInstrument = instrument;
-    if (paymentId)
+    if (paymentId) {
         document.getElementById('charge-payment-id').value = paymentId;
+    }
     document.getElementById('charge-instrument-info').textContent =
         JSON.stringify(instrument, null, 2);
     document.getElementById('charge-token-fields').style.display = 'none';

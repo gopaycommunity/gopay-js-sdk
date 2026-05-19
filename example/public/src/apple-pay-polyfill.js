@@ -198,7 +198,9 @@
 
             showStatus('Validating merchant…');
             const payBtn = document.getElementById('ap-polyfill-pay');
-            if (payBtn) payBtn.disabled = true;
+            if (payBtn) {
+                payBtn.disabled = true;
+            }
 
             // Fire onvalidatemerchant asynchronously (mirrors real behaviour)
             setTimeout(() => {
@@ -265,7 +267,9 @@
             );
             const modal = this._modal;
             this._removeTimer = setTimeout(() => {
-                if (modal) modal.remove();
+                if (modal) {
+                    modal.remove();
+                }
                 this._modal = null;
                 this._removeTimer = null;
             }, 800);

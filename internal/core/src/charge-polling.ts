@@ -32,28 +32,34 @@ export function awaitCharge<
         let lastActionRequiredUrl: string | null = null;
 
         const stop = (fn: () => void) => {
-            if (stopped) return;
+            if (stopped) {
+                return;
+            }
             stopped = true;
             clearTimeout(initialTimer);
             fn();
         };
 
         const initialTimer = setTimeout(() => {
-            if (stopped) return;
-            stopped = true;
-            reject(
-                new GoPaySDKError(
-                    '[GoPaySDK] Charge did not progress within the initial timeout',
-                    { errorCode: GoPayErrorCodes.CHARGE_TIMEOUT },
+            stop(() =>
+                reject(
+                    new GoPaySDKError(
+                        '[GoPaySDK] Charge did not progress within the initial timeout',
+                        { errorCode: GoPayErrorCodes.CHARGE_TIMEOUT },
+                    ),
                 ),
             );
         }, initialTimeoutMs);
 
         const doPoll = () => {
-            if (stopped) return;
+            if (stopped) {
+                return;
+            }
             poll()
                 .then((state) => {
-                    if (stopped) return;
+                    if (stopped) {
+                        return;
+                    }
                     options?.onStateChange?.(state);
 
                     if (state.state === 'SUCCEEDED') {
@@ -88,7 +94,9 @@ export function awaitCharge<
                     setTimeout(doPoll, intervalMs);
                 })
                 .catch((err) => {
-                    if (stopped) return;
+                    if (stopped) {
+                        return;
+                    }
                     stop(() => reject(err));
                 });
         };

@@ -29,7 +29,9 @@ const SENSITIVE_KEYS = new Set([
 const PAN_PATTERN = /^\d{16,}$/;
 
 function sanitizeBody(value) {
-    if (Array.isArray(value)) return value.map(sanitizeBody);
+    if (Array.isArray(value)) {
+        return value.map(sanitizeBody);
+    }
     if (value !== null && typeof value === 'object') {
         const out = {};
         for (const [k, v] of Object.entries(value)) {
@@ -37,14 +39,17 @@ function sanitizeBody(value) {
         }
         return out;
     }
-    if (typeof value === 'string' && PAN_PATTERN.test(value))
+    if (typeof value === 'string' && PAN_PATTERN.test(value)) {
         return '[REDACTED]';
+    }
     return value;
 }
 
 function appendBrowserError(err) {
     const log = document.getElementById('browser-sdk-log');
-    if (!log) return;
+    if (!log) {
+        return;
+    }
     const ts = new Date().toLocaleTimeString();
     let text;
     if (err instanceof GoPayHTTPError) {
@@ -82,7 +87,9 @@ export function isSdkAttached() {
 }
 
 export async function attachPaymentToSDK(paymentId, paymentSecret) {
-    if (!_browserSdk) return;
+    if (!_browserSdk) {
+        return;
+    }
     await _browserSdk.attachPayment({ paymentId, paymentSecret });
     _attached = true;
 }

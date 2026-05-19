@@ -3,7 +3,9 @@ import { sdk } from './sdk.js';
 
 export function prefillRecurrenceId(result) {
     const id = result?.id;
-    if (!id) return;
+    if (!id) {
+        return;
+    }
     for (const fieldId of [
         'rec-status-id',
         'rec-stop-id',
@@ -11,7 +13,9 @@ export function prefillRecurrenceId(result) {
         'rec-next-id',
     ]) {
         const el = document.getElementById(fieldId);
-        if (el) el.value = id;
+        if (el) {
+            el.value = id;
+        }
     }
 }
 
@@ -71,8 +75,12 @@ export function runRecurrenceNext() {
         .value.trim();
 
     const params = {};
-    if (amountRaw) params.amount = parseInt(amountRaw, 10);
-    if (order_number) params.order_number = order_number;
+    if (amountRaw) {
+        params.amount = parseInt(amountRaw, 10);
+    }
+    if (order_number) {
+        params.order_number = order_number;
+    }
 
     run('rec-next-output', () =>
         sdk.recurrenceNext(

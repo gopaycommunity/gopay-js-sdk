@@ -293,8 +293,9 @@ describe('HttpClient', () => {
             let capturedRefreshReq!: Request;
             fetchMock.mockImplementation(async (req: Request) => {
                 callCount++;
-                if (callCount === 1)
+                if (callCount === 1) {
                     return makeResponse({}, 401, 'Unauthorized');
+                }
                 if (callCount === 2) {
                     capturedRefreshReq = req;
                     await req.text();
@@ -320,8 +321,9 @@ describe('HttpClient', () => {
             let capturedRefreshBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 callCount++;
-                if (callCount === 1)
+                if (callCount === 1) {
                     return makeResponse({}, 401, 'Unauthorized');
+                }
                 if (callCount === 2) {
                     capturedRefreshBody = await req.text();
                     return makeResponse(freshTokens);
@@ -446,8 +448,9 @@ describe('HttpClient', () => {
             let callCount = 0;
             fetchMock.mockImplementation(async (req: Request) => {
                 callCount++;
-                if (callCount === 1)
+                if (callCount === 1) {
                     return makeResponse({}, 401, 'Unauthorized');
+                }
                 if (callCount === 2) {
                     await req.text();
                     return makeResponse(freshTokens);

@@ -45,8 +45,12 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
     }
 
     function handleError(err: unknown): never {
-        if (err instanceof GoPaySDKError) throw err;
-        if (err instanceof GoPayHTTPError) throw err;
+        if (err instanceof GoPaySDKError) {
+            throw err;
+        }
+        if (err instanceof GoPayHTTPError) {
+            throw err;
+        }
 
         if (err instanceof Error && err.name === 'TimeoutError') {
             return emitError(
@@ -69,7 +73,9 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
     }
 
     async function throwIfNotOk(response: Response): Promise<void> {
-        if (response.ok) return;
+        if (response.ok) {
+            return;
+        }
         const body = await parseBody(response);
         emitError(new GoPayHTTPError(response.status, body));
     }
@@ -108,7 +114,9 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
         } | null {
             const clientId = tokenStore.getClientId();
             const clientSecret = tokenStore.getClientSecret();
-            if (!clientId || !clientSecret) return null;
+            if (!clientId || !clientSecret) {
+                return null;
+            }
             return { clientId, clientSecret };
         },
 

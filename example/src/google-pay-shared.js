@@ -1,7 +1,9 @@
 import { formatError } from './helpers.js';
 
 export function ensureGooglePayLoaded(pre) {
-    if (window.google) return true;
+    if (window.google) {
+        return true;
+    }
     pre.textContent =
         'Google Pay script not loaded yet — please wait a moment and try again.';
     return false;

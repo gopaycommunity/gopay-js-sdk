@@ -26,7 +26,9 @@ export function buildPaymentDetails(info) {
 }
 
 export async function supportsPaymentRequestApplePay(info) {
-    if (!window.PaymentRequest) return false;
+    if (!window.PaymentRequest) {
+        return false;
+    }
     try {
         const req = new PaymentRequest(
             [buildApplePayPaymentMethod(info)],
@@ -56,7 +58,9 @@ export async function renderApplePayButtons({
     if (window.MockApplePaySession) {
         const btn = document.createElement('button');
         btn.type = 'button';
-        if (mockButtonId) btn.id = mockButtonId;
+        if (mockButtonId) {
+            btn.id = mockButtonId;
+        }
         btn.textContent = ' Pay (Mock — dev only)';
         btn.style.background = '#856404';
         btn.onclick = () => onBeginSession(window.MockApplePaySession);

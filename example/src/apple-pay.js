@@ -65,7 +65,9 @@ export async function applePayLoadInfo() {
 
 async function applePayPaymentRequestFlow() {
     const pre = document.getElementById('applepay-output');
-    if (!_applePayInfo || !_applePaymentId) return;
+    if (!_applePayInfo || !_applePaymentId) {
+        return;
+    }
 
     pre.textContent += '\n\n── Step 2: PaymentRequest (cross-device QR) ──';
     let paymentResponse;
@@ -103,7 +105,9 @@ async function applePayPaymentRequestFlow() {
 
 function applePayBeginSession(SessionClass = window.ApplePaySession) {
     const pre = document.getElementById('applepay-output');
-    if (!_applePayInfo || !_applePaymentId) return;
+    if (!_applePayInfo || !_applePaymentId) {
+        return;
+    }
 
     const session = new SessionClass(
         _applePayInfo.applepayVersion,

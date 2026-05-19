@@ -18,7 +18,9 @@ export async function browserApplePayLoadInfo() {
     _apBrowserSdk = null;
 
     const browserSdk = requireAttachedSDK(pre);
-    if (!browserSdk) return;
+    if (!browserSdk) {
+        return;
+    }
 
     pre.textContent = '── fetching Apple Pay info ──';
     try {
@@ -40,7 +42,9 @@ export async function browserApplePayLoadInfo() {
 
 async function _browserApplePayPaymentRequestFlow() {
     const pre = document.getElementById('bapplepay-output');
-    if (!_apBrowserSdk || !_apInfo) return;
+    if (!_apBrowserSdk || !_apInfo) {
+        return;
+    }
 
     pre.textContent += '\n\n── Step 2: PaymentRequest (cross-device QR) ──';
     let paymentResponse;
@@ -89,7 +93,9 @@ async function _browserApplePayPaymentRequestFlow() {
 
 function _browserApplePayBeginSession(SessionClass = window.ApplePaySession) {
     const pre = document.getElementById('bapplepay-output');
-    if (!_apBrowserSdk || !_apInfo) return;
+    if (!_apBrowserSdk || !_apInfo) {
+        return;
+    }
 
     const session = new SessionClass(
         _apInfo.applepayVersion,

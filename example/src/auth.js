@@ -32,7 +32,9 @@ export function runAuthenticate() {
     run(
         'auth-output',
         async () => {
-            if (publishable_key) sdk.setPublishableKey(publishable_key);
+            if (publishable_key) {
+                sdk.setPublishableKey(publishable_key);
+            }
             await sdk.authenticate({
                 grant_type: 'client_credentials',
                 client_id,

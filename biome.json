@@ -20,6 +20,9 @@
                     "level": "error",
                     "fix": "safe"
                 }
+            },
+            "style": {
+                "useBlockStatements": "error"
             }
         }
     },

@@ -59,7 +59,9 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
     ): Promise<ValidateMerchantResponse> {
         // TODO: move Apple-Validation-Url from header to request body once the revised spec lands
         const headers: Record<string, string> = {};
-        if (validationURL) headers['Apple-Validation-Url'] = validationURL;
+        if (validationURL) {
+            headers['Apple-Validation-Url'] = validationURL;
+        }
         return client.post<ValidateMerchantResponse>(
             `/payments/${paymentId}/apple-pay/validate`,
             undefined,
@@ -137,7 +139,9 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
             let redirectIframe: HTMLIFrameElement | undefined;
 
             const removeRedirectIframe = () => {
-                if (!redirectIframe) return;
+                if (!redirectIframe) {
+                    return;
+                }
                 redirectIframe.src = '';
                 redirectIframe.remove();
                 redirectIframe = undefined;

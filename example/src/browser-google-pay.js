@@ -17,10 +17,14 @@ export async function browserGooglePayLoadInfo() {
     _gpInfo = null;
     _gpBrowserSdk = null;
 
-    if (!ensureGooglePayLoaded(pre)) return;
+    if (!ensureGooglePayLoaded(pre)) {
+        return;
+    }
 
     const browserSdk = requireAttachedSDK(pre);
-    if (!browserSdk) return;
+    if (!browserSdk) {
+        return;
+    }
 
     pre.textContent = '── fetching Google Pay info ──';
     try {
@@ -38,10 +42,14 @@ export async function browserGooglePayLoadInfo() {
 
 async function _browserGooglePayCharge() {
     const pre = document.getElementById('bgpay-output');
-    if (!_gpBrowserSdk || !_gpInfo) return;
+    if (!_gpBrowserSdk || !_gpInfo) {
+        return;
+    }
 
     const paymentData = await loadGooglePayData(_gpInfo, pre);
-    if (!paymentData) return;
+    if (!paymentData) {
+        return;
+    }
 
     const instrument = extractGooglePayInstrument(paymentData);
 

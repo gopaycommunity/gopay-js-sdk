@@ -19,17 +19,27 @@ export async function fetchWithRetry(
                     signal: AbortSignal.timeout(timeoutMs),
                 }),
             );
-            if (response.status < 500) return response;
-            if (!isIdempotent) return response;
+            if (response.status < 500) {
+                return response;
+            }
+            if (!isIdempotent) {
+                return response;
+            }
             lastResponse = response;
         } catch (err) {
             // Timeouts are not retriable — bubble up immediately
-            if (err instanceof Error && err.name === 'TimeoutError') throw err;
-            if (!isIdempotent) throw err;
+            if (err instanceof Error && err.name === 'TimeoutError') {
+                throw err;
+            }
+            if (!isIdempotent) {
+                throw err;
+            }
             lastError = err;
         }
     }
     // Return last 5xx response so GoPayHTTPError gets status + body
-    if (lastResponse !== undefined) return lastResponse;
+    if (lastResponse !== undefined) {
+        return lastResponse;
+    }
     throw lastError;
 }

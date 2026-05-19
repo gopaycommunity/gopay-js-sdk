@@ -176,7 +176,9 @@ export function createAuthApi(client: HttpClient) {
             let expiresIn = 3600;
             try {
                 const parts = accessToken.split('.');
-                if (parts.length < 2) throw new Error('not a JWT');
+                if (parts.length < 2) {
+                    throw new Error('not a JWT');
+                }
                 const segment = parts[1];
                 const pad = segment.length % 4;
                 const b64 =
@@ -187,7 +189,9 @@ export function createAuthApi(client: HttpClient) {
                     unknown
                 >;
                 sub = typeof payload.sub === 'string' ? payload.sub : '';
-                if (!sub) throw new Error('sub claim is empty');
+                if (!sub) {
+                    throw new Error('sub claim is empty');
+                }
                 if (
                     typeof payload.exp === 'number' &&
                     Number.isFinite(payload.exp)

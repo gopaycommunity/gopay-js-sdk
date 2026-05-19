@@ -5,7 +5,9 @@ const HOURGLASS_PATH =
 let stylesInjected = false;
 
 function injectStyles(): void {
-    if (stylesInjected) return;
+    if (stylesInjected) {
+        return;
+    }
     stylesInjected = true;
     const style = document.createElement('style');
     style.textContent =

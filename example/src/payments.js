@@ -129,8 +129,9 @@ export function clearCharge() {
     document.getElementById('charge-token-fields').style.display = '';
     const output = document.getElementById('payment-charge-output');
     output.textContent = '—';
-    if (output.nextElementSibling?.dataset.tds)
+    if (output.nextElementSibling?.dataset.tds) {
         output.nextElementSibling.remove();
+    }
 }
 
 // Fetch QR payment info for a payment. Returns image data (base64 PNG or SVG markup).

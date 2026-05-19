@@ -49,14 +49,19 @@ import { clientId, clientSecret, goid, publishableKey, sdk } from './sdk.js';
 // -----------------------------------------------------------------------
 // Pre-populate auth fields from Vite env (sdk/.env.e2e) — fall back to empty
 // -----------------------------------------------------------------------
-if (clientId) document.getElementById('auth-client-id').value = clientId;
-if (clientSecret)
+if (clientId) {
+    document.getElementById('auth-client-id').value = clientId;
+}
+if (clientSecret) {
     document.getElementById('auth-client-secret').value = clientSecret;
+}
 if (publishableKey) {
     document.getElementById('auth-publishable-key').value = publishableKey;
     document.getElementById('cardpay-publishable-key').value = publishableKey;
 }
-if (clientId) document.getElementById('cardpay-client-id').value = clientId;
+if (clientId) {
+    document.getElementById('cardpay-client-id').value = clientId;
+}
 
 // Auto-init browser SDK if both keys are available from env
 if (publishableKey && clientId) {
@@ -69,7 +74,9 @@ if (goid) {
         'link-create-goid',
     ]) {
         const el = document.getElementById(fieldId);
-        if (el) el.value = goid;
+        if (el) {
+            el.value = goid;
+        }
     }
 }
 
