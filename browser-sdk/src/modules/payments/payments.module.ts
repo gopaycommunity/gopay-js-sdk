@@ -46,6 +46,10 @@ function mountRedirectIframe(
 ): HTMLIFrameElement {
     const iframe = document.createElement('iframe');
     iframe.src = redirectUrl;
+    iframe.setAttribute(
+        'sandbox',
+        'allow-scripts allow-forms allow-same-origin',
+    );
     iframe.referrerPolicy = 'strict-origin';
     iframe.style.display = 'block';
     iframe.style.width = '100%';
