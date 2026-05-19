@@ -79,15 +79,7 @@ describe('AuthModule', () => {
             'missing access_token',
             { ...validTokenPair, access_token: undefined },
         ],
-        [
-            'missing refresh_token',
-            { ...validTokenPair, refresh_token: undefined },
-        ],
         ['missing expires_in', { ...validTokenPair, expires_in: undefined }],
-        [
-            'missing refresh_expires_in',
-            { ...validTokenPair, refresh_expires_in: undefined },
-        ],
     ])('throws GoPaySDKError on invalid token response: %s', async (_, partial) => {
         fetchMock.mockImplementation(async (req: Request) => {
             await req.text();
@@ -110,6 +102,29 @@ describe('AuthModule', () => {
         expect((err as GoPaySDKError).errorCode).toBe(
             GoPayErrorCodes.AUTH_INVALID_RESPONSE,
         );
+    });
+
+    it('accepts a token response without refresh_token (client_credentials grant)', async () => {
+        fetchMock.mockImplementation(async (req: Request) => {
+            await req.text();
+            return makeResponse({
+                ...validTokenPair,
+                refresh_token: undefined,
+                refresh_expires_in: undefined,
+            });
+        });
+
+        await auth.authenticate({
+            grant_type: 'client_credentials',
+            client_id: 'id',
+            client_secret: 'secret',
+            scope: 'payment:create',
+        });
+
+        const stored = client.tokenStore.get();
+        expect(stored?.access_token).toBe('at-abc');
+        expect(stored?.refresh_token).toBe('');
+        expect(stored?.refresh_expires_in).toBe(0);
     });
 
     it('does not populate token store when token response is invalid', async () => {

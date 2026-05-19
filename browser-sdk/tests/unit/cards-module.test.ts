@@ -326,7 +326,7 @@ describe('createCardsApi() — browser SDK', () => {
             expect(iframe.style.height).toBe('220px');
         });
 
-        it('clamps iframe height to 500px maximum', async () => {
+        it('sets iframe height to the reported value', async () => {
             const cards = createCardsApi(client, () => null);
             await cards.mountCardForm(container, { flow: 'return-payload' });
 
@@ -335,14 +335,14 @@ describe('createCardsApi() — browser SDK', () => {
             ) as HTMLIFrameElement;
             simulateMessage(iframe, {
                 type: 'GOPAY_CARD_FORM_HEIGHT',
-                height: 9999,
+                height: 999,
             });
 
             await new Promise((r) => setTimeout(r, 0));
-            expect(iframe.style.height).toBe('500px');
+            expect(iframe.style.height).toBe('999px');
         });
 
-        it('clamps negative iframe height to 0px', async () => {
+        it('ignores negative iframe height values', async () => {
             const cards = createCardsApi(client, () => null);
             await cards.mountCardForm(container, { flow: 'return-payload' });
 
@@ -355,7 +355,7 @@ describe('createCardsApi() — browser SDK', () => {
             });
 
             await new Promise((r) => setTimeout(r, 0));
-            expect(iframe.style.height).toBe('0px');
+            expect(iframe.style.height).toBe('100%');
         });
 
         it('calls onValidityChange and updates isValid on GOPAY_CARD_FORM_VALIDITY', async () => {

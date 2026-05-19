@@ -43,12 +43,7 @@ export function createAuthApi(client: HttpClient) {
                 { headers },
             );
 
-            if (
-                !tokenPair.access_token ||
-                !tokenPair.refresh_token ||
-                tokenPair.expires_in === undefined ||
-                tokenPair.refresh_expires_in === undefined
-            ) {
+            if (!tokenPair.access_token || tokenPair.expires_in === undefined) {
                 throw client.emitError(
                     new GoPaySDKError(
                         '[GoPaySDK] Invalid token response: missing required fields.',
@@ -58,9 +53,15 @@ export function createAuthApi(client: HttpClient) {
             }
             client.setToken({
                 access_token: tokenPair.access_token,
-                refresh_token: tokenPair.refresh_token,
+                refresh_token:
+                    typeof tokenPair.refresh_token === 'string'
+                        ? tokenPair.refresh_token
+                        : '',
                 expires_in: tokenPair.expires_in,
-                refresh_expires_in: tokenPair.refresh_expires_in,
+                refresh_expires_in:
+                    typeof tokenPair.refresh_expires_in === 'number'
+                        ? tokenPair.refresh_expires_in
+                        : 0,
                 token_type: 'bearer',
             });
         },
@@ -177,7 +178,10 @@ export function createAuthApi(client: HttpClient) {
             try {
                 const parts = accessToken.split('.');
                 if (parts.length < 2) {
-                    throw new Error('not a JWT');
+                    throw new GoPaySDKError(
+                        '[GoPaySDK] setClientToken(): access token is not a valid JWT.',
+                        { errorCode: GoPayErrorCodes.AUTH_INVALID_TOKEN },
+                    );
                 }
                 const segment = parts[1];
                 const pad = segment.length % 4;
@@ -190,21 +194,31 @@ export function createAuthApi(client: HttpClient) {
                 >;
                 sub = typeof payload.sub === 'string' ? payload.sub : '';
                 if (!sub) {
-                    throw new Error('sub claim is empty');
+                    throw new GoPaySDKError(
+                        '[GoPaySDK] setClientToken(): JWT is missing the sub claim.',
+                        { errorCode: GoPayErrorCodes.AUTH_INVALID_TOKEN },
+                    );
                 }
                 if (
                     typeof payload.exp === 'number' &&
                     Number.isFinite(payload.exp)
                 ) {
-                    expiresIn = Math.max(
-                        0,
-                        Math.floor(payload.exp) - Math.floor(Date.now() / 1000),
-                    );
+                    expiresIn =
+                        Math.floor(payload.exp) - Math.floor(Date.now() / 1000);
+                    if (expiresIn <= 0) {
+                        throw new GoPaySDKError(
+                            '[GoPaySDK] setClientToken(): token is expired.',
+                            { errorCode: GoPayErrorCodes.AUTH_INVALID_TOKEN },
+                        );
+                    }
                 }
-            } catch {
+            } catch (e) {
+                if (e instanceof GoPaySDKError) {
+                    throw client.emitError(e);
+                }
                 throw client.emitError(
                     new GoPaySDKError(
-                        '[GoPaySDK] setClientToken(): failed to extract client_id from JWT payload.',
+                        '[GoPaySDK] setClientToken(): failed to decode JWT payload.',
                         { errorCode: GoPayErrorCodes.AUTH_INVALID_TOKEN },
                     ),
                 );

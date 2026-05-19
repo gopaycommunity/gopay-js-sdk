@@ -1,3 +1,4 @@
+import { GoPayErrorCodes, GoPaySDKError } from '@gopay-internal/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { collectBrowserData } from '../../src/modules/payments/browser-data.js';
 
@@ -6,9 +7,14 @@ describe('collectBrowserData()', () => {
         vi.unstubAllGlobals();
     });
 
-    it('returns empty object when navigator is undefined', () => {
+    it('throws INVALID_CONFIG when navigator is undefined', () => {
         vi.stubGlobal('navigator', undefined);
-        expect(collectBrowserData()).toEqual({});
+        expect(() => collectBrowserData()).toThrow(GoPaySDKError);
+        expect(() => collectBrowserData()).toThrow(
+            expect.objectContaining({
+                errorCode: GoPayErrorCodes.INVALID_CONFIG,
+            }),
+        );
     });
 
     it('sets javascript_enabled to true', () => {
@@ -44,11 +50,13 @@ describe('collectBrowserData()', () => {
         expect(typeof data.color_depth).toBe('number');
     });
 
-    it('omits screen fields when screen is undefined', () => {
+    it('throws INVALID_CONFIG when screen is undefined', () => {
         vi.stubGlobal('screen', undefined);
-        const data = collectBrowserData();
-        expect(data.screen_width).toBeUndefined();
-        expect(data.screen_height).toBeUndefined();
-        expect(data.color_depth).toBeUndefined();
+        expect(() => collectBrowserData()).toThrow(GoPaySDKError);
+        expect(() => collectBrowserData()).toThrow(
+            expect.objectContaining({
+                errorCode: GoPayErrorCodes.INVALID_CONFIG,
+            }),
+        );
     });
 });
