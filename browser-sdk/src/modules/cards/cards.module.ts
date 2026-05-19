@@ -59,7 +59,7 @@ export interface CardFormController<R = EncryptedCardPayload> {
 type DirectChargeOptions = {
     flow: 'direct-charge';
     /** Container where the 3DS redirect iframe will be mounted during charge polling. */
-    redirectContainer: Element;
+    redirectContainer: HTMLElement;
     awaitOptions?: AwaitChargeOptions;
 };
 
@@ -249,8 +249,8 @@ export function createCardsApi(
 
                 if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
                     const { height } = event.data;
-                    if (Number.isFinite(height)) {
-                        iframe.style.height = `${Math.max(0, Math.min(500, height))}px`;
+                    if (Number.isFinite(height) && height >= 0) {
+                        iframe.style.height = `${height}px`;
                     }
                     return;
                 }

@@ -40,15 +40,16 @@ export type AwaitChargeOptions =
     CoreAwaitChargeOptions<PaymentChargeStatusResponse>;
 
 function mountRedirectIframe(
-    container: Element,
+    container: HTMLElement,
     redirectUrl: string,
 ): HTMLIFrameElement {
     const iframe = document.createElement('iframe');
     iframe.src = redirectUrl;
     iframe.referrerPolicy = 'strict-origin';
-    (container as HTMLElement).style.position = 'relative';
-    iframe.style.cssText =
-        'position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;border:none;outline:none;z-index:200;';
+    iframe.style.display = 'block';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
     container.appendChild(iframe);
     return iframe;
 }
@@ -133,7 +134,7 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
          * `PROCESSING` within `initialTimeoutMs` (default 30 s).
          */
         awaitChargeState(
-            container: Element | null,
+            container: HTMLElement | null,
             options?: AwaitChargeOptions,
         ): Promise<PaymentChargeStatusResponse> {
             let redirectIframe: HTMLIFrameElement | undefined;
