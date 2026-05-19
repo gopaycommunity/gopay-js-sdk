@@ -15,7 +15,7 @@ export async function browserQRPaymentInfo() {
     try {
         const result = await browserSdk.getQRPaymentInfo(format);
         pre.textContent = `── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
-        renderQRImage(pre, result, format);
+        renderQRImage(pre, result);
     } catch (err) {
         pre.textContent += `\n\n── onError ──\n${formatError(err)}`;
     }

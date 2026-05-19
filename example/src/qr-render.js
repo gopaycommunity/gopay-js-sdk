@@ -1,4 +1,4 @@
-export function renderQRImage(pre, result, format) {
+export function renderQRImage(pre, result) {
     if (pre.nextElementSibling?.dataset.qrImg) {
         pre.nextElementSibling.remove();
     }
@@ -12,10 +12,15 @@ export function renderQRImage(pre, result, format) {
     }
     const img = document.createElement('img');
     img.dataset.qrImg = '1';
-    img.src =
-        format === 'svg'
-            ? `data:image/svg+xml;base64,${b64}`
-            : `data:image/png;base64,${b64}`;
+    // Detect actual format from data — server may return PNG even when SVG was requested.
+    // PNG magic bytes (89 50 4E 47) encode as 'iVBORw0K' in base64.
+    if (b64.startsWith('iVBORw0K')) {
+        img.src = `data:image/png;base64,${b64}`;
+    } else if (b64.trimStart().startsWith('<')) {
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(b64)}`;
+    } else {
+        img.src = `data:image/svg+xml;base64,${b64}`;
+    }
     Object.assign(img.style, {
         display: 'block',
         marginTop: '0.6rem',
