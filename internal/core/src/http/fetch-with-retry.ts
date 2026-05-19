@@ -1,6 +1,9 @@
 const MAX_RETRIES = 2;
 const IDEMPOTENT_METHODS = new Set(['GET', 'HEAD', 'OPTIONS', 'PUT', 'DELETE']);
 
+const sleep = (ms: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 /** Retry on 5xx responses and network errors; pass through 4xx immediately. */
 export async function fetchWithRetry(
     url: string,
@@ -12,6 +15,9 @@ export async function fetchWithRetry(
     let lastResponse: Response | undefined;
     let lastError: unknown;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        if (attempt > 0) {
+            await sleep(2 ** (attempt - 1) * 200);
+        }
         try {
             const response = await fetch(
                 new Request(url, {
