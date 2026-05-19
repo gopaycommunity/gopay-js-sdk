@@ -1,5 +1,6 @@
 import './styles/main.css';
 import './card-form-logger.js';
+import { applePayLoadInfo } from './apple-pay.js';
 import {
     runAuthenticate,
     runGetBrowserKeys,
@@ -131,6 +132,7 @@ window.clearCharge = clearCharge;
 window.runQRPaymentInfo = runQRPaymentInfo;
 window.runGetGooglePayInfo = runGetGooglePayInfo;
 window.runGetApplePayInfo = runGetApplePayInfo;
+window.applePayLoadInfo = applePayLoadInfo;
 window.cardPayOpenIframe = cardPayOpenIframe;
 window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;
