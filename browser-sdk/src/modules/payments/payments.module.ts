@@ -1,6 +1,7 @@
 import {
     awaitCharge,
     type AwaitChargeOptions as CoreAwaitChargeOptions,
+    GoPaySDKError,
     type HttpClient,
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
@@ -227,12 +228,12 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
                 try {
                     parsed = new URL(origin);
                 } catch {
-                    throw new Error(
+                    throw new GoPaySDKError(
                         `[GoPayBrowserSDK] startApplePaySession: invalid origin "${origin}"`,
                     );
                 }
                 if (parsed.protocol !== 'https:' || parsed.origin !== origin) {
-                    throw new Error(
+                    throw new GoPaySDKError(
                         `[GoPayBrowserSDK] startApplePaySession: origin must be an https: origin. Got "${origin}"`,
                     );
                 }
