@@ -1,4 +1,5 @@
 import {
+    assertHttpsOrigin,
     awaitCharge,
     type AwaitChargeOptions as CoreAwaitChargeOptions,
     GoPayErrorCodes,
@@ -159,29 +160,25 @@ export function createPaymentsApi(client: HttpClient) {
         ): void {
             requirePaymentId(paymentId);
             if (origin) {
-                let parsed: URL | undefined;
                 try {
-                    parsed = new URL(origin);
-                } catch {
-                    throw client.emitError(
-                        new GoPaySDKError(
-                            `[GoPaySDK] startApplePaySession: invalid origin "${origin}"`,
-                            { errorCode: GoPayErrorCodes.INVALID_ARGUMENT },
-                        ),
+                    assertHttpsOrigin(
+                        origin,
+                        '[GoPaySDK] startApplePaySession',
                     );
-                }
-                if (parsed.protocol !== 'https:' || parsed.origin !== origin) {
-                    throw client.emitError(
-                        new GoPaySDKError(
-                            `[GoPaySDK] startApplePaySession: origin must be an https: origin. Got "${origin}"`,
-                            { errorCode: GoPayErrorCodes.INVALID_ARGUMENT },
-                        ),
-                    );
+                } catch (e) {
+                    throw client.emitError(e as GoPaySDKError);
                 }
             }
             session.onvalidatemerchant = (event: unknown) => {
-                const validationURL = (event as { validationURL?: string })
-                    ?.validationURL;
+                const validationURL =
+                    event != null &&
+                    typeof event === 'object' &&
+                    'validationURL' in event &&
+                    typeof (event as Record<string, unknown>).validationURL ===
+                        'string'
+                        ? ((event as Record<string, unknown>)
+                              .validationURL as string)
+                        : undefined;
                 const headers: Record<string, string> = { Origin: origin };
                 // TODO: move Apple-Validation-Url from header to request body once the revised spec lands
                 if (validationURL) {

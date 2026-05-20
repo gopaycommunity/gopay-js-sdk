@@ -1,6 +1,8 @@
 import {
+    assertHttpsOrigin,
     awaitCharge,
     type AwaitChargeOptions as CoreAwaitChargeOptions,
+    GoPayErrorCodes,
     GoPaySDKError,
     type HttpClient,
 } from '@gopay-internal/core';
@@ -44,8 +46,15 @@ function mountRedirectIframe(
     container: HTMLElement,
     redirectUrl: string,
 ): HTMLIFrameElement {
+    if (new URL(redirectUrl).protocol !== 'https:') {
+        throw new GoPaySDKError(
+            `[GoPayBrowserSDK] Redirect URL must use https: protocol. Got "${redirectUrl}"`,
+            { errorCode: GoPayErrorCodes.CHARGE_FAILED },
+        );
+    }
     const iframe = document.createElement('iframe');
     iframe.src = redirectUrl;
+    iframe.title = 'GoPay 3DS payment verification';
     iframe.setAttribute(
         'sandbox',
         'allow-scripts allow-forms allow-same-origin',
@@ -228,23 +237,25 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
             callbacks?: { oncancel?: (event: unknown) => void },
         ): void {
             if (origin) {
-                let parsed: URL | undefined;
                 try {
-                    parsed = new URL(origin);
-                } catch {
-                    throw new GoPaySDKError(
-                        `[GoPayBrowserSDK] startApplePaySession: invalid origin "${origin}"`,
+                    assertHttpsOrigin(
+                        origin,
+                        '[GoPayBrowserSDK] startApplePaySession',
                     );
-                }
-                if (parsed.protocol !== 'https:' || parsed.origin !== origin) {
-                    throw new GoPaySDKError(
-                        `[GoPayBrowserSDK] startApplePaySession: origin must be an https: origin. Got "${origin}"`,
-                    );
+                } catch (e) {
+                    throw client.emitError(e as GoPaySDKError);
                 }
             }
             session.onvalidatemerchant = (event: unknown) => {
-                const validationURL = (event as { validationURL?: string })
-                    ?.validationURL;
+                const validationURL =
+                    event != null &&
+                    typeof event === 'object' &&
+                    'validationURL' in event &&
+                    typeof (event as Record<string, unknown>).validationURL ===
+                        'string'
+                        ? ((event as Record<string, unknown>)
+                              .validationURL as string)
+                        : undefined;
                 validateApplePayMerchant(validationURL)
                     .then((merchantSession) =>
                         session.completeMerchantValidation(merchantSession),

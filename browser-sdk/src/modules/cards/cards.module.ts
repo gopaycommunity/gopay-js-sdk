@@ -199,6 +199,7 @@ export function createCardsApi(
                 options.locale ?? globalThis.navigator?.language ?? 'en';
             const submitMode = options.submitMode ?? 'internal';
 
+            const chargeAbortController = new AbortController();
             let active = true;
             let isValid = false;
             let onMessage:
@@ -302,6 +303,7 @@ export function createCardsApi(
                         redirectContainer,
                         {
                             ...awaitOptions,
+                            signal: chargeAbortController.signal,
                             onStateChange: (state) => {
                                 if (
                                     state.state === 'ACTION_REQUIRED' &&
@@ -424,13 +426,18 @@ export function createCardsApi(
                     if (activeCleanup === teardownThisSession) {
                         activeCleanup = undefined;
                     }
+                    chargeAbortController.abort();
                     cleanup();
-                    rejectResult(
-                        new GoPaySDKError(
-                            '[GoPayBrowserSDK] Card form unmounted.',
-                            { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
-                        ),
+                    const unmountError = new GoPaySDKError(
+                        '[GoPayBrowserSDK] Card form unmounted.',
+                        { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
                     );
+                    rejectResult(unmountError);
+                    try {
+                        client.emitError(unmountError);
+                    } catch {
+                        // emitError throws after firing onError — swallow here
+                    }
                 },
             };
         },

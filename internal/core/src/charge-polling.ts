@@ -5,6 +5,8 @@ export type AwaitChargeOptions<T extends { state: string }> = {
     initialTimeoutMs?: number;
     onStateChange?: (state: T) => void;
     onActionRequired?: (redirectUrl: string) => void;
+    /** Abort the polling loop. The returned promise rejects with CHARGE_FAILED when aborted. */
+    signal?: AbortSignal;
 };
 
 /**
@@ -37,8 +39,26 @@ export function awaitCharge<
             }
             stopped = true;
             clearTimeout(initialTimer);
+            options?.signal?.removeEventListener('abort', onAbort);
             fn();
         };
+
+        let onAbort: () => void;
+        onAbort = () => {
+            stop(() =>
+                reject(
+                    new GoPaySDKError('[GoPaySDK] Charge polling aborted.', {
+                        errorCode: GoPayErrorCodes.CHARGE_FAILED,
+                    }),
+                ),
+            );
+        };
+
+        if (options?.signal?.aborted) {
+            onAbort();
+            return;
+        }
+        options?.signal?.addEventListener('abort', onAbort, { once: true });
 
         const initialTimer = setTimeout(() => {
             stop(() =>

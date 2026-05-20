@@ -149,7 +149,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                     headers,
                 });
                 await throwIfNotOk(response);
-                return response.json() as Promise<T>;
+                return (await response.json()) as T;
             } catch (err) {
                 return handleError(err);
             }
@@ -174,7 +174,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                     body: JSON.stringify(body),
                 });
                 await throwIfNotOk(response);
-                return response.json() as Promise<T>;
+                return (await response.json()) as T;
             } catch (err) {
                 return handleError(err);
             }
@@ -225,7 +225,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                 );
                 debugLogResponse(response);
                 await throwIfNotOk(response);
-                return response.json() as Promise<T>;
+                return (await response.json()) as T;
             } catch (err) {
                 return handleError(err);
             }
