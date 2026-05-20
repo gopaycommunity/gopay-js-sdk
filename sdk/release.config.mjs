@@ -1,4 +1,15 @@
+import { readFileSync, writeFileSync } from 'node:fs';
 import { analyzeCommits } from 'semantic-release-monorepo';
+
+// @semantic-release/npm's `npm version` command fails on workspace:* deps (Yarn-only syntax).
+// This inline plugin does the same version bump via direct JSON edit instead.
+const versionBumper = {
+    prepare(_pluginConfig, context) {
+        const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+        pkg.version = context.nextRelease.version;
+        writeFileSync('package.json', `${JSON.stringify(pkg, null, 4)}\n`);
+    },
+};
 
 /** @type {import('semantic-release').GlobalConfig} */
 export default {
@@ -30,14 +41,10 @@ export default {
             },
         ],
 
-        // Bump version in package.json. npmPublish: false until NPM_TOKEN is added and sign-off given.
-        // To enable real publishing: set npmPublish: true and add NPM_TOKEN to Bitbucket repository variables.
-        [
-            '@semantic-release/npm',
-            {
-                npmPublish: false,
-            },
-        ],
+        // Bump version in package.json.
+        // Note: when enabling npm publish, replace this with @semantic-release/npm (npmPublish: true)
+        // and add @semantic-release/exec (prepareCmd: false) or keep this bumper + add a separate publish step.
+        versionBumper,
 
         // Commit version bump + CHANGELOG back to the repo
         [
