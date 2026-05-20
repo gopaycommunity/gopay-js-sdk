@@ -54,7 +54,7 @@ function mountRedirectIframe(
     }
     const iframe = document.createElement('iframe');
     iframe.src = redirectUrl;
-    iframe.title = 'GoPay 3DS payment verification';
+    iframe.title = 'GoPay 3DS';
     iframe.setAttribute(
         'sandbox',
         'allow-scripts allow-forms allow-same-origin',
