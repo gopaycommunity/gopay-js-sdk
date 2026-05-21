@@ -6,7 +6,10 @@ import {
 import type { components } from '../../types/generated.js';
 import type { AuthenticateRequest } from '../../types/index.js';
 
-type TokenPair = components['schemas']['Token-Pair'];
+type TokenPair = components['schemas']['Access-Token'] & {
+    refresh_token?: string;
+    refresh_expires_in?: number;
+};
 
 export function createAuthApi(client: HttpClient) {
     return {

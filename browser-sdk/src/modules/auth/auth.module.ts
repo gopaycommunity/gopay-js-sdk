@@ -6,7 +6,10 @@ import {
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
-type TokenPair = components['schemas']['Token-Pair'];
+type TokenPair = components['schemas']['Access-Token'] & {
+    refresh_token?: string;
+    refresh_expires_in?: number;
+};
 
 /** Scope issued for payment-secret tokens. */
 const DEFAULT_PAYMENT_SCOPE = 'payment:read payment:charge shared:read';

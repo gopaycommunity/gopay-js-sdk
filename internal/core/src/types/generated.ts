@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    '/oauth2/token': {
+    "/oauth2/token": {
         parameters: {
             query?: never;
             header?: never;
@@ -14,14 +14,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Authenticate */
-        post: operations['post-oauth2-token'];
+        post: operations["post-oauth2-token"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/eshops/{goid}/payments': {
+    "/eshops/{goid}/payments": {
         parameters: {
             query?: never;
             header?: never;
@@ -34,14 +34,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create a payment */
-        post: operations['post-eshops-goid-payments'];
+        post: operations["post-eshops-goid-payments"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/payments/{payment_id}': {
+    "/payments/{payment_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -52,7 +52,7 @@ export interface paths {
             cookie?: never;
         };
         /** Payment Status */
-        get: operations['get-payments-payment_id'];
+        get: operations["get-payments-payment_id"];
         put?: never;
         post?: never;
         delete?: never;
@@ -61,7 +61,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/payments/{payment_id}/charge': {
+    "/payments/{payment_id}/charge": {
         parameters: {
             query?: never;
             header?: never;
@@ -72,17 +72,17 @@ export interface paths {
             cookie?: never;
         };
         /** Payment charge state */
-        get: operations['get-payments-payment_id-charge'];
+        get: operations["get-payments-payment_id-charge"];
         put?: never;
         /** Charge a payment */
-        post: operations['post-payments-payment_id-charge'];
+        post: operations["post-payments-payment_id-charge"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/payments/{payment_id}/qr-payment/info': {
+    "/payments/{payment_id}/qr-payment/info": {
         parameters: {
             query?: never;
             header?: never;
@@ -93,7 +93,7 @@ export interface paths {
             cookie?: never;
         };
         /** QR Payment Info */
-        get: operations['get-payments-payment_id-qr-payment-info'];
+        get: operations["get-payments-payment_id-qr-payment-info"];
         put?: never;
         post?: never;
         delete?: never;
@@ -102,7 +102,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/payments/{payment_id}/google-pay/info': {
+    "/payments/{payment_id}/google-pay/info": {
         parameters: {
             query?: never;
             header?: never;
@@ -113,7 +113,7 @@ export interface paths {
             cookie?: never;
         };
         /** Google Pay Payment Info */
-        get: operations['get-payments-payment_id-info-google-pay'];
+        get: operations["get-payments-payment_id-info-google-pay"];
         put?: never;
         post?: never;
         delete?: never;
@@ -122,7 +122,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/payments/{payment_id}/apple-pay/info': {
+    "/payments/{payment_id}/apple-pay/info": {
         parameters: {
             query?: never;
             header?: never;
@@ -133,7 +133,7 @@ export interface paths {
             cookie?: never;
         };
         /** Apple Pay Payment Info */
-        get: operations['get-payments-payment_id-info-apple-pay'];
+        get: operations["get-payments-payment_id-info-apple-pay"];
         put?: never;
         post?: never;
         delete?: never;
@@ -142,7 +142,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/payments/{payment_id}/apple-pay/app-info': {
+    "/payments/{payment_id}/apple-pay/app-info": {
         parameters: {
             query?: never;
             header?: never;
@@ -153,7 +153,7 @@ export interface paths {
             cookie?: never;
         };
         /** Apple Pay Payment Info For Apps */
-        get: operations['get-payments-payment_id-apple-pay-app-info'];
+        get: operations["get-payments-payment_id-apple-pay-app-info"];
         put?: never;
         post?: never;
         delete?: never;
@@ -162,7 +162,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/payments/{payment_id}/apple-pay/validate': {
+    "/payments/{payment_id}/apple-pay/validate": {
         parameters: {
             query?: never;
             header?: never;
@@ -175,14 +175,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Validate Merchant */
-        post: operations['post-payments-payment_id-apple-pay-validate'];
+        post: operations["post-payments-payment_id-apple-pay-validate"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/cards/tokens': {
+    "/cards/tokens": {
         parameters: {
             query?: never;
             header?: never;
@@ -192,14 +192,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create card token */
-        post: operations['post-cards-tokens'];
+        post: operations["post-cards-tokens"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/cards/tokens/{card_id}': {
+    "/cards/tokens/{card_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -210,17 +210,17 @@ export interface paths {
             cookie?: never;
         };
         /** Card details */
-        get: operations['get-cards-tokens-card_id'];
+        get: operations["get-cards-tokens-card_id"];
         put?: never;
         post?: never;
         /** Delete a card */
-        delete: operations['delete-cards-tokens-card_id'];
+        delete: operations["delete-cards-tokens-card_id"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/cards/public-key': {
+    "/cards/public-key": {
         parameters: {
             query?: never;
             header?: never;
@@ -233,7 +233,7 @@ export interface paths {
          *
          *     It is structured as a JWK described by [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517)
          */
-        get: operations['get-encryption-public-key'];
+        get: operations["get-encryption-public-key"];
         put?: never;
         post?: never;
         delete?: never;
@@ -242,7 +242,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/cards/card-form-url': {
+    "/cards/card-form-url": {
         parameters: {
             query?: never;
             header?: never;
@@ -253,7 +253,7 @@ export interface paths {
          * Card Form URL
          * @description Returns the URL of the hosted card input form
          */
-        get: operations['get-card-form-url'];
+        get: operations["get-card-form-url"];
         put?: never;
         post?: never;
         delete?: never;
@@ -262,28 +262,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/cards/lookup': {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Card Info Lookup */
-        post: operations['post-cards-lookup'];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    '/eshops/{goid}/recurrences': {
+    "/eshops/{goid}/recurrences": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique identifier of a registered merchant website */
                 goid: string;
             };
             cookie?: never;
@@ -291,38 +275,40 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create a recurrence */
-        post: operations['post-eshops-goid-recurrences'];
+        post: operations["post-eshops-goid-recurrences"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/recurrences/{rec_id}': {
+    "/recurrences/{rec_id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique ID of a previously created recurrence */
                 rec_id: string;
             };
             cookie?: never;
         };
         /** Recurrence status */
-        get: operations['get-recurrences-rec_id'];
+        get: operations["get-recurrences-rec_id"];
         put?: never;
         post?: never;
         /** Stop a recurrence */
-        delete: operations['delete-recurrences-rec_id'];
+        delete: operations["delete-recurrences-rec_id"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/recurrences/{rec_id}/start': {
+    "/recurrences/{rec_id}/start": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique ID of a previously created recurrence */
                 rec_id: string;
             };
             cookie?: never;
@@ -330,18 +316,19 @@ export interface paths {
         get?: never;
         put?: never;
         /** Start a recurrence */
-        post: operations['post-recurrences-rec_id-start'];
+        post: operations["post-recurrences-rec_id-start"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/recurrences/{rec_id}/next': {
+    "/recurrences/{rec_id}/next": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique ID of a previously created recurrence */
                 rec_id: string;
             };
             cookie?: never;
@@ -349,18 +336,19 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create a next payment for a recurrence */
-        post: operations['post-recurrences-rec_id-next'];
+        post: operations["post-recurrences-rec_id-next"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/eshops/{goid}/links': {
+    "/eshops/{goid}/links": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique identifier of a registered merchant website */
                 goid: string;
             };
             cookie?: never;
@@ -368,28 +356,29 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create a payment link */
-        post: operations['post-eshops-goid-links'];
+        post: operations["post-eshops-goid-links"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    '/links/{link_id}': {
+    "/links/{link_id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique ID of a previously created link */
                 link_id: string;
             };
             cookie?: never;
         };
         /** Link status */
-        get: operations['get-links-link_id'];
+        get: operations["get-links-link_id"];
         put?: never;
         post?: never;
         /** Disable a link */
-        delete: operations['delete-links-link_id'];
+        delete: operations["delete-links-link_id"];
         options?: never;
         head?: never;
         patch?: never;
@@ -400,72 +389,39 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
-         * Refresh Token Request
-         * @description Request the token pair using the `refresh_token` grant type
-         * @example {
-         *       "grant_type": "refresh_token",
-         *       "refresh_token": "2f53a04d4dd749f6a2a81285da72f67a",
-         *       "client_id": "123456"
-         *     }
-         */
-        'Refresh-Token-Request': {
-            /**
-             * @description Always `refresh_token` for this flow
-             * @example refresh_token
-             * @constant
-             */
-            grant_type: 'refresh_token';
-            /** @description Refresh token value from previous authentication */
-            refresh_token: string;
-            /**
-             * @description Client ID associated with the refresh token.
-             *     Only required for merchant JWT, not required for payment JWT.
-             */
-            client_id?: string;
-        };
-        /**
          * Client Credentials Request
          * @description Request the token pair using the `client_credentials` grant type
-         * @example {
-         *       "grant_type": "client_credentials",
-         *       "scope": "payment:create payment:read"
-         *     }
          */
-        'Client-Credentials-Request': {
+        "Client-Credentials-Request": {
             /**
              * @description Always `client_credentials` for this flow
              * @example client_credentials
              * @constant
              */
-            grant_type: 'client_credentials';
+            grant_type: "client_credentials";
             /**
              * @description List of required token scopes, separated with a space. See Token Scope schema for possible values.
+             * @example payment:write payment:read
              * @example payment:create payment:read
              */
             scope: string;
         };
         /**
-         * Token-Pair
+         * Access Token
          * @description The access token and refresh token alongside useful meta information.
          */
-        'Token-Pair': {
+        "Access-Token": {
             /**
              * @description Always `bearer`
              * @default bearer
              * @example bearer
              * @constant
              */
-            token_type: 'bearer';
+            token_type: "bearer";
             /** @description Access JWT */
-            access_token?: components['schemas']['JWT'];
-            /**
-             * @description Refresh token value
-             * @example f14e5acc2d86480fb50e254c8a3c3164
-             */
-            refresh_token?: string;
+            access_token?: components["schemas"]["JWT"];
             /**
              * @description Space-separated list of token scopes.
-             *     Available scopes: `payment:create payment:read card:save card:read`
              * @example payment:create payment:read
              */
             scope?: string;
@@ -474,15 +430,9 @@ export interface components {
              * @example 900
              */
             expires_in?: number;
-            /**
-             * @description The expiration of the refresh token in seconds
-             * @example 86400
-             */
-            refresh_expires_in?: number;
         };
         /**
          * JWT
-         * Format: jwt
          * @description The JWT string as described by [RFC 7519: JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)
          *
          *     The JWT claims contain:
@@ -525,14 +475,14 @@ export interface components {
          *       }
          *     }
          */
-        'Payment-Create-Request': {
+        "Payment-Create-Request": {
             /**
              * @description Total amount in cents
              * @example 100
              */
             amount: number;
             /** @description Payment currency */
-            currency: components['schemas']['Currency'];
+            currency: components["schemas"]["Currency"];
             /**
              * @description Order identification for the online shop, alphanumeric characters
              * @example 2025010199
@@ -544,11 +494,11 @@ export interface components {
              */
             order_description?: string;
             /** @description Additional parameters for the payment */
-            additional_params?: components['schemas']['Additional-Param'][];
+            additional_params?: components["schemas"]["Additional-Param"][];
             /** @description Information about the customer */
-            customer: components['schemas']['Customer'];
+            customer: components["schemas"]["Customer"];
             /** @description Callback urls */
-            callback: components['schemas']['Payment-Callback'];
+            callback: components["schemas"]["Payment-Callback"];
         };
         /**
          * Payment From Link Request
@@ -581,14 +531,14 @@ export interface components {
          *       }
          *     }
          */
-        'Payment-From-Link-Request': {
+        "Payment-From-Link-Request": {
             /**
              * @description Total amount in cents
              * @example 100
              */
             amount: number;
             /** @description Payment currency */
-            currency: components['schemas']['Currency'];
+            currency: components["schemas"]["Currency"];
             /**
              * @description Order identification for the online shop, alphanumeric characters
              * @example 2025010199
@@ -600,11 +550,11 @@ export interface components {
              */
             order_description?: string;
             /** @description Additional parameters for the payment */
-            additional_params?: components['schemas']['Additional-Param'][];
+            additional_params?: components["schemas"]["Additional-Param"][];
             /** @description Information about the customer */
-            customer?: components['schemas']['Customer'];
+            customer?: components["schemas"]["Customer"];
             /** @description Callback urls */
-            callback: components['schemas']['Payment-Callback'];
+            callback: components["schemas"]["Payment-Callback"];
         };
         /**
          * Payment-Update-Request
@@ -637,7 +587,7 @@ export interface components {
          *       }
          *     }
          */
-        'Payment-Update-Request': {
+        "Payment-Update-Request": {
             /**
              * @description Total amount in cents
              * @example 100
@@ -654,18 +604,18 @@ export interface components {
              */
             order_description?: string;
             /** @description Additional parameters for the payment */
-            additional_params?: components['schemas']['Additional-Param'][];
+            additional_params?: components["schemas"]["Additional-Param"][];
             /** @description Information about the customer */
-            customer?: components['schemas']['Customer'];
+            customer?: components["schemas"]["Customer"];
             /** @description Callback urls */
-            callback?: components['schemas']['Payment-Callback'];
+            callback?: components["schemas"]["Payment-Callback"];
         };
         /**
          * @description Supported payment currencies in ISO 4217 format
          * @example CZK
          * @enum {string}
          */
-        Currency: 'CZK' | 'EUR' | 'PLN' | 'USD' | 'GBP' | 'HUF' | 'RON';
+        Currency: "CZK" | "EUR" | "PLN" | "USD" | "GBP" | "HUF" | "RON";
         /**
          * Additional-Param
          * @description Additional payment parameters
@@ -674,7 +624,7 @@ export interface components {
          *       "value": "Custom value"
          *     }
          */
-        'Additional-Param': {
+        "Additional-Param": {
             /**
              * @description Parameter name
              * @example Custom param
@@ -756,7 +706,7 @@ export interface components {
          *       "return_url": "https://example.com/return"
          *     }
          */
-        'Payment-Callback': {
+        "Payment-Callback": {
             /**
              * @description URL used to deliver the HTTP notifications
              * @example https://example.com/notify
@@ -771,33 +721,8 @@ export interface components {
         /**
          * Payment-Details
          * @description Representation of an existing payment
-         * @example {
-         *       "id": "300000001",
-         *       "order_number": "2025010199",
-         *       "state": "CREATED",
-         *       "amount": 100,
-         *       "currency": "CZK",
-         *       "customer": {
-         *         "email": "john.doe@example.com",
-         *         "first_name": "John",
-         *         "last_name": "Doe",
-         *         "phone_number": "+420123456789",
-         *         "city": "Testington",
-         *         "street": "Example st. 10",
-         *         "postal_code": "10000",
-         *         "country_code": "CZE",
-         *         "customer_id": "customer420"
-         *       },
-         *       "gw_url": "https://secure.gopay.com/",
-         *       "charge": {
-         *         "id": "9123456789",
-         *         "state": "REQUESTED",
-         *         "href": "https://api.gopay.com/api/4.0/payments/9123456789/charge"
-         *       },
-         *       "payment_secret": "2f53a04d4dd749f6a2a81285da72f67a"
-         *     }
          */
-        'Payment-Details': {
+        "Payment-Details": {
             /**
              * @description Payment session ID
              * @example 300000001
@@ -809,22 +734,22 @@ export interface components {
              */
             order_number: string;
             /** @description Payment state */
-            state: components['schemas']['Payment-State'];
+            state: components["schemas"]["Payment-State"];
             /**
              * @description Total amount in cents
              * @example 100
              */
             amount: number;
             /** @description Payment currency */
-            currency: components['schemas']['Currency'];
+            currency: components["schemas"]["Currency"];
             /** @description Customer data */
-            customer: components['schemas']['Customer'];
+            customer: components["schemas"]["Customer"];
             /**
              * Format: uri
              * @description URL of the hosted payment gateway
              */
             gw_url: string;
-            charge?: components['schemas']['Payment-Charge-Ref'];
+            charge?: components["schemas"]["Payment-Charge-Ref"];
             /** @description Payment secret that can be shared to the client side. Used to generate payment-specific JWTs. **Do not embed in URLs, log or store!** */
             payment_secret: string;
         };
@@ -841,15 +766,7 @@ export interface components {
          * @example CREATED
          * @enum {string}
          */
-        'Payment-State':
-            | 'CREATED'
-            | 'PAID'
-            | 'CANCELED'
-            | 'PAYMENT_METHOD_CHOSEN'
-            | 'TIMEOUTED'
-            | 'AUTHORIZED'
-            | 'REFUNDED'
-            | 'PARTIALLY_REFUNDED';
+        "Payment-State": "CREATED" | "PAID" | "CANCELED" | "PAYMENT_METHOD_CHOSEN" | "TIMEOUTED" | "AUTHORIZED" | "REFUNDED" | "PARTIALLY_REFUNDED";
         /**
          * Payment-Charge-Ref
          * @description A reference to a payment charge associated with the payment
@@ -859,14 +776,14 @@ export interface components {
          *       "href": "https://api.gopay.com/api/4.0/payments/9123456789/charge"
          *     }
          */
-        'Payment-Charge-Ref': {
+        "Payment-Charge-Ref": {
             /**
              * @description Charge ID
              * @example 9123456789
              */
             id: string;
             /** @description Charge state */
-            state: components['schemas']['Charge-State'];
+            state: components["schemas"]["Charge-State"];
             /**
              * Format: uri
              * @description Reference to the related charge endpoint
@@ -885,164 +802,73 @@ export interface components {
          * @example REQUESTED
          * @enum {string}
          */
-        'Charge-State':
-            | 'REQUESTED'
-            | 'PROCESSING'
-            | 'ACTION_REQUIRED'
-            | 'SUCCEEDED'
-            | 'FAILED';
+        "Charge-State": "REQUESTED" | "PROCESSING" | "ACTION_REQUIRED" | "SUCCEEDED" | "FAILED";
+        /**
+         * Payment-Charge-Data
+         * @description Discriminated union of the possible payment charges. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](./x3xyv4fy5blzy-payment-instrument) enum.
+         */
+        "Payment-Charge-Data": components["schemas"]["Payment-Card-Charge-Data"];
         /**
          * Payment Charge Input
          * @description Model holding all data necessary to perform a payment charge
-         * @example {
-         *       "payment_instrument": {
-         *         "payment_instrument": "PAYMENT_CARD",
-         *         "input": {
-         *           "input_type": "CARD_TOKEN",
-         *           "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
-         *           "challenge_preferrence": "AUTO"
-         *         }
-         *       },
-         *       "return_url": "https://example.com/return",
-         *       "browser_data": {
-         *         "ip": "198.51.100.1",
-         *         "language": "cs-CZ",
-         *         "timezone": -60,
-         *         "screen_width": 434,
-         *         "screen_height": 965,
-         *         "color_depth": 24,
-         *         "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36",
-         *         "accept_header": "{\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, *\/*\"}",
-         *         "javascript_enabled": true,
-         *         "java_enabled": false
-         *       }
-         *     }
-         * @example {
-         *       "payment_instrument": {
-         *         "payment_instrument": "BANK_ACCOUNT",
-         *         "input": {
-         *           "input_type": "ACCOUNT_TOKEN",
-         *           "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
-         *         }
-         *       },
-         *       "return_url": "https://example.com/return"
-         *     }
          */
-        'Payment-Charge-Input': {
+        "Payment-Charge-Input": {
             /** @description Payment instrument data specifying how the payment should be charged */
-            payment_instrument?: components['schemas']['Payment-Charge-Data'];
+            payment_instrument: components["schemas"]["Payment-Charge-Data"];
             /**
-             * Format: url
+             * Format: uri
              * @description URL where the customer will be redirected after completing the payment action (e.g. 3DS authentication or bank login)
              * @example https://example.com/return
              */
             return_url?: string;
         };
         /**
-         * Payment-Charge-Data
-         * @description Discriminated union of the possible payment charges. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](./x3xyv4fy5blzy-payment-instrument) enum.
-         * @example {
-         *       "payment_instrument": "PAYMENT_CARD",
-         *       "input": {
-         *         "input_type": "CARD_TOKEN",
-         *         "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
-         *         "challenge_preferrence": "AUTO"
-         *       }
-         *     }
-         * @example {
-         *       "payment_instrument": "BANK_ACCOUNT",
-         *       "input": {
-         *         "input_type": "ACCOUNT_TOKEN",
-         *         "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
-         *       }
-         *     }
-         */
-        'Payment-Charge-Data':
-            | components['schemas']['Payment-Card-Charge-Data']
-            | components['schemas']['Bank-Account-Charge-Data'];
-        /**
          * Payment Instrument
          * @description Discriminator for the cases of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union
          * @enum {string}
          */
-        'Payment-Instrument': 'PAYMENT_CARD' | 'BANK_ACCOUNT';
+        "Payment-Instrument": "PAYMENT_CARD";
         /**
          * Payment Card Charge Data
          * @description The `PAYMENT_CARD` variant of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union. Holds the discriminator as well as the input for a card payment.
          */
-        'Payment-Card-Charge-Data': {
+        "Payment-Card-Charge-Data": {
             /**
              * @description Always `PAYMENT_CARD` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
-            payment_instrument: 'PAYMENT_CARD';
+            payment_instrument: "PAYMENT_CARD";
             /** @description One of the possible inputs for a card payment */
-            input: components['schemas']['Payment-Card-Input'];
-            browser_data: components['schemas']['Browser-Data'];
+            input: components["schemas"]["Payment-Card-Input"];
+            browser_data: components["schemas"]["Browser-Data"];
+            challenge_preference?: components["schemas"]["Payment-Card-Challenge-Preference"];
         };
         /**
          * Payment Card Input
          * @description Discriminated union of the possible card payment inputs. The discriminator is the `input_type` field gaining values from the [Payment Card Input Type](./n7rgf81mgdw30-payment-card-input-type) enum.
-         * @example {
-         *       "input_type": "CARD_TOKEN",
-         *       "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
-         *       "challenge_preferrence": "AUTO"
-         *     }
-         * @example {
-         *       "input_type": "GOOGLE_PAY",
-         *       "signature": "EUCIQDhTxhHqwY8pXB9hpYxaSK5jFgsqpG2...",
-         *       "protocolVersion": "ECv1",
-         *       "signedMessage": "{\"encryptedMessage\":\"...\"}"
-         *     }
-         * @example {
-         *       "input_type": "APPLE_PAY",
-         *       "data": "V7OcjttPJnUJaQH7x7OjbIeZSINuc...",
-         *       "signature": "MIAGCSqGSIb3DQEHAqCAM...",
-         *       "version": "EC_v1",
-         *       "header": {
-         *         "ephemeralPublicKey": "MFkwEwYHKoZIzj...",
-         *         "publicKeyHash": "L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=",
-         *         "transactionId": "4f4fac7a1...a6a8ba2c0e8c5"
-         *       }
-         *     }
          */
-        'Payment-Card-Input':
-            | components['schemas']['Card-Token-Input']
-            | components['schemas']['Google-Pay-Input']
-            | components['schemas']['Apple-Pay-Input']
-            | components['schemas']['Encrypted-Card-Input'];
+        "Payment-Card-Input": components["schemas"]["Card-Token-Input"] | components["schemas"]["Google-Pay-Input"] | components["schemas"]["Apple-Pay-Input"] | components["schemas"]["Encrypted-Card-Input"];
         /**
          * Payment Card Input Type
          * @description Discriminator for the cases of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union
          * @enum {string}
          */
-        'Payment-Card-Input-Type':
-            | 'CARD_TOKEN'
-            | 'APPLE_PAY'
-            | 'GOOGLE_PAY'
-            | 'ENCRYPTED_CARD';
+        "Payment-Card-Input-Type": "CARD_TOKEN" | "APPLE_PAY" | "GOOGLE_PAY" | "ENCRYPTED_CARD";
         /**
          * Card Token Input
          * @description The `CARD_TOKEN` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the token input and 3DS challenge preference
-         * @example {
-         *       "input_type": "CARD_TOKEN",
-         *       "card_token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...",
-         *       "challenge_preferrence": "AUTO"
-         *     }
          */
-        'Card-Token-Input': {
+        "Card-Token-Input": {
             /**
              * @description Always `CARD_TOKEN` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
-            input_type: 'CARD_TOKEN';
+            input_type: "CARD_TOKEN";
             /**
              * @description Either a single use or permanent card token acquired using the [Create Card Token](z527w3pj6p22i-create-card-token) API call
              * @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
              */
             card_token: string;
-            /** @description Preference whether to require or try to skip 3DS authentication. */
-            challenge_preferrence?: components['schemas']['Payment-Card-Challenge-Preference'];
         };
         /**
          * Payment Card Challenge Preference
@@ -1053,33 +879,18 @@ export interface components {
          * @example AUTO
          * @enum {string}
          */
-        'Payment-Card-Challenge-Preference':
-            | 'CHALLENGE_PREFERRED'
-            | 'NO_CHALLENGE_PREFERRED'
-            | 'AUTO';
+        "Payment-Card-Challenge-Preference": "CHALLENGE_PREFERRED" | "NO_CHALLENGE_PREFERRED" | "AUTO";
         /**
          * Google Pay Input
          * @description The `GOOGLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Google Pay.
          *     See [Payment Data Cryptography](https://developers.google.com/pay/api/web/guides/resources/payment-data-cryptography) in Google Pay documentation for details
-         * @example {
-         *       "input_type": "GOOGLE_PAY",
-         *       "protocolVersion": "ECv2",
-         *       "signature": "MEQCIH6Q4OwQ0jAceFEkGF0JID6sJNXxOEi4r+mA7biRxqBQAiAondqoUpU/bdsrAOpZIsrHQS9nwiiNwOrr24RyPeHA0Q\\u003d\\u003d",
-         *       "intermediateSigningKey": {
-         *         "signedKey": "{\"keyExpiration\":\"1542323393147\",\"keyValue\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw\\u003d\\u003d\"}",
-         *         "signatures": [
-         *           "\"MEYCIQCO2EIi48s8VTH+ilMEpoXLFfkxAwHjfPSCVED/QDSHmQIhALLJmrUlNAY8hDQRV/y1iKZGsWpeNmIP+z+tCQHQxP0v\""
-         *         ]
-         *       },
-         *       "signedMessage": "{\"tag\":\"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\\u003d\",\"ephemeralPublicKey\":\"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\\u003d\",\"encryptedMessage\":\"mKOoXwi8OavZ\"}"
-         *     }
          */
-        'Google-Pay-Input': {
+        "Google-Pay-Input": {
             /**
              * @description Always `GOOGLE_PAY` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
-            input_type: 'GOOGLE_PAY';
+            input_type: "GOOGLE_PAY";
             /**
              * @description Version of the Google Pay API protocol used to encrypt the payment data
              * @example ECv2
@@ -1122,12 +933,12 @@ export interface components {
          *       }
          *     }
          */
-        'Apple-Pay-Input': {
+        "Apple-Pay-Input": {
             /**
              * @description Always `APPLE_PAY` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
-            input_type: 'APPLE_PAY';
+            input_type: "APPLE_PAY";
             /**
              * @description Encrypted payment data from the Apple Pay token
              * @example V7OcjttPJnUJaQH7x7OjbIeZSINuc...
@@ -1163,105 +974,6 @@ export interface components {
             };
         };
         /**
-         * Bank Account Charge Data
-         * @description The `BANK_ACCOUNT` variant of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union. Holds the discriminator as well as the input for a card payment.
-         * @example {
-         *       "payment_instrument": "BANK_ACCOUNT",
-         *       "input": {
-         *         "input_type": "ACCOUNT_TOKEN",
-         *         "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
-         *       }
-         *     }
-         */
-        'Bank-Account-Charge-Data': {
-            /**
-             * @description Always `BANK_ACCOUNT` (enum property replaced by openapi-typescript)
-             * @enum {string}
-             */
-            payment_instrument: 'BANK_ACCOUNT';
-            /** @description One of the possible inputs for a bank account payment */
-            input: components['schemas']['Bank-Account-Input'];
-        };
-        /**
-         * Bank-Account-Input
-         * @description Discriminated union of the possible bank account payment inputs. The discriminator is the `input_type` field gaining values from the Bank Account Input Type enum.
-         * @example {
-         *       "input_type": "ACCOUNT_TOKEN",
-         *       "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
-         *     }
-         * @example {
-         *       "input_type": "IBAN",
-         *       "iban": "CZ5120100000000009878039",
-         *       "swift": "GIBACZPX",
-         *       "account_holder_name": "John Doe"
-         *     }
-         * @example {
-         *       "input_type": "SWIFT",
-         *       "swift": "GIBACZPX",
-         *       "bank_payment_type": "PSD2"
-         *     }
-         */
-        'Bank-Account-Input':
-            | components['schemas']['Bank-Account-Token-Input']
-            | components['schemas']['Bank-Account-Iban-Input']
-            | components['schemas']['Bank-Account-Swift-Input'];
-        /**
-         * Bank Account Input Type
-         * @description Discriminator for the cases of the Bank Account Input union
-         * @example ACCOUNT_TOKEN
-         * @enum {string}
-         */
-        'Bank-Account-Input-Type': 'ACCOUNT_TOKEN' | 'IBAN' | 'SWIFT';
-        /**
-         * Bank Account Token Input
-         * @description The `ACCOUNT_TOKEN` variant of the Bank Account Input union. Uses a previously saved bank account token to initiate the payment.
-         * @example {
-         *       "input_type": "ACCOUNT_TOKEN",
-         *       "account_token": "f14e5acc2d86480fb50e254c8a3c3164"
-         *     }
-         */
-        'Bank-Account-Token-Input': {
-            /**
-             * @description Always `ACCOUNT_TOKEN` (enum property replaced by openapi-typescript)
-             * @enum {string}
-             */
-            input_type: 'ACCOUNT_TOKEN';
-            /**
-             * @description A previously saved bank account token identifier
-             * @example f14e5acc2d86480fb50e254c8a3c3164
-             */
-            account_token: string;
-        };
-        /**
-         * Bank Account Iban Input
-         * @description The `IBAN` variant of the Bank Account Input union. Uses an IBAN (International Bank Account Number) to identify the bank account for the payment.
-         * @example {
-         *       "input_type": "IBAN",
-         *       "iban": "CZ5120100000000009878039",
-         *       "swift": "GIBACZPX",
-         *       "account_holder_name": "John Doe"
-         *     }
-         */
-        'Bank-Account-Iban-Input': {
-            /**
-             * @description Always `IBAN` (enum property replaced by openapi-typescript)
-             * @enum {string}
-             */
-            input_type: 'IBAN';
-            /**
-             * @description The International Bank Account Number of the payer
-             * @example CZ5120100000000009878039
-             */
-            iban: string;
-            /** @description SWIFT/BIC code identifying the payer's bank */
-            swift?: components['schemas']['Bank-Swift'];
-            /**
-             * @description Full name of the bank account holder
-             * @example John Doe
-             */
-            account_holder_name?: string;
-        };
-        /**
          * Bank Swift
          * @description SWIFT/BIC code identifying a supported bank. Use `OTHERS` for banks not explicitly listed.
          *     - `GIBACZPX` - Česká spořitelna (Czech Republic)
@@ -1272,58 +984,12 @@ export interface components {
          * @example GIBACZPX
          * @enum {string}
          */
-        'Bank-Swift':
-            | 'GIBACZPX'
-            | 'KOMBCZPP'
-            | 'SUBASKBX'
-            | 'GIBASKBX'
-            | 'OTHERS';
-        /**
-         * Bank Account Swift Input
-         * @description The `SWIFT` variant of the Bank Account Input union. Identifies only the bank (via SWIFT code) without specifying a particular account — the customer will be redirected to their bank to complete the payment.
-         * @example {
-         *       "input_type": "SWIFT",
-         *       "swift": "GIBACZPX",
-         *       "bank_payment_type": "PSD2"
-         *     }
-         */
-        'Bank-Account-Swift-Input': {
-            /**
-             * @description Always `SWIFT` (enum property replaced by openapi-typescript)
-             * @enum {string}
-             */
-            input_type: 'SWIFT';
-            /** @description SWIFT/BIC code identifying the payer's bank */
-            swift: components['schemas']['Bank-Swift'];
-            /** @description The type of bank payment flow to use */
-            bank_payment_type?: components['schemas']['Bank-Payment-Type'];
-        };
-        /**
-         * Bank Payment Type
-         * @description Specifies the bank payment flow to be used.
-         *     - `PSD2` - PSD2-compliant open banking payment initiation
-         *     - `ONLINE` - Online bank transfer via the bank's web interface
-         *     - `QRPAYMENT` - QR code based bank payment
-         *     - `OFFLINE` - Offline bank transfer (manual wire transfer)
-         * @example PSD2
-         * @enum {string}
-         */
-        'Bank-Payment-Type': 'PSD2' | 'ONLINE' | 'QRPAYMENT' | 'OFFLINE';
+        "Bank-Swift": "GIBACZPX" | "KOMBCZPP" | "SUBASKBX" | "GIBASKBX" | "OTHERS";
         /**
          * Browser-Data
          * @description Customer browser data collected for 3-D Secure authentication purposes. This data is forwarded to the card issuer during the authentication flow.
-         * @example {
-         *       "language": "cs-CZ",
-         *       "timezone": -60,
-         *       "screen_width": 434,
-         *       "screen_height": 965,
-         *       "color_depth": 24,
-         *       "user_agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36",
-         *       "accept_header": "{\\\"accept-language\\\":\\\"cs;q\\\\u003d0.5\\\",\\\"accept-encoding\\\":\\\"gzip, deflate, br, zstd\\\",\\\"accept\\\":\\\"application/json, text/plain, *\/*\\\"}",
-         *       "javascript_enabled": true
-         *     }
          */
-        'Browser-Data': {
+        "Browser-Data": {
             /**
              * @description Language or locale of the customer environment
              * @example cs-CZ
@@ -1368,128 +1034,48 @@ export interface components {
         /**
          * Payment Charge Response
          * @description Response data returned after initiating or querying a payment charge. Contains the current charge state, instrument details, and any required follow-up action.
-         * @example {
-         *       "id": "string",
-         *       "state": "REQUESTED",
-         *       "payment_instrument": {
-         *         "payment_instrument": "PAYMENT_CARD",
-         *         "details": {
-         *           "input_type": "CARD_TOKEN",
-         *           "masked_pan": "406821******1234",
-         *           "expiration_month": "01",
-         *           "expiration_year": "30",
-         *           "scheme": "VISA",
-         *           "fingerprint": "73c8d0a48d91def89761..."
-         *         }
-         *       },
-         *       "return_url": "https://example.com/return",
-         *       "action": {
-         *         "action_type": "EMV3DS",
-         *         "state": "CREATED",
-         *         "redirect_url": "https://gate.gopay.com/redirect"
-         *       }
-         *     }
-         * @example {
-         *       "id": "string",
-         *       "state": "REQUESTED",
-         *       "payment_instrument": {
-         *         "payment_instrument": "BANK_ACCOUNT",
-         *         "details": {
-         *           "input_type": "ACCOUNT_TOKEN",
-         *           "iban": "CZ5120100000000009878039",
-         *           "swift": "GIBACZPX",
-         *           "account_holder_name": "John Doe"
-         *         }
-         *       },
-         *       "return_url": "https://example.com/return",
-         *       "action": {
-         *         "action_type": "PSD2",
-         *         "state": "REQUESTED",
-         *         "redirect_url": "https://gate.gopay.com/redirect"
-         *       }
-         *     }
          */
-        'Payment-Charge-Response': {
+        "Payment-Charge-Response": {
             /**
              * @description Unique identifier of the charge
              * @example 9123456789
              */
             id: string;
             /** @description Current state of the charge */
-            state: components['schemas']['Charge-State'];
+            state: components["schemas"]["Charge-State"];
             /** @description Details of the payment instrument used for this charge */
-            payment_instrument: components['schemas']['Payment-Instrument-Data'];
+            payment_instrument: components["schemas"]["Payment-Instrument-Data"];
             /**
-             * Format: url
+             * Format: uri
              * @description URL where the customer will be redirected after completing the payment action
              * @example https://example.com/return
              */
             return_url: string;
             /** @description The follow-up action required to complete the charge (e.g. 3DS authentication or bank redirect) */
-            action?: components['schemas']['Payment-Charge-Action'];
+            action?: components["schemas"]["Payment-Charge-Action"];
         };
         /**
          * Payment Charge Status Response
          * @description Response data returned after initiating or querying a payment charge. Contains the current charge state, instrument details, and any required follow-up action.
-         * @example {
-         *       "id": "string",
-         *       "state": "REQUESTED",
-         *       "payment_instrument": {
-         *         "payment_instrument": "PAYMENT_CARD",
-         *         "details": {
-         *           "input_type": "CARD_TOKEN",
-         *           "masked_pan": "406821******1234",
-         *           "expiration_month": "01",
-         *           "expiration_year": "30",
-         *           "scheme": "VISA",
-         *           "fingerprint": "73c8d0a48d91def89761..."
-         *         }
-         *       },
-         *       "return_url": "https://example.com/return",
-         *       "action": {
-         *         "action_type": "EMV3DS",
-         *         "state": "CREATED",
-         *         "redirect_url": "https://gate.gopay.com/redirect"
-         *       }
-         *     }
-         * @example {
-         *       "id": "string",
-         *       "state": "REQUESTED",
-         *       "payment_instrument": {
-         *         "payment_instrument": "BANK_ACCOUNT",
-         *         "details": {
-         *           "input_type": "ACCOUNT_TOKEN",
-         *           "iban": "CZ5120100000000009878039",
-         *           "swift": "GIBACZPX",
-         *           "account_holder_name": "John Doe"
-         *         }
-         *       },
-         *       "return_url": "https://example.com/return",
-         *       "action": {
-         *         "action_type": "PSD2",
-         *         "state": "REQUESTED",
-         *         "redirect_url": "https://gate.gopay.com/redirect"
-         *       }
-         *     }
          */
-        'Payment-Charge-Status-Response': {
+        "Payment-Charge-Status-Response": {
             /**
              * @description Unique identifier of the charge
              * @example 9123456789
              */
             id: string;
             /** @description Current state of the charge */
-            state: components['schemas']['Charge-State'];
+            state: components["schemas"]["Charge-State"];
             /** @description Details of the payment instrument used for this charge */
-            payment_instrument?: components['schemas']['Payment-Instrument-Data'];
+            payment_instrument?: components["schemas"]["Payment-Instrument-Data"];
             /**
-             * Format: url
+             * Format: uri
              * @description URL where the customer will be redirected after completing the payment action
              * @example https://example.com/return
              */
             return_url: string;
             /** @description The follow-up action required to complete the charge (e.g. 3DS authentication or bank redirect) */
-            action?: components['schemas']['Payment-Charge-Action'];
+            action?: components["schemas"]["Payment-Charge-Action"];
             /** @description Reason for the charge's failure. Only present when state is `FAILED` */
             fail_reason?: string;
         };
@@ -1507,17 +1093,8 @@ export interface components {
          *         "fingerprint": "73c8d0a48d91def89761..."
          *       }
          *     }
-         * @example {
-         *       "payment_instrument": "BANK_ACCOUNT",
-         *       "details": {
-         *         "input_type": "ACCOUNT_TOKEN",
-         *         "iban": "CZ5120100000000009878039",
-         *         "swift": "GIBACZPX",
-         *         "account_holder_name": "John Doe"
-         *       }
-         *     }
          */
-        'Payment-Instrument-Data': components['schemas']['Payment-Card-Instrument-Out'];
+        "Payment-Instrument-Data": components["schemas"]["Payment-Card-Instrument-Out"];
         /**
          * Payment Card Instrument Out
          * @description The `PAYMENT_CARD` variant of the Payment Instrument Data union. Contains the card-specific details of the instrument used in a charge.
@@ -1533,14 +1110,14 @@ export interface components {
          *       }
          *     }
          */
-        'Payment-Card-Instrument-Out': {
+        "Payment-Card-Instrument-Out": {
             /**
              * @description Always `PAYMENT_CARD` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
-            payment_instrument: 'PAYMENT_CARD';
+            payment_instrument: "PAYMENT_CARD";
             /** @description Card-specific details of the payment instrument */
-            details?: components['schemas']['Payment-Card-Charge-Details'];
+            details?: components["schemas"]["Payment-Card-Charge-Details"];
         };
         /**
          * Payment Card Charge Details
@@ -1554,9 +1131,9 @@ export interface components {
          *       "fingerprint": "73c8d0a48d91def89761..."
          *     }
          */
-        'Payment-Card-Charge-Details': {
+        "Payment-Card-Charge-Details": {
             /** @description The type of card input that was used for the charge */
-            input_type: components['schemas']['Payment-Card-Input-Type'];
+            input_type: components["schemas"]["Payment-Card-Input-Type"];
             /**
              * @description Masked primary account number with only the first six and last four digits visible
              * @example 406821******1234
@@ -1573,7 +1150,7 @@ export interface components {
              */
             expiration_year?: string;
             /** @description Card network scheme */
-            scheme?: components['schemas']['Card-scheme'];
+            scheme?: components["schemas"]["Card-scheme"];
             /**
              * @description A unique hash identifying the physical card
              * @example 73c8d0a48d91def89761...
@@ -1586,7 +1163,7 @@ export interface components {
          * @example VISA
          * @enum {string}
          */
-        'Card-scheme': 'VISA' | 'MASTERCARD';
+        "Card-scheme": "VISA" | "MASTERCARD";
         /**
          * Payment Charge Action
          * @description Discriminated union of actions that may be required to complete a payment charge. The discriminator is the `action_type` field. The action typically involves redirecting the customer to an external page (e.g. 3DS authentication or bank login).
@@ -1595,18 +1172,8 @@ export interface components {
          *       "state": "CREATED",
          *       "redirect_url": "https://gate.gopay.com/redirect"
          *     }
-         * @example {
-         *       "action_type": "PSD2",
-         *       "state": "REQUESTED",
-         *       "redirect_url": "https://gate.gopay.com/redirect"
-         *     }
-         * @example {
-         *       "action_type": "BANK_ACCOUNT",
-         *       "state": "REQUESTED",
-         *       "redirect_url": "https://gate.gopay.com/redirect"
-         *     }
          */
-        'Payment-Charge-Action': components['schemas']['Emv-3DS-Action'];
+        "Payment-Charge-Action": components["schemas"]["Emv-3DS-Action"];
         /**
          * Payment Charge Action Type
          * @description Discriminator for the cases of the Payment Charge Action union.
@@ -1614,7 +1181,7 @@ export interface components {
          * @example EMV3DS
          * @enum {string}
          */
-        'Payment-Charge-Action-Type': 'EMV3DS';
+        "Payment-Charge-Action-Type": "EMV3DS";
         /**
          * Emv 3DS Action
          * @description The `EMV3DS` variant of the Payment Charge Action union. Represents an EMV 3-D Secure authentication action for card payments.
@@ -1624,16 +1191,16 @@ export interface components {
          *       "redirect_url": "https://gate.gopay.com/redirect"
          *     }
          */
-        'Emv-3DS-Action': {
+        "Emv-3DS-Action": {
             /**
              * @description Always `EMV3DS` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
-            action_type: 'EMV3DS';
+            action_type: "EMV3DS";
             /** @description Current state of the 3DS authentication flow */
-            state: components['schemas']['Emv-3DS-State'];
+            state: components["schemas"]["Emv-3DS-State"];
             /**
-             * Format: url
+             * Format: uri
              * @description URL to redirect the customer to for completing the 3DS authentication
              * @example https://gate.gopay.com/redirect
              */
@@ -1651,60 +1218,54 @@ export interface components {
          * @example CREATED
          * @enum {string}
          */
-        'Emv-3DS-State':
-            | 'CREATED'
-            | 'CHALLENGE_REQUIRED'
-            | 'AUTHENTICATED_CHALLENGE'
-            | 'AUTHENTICATED_FRICTIONLESS'
-            | 'NOT_AUTHENTICATED'
-            | 'FAILED';
+        "Emv-3DS-State": "CREATED" | "CHALLENGE_REQUIRED" | "AUTHENTICATED_CHALLENGE" | "AUTHENTICATED_FRICTIONLESS" | "NOT_AUTHENTICATED" | "FAILED";
         /**
          * QR-Payment-Details
          * @description Details of a QR code payment including the payment amount, recipient bank account information, and the generated QR codes in various formats.
          */
-        'QR-Payment-Details': {
+        "QR-Payment-Details": {
             /**
              * @description Payment amount in cents
              * @example 10000
              */
             amount: number;
             /** @description Payment currency */
-            currency: components['schemas']['Currency'];
+            currency: components["schemas"]["Currency"];
             /** @description Information about the recipient */
-            recipient: components['schemas']['Bank-Transfer-Recipient'];
+            recipient: components["schemas"]["Bank-Transfer-Recipient"];
             /** @description Generated QR code images in various regional formats */
-            qr_code: components['schemas']['QR-Code-List'];
+            qr_code: components["schemas"]["QR-Code-List"];
         };
         /**
          * Bank-Transfer-Recipient
          * @description Information about the recipient of a bank transfer payment, including their name, bank account details, and address.
          */
-        'Bank-Transfer-Recipient': {
+        "Bank-Transfer-Recipient": {
             /**
              * @description Name of the payment recipient
              * @example GoPay Czech
              */
             name?: string;
             /** @description Bank account details of the recipient in both local and international formats */
-            bank_account?: components['schemas']['Recipient-Bank-Account'];
+            bank_account?: components["schemas"]["Recipient-Bank-Account"];
             /** @description Physical address of the recipient */
-            address?: components['schemas']['Recipient-Address'];
+            address?: components["schemas"]["Recipient-Address"];
         };
         /**
          * Recipient-Bank-Account
          * @description Recipient bank account details provided in both local (country-specific) and international (IBAN/SWIFT) formats.
          */
-        'Recipient-Bank-Account': {
+        "Recipient-Bank-Account": {
             /** @description Bank account details in the local (country-specific) format */
-            local?: components['schemas']['Bank-Account-Local-Details'];
+            local?: components["schemas"]["Bank-Account-Local-Details"];
             /** @description Bank account details in the international IBAN/BIC format */
-            international?: components['schemas']['Bank-Account-International-Details'];
+            international?: components["schemas"]["Bank-Account-International-Details"];
         };
         /**
          * Bank-Account-Local-Details
          * @description Bank account details in the local Czech/Slovak format, including the account number prefix, bank code, and variable symbol for payment identification.
          */
-        'Bank-Account-Local-Details': {
+        "Bank-Account-Local-Details": {
             /**
              * @description Account number prefix (may be all zeros)
              * @example 000000
@@ -1730,12 +1291,9 @@ export interface components {
          * Bank-Account-International-Details
          * @description Bank account details in the international IBAN/BIC format, used for cross-border and SEPA payments.
          */
-        'Bank-Account-International-Details': {
-            /**
-             * @description BIC (Bank Identifier Code) / SWIFT code of the bank
-             * @example FIOBCZPP
-             */
-            bic?: string;
+        "Bank-Account-International-Details": {
+            /** @description BIC (Bank Identifier Code) / SWIFT code of the bank */
+            bic?: components["schemas"]["Bank-Swift"];
             /**
              * @description International Bank Account Number
              * @example CZ5120100000000009878039
@@ -1751,7 +1309,7 @@ export interface components {
          * Recipient-Address
          * @description Physical address of the payment recipient.
          */
-        'Recipient-Address': {
+        "Recipient-Address": {
             /**
              * @description Street address including the building number
              * @example Senovazne nam. 1736
@@ -1777,7 +1335,7 @@ export interface components {
          * QR-Code-List
          * @description A collection of QR code images in various regional formats, each encoded as a base64 string. The available formats depend on the payment currency and recipient country.
          */
-        'QR-Code-List': {
+        "QR-Code-List": {
             /**
              * @description QR code in the SPAYD (Short Payment Descriptor) format, commonly used in the Czech Republic. Encoded as a base64 PNG image.
              * @example iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAAAklEQVR4AewaftIAAAglSURBVO3BUa4cuZYEwXCi9r9lH30WDh6RBJVXrekOM/wlVfU/rVTV1kpVba1U1dZKVW2tVNXWSlVtrVTV1kpVba1U1dYnh4D8DdRMQE6omYBMat4CZFIzATmhZgLyk9ScADKpmYD8DdQ8WamqrZWq2lqpqq2Vqtr65Deo+WlA3gJkUnMLyBM1t9RMQCY1E5BvaiYgJ4CcUHNDzU8DcmOlqrZWqmprpaq2Vqpq65OXAbml5i1qJiATkEnNBOQtQN4EZFLzFjUngExqbgC5peYtK1W1tVJVWytVtbVSVVuf/AuomYC8Sc0TILfUTEAmNSeAfFNzQs0EZFLzX7BSVVsrVbW1UlVbK1W19cm/AJBJzQRkUnMCyKTmCZATQCY1E5BJzaTmG5A3AZnU/NusVNXWSlVtrVTV1kpVbX3yMjV/mpoTak4AOQHkiZoJyJuATGp+kpoJyKTmhpq/wUpVba1U1dZKVW2tVNXWJ78ByN8AyKRmAjKpOaFmAvJNzQRkUjMBuaVmAvJNzQTkbwDkb7VSVVsrVbW1UlVb+Ev+hYBMam4BmdR8AzKpuQXklppvQCY1E5ATav4LVqpqa6WqtlaqamulqrY+OQRkUnMCyN8AyKRmAjKpuQFkUjMBmdRMQG6omYBMak4AuaXmCZBJzQTklponK1W1tVJVWytVtbVSVVufHFIzAZnUTGpOAJnUPAHyJjUTkCdqTgCZ1NxSMwH5puafoGYC8hY1P2mlqrZWqmprpaq2Vqpq65NDQCY1Pw3IEzX/BDU31NxSc0LNW4BMak4AmdR8AzKpOQFkUvOWlaraWqmqrZWq2lqpqi38Jf8AIJOaJ0AmNSeAnFBzAsgTNROQSc0tIDfU3ALyk9RMQCY1E5ATap6sVNXWSlVtrVTV1kpVbX3yG4BMat4E5AaQE2omIDfUTEAmNSeATGpOqLkB5E1qngCZgExqTqiZgNxYqaqtlaraWqmqrZWq2vrkEJBbQG6p+QbkTUAmNROQtwCZ1ExqTqiZgHxTMwGZ1ExAJjUngExqfhKQSc2NlaraWqmqrZWq2lqpqi38JZeAnFBzC8g3NROQSc0E5ISaCcik5gaQSc0tIDfUTED+NDUngJxQMwGZ1DxZqaqtlaraWqmqLfwlB4BMaiYgJ9S8BcgJNROQE2reAuSEmgnIpOYJkFtqJiBvUXMLyKTmLStVtbVSVVsrVbW1UlVb+EsuAZnUnAByQ80EZFIzAZnUnADyk9RMQG6puQFkUnMCyKTmCZATav60laraWqmqrZWq2lqpqq1P/gAgt9R8AzKpOaHmlpobQCY1E5BJzQRkUnMDyKTmlpoJyBM1t4BMaiYgk5onK1W1tVJVWytVtbVSVVuf/AY1E5BJzQTkBJC3ALmlZgLyRM1PA3JDzQkgk5oTap4AOaFmUvOTVqpqa6WqtlaqamulqrY++Q1Abql5C5CfBmRS8xY1J9S8BcikZlIzAZnUnADyFiCTmresVNXWSlVtrVTV1kpVbeEvOQBkUjMBOaFmAvJEzQkgk5oTQP4Gak4AeaLmBJATaiYgb1EzAZnUnAAyqXmyUlVbK1W1tVJVWytVtfXJy9RMQG6peQLkFpBJzQkg39TcAjIB+UlAJjVvUjMBeQLkBJBJzaTmxkpVba1U1dZKVW2tVNUW/pIXAZnUnADyRM0JIJOanwTkTWomIJOaCcifpmYCMqn5SUBOqHmyUlVbK1W1tVJVW58cAvImICfUPAEyqTkBZFLzFjUTkEnNBGRSMwF5i5oJyKRmAjKpmYC8Rc2kZgJyY6WqtlaqamulqrZWqmoLf8klIH+amgnICTUngExqngB5k5oTQCY1bwFyQs0E5ImaCcgtNROQSc2TlaraWqmqrZWq2lqpqq1PDgE5oWYCMqmZgExqvgGZ1LxJzQkg39RMQE6omYCcUPOT1ExA3gLkhJoJyATkLStVtbVSVVsrVbW1UlVbn/zlgHxTMwF5k5oTam6oeROQJ2omIJOaW0AmNROQb2pOAJnUTEDeslJVWytVtbVSVVsrVbX1yW9QMwGZ1ExAJjVPgExqfhqQSc03IJOaCcgJNROQE2qeqJmATGpOqJmA3AByAsgJNTdWqmprpaq2Vqpqa6WqtvCXHAAyqTkBZFIzAXmLmgnICTUTkCdqJiCTmjcBeYuaW0B+kppbQCY1T1aqamulqrZWqmprpaq2Pjmk5paaE2puAJmAnFAzATmh5icBmdRMap4AOQFkUnNLzQ0gJ4BMat6yUlVbK1W1tVJVWytVtfXJISB/AzW31ExA3gLknwDkiZoJyKTmBJBbQL6peROQt6xU1dZKVW2tVNXWJ79BzU8DckPNLTU31JwAcgvIpGYC8kTNBGRSM6mZgJxQ8xY1E5C3rFTV1kpVba1U1dZKVW198jIgt9T8aWreAmRSM6k5AWRSMwG5AWRScwLICSB/mpq3rFTV1kpVba1U1dZKVW198h8CZFLzFjUTkEnNBGRSc0vNNyCTmgnIpGZSMwG5oWYCcgLIpGYCMql5slJVWytVtbVSVVsrVbX1yb+AmgnICSCTmhNAbgA5AeQnAZnUTEDepOYbkEnNCTUTkLesVNXWSlVtrVTV1kpVbX3yMjX/n6i5peYJkBNqJiC3gHxTcwLIpOZNQP40NTdWqmprpaq2Vqpqa6Wqtj75DUD+BkBuAZnUnADyRM0EZAIyqZmAvAXIpOYEkBNq3gLkFpBJzZOVqtpaqaqtlaraWqmqLfwlVfU/rVTV1kpVba1U1dZKVW2tVNXWSlVtrVTV1kpVbf0fJGLzp4ep9m8AAAAASUVORK5CYII=
@@ -1815,7 +1373,7 @@ export interface components {
          *       "service_type": "DEBIT"
          *     }
          */
-        'Card-Lookup-Details': {
+        "Card-Lookup-Details": {
             /**
              * @description Masked primary account number with only the first six and last four digits visible
              * @example 406821******1234
@@ -1832,7 +1390,7 @@ export interface components {
              */
             expiration_year: string;
             /** @description Card network scheme */
-            scheme: components['schemas']['Card-scheme'];
+            scheme: components["schemas"]["Card-scheme"];
             /**
              * @description Whether the card is a corporate (business) card
              * @default false
@@ -1849,15 +1407,15 @@ export interface components {
              */
             brand?: string;
             /** @description Whether the card is a debit or credit card */
-            service_type?: components['schemas']['Card-Service-Type'];
+            service_type?: components["schemas"]["Card-Service-Type"];
         };
         /**
          * Encrypted-Card-Request-Body
-         * @description Request body for creating a card token. Contains the encrypted card data and a flag indicating whether the token should be stored permanently.
+         * @description Request body for creating a card token. Contains the encrypted card data.
          */
-        'Encrypted-Card-Request-Body': {
+        "Encrypted-Card-Request-Body": {
             /** @description The encrypted card data payload in JWE compact serialization format */
-            payload: components['schemas']['JWE'];
+            payload: components["schemas"]["JWE"];
         };
         /**
          * Permanent Card Token Details
@@ -1877,7 +1435,7 @@ export interface components {
          *       "service_type": "DEBIT"
          *     }
          */
-        'Permanent-Card-Token-Details': {
+        "Permanent-Card-Token-Details": {
             /**
              * @description Unique identifier of the stored card token
              * @example 8007127320
@@ -1904,7 +1462,7 @@ export interface components {
              */
             expiration_year: string;
             /** @description Card network scheme */
-            scheme: components['schemas']['Card-scheme'];
+            scheme: components["schemas"]["Card-scheme"];
             /**
              * @description Whether the card is a corporate (business) card
              * @default false
@@ -1932,9 +1490,9 @@ export interface components {
              */
             brand?: string;
             /** @description Whether the card is a debit or credit card */
-            service_type?: components['schemas']['Card-Service-Type'];
+            service_type?: components["schemas"]["Card-Service-Type"];
             /** @description Current status of the stored card token */
-            status?: components['schemas']['Card-Token-Status'];
+            status?: components["schemas"]["Card-Token-Status"];
         };
         /**
          * Card Service Type
@@ -1944,7 +1502,7 @@ export interface components {
          * @example DEBIT
          * @enum {string}
          */
-        'Card-Service-Type': 'DEBIT' | 'CREDIT';
+        "Card-Service-Type": "DEBIT" | "CREDIT";
         /**
          * Card-Token-Status
          * @description Current status of a permanent card token.
@@ -1954,7 +1512,7 @@ export interface components {
          * @example ACTIVE
          * @enum {string}
          */
-        'Card-Token-Status': 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+        "Card-Token-Status": "ACTIVE" | "SUSPENDED" | "DELETED";
         /**
          * JWK
          * @description The structure of the public encryption key. It is formatted according to RFC 7515: JSON Web Key (JWK)
@@ -1973,13 +1531,13 @@ export interface components {
              * @example RSA
              * @constant
              */
-            kty: 'RSA';
+            kty: "RSA";
             /**
              * @description Key usage. Always `enc` (encryption).
              * @example enc
              * @constant
              */
-            use: 'enc';
+            use: "enc";
             /**
              * @description Key ID
              * @example key_20250406
@@ -2015,53 +1573,28 @@ export interface components {
          * Card-Form-URL
          * @description Response containing the URL of the hosted card input form. Use this form to securely collect card details without handling raw card data on your own servers.
          */
-        'Card-Form-URL': {
+        "Card-Form-URL": {
             /**
              * @description URL of the hosted card input form
              * @example https://secure.gopay.com/gp-card-comm/q/form
              */
             card_form_url?: string;
         };
-        'Encrypted-Card': {
-            /**
-             * @description Card Number (PAN)
-             * @example 4444444444444448
-             */
-            card_pan: string;
-            /**
-             * @description Card expiration month as a 2-digit string
-             * @example 06
-             */
-            exp_month: string;
-            /**
-             * @description Card expiration year as a 2-digit string
-             * @example 27
-             */
-            exp_year: string;
-            /**
-             * @description Card security code (CVV/)
-             * @example 123
-             */
-            cvv: string;
-        };
         /**
          * Error-Response-Body
          * @description Standard error response body returned for all API error responses. Contains the HTTP status code, error type, a human-readable message, and additional diagnostic details.
          */
-        'Error-Response-Body': {
+        "Error-Response-Body": {
             /**
-             * Format: int32
              * @description HTTP status code
              * @example 400
-             * @constant
              */
-            code: 400;
+            code: number;
             /**
              * @description Error type
              * @example BAD_REQUEST
-             * @constant
              */
-            error: 'BAD_REQUEST';
+            error: string;
             /**
              * @description Error message
              * @example Invalid request parameter
@@ -2085,9 +1618,9 @@ export interface components {
             timestamp: string;
         };
         /** Link-Create-Request */
-        'Link-Create-Request': {
+        "Link-Create-Request": {
             /** @description Payment data for the payments created by clicking on the link */
-            payment: components['schemas']['Payment-From-Link-Request'];
+            payment: components["schemas"]["Payment-From-Link-Request"];
             /**
              * Format: date-time
              * @description Time (seconds) after which the link will become inactive
@@ -2102,7 +1635,7 @@ export interface components {
             reusable: boolean;
         };
         /** Link-Details */
-        'Link-Details': {
+        "Link-Details": {
             /**
              * Format: date-time
              * @description Time (seconds) after which the link will become inactive
@@ -2127,91 +1660,80 @@ export interface components {
             url: string;
             /** @description Whether the link is currently active */
             active: boolean;
-            payment?: components['schemas']['Payment-From-Link-Request'];
+            payment?: components["schemas"]["Payment-From-Link-Request"];
             /** @enum {string} */
-            stop_reason?: 'FROM_API' | 'ALREADY_PAID' | 'EXPIRED';
+            stop_reason?: "FROM_API" | "ALREADY_PAID" | "EXPIRED";
         };
         /** Recurrence-Schedule */
-        'Recurrence-Schedule': {
+        "Recurrence-Schedule": {
             /** @enum {string} */
-            period?: 'DAY' | 'WEEK' | 'MONTH';
-            cycle?: number;
+            period: "DAY" | "WEEK" | "MONTH";
+            cycle: number;
         };
         /** Recurrence-Create-Request */
-        'Recurrence-Create-Request': {
+        "Recurrence-Create-Request": {
             /** @enum {string} */
-            type: 'AUTO' | 'ON_DEMAND';
-            schedule?: components['schemas']['Recurrence-Schedule'];
-            payment: components['schemas']['Payment-Create-Request'];
+            type: "AUTO" | "ON_DEMAND";
+            schedule?: components["schemas"]["Recurrence-Schedule"];
+            payment: components["schemas"]["Payment-Create-Request"];
         };
         /** Recurrence-Details */
-        'Recurrence-Details': {
-            /** @enum {unknown} */
-            type: 'AUTO' | 'ON_DEMAND';
-            schedule?: components['schemas']['Recurrence-Schedule'];
+        "Recurrence-Details": {
+            /** @enum {string} */
+            type: "AUTO" | "ON_DEMAND";
+            schedule?: components["schemas"]["Recurrence-Schedule"];
             id: string;
-            /** @enum {unknown} */
-            state?: 'NEW' | 'REQUESTED' | 'STARTED' | 'STOPPED';
-            /** @enum {unknown} */
-            stop_reason?:
-                | 'RECURRENCE_EXPIRED'
-                | 'CARD_EXPIRED'
-                | 'CANCELLED_VIA_API'
-                | 'CANCELLED_VIA_BACKOFFICE'
-                | 'CANCELLED_BY_GOPAY'
-                | 'UNKNOWN';
-            payment: components['schemas']['Payment-Create-Request'];
+            /** @enum {string} */
+            state?: "NEW" | "REQUESTED" | "STARTED" | "STOPPED";
+            /** @enum {string} */
+            stop_reason?: "RECURRENCE_EXPIRED" | "CARD_EXPIRED" | "CANCELLED_VIA_API" | "CANCELLED_VIA_BACKOFFICE" | "CANCELLED_BY_GOPAY" | "UNKNOWN";
+            payment: components["schemas"]["Payment-Details"];
         };
         /** Authorization-Code-Request */
-        'Authorization-Code-Request': {
+        "Authorization-Code-Request": {
             /**
              * @description Always `authorization_code` for this flow
              * @example authorization_code
              * @constant
              */
-            grant_type: 'authorization_code';
+            grant_type: "authorization_code";
             /**
              * @description List of required token scopes, separated with a space. See Token Scope schema for possible values.
+             * @example payment:charge payment:read
              * @example payment:create payment:read
              */
             scope: string;
             /** @description The `payment_secret`. Used to issue tokens that only relate to a single specific payment. */
             authorization_code: string;
         };
-        /**
-         * Token-Scope
-         * @enum {unknown}
-         */
-        'Token-Scope':
-            | 'payment:read'
-            | 'payment:write'
-            | 'payment:charge'
-            | 'card:read'
-            | 'card:write'
-            | 'shared:read';
         /** Encrypted Card Input */
-        'Encrypted-Card-Input': {
+        "Encrypted-Card-Input": {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            input_type: 'Encrypted-Card-Input';
-            payload?: components['schemas']['JWE'];
+            input_type: "ENCRYPTED_CARD";
+            payload: components["schemas"]["JWE"];
+        };
+        /** Validate-Merchant-Request */
+        "Validate-Merchant-Request": {
+            /** Format: uri */
+            validationUrl: string;
         };
     };
     responses: {
         /** @description Google Pay Payment Request object consumed by the Google Payment button */
-        'Google-Pay-Info-Response': {
+        "Google-Pay-Info-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': {
+                "application/json": {
                     /**
                      * @example TEST
                      * @enum {string}
                      */
-                    environment?: 'TEST' | 'PRODUCTION';
+                    environment?: "TEST" | "PRODUCTION";
                     paymentDataRequest?: {
                         /** @example 2 */
                         apiVersion?: number;
@@ -2221,11 +1743,8 @@ export interface components {
                             /** @example CARD */
                             type?: string;
                             parameters?: {
-                                allowedAuthMethods?: (
-                                    | 'PAN_ONLY'
-                                    | 'CRYPTOGRAM_3DS'
-                                )[];
-                                allowedCardNetworks?: ('VISA' | 'MASTERCARD')[];
+                                allowedAuthMethods?: ("PAN_ONLY" | "CRYPTOGRAM_3DS")[];
+                                allowedCardNetworks?: ("VISA" | "MASTERCARD")[];
                             };
                             tokenizationSpecification?: {
                                 /** @example PAYMENT_GATEWAY */
@@ -2239,7 +1758,7 @@ export interface components {
                             };
                         }[];
                         transactionInfo?: {
-                            currencyCode?: components['schemas']['Currency'];
+                            currencyCode?: components["schemas"]["Currency"];
                             /** @example CZ */
                             countryCode?: string;
                             /** @example FINAL */
@@ -2259,31 +1778,22 @@ export interface components {
             };
         };
         /** @description Example response */
-        'Apple-Pay-Info-Response': {
+        "Apple-Pay-Info-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': {
+                "application/json": {
                     /** @example 6 */
                     applepayVersion?: number;
-                    /**
-                     * @example merchant.com.gopay.demo
-                     * @example 8398119642
-                     */
+                    /** @example 8398119642 */
                     merchantIdentifier?: string;
                     applePayPaymentRequest?: {
                         merchantCapabilities?: string[];
-                        supportedNetworks?: (
-                            | 'maestro'
-                            | 'masterCard'
-                            | 'electron'
-                            | 'visa'
-                            | 'vPay'
-                        )[];
+                        supportedNetworks?: ("maestro" | "masterCard" | "electron" | "visa" | "vPay")[];
                         /** @example CZ */
                         countryCode?: string;
-                        currencyCode?: components['schemas']['Currency'];
+                        currencyCode?: components["schemas"]["Currency"];
                         requiredBillingContactFields?: string[];
                         requiredShippingContactFields?: string[];
                         applicationData?: string;
@@ -2300,12 +1810,12 @@ export interface components {
             };
         };
         /** @description Validation response containing the opaque Apple Pay issued session data. */
-        'Validate-Merchant-Response': {
+        "Validate-Merchant-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': {
+                "application/json": {
                     /** @example 15445664606792 */
                     epochTimestamp?: number;
                     /** @example 154167344466792 */
@@ -2326,66 +1836,66 @@ export interface components {
             };
         };
         /** @description Bad Request */
-        'Bad-Request-400-Response': {
+        "Bad-Request-400-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['Error-Response-Body'];
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Unauthorized */
-        'Unauthorized-401-Response': {
+        "Unauthorized-401-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['Error-Response-Body'];
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Example response */
-        'Forbidden-403-Response': {
+        "Forbidden-403-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['Error-Response-Body'];
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Example response */
-        'Not-Found-404-Response': {
+        "Not-Found-404-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['Error-Response-Body'];
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Example response */
-        'Conflict-409-Response': {
+        "Conflict-409-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['Error-Response-Body'];
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Internal Server Error */
-        'Internal-Server-Error-500-Response': {
+        "Internal-Server-Error-500-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': components['schemas']['Error-Response-Body'];
+                "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
         /** @description Example response */
-        'Appe-Pay-App-Info-Response': {
+        "Apple-Pay-App-Info-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                'application/json': {
+                "application/json": {
                     /** @example 6 */
                     applepayVersion?: number;
                     /** @example com.gopay.merchant.demo */
@@ -2413,34 +1923,17 @@ export interface components {
                 };
             };
         };
-        'Card-Form-URL-Response': {
-            headers: {
-                [name: string]: unknown;
-            };
-            content?: never;
-        };
-        'Card-Token-Response': {
-            headers: {
-                [name: string]: unknown;
-            };
-            content?: never;
-        };
     };
-    parameters: {
-        'Accept-Json': 'application/json';
-    };
+    parameters: never;
     requestBodies: {
-        'Access-Token-Request': {
+        "Access-Token-Request": {
             content: {
-                'application/x-www-form-urlencoded':
-                    | components['schemas']['Client-Credentials-Request']
-                    | components['schemas']['Refresh-Token-Request']
-                    | components['schemas']['Authorization-Code-Request'];
+                "application/x-www-form-urlencoded": components["schemas"]["Client-Credentials-Request"] | components["schemas"]["Authorization-Code-Request"];
             };
         };
-        'Recurrence-Next-Request': {
+        "Recurrence-Next-Request": {
             content: {
-                'application/json': components['schemas']['Payment-Update-Request'];
+                "application/json": components["schemas"]["Payment-Update-Request"];
             };
         };
     };
@@ -2449,18 +1942,14 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    'post-oauth2-token': {
+    "post-oauth2-token": {
         parameters: {
             query?: never;
-            header: {
-                Accept: components['parameters']['Accept-Json'];
-                /** @description Only applies to the `client_credentials` grant_type. */
-                Authorization?: string;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody: components['requestBodies']['Access-Token-Request'];
+        requestBody: components["requestBodies"]["Access-Token-Request"];
         responses: {
             /** @description Shared Response */
             200: {
@@ -2468,29 +1957,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Token-Pair'];
+                    "application/json": components["schemas"]["Access-Token"];
                 };
             };
-            400: components['responses']['Bad-Request-400-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'post-eshops-goid-payments': {
+    "post-eshops-goid-payments": {
         parameters: {
             query?: never;
-            header: {
-                Accept: components['parameters']['Accept-Json'];
-            };
+            header?: never;
             path: {
+                /** @description Unique identifier of a registered merchant website */
                 goid: string;
             };
             cookie?: never;
         };
         requestBody?: {
             content: {
-                'application/json': components['schemas']['Payment-Create-Request'];
+                "application/json": components["schemas"]["Payment-Create-Request"];
             };
         };
         responses: {
@@ -2500,22 +1988,23 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Payment-Details'];
+                    "application/json": components["schemas"]["Payment-Details"];
                 };
             };
-            400: components['responses']['Bad-Request-400-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'get-payments-payment_id': {
+    "get-payments-payment_id": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Payment ID */
                 payment_id: string;
             };
             cookie?: never;
@@ -2528,20 +2017,21 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Payment-Details'];
+                    "application/json": components["schemas"]["Payment-Details"];
                 };
             };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'get-payments-payment_id-charge': {
+    "get-payments-payment_id-charge": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Payment ID */
                 payment_id: string;
             };
             cookie?: never;
@@ -2554,29 +2044,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Payment-Charge-Status-Response'];
+                    "application/json": components["schemas"]["Payment-Charge-Status-Response"];
                 };
             };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'post-payments-payment_id-charge': {
+    "post-payments-payment_id-charge": {
         parameters: {
             query?: never;
-            header: {
-                Accept: components['parameters']['Accept-Json'];
-            };
+            header?: never;
             path: {
+                /** @description Payment ID */
                 payment_id: string;
             };
             cookie?: never;
         };
         requestBody?: {
             content: {
-                'application/json': components['schemas']['Payment-Charge-Input'];
+                "application/json": components["schemas"]["Payment-Charge-Input"];
             };
         };
         responses: {
@@ -2586,28 +2075,26 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Payment-Charge-Response'];
+                    "application/json": components["schemas"]["Payment-Charge-Response"];
                 };
             };
-            400: components['responses']['Bad-Request-400-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'get-payments-payment_id-qr-payment-info': {
+    "get-payments-payment_id-qr-payment-info": {
         parameters: {
             query?: {
                 /** @description File format of the generated base64 */
-                format?: 'png' | 'svg';
+                format?: "png" | "svg";
             };
-            header?: {
-                /** @description application/json */
-                Accept?: string;
-            };
+            header?: never;
             path: {
+                /** @description Payment ID */
                 payment_id: string;
             };
             cookie?: never;
@@ -2620,83 +2107,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['QR-Payment-Details'];
+                    "application/json": components["schemas"]["QR-Payment-Details"];
                 };
             };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'get-payments-payment_id-info-google-pay': {
+    "get-payments-payment_id-info-google-pay": {
         parameters: {
             query?: never;
-            header?: {
-                /** @description application/json */
-                Accept?: string;
-            };
+            header?: never;
             path: {
+                /** @description Payment ID */
                 payment_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            200: components['responses']['Google-Pay-Info-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            200: components["responses"]["Google-Pay-Info-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'get-payments-payment_id-info-apple-pay': {
+    "get-payments-payment_id-info-apple-pay": {
         parameters: {
             query?: never;
-            header?: {
-                /** @description application/json */
-                Accept?: string;
-            };
+            header?: never;
             path: {
+                /** @description Payment ID */
                 payment_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            200: components['responses']['Apple-Pay-Info-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            200: components["responses"]["Apple-Pay-Info-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'get-payments-payment_id-apple-pay-app-info': {
+    "get-payments-payment_id-apple-pay-app-info": {
         parameters: {
             query?: never;
-            header?: {
-                /** @description application/json */
-                Accept?: string;
-            };
+            header?: never;
             path: {
+                /** @description Payment ID */
                 payment_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            200: components['responses']['Appe-Pay-App-Info-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            200: components["responses"]["Apple-Pay-App-Info-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'post-payments-payment_id-apple-pay-validate': {
+    "post-payments-payment_id-apple-pay-validate": {
         parameters: {
             query?: never;
             header: {
@@ -2704,33 +2185,36 @@ export interface operations {
                 Origin: string;
             };
             path: {
+                /** @description Payment ID */
                 payment_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Validate-Merchant-Request"];
+            };
+        };
         responses: {
-            200: components['responses']['Validate-Merchant-Response'];
-            400: components['responses']['Bad-Request-400-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            200: components["responses"]["Validate-Merchant-Response"];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'post-cards-tokens': {
+    "post-cards-tokens": {
         parameters: {
             query?: never;
-            header: {
-                Accept: components['parameters']['Accept-Json'];
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: {
             content: {
-                'application/json': components['schemas']['Encrypted-Card-Request-Body'];
+                "application/json": components["schemas"]["Encrypted-Card-Request-Body"];
             };
         };
         responses: {
@@ -2740,17 +2224,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Permanent-Card-Token-Details'];
+                    "application/json": components["schemas"]["Permanent-Card-Token-Details"];
                 };
             };
-            400: components['responses']['Bad-Request-400-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'get-cards-tokens-card_id': {
+    "get-cards-tokens-card_id": {
         parameters: {
             query?: never;
             header?: never;
@@ -2767,16 +2251,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Permanent-Card-Token-Details'];
+                    "application/json": components["schemas"]["Permanent-Card-Token-Details"];
                 };
             };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'delete-cards-tokens-card_id': {
+    "delete-cards-tokens-card_id": {
         parameters: {
             query?: never;
             header?: never;
@@ -2794,98 +2278,71 @@ export interface operations {
                 };
                 content?: never;
             };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'get-encryption-public-key': {
-        parameters: {
-            query?: never;
-            header: {
-                Accept: components['parameters']['Accept-Json'];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Shared Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['JWK'];
-                };
-            };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
-        };
-    };
-    'get-card-form-url': {
-        parameters: {
-            query?: never;
-            header: {
-                Accept: components['parameters']['Accept-Json'];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Shared Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    'application/json': components['schemas']['Card-Form-URL'];
-                };
-            };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
-        };
-    };
-    'post-cards-lookup': {
+    "get-encryption-public-key": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                'application/json': components['schemas']['Encrypted-Card-Request-Body'];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description Shared Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Card-Lookup-Details'];
+                    "application/json": components["schemas"]["JWK"];
                 };
             };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'post-eshops-goid-recurrences': {
+    "get-card-form-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Card-Form-URL"];
+                };
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-eshops-goid-recurrences": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique identifier of a registered merchant website */
                 goid: string;
             };
             cookie?: never;
         };
         requestBody?: {
             content: {
-                'application/json': components['schemas']['Recurrence-Create-Request'];
+                "application/json": components["schemas"]["Recurrence-Create-Request"];
             };
         };
         responses: {
@@ -2895,22 +2352,23 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Recurrence-Details'];
+                    "application/json": components["schemas"]["Recurrence-Details"];
                 };
             };
-            400: components['responses']['Bad-Request-400-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'get-recurrences-rec_id': {
+    "get-recurrences-rec_id": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique ID of a previously created recurrence */
                 rec_id: string;
             };
             cookie?: never;
@@ -2923,20 +2381,21 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Recurrence-Details'];
+                    "application/json": components["schemas"]["Recurrence-Details"];
                 };
             };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'delete-recurrences-rec_id': {
+    "delete-recurrences-rec_id": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique ID of a previously created recurrence */
                 rec_id: string;
             };
             cookie?: never;
@@ -2950,23 +2409,24 @@ export interface operations {
                 };
                 content?: never;
             };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'post-recurrences-rec_id-start': {
+    "post-recurrences-rec_id-start": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique ID of a previously created recurrence */
                 rec_id: string;
             };
             cookie?: never;
         };
-        requestBody?: components['requestBodies']['Recurrence-Next-Request'];
+        requestBody?: components["requestBodies"]["Recurrence-Next-Request"];
         responses: {
             /** @description Created */
             201: {
@@ -2974,27 +2434,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Payment-Details'];
+                    "application/json": components["schemas"]["Payment-Details"];
                 };
             };
-            400: components['responses']['Bad-Request-400-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'post-recurrences-rec_id-next': {
+    "post-recurrences-rec_id-next": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique ID of a previously created recurrence */
                 rec_id: string;
             };
             cookie?: never;
         };
-        requestBody?: components['requestBodies']['Recurrence-Next-Request'];
+        requestBody?: components["requestBodies"]["Recurrence-Next-Request"];
         responses: {
             /** @description Created */
             201: {
@@ -3002,29 +2463,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Payment-Details'];
+                    "application/json": components["schemas"]["Payment-Details"];
                 };
             };
-            400: components['responses']['Bad-Request-400-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'post-eshops-goid-links': {
+    "post-eshops-goid-links": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique identifier of a registered merchant website */
                 goid: string;
             };
             cookie?: never;
         };
         requestBody?: {
             content: {
-                'application/json': components['schemas']['Link-Create-Request'];
+                "application/json": components["schemas"]["Link-Create-Request"];
             };
         };
         responses: {
@@ -3034,21 +2496,22 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Link-Details'];
+                    "application/json": components["schemas"]["Link-Details"];
                 };
             };
-            400: components['responses']['Bad-Request-400-Response'];
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'get-links-link_id': {
+    "get-links-link_id": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique ID of a previously created link */
                 link_id: string;
             };
             cookie?: never;
@@ -3061,20 +2524,21 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Link-Details'];
+                    "application/json": components["schemas"]["Link-Details"];
                 };
             };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
-    'delete-links-link_id': {
+    "delete-links-link_id": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description Unique ID of a previously created link */
                 link_id: string;
             };
             cookie?: never;
@@ -3088,11 +2552,11 @@ export interface operations {
                 };
                 content?: never;
             };
-            401: components['responses']['Unauthorized-401-Response'];
-            403: components['responses']['Forbidden-403-Response'];
-            404: components['responses']['Not-Found-404-Response'];
-            409: components['responses']['Conflict-409-Response'];
-            500: components['responses']['Internal-Server-Error-500-Response'];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
 }

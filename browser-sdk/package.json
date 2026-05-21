@@ -34,7 +34,7 @@
         "test:watch": "vitest",
         "typecheck": "tsc --noEmit",
         "check:circular": "madge --circular --extensions ts --ts-config tsconfig.json src/",
-        "check:exports": "ts-unused-exports tsconfig.json --excludePathsFromReport='src/index' --ignoreFiles='types/generated'"
+        "check:exports": "ts-unused-exports tsconfig.json --excludePathsFromReport='src/index' --ignoreFiles='types/generated|modules/cards/iframe-protocol'"
     },
     "devDependencies": {
         "@gopay-internal/core": "workspace:*",

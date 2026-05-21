@@ -12,7 +12,7 @@ type Environment = 'sandbox' | 'production';
 export interface CardFormConfig {
     type: 'GOPAY_CARD_FORM_INIT';
     environment: Environment;
-    /** Public key used by the iframe as X-API-Key for /encryption/public-key. */
+    /** Publishable key used by the iframe for Basic auth on GET /cards/public-key. */
     publishable_key: string;
     /** Merchant OAuth client_id — embedded in the encrypted card JWE payload. */
     client_id: string;

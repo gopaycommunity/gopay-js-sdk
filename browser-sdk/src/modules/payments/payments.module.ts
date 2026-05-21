@@ -16,13 +16,12 @@ type PaymentChargeStatusResponse =
     components['schemas']['Payment-Charge-Status-Response'];
 type BrowserDataSchema = components['schemas']['Browser-Data'];
 type PaymentCardChargeData = components['schemas']['Payment-Card-Charge-Data'];
-type BankAccountChargeData = components['schemas']['Bank-Account-Charge-Data'];
 type GooglePayInfoResponse =
     components['responses']['Google-Pay-Info-Response']['content']['application/json'];
 type ApplePayInfoResponse =
     components['responses']['Apple-Pay-Info-Response']['content']['application/json'];
 type ApplePayAppInfoResponse =
-    components['responses']['Appe-Pay-App-Info-Response']['content']['application/json'];
+    components['responses']['Apple-Pay-App-Info-Response']['content']['application/json'];
 type ValidateMerchantResponse =
     components['responses']['Validate-Merchant-Response']['content']['application/json'];
 type QRPaymentDetails = components['schemas']['QR-Payment-Details'];
@@ -35,7 +34,7 @@ type PaymentChargeRequestInput = Omit<
     PaymentChargeRequest,
     'payment_instrument'
 > & {
-    payment_instrument?: CardChargeDataInput | BankAccountChargeData;
+    payment_instrument?: CardChargeDataInput;
 };
 
 /** Options for {@link awaitChargeState}. */
