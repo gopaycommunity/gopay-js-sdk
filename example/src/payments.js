@@ -1,11 +1,4 @@
-import { attachPaymentToSDK, getBrowserSDK } from './browser-sdk.js';
-import {
-    prefillPaymentId,
-    run,
-    show3dsPrompt,
-    state,
-    updateBrowserBadge,
-} from './helpers.js';
+import { prefillPaymentId, run, show3dsPrompt, state } from './helpers.js';
 import { sdk } from './sdk.js';
 
 export function runCreatePayment() {
@@ -34,14 +27,7 @@ export function runCreatePayment() {
                 customer: { email },
                 callback: { notification_url, return_url },
             }),
-        (result) => {
-            prefillPaymentId(result);
-            if (getBrowserSDK() && result?.id && result?.payment_secret) {
-                attachPaymentToSDK(result.id, result.payment_secret)
-                    .then(() => updateBrowserBadge())
-                    .catch(() => {});
-            }
-        },
+        (result) => prefillPaymentId(result),
     );
 }
 

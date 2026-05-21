@@ -13,7 +13,7 @@ import { browserApplePayLoadInfo } from './browser-apple-pay.js';
 import { runBrowserCharge } from './browser-charge.js';
 import { browserGooglePayLoadInfo } from './browser-google-pay.js';
 import { browserQRPaymentInfo } from './browser-payments.js';
-import { initBrowserSDK } from './browser-sdk.js';
+import { initBrowserSDK, runAttachPayment } from './browser-sdk.js';
 import {
     cardPayExtSubmit,
     cardPayOpenIframe,
@@ -106,6 +106,8 @@ updateBrowserBadge();
 // -----------------------------------------------------------------------
 // Expose functions to HTML onclick handlers
 // -----------------------------------------------------------------------
+window.runAttachPayment = runAttachPayment;
+
 window.runInitBrowserSDK = () => {
     const publishableKey = document
         .getElementById('cardpay-publishable-key')

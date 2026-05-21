@@ -7,18 +7,28 @@
 
 <!-- Browser SDK status -->
 <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-    <h2 class="text-base font-semibold text-[#2D3643] mb-4">Browser SDK</h2>
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">Browser SDK — Step 1: Initialize</h2>
     <div class="flex items-center gap-2 mb-3">
         <span class="badge" id="browser-sdk-badge" style="background:#e2e3e5;color:#383d41;">not initialized</span>
     </div>
-    <p class="desc">The browser SDK is initialized once with a <code>publishableKey</code> and <code>clientId</code> from your server. Run <code>auth.getBrowserKeys()</code> to auto-fill and initialize, or enter the values manually and click Initialize.</p>
+    <p class="desc">Initialize the browser SDK with a <code>publishableKey</code> and <code>clientId</code> obtained from your server. Run <code>auth.getBrowserKeys()</code> to auto-fill, or enter the values manually.</p>
     <div class="fields">
         <label>Publishable Key<input id="cardpay-publishable-key" type="text" placeholder="from serverSdk.getBrowserKeys()" /></label>
         <label>Client ID<input id="cardpay-client-id" type="text" placeholder="auto-filled from config" /></label>
     </div>
     <button type="button" onclick="runInitBrowserSDK()">Initialize Browser SDK</button>
-    <p class="note">After initializing, run <code>payments.create()</code> to create a payment — the browser SDK will attach to it automatically.</p>
-    <pre id="browser-sdk-log" hidden class="mt-3 !text-red-700"></pre>
+</section>
+
+<!-- Attach Payment -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">Browser SDK — Step 2: attachPayment()</h2>
+    <p class="desc">Your server creates a payment and returns <code>id</code> and <code>payment_secret</code> to the browser. Call <code>attachPayment()</code> to bind the browser SDK to that payment. Run <code>payments.create()</code> above to auto-fill these fields.</p>
+    <div class="fields">
+        <label>Payment ID<input id="browser-attach-payment-id" type="text" placeholder="auto-filled from payments.create()" /></label>
+        <label>Payment Secret<input id="browser-attach-payment-secret" type="text" placeholder="auto-filled from payments.create()" /></label>
+    </div>
+    <button type="button" onclick="runAttachPayment()">Attach Payment</button>
+    <pre id="battach-output">—</pre>
 </section>
 
 <!-- Card Pay -->

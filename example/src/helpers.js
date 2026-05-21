@@ -162,6 +162,16 @@ export function prefillPaymentId(result) {
             el.value = id;
         }
     }
+    const attachIdEl = document.getElementById('browser-attach-payment-id');
+    if (attachIdEl) {
+        attachIdEl.value = id;
+    }
+    const attachSecretEl = document.getElementById(
+        'browser-attach-payment-secret',
+    );
+    if (attachSecretEl && result?.payment_secret) {
+        attachSecretEl.value = result.payment_secret;
+    }
     updateBrowserBadge();
     state.pendingInstrument = null;
     document.getElementById('charge-instrument-info').textContent = '';
