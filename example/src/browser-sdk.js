@@ -25,6 +25,7 @@ const SENSITIVE_KEYS = new Set([
     'exp_month',
     'exp_year',
     'account_number',
+    'payment_secret',
 ]);
 const PAN_PATTERN = /^\d{16,}$/;
 

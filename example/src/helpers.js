@@ -169,8 +169,8 @@ export function prefillPaymentId(result) {
     const attachSecretEl = document.getElementById(
         'browser-attach-payment-secret',
     );
-    if (attachSecretEl && result?.payment_secret) {
-        attachSecretEl.value = result.payment_secret;
+    if (attachSecretEl) {
+        attachSecretEl.value = result?.payment_secret ?? '';
     }
     updateBrowserBadge();
     state.pendingInstrument = null;
