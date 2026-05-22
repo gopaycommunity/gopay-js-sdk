@@ -1,5 +1,4 @@
 import { analyzeCommits } from 'semantic-release-monorepo';
-import { versionBumper } from '../scripts/version-bumper.mjs';
 
 /** @type {import('semantic-release').GlobalConfig} */
 export default {
@@ -34,7 +33,7 @@ export default {
         // Bump version in package.json.
         // Note: when enabling npm publish, replace this with @semantic-release/npm (npmPublish: true)
         // and add @semantic-release/exec (prepareCmd: false) or keep this bumper + add a separate publish step.
-        versionBumper,
+        '../scripts/version-bumper.mjs',
 
         // Commit version bump + CHANGELOG back to the repo
         [
