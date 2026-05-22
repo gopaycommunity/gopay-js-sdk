@@ -25,7 +25,7 @@
     <p class="desc">Your server creates a payment and returns <code>id</code> and <code>payment_secret</code> to the browser. Call <code>attachPayment()</code> to bind the browser SDK to that payment. Run <code>payments.create()</code> above to auto-fill these fields.</p>
     <div class="fields">
         <label>Payment ID<input id="browser-attach-payment-id" type="text" placeholder="auto-filled from payments.create()" /></label>
-        <label>Payment Secret<input id="browser-attach-payment-secret" type="text" placeholder="auto-filled from payments.create()" /></label>
+        <label>Payment Secret<input id="browser-attach-payment-secret" type="password" placeholder="auto-filled from payments.create()" /></label>
     </div>
     <button type="button" onclick="runAttachPayment()">Attach Payment</button>
     <pre id="battach-output">—</pre>
