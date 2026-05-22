@@ -1,5 +1,6 @@
 import { GoPayHTTPError, GoPaySDKError } from 'gopay-js-sdk';
 import { getBrowserSDK, isSdkAttached } from './browser-sdk.js';
+import { sanitizeBody } from './sanitize.js';
 
 // Shared mutable state across modules
 export const state = {
@@ -64,43 +65,6 @@ export async function run(outputId, fn, onSuccess) {
     } catch (err) {
         pre.textContent = `── onError ──\n${formatError(err)}`;
     }
-}
-
-// Keep in sync with browser-sdk.js and gw-ui-cc-v4 manually — no shared package.
-const SENSITIVE_KEYS = new Set([
-    'card_number',
-    'card_pan',
-    'pan',
-    'cardToken',
-    'card_token',
-    'token',
-    'publishable_key',
-    'cvv',
-    'cvv2',
-    'security_code',
-    'expiry',
-    'expiration',
-    'exp_month',
-    'exp_year',
-    'account_number',
-]);
-const PAN_PATTERN = /^\d{16,}$/;
-
-function sanitizeBody(value) {
-    if (Array.isArray(value)) {
-        return value.map(sanitizeBody);
-    }
-    if (value !== null && typeof value === 'object') {
-        const out = {};
-        for (const [k, v] of Object.entries(value)) {
-            out[k] = SENSITIVE_KEYS.has(k) ? '[REDACTED]' : sanitizeBody(v);
-        }
-        return out;
-    }
-    if (typeof value === 'string' && PAN_PATTERN.test(value)) {
-        return '[REDACTED]';
-    }
-    return value;
 }
 
 export function formatError(err) {
