@@ -1,3 +1,61 @@
+# [1.4.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.3.5...1.4.0) (2026-05-25)
+
+
+### Bug Fixes
+
+* address PR review issues GPOMA-2278 ([61fe87e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/61fe87e2c7fecd6006664be20e3fdf2e306a0fd9))
+* apple Pay button rendering logic can hide native flow GPOMA-2278 ([b19240f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b19240f9fd098d4bc09f7ab525cefb4ba6aec63e))
+* biome rule useBlockStatements GPOMA-2278 ([72b3f69](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/72b3f69c850069544c6f96ee1b769301fc20b32f))
+* clear issued-token cache on logout GPOMA-2278 ([14183ba](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/14183ba29f7b07a606a3256780f3b41601cd2856))
+* clear tokens on clientId change GPOMA-2278 ([7147bbb](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/7147bbb225bc78ec28c3fa08dbde26f43d20f823))
+* defer tearing down the previous session GPOMA-2278 ([31069fc](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/31069fc4547d79f42efaa17ffc9ce54fbe25678e))
+* e2e tests GPOMA-2278 ([b3dcb4d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b3dcb4d8ab58c4f5428e542c08ef4d95666fa9a6))
+* exponential back-off on retry GPOMA-2278 ([af2aca6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/af2aca66b0066d755b9f14cd690cf5a11dbe2000))
+* git login before push GPOMA-2278 ([6cf7eca](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/6cf7eca6085d7156899d5a5726bd93b21aa1c540))
+* if action_url were to change, do not redirect again GPOMA-2278 ([3d24afc](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3d24afc32e8f57f3e5d39d463cf7aa0632cf4d97))
+* ignore claude tmp GPOMA-2278 ([9731553](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9731553e12c0e38476912f7e9a537584f6db5978))
+* improve 3ds iframe security GPOMA-2278 ([b33c3dd](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b33c3dd2b727da9ff4b26aec7b4a8390ac71a667))
+* improve browserdata typing GPOMA-2278 ([5e88839](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5e88839681e8dca930f0761e76f514c582129f1d))
+* improve lifecycle GPOMA-2278 ([23ad90f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/23ad90f7992319a739dc618ee0cffc62e70244c4))
+* improve screen readers GPOMA-2278 ([54b1275](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/54b1275f8eaecc402e6514f34959f121568251fb))
+* improve styling GPOMA-2278 ([0c8e885](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0c8e8851cf084f53b5a620a6df3576f83170af5a))
+* lint also shared files GPOMA-2278 ([52b9e25](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/52b9e25d82c6d8c49ffcd32de8f3c9cc932e4939))
+* lint ignore generated files GPOMA-2278 ([a161ec2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a161ec259cd4e01ae9f8d1f0e4d9434f4e3bf39a))
+* mask payment_secret input field GPOMA-2278 ([698fbd7](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/698fbd73ce48aa78db6a3269a3e8d3b4d4594da8))
+* null paymentsApi before the async so any failure path leaves the SDK "not attached"  GPOMA-2278 ([fef6a76](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fef6a76f7f038d49228342ad1d3940aed643e245))
+* prevent semver rollback in package metadata. GPOMA-2278 ([e55e3bb](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e55e3bbb82a6f2b4f03fd2842e0526ab7da303c0))
+* redact known sensitive information log leak GPOMA-2278 ([963f4f3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/963f4f352bb7a7f9ea5db011b6ad4141a37e1118))
+* redact payment_secret in error output, clear stale attach field GPOMA-2278 ([0cd0e4c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0cd0e4cbd0a68655178cfd03779fbbb74bd205ba))
+* reduce cognitive complexity in onMessage handler GPOMA-2278 ([b2ab98d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b2ab98d10701cd7a2c03bcd1da8c5df8fc7ef349))
+* release bumper absolute path GPOMA-2278 ([ac7827b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ac7827b5171676f43602e6f72b62ac2688b91b28))
+* release bumper GPOMA-2278 ([0aa1de0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0aa1de035c6bafd8e7de1126898272f48392d25c))
+* release GPOMA-2278 ([9976b5c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9976b5c7e193f0027f154a0bd6fca5c178adf3c3))
+* restore createTokenStore and buildUrl exports from core GPOMA-2278 ([7f5de05](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/7f5de05489533ebc297f7ce02b66f8110a25965e))
+* retry only idempotent http operations GPOMA-2278 ([68a78f5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/68a78f5de5f006e86bf88f2ea853bb29b778489e))
+* separate attach payment browser sdk step GPOMA-2278 ([b338e4a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b338e4abdd662ed8fac6128914f10e4773b9ec55))
+* server example without payment buttons GPOMA-2278 ([7eaad0c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/7eaad0c49db14541227cd2743e0838bb6e2e1773))
+* shared version bumper GPOMA-2278 ([1fda495](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1fda495f575e1cb33f7bd21ca5a267a6a29844c8))
+* svg rendering of qr code GPOMA-2278 ([d329512](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d329512b6187fff4047dab57a6e9ad9130685800))
+* **test:** improve test coverage GPOMA-2278 ([8273f0e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8273f0ef8804aaac6af189a1d7e993cc551e65be))
+* **test:** restore applePayLoadInfo to fix apple-pay-mock e2e test GPOMA-2278 ([ebd76e4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ebd76e4ca6587fc69fc477b3df7c23e1399c6996)), closes [#applepay-mock-btn](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issue/applepay-mock-btn)
+* **test:** update  GPOMA-2278 ([7508f28](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/7508f28fd2631f9da450ce7a14701b3fd2b0f8f3))
+* throw typed errors GPOMA-2278 ([228d9f7](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/228d9f74f7767fcaf32e46b4461f2b0b744c69aa))
+* type all sdk errors GPOMA-2278 ([f32c08c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/f32c08c9dbd96efd57d404a9a785bc9831bf2665))
+* update schema GPOMA-2278 ([3ce1aaf](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3ce1aafbabc172e019862639c73e1db38c3c9250))
+* update yarn GPOMA-2278 ([0cb0b96](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0cb0b96bc374e07dd39082fd52e1f16df277adad))
+* use expire from JWT GPOMA-2278 ([a5d75c0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a5d75c01a51bfcc719b1746635865ce098623a09))
+* use sdk error messages GPOMA-2278 ([c8555f9](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c8555f90cb068ffc68a36170a0f03561d7896e70))
+* use translation-neutral iframe titles GPOMA-2278 ([d507d47](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d507d47a41ebb286c6369e5a0862a4239a4d3db3))
+* validate auth token before setting GPOMA-2278 ([54e8503](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/54e850328347f2e61dcbbefdf08b1aec97041543))
+
+
+### Features
+
+* separate npm package deploy GPOMA-2278 ([44642b7](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/44642b7c4ca13e9e48a868b1c663aa228fffd291))
+* separate npm package deploy GPOMA-2278 ([b9baffb](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b9baffb0edad789ab2fc7c6bd600da1f38ec191d))
+* split sdk to server and client GPOMA-2270 ([f8e20e0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/f8e20e01acd178e4ca009c63a35c133630affc53))
+* split sdk to server and client GPOMA-2278 ([9c52790](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9c52790e3c08b6835fd921dcd1c49e01c4d05678))
+
 ## [1.3.5](http://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.3.4...1.3.5) (2026-04-30)
 
 
