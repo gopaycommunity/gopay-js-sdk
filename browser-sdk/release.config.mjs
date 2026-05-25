@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { analyzeCommits } from 'semantic-release-monorepo';
 
 /** @type {import('semantic-release').GlobalConfig} */
@@ -33,7 +34,11 @@ export default {
         // Bump version in package.json.
         // Note: when enabling npm publish, replace this with @semantic-release/npm (npmPublish: true)
         // and add @semantic-release/exec (prepareCmd: false) or keep this bumper + add a separate publish step.
-        '../scripts/version-bumper.mjs',
+        // Absolute path required: ESM resolves relative imports relative to the importing file,
+        // so a bare '../scripts/...' would resolve inside node_modules when wrapped by semantic-release-plugin-decorators.
+        fileURLToPath(
+            new URL('../scripts/version-bumper.mjs', import.meta.url),
+        ),
 
         // Commit version bump + CHANGELOG back to the repo
         [
