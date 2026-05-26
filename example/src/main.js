@@ -1,5 +1,7 @@
 import './styles/main.css';
 import './card-form-logger.js';
+import { SDK_VERSION as SERVER_SDK_VERSION } from 'gopay-js-sdk';
+import { SDK_VERSION as BROWSER_SDK_VERSION } from 'gopay-js-sdk-browser';
 import { applePayLoadInfo } from './apple-pay.js';
 import {
     runAuthenticate,
@@ -84,6 +86,9 @@ if (goid) {
 // -----------------------------------------------------------------------
 // SDK status badge
 // -----------------------------------------------------------------------
+document.getElementById('sdk-versions').textContent =
+    `gopay-js-sdk@${SERVER_SDK_VERSION} · gopay-js-sdk-browser@${BROWSER_SDK_VERSION}`;
+
 const badge = document.getElementById('sdk-badge');
 const sdkInfo = document.getElementById('sdk-info');
 badge.textContent = 'LOADED';

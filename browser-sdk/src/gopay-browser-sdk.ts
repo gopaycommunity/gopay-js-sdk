@@ -10,6 +10,7 @@ import {
 } from './modules/auth/auth.module.js';
 import { createCardsApi } from './modules/cards/cards.module.js';
 import { createPaymentsApi } from './modules/payments/payments.module.js';
+import { SDK_VERSION } from './version.js';
 
 type PaymentsApi = ReturnType<typeof createPaymentsApi>;
 
@@ -63,6 +64,7 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
     const getPaymentsApi = () => paymentsApi;
 
     return {
+        version: SDK_VERSION,
         ...createAuthApi(client),
 
         /**

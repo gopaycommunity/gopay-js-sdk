@@ -8,6 +8,15 @@ import { defineConfig } from 'vite';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(__dirname, '..');
 
+function readPkgVersion(path: string): string {
+    return (JSON.parse(readFileSync(path, 'utf-8')) as { version: string })
+        .version;
+}
+const sdkVersion = readPkgVersion(resolve(repoRoot, 'sdk/package.json'));
+const browserSdkVersion = readPkgVersion(
+    resolve(repoRoot, 'browser-sdk/package.json'),
+);
+
 const certKey = resolve(__dirname, 'certs', 'localhost-key.pem');
 const certFile = resolve(__dirname, 'certs', 'localhost.pem');
 const hasMkcert = existsSync(certKey) && existsSync(certFile);
@@ -18,10 +27,18 @@ export default defineConfig(() => {
         base: process.env.GP_BASE_PATH ?? '/',
         envDir: resolve(repoRoot, 'sdk'),
         envPrefix: 'GP_GW_JS_SDK_',
+        define: {
+            __GOPAY_SDK_VERSION__: JSON.stringify(sdkVersion),
+            __GOPAY_BROWSER_SDK_VERSION__: JSON.stringify(browserSdkVersion),
+        },
         resolve: {
             alias: [
                 // Point workspace packages to TypeScript source so Vite doesn't
                 // require a dist build before starting the dev server.
+                {
+                    find: 'gopay-js-sdk',
+                    replacement: resolve(repoRoot, 'sdk/src/index.ts'),
+                },
                 {
                     find: 'gopay-js-sdk-browser',
                     replacement: resolve(repoRoot, 'browser-sdk/src/index.ts'),

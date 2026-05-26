@@ -5,6 +5,7 @@ import { createCardsApi } from './modules/cards/cards.module.js';
 import { createLinksApi } from './modules/links/links.module.js';
 import { createPaymentsApi } from './modules/payments/payments.module.js';
 import { createRecurrencesApi } from './modules/recurrences/recurrences.module.js';
+import { SDK_VERSION } from './version.js';
 
 /**
  * Create a GoPay server-side SDK instance.
@@ -19,6 +20,7 @@ import { createRecurrencesApi } from './modules/recurrences/recurrences.module.j
 export function createGoPaySDK(config: GoPayConfig = {}) {
     const client = createHttpClient(config);
     return {
+        version: SDK_VERSION,
         ...createAuthApi(client),
         ...createPaymentsApi(client),
         ...createCardsApi(client),

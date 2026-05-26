@@ -1,4 +1,14 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'tsup';
+
+const pkgDir = dirname(fileURLToPath(import.meta.url));
+const { version } = JSON.parse(
+    readFileSync(join(pkgDir, 'package.json'), 'utf-8'),
+) as { version: string };
+
+const define = { __GOPAY_BROWSER_SDK_VERSION__: JSON.stringify(version) };
 
 export default defineConfig([
     // ESM + CJS dual package with type declarations
@@ -10,6 +20,7 @@ export default defineConfig([
         sourcemap: true,
         outDir: 'dist',
         noExternal: ['@gopay-internal/core'],
+        define,
     },
     // IIFE browser bundle (script src)
     {
@@ -21,5 +32,6 @@ export default defineConfig([
         outDir: 'dist',
         outExtension: () => ({ js: '.js' }),
         noExternal: ['@gopay-internal/core'],
+        define,
     },
 ]);

@@ -9,3 +9,4 @@ export type {
     ClientCredentialsRequest,
     GoPayEnvironment,
 } from './types/index.js';
+export { SDK_VERSION } from './version.js';
