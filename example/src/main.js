@@ -2,6 +2,7 @@ import './styles/main.css';
 import './card-form-logger.js';
 import { SDK_VERSION as SERVER_SDK_VERSION } from 'gopay-js-sdk';
 import { SDK_VERSION as BROWSER_SDK_VERSION } from 'gopay-js-sdk-browser';
+import { applePayLoadInfo } from './apple-pay.js';
 import {
     runAuthenticate,
     runGetBrowserKeys,
@@ -139,6 +140,7 @@ window.clearCharge = clearCharge;
 window.runQRPaymentInfo = runQRPaymentInfo;
 window.runGetGooglePayInfo = runGetGooglePayInfo;
 window.runGetApplePayInfo = runGetApplePayInfo;
+window.applePayLoadInfo = applePayLoadInfo;
 window.cardPayOpenIframe = cardPayOpenIframe;
 window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;
