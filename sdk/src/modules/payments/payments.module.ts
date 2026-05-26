@@ -27,7 +27,7 @@ type ValidateMerchantResponse =
 type QRPaymentDetails = components['schemas']['QR-Payment-Details'];
 
 function requirePaymentId(paymentId: string): void {
-    if (!paymentId.trim()) {
+    if (typeof paymentId !== 'string' || !paymentId.trim()) {
         throw new GoPaySDKError('[GoPaySDK] paymentId is required', {
             errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
         });

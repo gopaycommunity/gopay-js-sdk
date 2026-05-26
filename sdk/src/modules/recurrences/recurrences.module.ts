@@ -12,7 +12,7 @@ type RecurrenceNextBody = components['schemas']['Payment-Instance-Override'];
 type PaymentDetails = components['schemas']['Payment-Details'];
 
 function requireRecId(recId: string): void {
-    if (!recId.trim()) {
+    if (typeof recId !== 'string' || !recId.trim()) {
         throw new GoPaySDKError('[GoPaySDK] recId is required', {
             errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
         });
