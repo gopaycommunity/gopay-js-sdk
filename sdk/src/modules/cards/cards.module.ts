@@ -1,4 +1,8 @@
-import { GoPaySDKError, type HttpClient } from '@gopay-internal/core';
+import {
+    GoPayErrorCodes,
+    GoPaySDKError,
+    type HttpClient,
+} from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type EncryptedCardRequest = components['schemas']['Token-Create-Request'];
@@ -15,8 +19,12 @@ export function createCardsApi(client: HttpClient) {
          * @param cardId - Unique identifier of the stored card token
          */
         async getCardDetails(cardId: string): Promise<PermanentCardToken> {
-            if (!cardId) {
-                throw client.emitError(new GoPaySDKError('cardId is required'));
+            if (!cardId?.trim()) {
+                throw client.emitError(
+                    new GoPaySDKError('Missing or invalid cardId', {
+                        errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
+                    }),
+                );
             }
             return client.get<PermanentCardToken>(`/cards/tokens/${cardId}`);
         },
@@ -29,8 +37,12 @@ export function createCardsApi(client: HttpClient) {
          * @param cardId - Unique identifier of the stored card token
          */
         async deleteCard(cardId: string): Promise<void> {
-            if (!cardId) {
-                throw client.emitError(new GoPaySDKError('cardId is required'));
+            if (!cardId?.trim()) {
+                throw client.emitError(
+                    new GoPaySDKError('Missing or invalid cardId', {
+                        errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
+                    }),
+                );
             }
             return client.delete(`/cards/tokens/${cardId}`);
         },
@@ -51,9 +63,11 @@ export function createCardsApi(client: HttpClient) {
         async tokenizeEncryptedCard(
             payload: string,
         ): Promise<PermanentCardToken> {
-            if (!payload) {
+            if (!payload?.trim()) {
                 throw client.emitError(
-                    new GoPaySDKError('payload is required'),
+                    new GoPaySDKError('Missing or invalid payload', {
+                        errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
+                    }),
                 );
             }
             const body: EncryptedCardRequest = { payload };
