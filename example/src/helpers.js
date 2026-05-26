@@ -118,7 +118,6 @@ export function prefillPaymentId(result) {
         'status-payment-id',
         'charge-state-payment-id',
         'googlepay-payment-id',
-        'applepay-payment-id',
         'qr-payment-id',
         'refund-payment-id',
         'refund-list-payment-id',

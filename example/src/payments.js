@@ -131,10 +131,3 @@ export function runGetGooglePayInfo() {
         .value.trim();
     run('googlepay-output', () => sdk.getGooglePayInfo(paymentId));
 }
-
-export function runGetApplePayInfo() {
-    const paymentId = document
-        .getElementById('applepay-payment-id')
-        .value.trim();
-    run('applepay-output', () => sdk.getApplePayInfo(paymentId));
-}

@@ -2,7 +2,6 @@ import './styles/main.css';
 import './card-form-logger.js';
 import { SDK_VERSION as SERVER_SDK_VERSION } from 'gopay-js-sdk';
 import { SDK_VERSION as BROWSER_SDK_VERSION } from 'gopay-js-sdk-browser';
-import { applePayLoadInfo } from './apple-pay.js';
 import {
     runAuthenticate,
     runGetBrowserKeys,
@@ -12,11 +11,7 @@ import {
 import { browserApplePayLoadInfo } from './browser-apple-pay.js';
 import { runBrowserCharge } from './browser-charge.js';
 import { browserGooglePayLoadInfo } from './browser-google-pay.js';
-import {
-    browserApplePayAppInfo,
-    browserGetStatus,
-    browserQRPaymentInfo,
-} from './browser-payments.js';
+import { browserGetStatus, browserQRPaymentInfo } from './browser-payments.js';
 import { initBrowserSDK, runAttachPayment } from './browser-sdk.js';
 import {
     cardPayExtSubmit,
@@ -35,7 +30,6 @@ import {
     clearCharge,
     runCharge,
     runCreatePayment,
-    runGetApplePayInfo,
     runGetChargeState,
     runGetGooglePayInfo,
     runGetPaymentStatus,
@@ -139,8 +133,6 @@ window.runCharge = runCharge;
 window.clearCharge = clearCharge;
 window.runQRPaymentInfo = runQRPaymentInfo;
 window.runGetGooglePayInfo = runGetGooglePayInfo;
-window.runGetApplePayInfo = runGetApplePayInfo;
-window.applePayLoadInfo = applePayLoadInfo;
 window.cardPayOpenIframe = cardPayOpenIframe;
 window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;
@@ -150,7 +142,6 @@ window.runBrowserCharge = runBrowserCharge;
 window.browserGooglePayLoadInfo = browserGooglePayLoadInfo;
 window.browserApplePayLoadInfo = browserApplePayLoadInfo;
 window.browserQRPaymentInfo = browserQRPaymentInfo;
-window.browserApplePayAppInfo = browserApplePayAppInfo;
 window.browserGetStatus = browserGetStatus;
 window.runGetPaymentStatus = runGetPaymentStatus;
 window.runGetChargeState = runGetChargeState;
