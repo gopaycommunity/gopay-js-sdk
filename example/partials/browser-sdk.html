@@ -88,6 +88,15 @@
         <strong>PaymentRequest</strong>: shown on Chrome/Edge when the browser supports Apple Pay — triggers a cross-device QR code flow authenticated via iPhone or Apple Watch.</p>
 </section>
 
+<!-- Apple Pay App Info -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">getApplePayAppInfo()</h2>
+    <p class="desc">GET /payments/{id}/apple-pay/app-info — fetch the merchant config for native Apple Pay in iOS/macOS apps. This endpoint returns the payload your native app needs to call <code>PKPaymentRequest</code> directly, without going through the browser <code>ApplePaySession</code> API.</p>
+    <button type="button" onclick="browserApplePayAppInfo()">Run</button>
+    <pre id="bapplepay-app-output">—</pre>
+    <p class="note">Requires a payment created with Apple Pay as an allowed instrument and a prior <code>attachPayment()</code> call.</p>
+</section>
+
 <!-- Browser QR Payment Info -->
 <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
     <h2 class="text-base font-semibold text-[#2D3643] mb-4">QR Payment Info (Browser SDK)</h2>
@@ -114,4 +123,12 @@
     </div>
     <button type="button" onclick="runBrowserCharge()">Charge</button>
     <pre id="bcharge-output">—</pre>
+</section>
+
+<!-- Browser getStatus -->
+<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">getStatus()</h2>
+    <p class="desc">GET /payments/{id} — retrieve the full payment details for the currently attached payment. Useful to inspect state, amounts, and instrument details at any point after <code>attachPayment()</code>.</p>
+    <button type="button" onclick="browserGetStatus()">Run</button>
+    <pre id="bstatus-output">—</pre>
 </section>

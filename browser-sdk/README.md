@@ -141,6 +141,7 @@ const chargeResult = await controller.result; // PaymentChargeResponseData
 | `getChargeState()` | `GET /payments/{id}/charge` — current charge state |
 | `getGooglePayInfo()` | `GET /payments/{id}/google-pay/info` |
 | `getApplePayInfo()` | `GET /payments/{id}/apple-pay/info` |
+| `getApplePayAppInfo()` | `GET /payments/{id}/apple-pay/app-info` — native app config for `PKPaymentRequest` |
 | `startApplePaySession(session, origin?)` | Wires merchant validation and begins an `ApplePaySession` |
 | `getQRPaymentInfo(format?)` | `GET /payments/{id}/qr-payment/info` |
 
@@ -185,7 +186,7 @@ attachPayment(args: {
 }): Promise<void>
 ```
 
-Exchanges `paymentSecret` for a payment-scoped JWT (`authorization_code` grant, scopes `payment:read payment:charge`). Must be called before `mountCardForm({ flow: 'direct-charge' })` or any payment-action methods.
+Exchanges `paymentSecret` for a payment-scoped JWT (`payment_credentials` grant, scopes `payment:read payment:charge`). Must be called before `mountCardForm({ flow: 'direct-charge' })` or any payment-action methods.
 
 Throws `GoPaySDKError(PAYMENT_NOT_ATTACHED)` if these methods are called first.
 

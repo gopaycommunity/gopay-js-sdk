@@ -2,6 +2,36 @@ import { requireAttachedSDK } from './browser-sdk.js';
 import { formatError } from './helpers.js';
 import { renderQRImage } from './qr-render.js';
 
+export async function browserApplePayAppInfo() {
+    const pre = document.getElementById('bapplepay-app-output');
+    const browserSdk = requireAttachedSDK(pre);
+    if (!browserSdk) {
+        return;
+    }
+    pre.textContent = '── fetching Apple Pay app info ──';
+    try {
+        const result = await browserSdk.getApplePayAppInfo();
+        pre.textContent = `── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
+    } catch (err) {
+        pre.textContent = `── onError ──\n${formatError(err)}`;
+    }
+}
+
+export async function browserGetStatus() {
+    const pre = document.getElementById('bstatus-output');
+    const browserSdk = requireAttachedSDK(pre);
+    if (!browserSdk) {
+        return;
+    }
+    pre.textContent = '── fetching payment status ──';
+    try {
+        const result = await browserSdk.getStatus();
+        pre.textContent = `── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
+    } catch (err) {
+        pre.textContent = `── onError ──\n${formatError(err)}`;
+    }
+}
+
 export async function browserQRPaymentInfo() {
     const pre = document.getElementById('bqr-output');
     const format = document.getElementById('bqr-format').value || undefined;
