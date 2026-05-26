@@ -100,7 +100,7 @@ describe('CardsModule', () => {
 
         it('throws when cardId is empty', async () => {
             await expect(cards.getCardDetails('')).rejects.toThrow(
-                'cardId is required',
+                'Missing or invalid cardId',
             );
         });
     });
@@ -134,7 +134,7 @@ describe('CardsModule', () => {
 
         it('throws when cardId is empty', async () => {
             await expect(cards.deleteCard('')).rejects.toThrow(
-                'cardId is required',
+                'Missing or invalid cardId',
             );
         });
     });
@@ -198,7 +198,7 @@ describe('CardsModule', () => {
 
         it('throws when payload is empty', async () => {
             await expect(cards.tokenizeEncryptedCard('')).rejects.toThrow(
-                'payload is required',
+                'Missing or invalid payload',
             );
         });
     });
