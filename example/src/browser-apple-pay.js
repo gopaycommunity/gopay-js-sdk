@@ -35,6 +35,7 @@ export async function browserApplePayLoadInfo() {
     await renderApplePayButtons({
         container,
         info: _apInfo,
+        mockButtonId: 'bapplepay-mock-btn',
         onBeginSession: _browserApplePayBeginSession,
         onPaymentRequestFlow: _browserApplePayPaymentRequestFlow,
     });
