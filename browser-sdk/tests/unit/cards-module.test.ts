@@ -55,6 +55,7 @@ describe('createCardsApi() — browser SDK', () => {
     afterEach(() => {
         container.remove();
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     // -------------------------------------------------------------------------

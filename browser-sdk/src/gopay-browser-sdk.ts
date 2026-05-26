@@ -48,7 +48,7 @@ function notAttached(): never {
  * <script src="https://unpkg.com/gopay-js-sdk-browser@1/dist/gopay-browser-sdk.min.js"></script>
  * <script>
  *   const sdk = GoPayBrowserSDK.createGoPayBrowserSDK({ ... });
- *   await sdk.attachPayment({ ... });
+ *   (async () => { await sdk.attachPayment({ ... }); })();
  * </script>
  * ```
  */

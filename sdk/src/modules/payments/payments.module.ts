@@ -27,7 +27,7 @@ type ValidateMerchantResponse =
 type QRPaymentDetails = components['schemas']['QR-Payment-Details'];
 
 function requirePaymentId(paymentId: string): void {
-    if (!paymentId) {
+    if (!paymentId.trim()) {
         throw new GoPaySDKError('[GoPaySDK] paymentId is required', {
             errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
         });
@@ -179,7 +179,9 @@ export function createPaymentsApi(client: HttpClient) {
                         ? ((event as Record<string, unknown>)
                               .validationURL as string)
                         : undefined;
-                const headers: Record<string, string> = { Origin: origin };
+                const headers: Record<string, string> = origin
+                    ? { Origin: origin }
+                    : {};
                 const body = validationURL
                     ? { validationUrl: validationURL }
                     : undefined;

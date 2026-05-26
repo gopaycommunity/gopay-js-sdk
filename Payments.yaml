@@ -1299,7 +1299,40 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Refund-Details'
+            type: object
+            properties:
+              epochTimestamp:
+                type: integer
+                examples:
+                  - 15445664606792
+              expiresAt:
+                type: integer
+                examples:
+                  - 154167344466792
+              merchantSessionIdentifier:
+                type: string
+                examples:
+                  - SSHC45CB...
+              nonce:
+                type: string
+                examples:
+                  - 8f47a9c1
+              merchantIdentifier:
+                type: string
+                examples:
+                  - 8398119642
+              domainName:
+                type: string
+                examples:
+                  - www.example.com
+              displayName:
+                type: string
+                examples:
+                  - GoPay Czech Branch
+              signature:
+                type: string
+                examples:
+                  - '3080'
           examples: {}
     Bad-Request-400-Response:
       description: Bad Request
@@ -3251,6 +3284,7 @@ components:
       properties:
         amount:
           type: integer
+          minimum: 0
           x-stoplight:
             id: 6auiwvwfobcnw
           description: 'Amount to be refunded in cents. For a full amount, set it equal to the payment amount'
@@ -3276,6 +3310,7 @@ components:
             id: azic648t86vun
         amount:
           type: integer
+          minimum: 0
           x-stoplight:
             id: lcd5dxgk4i5le
         currency:

@@ -28,8 +28,9 @@ export async function exchangePaymentCredentials(
         grant_type: 'payment_credentials',
         scope,
     };
+    const credentials = `${paymentId}:${paymentSecret}`;
     const headers = {
-        Authorization: `Basic ${globalThis.btoa(`${paymentId}:${paymentSecret}`)}`,
+        Authorization: `Basic ${globalThis.btoa(credentials)}`,
     };
 
     const tokenPair = await client.postForm<TokenPair>('/oauth2/token', form, {

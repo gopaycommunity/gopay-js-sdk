@@ -9,7 +9,7 @@ type RefundCreateRequest = components['schemas']['Refund-Create-Request'];
 type RefundDetails = components['schemas']['Refund-Details'];
 
 function requirePaymentId(paymentId: string): void {
-    if (!paymentId) {
+    if (!paymentId.trim()) {
         throw new GoPaySDKError('[GoPaySDK] paymentId is required', {
             errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
         });
@@ -17,7 +17,7 @@ function requirePaymentId(paymentId: string): void {
 }
 
 function requireRefundId(refundId: string): void {
-    if (!refundId) {
+    if (!refundId.trim()) {
         throw new GoPaySDKError('[GoPaySDK] refundId is required', {
             errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
         });

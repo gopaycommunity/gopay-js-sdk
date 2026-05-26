@@ -34,6 +34,7 @@ describe('createGoPayBrowserSDK()', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     // -------------------------------------------------------------------------

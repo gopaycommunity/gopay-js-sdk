@@ -39,6 +39,7 @@ describe('RefundsModule', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     // -------------------------------------------------------------------------

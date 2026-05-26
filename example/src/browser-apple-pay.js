@@ -59,10 +59,10 @@ async function _browserApplePayPaymentRequestFlow() {
         return;
     }
 
-    const instrument = extractApplePayInstrument(
-        paymentResponse.details.token.paymentData,
-    );
     try {
+        const instrument = extractApplePayInstrument(
+            paymentResponse.details.token.paymentData,
+        );
         const chargeResult = await _apBrowserSdk.chargePayment({
             payment_instrument: instrument,
         });
@@ -104,10 +104,10 @@ function _browserApplePayBeginSession(SessionClass = window.ApplePaySession) {
 
     session.onpaymentauthorized = async (event) => {
         pre.textContent += '\n\n── onpaymentauthorized ──';
-        const instrument = extractApplePayInstrument(
-            event.payment.token.paymentData,
-        );
         try {
+            const instrument = extractApplePayInstrument(
+                event.payment.token.paymentData,
+            );
             const chargeResult = await _apBrowserSdk.chargePayment({
                 payment_instrument: instrument,
             });

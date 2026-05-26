@@ -90,6 +90,7 @@ const controller = await sdk.mountCardForm(container, {
 const { encryptedPayload } = await controller.result;
 
 // 4. Forward to your server — include browserData for charging on the server.
+const paymentId = 'PAY-123'; // from your server-side payment creation step
 const browserData = collectBrowserData();
 const response = await fetch('/api/charge', {
     method: 'POST',
@@ -123,6 +124,7 @@ await sdk.attachPayment({
 });
 
 // 3. Mount and charge.
+const container = document.getElementById('card-form-container');
 const redirectContainer = document.getElementById('redirect-container');
 const controller = await sdk.mountCardForm(container, {
     flow: 'direct-charge',
@@ -266,7 +268,9 @@ For shared error types (`GoPaySDKError`, `GoPayHTTPError`, network codes) see th
         publishableKey: 'pk_live_…',
         clientId: 'your-client-id',
     });
-    await sdk.attachPayment({ paymentId, paymentSecret });
+    (async () => {
+        await sdk.attachPayment({ paymentId, paymentSecret });
+    })();
 </script>
 ```
 

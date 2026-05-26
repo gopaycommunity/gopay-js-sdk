@@ -5,7 +5,13 @@ import { readFileSync, writeFileSync } from 'node:fs';
 // Must be exported as named function (not an inline object) so semantic-release-monorepo's
 // semantic-release-plugin-decorators can resolve a string plugin name via the file path.
 export function prepare(_pluginConfig, context) {
+    const version = context?.nextRelease?.version;
+    if (!version) {
+        throw new Error(
+            'version-bumper: context.nextRelease.version is missing',
+        );
+    }
     const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-    pkg.version = context.nextRelease.version;
+    pkg.version = version;
     writeFileSync('package.json', `${JSON.stringify(pkg, null, 4)}\n`);
 }

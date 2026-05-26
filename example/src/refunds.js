@@ -14,7 +14,13 @@ function prefillRefundId(result) {
 
 export function runRefundPayment() {
     const paymentId = document.getElementById('refund-payment-id').value.trim();
-    const amount = parseInt(document.getElementById('refund-amount').value, 10);
+    const rawAmount = document.getElementById('refund-amount').value.trim();
+    if (!rawAmount) {
+        document.getElementById('refund-create-output').textContent =
+            'Amount is required.';
+        return;
+    }
+    const amount = parseInt(rawAmount, 10);
     run(
         'refund-create-output',
         () => sdk.refundPayment(paymentId, { amount }),

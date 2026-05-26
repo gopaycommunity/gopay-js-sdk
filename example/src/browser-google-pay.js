@@ -51,10 +51,9 @@ async function _browserGooglePayCharge() {
         return;
     }
 
-    const instrument = extractGooglePayInstrument(paymentData);
-
     pre.textContent += '\n── charging ──';
     try {
+        const instrument = extractGooglePayInstrument(paymentData);
         const chargeResult = await _gpBrowserSdk.chargePayment({
             payment_instrument: instrument,
         });
