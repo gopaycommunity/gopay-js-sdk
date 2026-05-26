@@ -180,14 +180,13 @@ export function createPaymentsApi(client: HttpClient) {
                               .validationURL as string)
                         : undefined;
                 const headers: Record<string, string> = { Origin: origin };
-                // TODO: move Apple-Validation-Url from header to request body once the revised spec lands
-                if (validationURL) {
-                    headers['Apple-Validation-Url'] = validationURL;
-                }
+                const body = validationURL
+                    ? { validationUrl: validationURL }
+                    : undefined;
                 client
                     .post<ValidateMerchantResponse>(
                         `/payments/${paymentId}/apple-pay/validate`,
-                        undefined,
+                        body,
                         { headers },
                     )
                     .then((merchantSession) =>

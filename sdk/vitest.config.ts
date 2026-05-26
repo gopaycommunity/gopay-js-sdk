@@ -2,6 +2,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defaultExclude, defineConfig } from 'vitest/config';
 
+const version = (
+    JSON.parse(
+        readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'),
+    ) as { version: string }
+).version;
+
 const REQUIRED_E2E_ENV_KEYS = [
     'GP_GW_JS_SDK_BASE_URL',
     'GP_GW_JS_SDK_CLIENT_ID',
@@ -51,6 +57,9 @@ function loadDotEnv(path: string): Record<string, string> {
 }
 
 export default defineConfig({
+    define: {
+        __GOPAY_SDK_VERSION__: JSON.stringify(version),
+    },
     resolve: {
         alias: [
             {

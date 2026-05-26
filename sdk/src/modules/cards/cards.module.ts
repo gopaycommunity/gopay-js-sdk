@@ -1,8 +1,7 @@
 import { GoPaySDKError, type HttpClient } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
-type EncryptedCardRequest =
-    components['schemas']['Encrypted-Card-Request-Body'];
+type EncryptedCardRequest = components['schemas']['Token-Create-Request'];
 type PermanentCardToken = components['schemas']['Permanent-Card-Token-Details'];
 
 export function createCardsApi(client: HttpClient) {

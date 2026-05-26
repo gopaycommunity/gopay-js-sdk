@@ -8,8 +8,7 @@ import type { components } from '../../types/generated.js';
 type RecurrenceCreateRequest =
     components['schemas']['Recurrence-Create-Request'];
 type RecurrenceDetails = components['schemas']['Recurrence-Details'];
-type RecurrenceNextBody =
-    components['requestBodies']['Recurrence-Next-Request']['content']['application/json'];
+type RecurrenceNextBody = components['schemas']['Payment-Instance-Override'];
 type PaymentDetails = components['schemas']['Payment-Details'];
 
 function requireRecId(recId: string): void {

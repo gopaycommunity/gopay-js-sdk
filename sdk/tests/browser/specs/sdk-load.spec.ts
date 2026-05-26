@@ -19,8 +19,6 @@ test('SDK exposes expected modules and methods', async ({ page }) => {
     };
 
     expect(info.methods).toContain('authenticate');
-    expect(info.methods).toContain('issueClientToken');
-    expect(info.methods).toContain('setClientToken');
     expect(info.methods).toContain('createPayment');
     expect(info.methods).toContain('chargePayment');
     expect(info.methods).toContain('getGooglePayInfo');

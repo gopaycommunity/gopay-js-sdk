@@ -2,13 +2,10 @@ import './styles/main.css';
 import './card-form-logger.js';
 import { SDK_VERSION as SERVER_SDK_VERSION } from 'gopay-js-sdk';
 import { SDK_VERSION as BROWSER_SDK_VERSION } from 'gopay-js-sdk-browser';
-import { applePayLoadInfo } from './apple-pay.js';
 import {
     runAuthenticate,
     runGetBrowserKeys,
-    runIssueClientToken,
     runLogout,
-    runSetClientTokenFlow,
     updateAuthBadge,
 } from './auth.js';
 import { browserApplePayLoadInfo } from './browser-apple-pay.js';
@@ -46,6 +43,7 @@ import {
     runStartRecurrence,
     runStopRecurrence,
 } from './recurrences.js';
+import { runGetRefund, runListRefunds, runRefundPayment } from './refunds.js';
 import { runDeleteCard, runGetCardDetails } from './saved-cards.js';
 import { clientId, clientSecret, goid, publishableKey, sdk } from './sdk.js';
 
@@ -130,8 +128,6 @@ window.runInitBrowserSDK = () => {
 
 window.runAuthenticate = runAuthenticate;
 window.runLogout = runLogout;
-window.runIssueClientToken = runIssueClientToken;
-window.runSetClientTokenFlow = runSetClientTokenFlow;
 window.runGetBrowserKeys = runGetBrowserKeys;
 window.runCreatePayment = runCreatePayment;
 window.runCharge = runCharge;
@@ -139,7 +135,6 @@ window.clearCharge = clearCharge;
 window.runQRPaymentInfo = runQRPaymentInfo;
 window.runGetGooglePayInfo = runGetGooglePayInfo;
 window.runGetApplePayInfo = runGetApplePayInfo;
-window.applePayLoadInfo = applePayLoadInfo;
 window.cardPayOpenIframe = cardPayOpenIframe;
 window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;
@@ -158,6 +153,9 @@ window.runRecurrenceStatus = runRecurrenceStatus;
 window.runStartRecurrence = runStartRecurrence;
 window.runRecurrenceNext = runRecurrenceNext;
 window.runStopRecurrence = runStopRecurrence;
+window.runRefundPayment = runRefundPayment;
+window.runListRefunds = runListRefunds;
+window.runGetRefund = runGetRefund;
 window.runCreatePaymentLink = runCreatePaymentLink;
 window.runLinkStatus = runLinkStatus;
 window.runDisableLink = runDisableLink;

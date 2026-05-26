@@ -120,6 +120,8 @@ export function prefillPaymentId(result) {
         'googlepay-payment-id',
         'applepay-payment-id',
         'qr-payment-id',
+        'refund-payment-id',
+        'refund-list-payment-id',
     ]) {
         const el = document.getElementById(fieldId);
         if (el) {

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
 import {
     createAuthApi,
-    exchangeAuthorizationCode,
+    exchangePaymentCredentials,
 } from '../../src/modules/auth/auth.module.js';
 
 const makeResponse = (data: unknown, status = 200) =>
@@ -20,7 +20,7 @@ const validTokenPair = {
     token_type: 'bearer',
 };
 
-describe('exchangeAuthorizationCode()', () => {
+describe('exchangePaymentCredentials()', () => {
     let fetchMock: ReturnType<typeof vi.fn>;
     let client: ReturnType<typeof createHttpClient>;
 
@@ -34,19 +34,24 @@ describe('exchangeAuthorizationCode()', () => {
         vi.restoreAllMocks();
     });
 
-    it('POSTs to /oauth2/token with authorization_code grant type', async () => {
+    it('POSTs to /oauth2/token with payment_credentials grant type and Basic auth header', async () => {
+        let capturedReq!: Request;
         let body = '';
         fetchMock.mockImplementation(async (req: Request) => {
+            capturedReq = req;
             body = await req.text();
             return makeResponse(validTokenPair);
         });
 
-        await exchangeAuthorizationCode(client, 'secret-abc', 'cid-123');
+        await exchangePaymentCredentials(client, 'pay-001', 'secret-abc');
 
         const params = new URLSearchParams(body);
-        expect(params.get('grant_type')).toBe('authorization_code');
-        expect(params.get('authorization_code')).toBe('secret-abc');
-        expect(params.get('client_id')).toBe('cid-123');
+        expect(params.get('grant_type')).toBe('payment_credentials');
+        expect(params.get('authorization_code')).toBeNull();
+        expect(params.get('client_id')).toBeNull();
+        expect(capturedReq.headers.get('Authorization')).toBe(
+            `Basic ${btoa('pay-001:secret-abc')}`,
+        );
     });
 
     it('uses the default payment scope (includes payment:charge and payment:read)', async () => {
@@ -56,7 +61,7 @@ describe('exchangeAuthorizationCode()', () => {
             return makeResponse(validTokenPair);
         });
 
-        await exchangeAuthorizationCode(client, 'secret', 'cid');
+        await exchangePaymentCredentials(client, 'pay-001', 'secret');
 
         const scope = new URLSearchParams(body).get('scope') ?? '';
         expect(scope).toContain('payment:charge');
@@ -70,10 +75,10 @@ describe('exchangeAuthorizationCode()', () => {
             return makeResponse(validTokenPair);
         });
 
-        await exchangeAuthorizationCode(
+        await exchangePaymentCredentials(
             client,
+            'pay-001',
             'secret',
-            'cid',
             'payment:read',
         );
 
@@ -81,12 +86,12 @@ describe('exchangeAuthorizationCode()', () => {
     });
 
     it('stores the access token after a successful exchange', async () => {
-        await exchangeAuthorizationCode(client, 'secret', 'cid');
+        await exchangePaymentCredentials(client, 'pay-001', 'secret');
         expect(client.tokenStore.get()?.access_token).toBe('at-browser-test');
     });
 
     it('stores expires_in from the response', async () => {
-        await exchangeAuthorizationCode(client, 'secret', 'cid');
+        await exchangePaymentCredentials(client, 'pay-001', 'secret');
         expect(client.tokenStore.get()?.expires_in).toBe(1800);
     });
 
@@ -99,7 +104,7 @@ describe('exchangeAuthorizationCode()', () => {
             });
         });
 
-        await exchangeAuthorizationCode(client, 'secret', 'cid');
+        await exchangePaymentCredentials(client, 'pay-001', 'secret');
         expect(client.tokenStore.get()?.refresh_token).toBe('');
     });
 
@@ -109,10 +114,10 @@ describe('exchangeAuthorizationCode()', () => {
             return makeResponse({ ...validTokenPair, access_token: undefined });
         });
 
-        const err = await exchangeAuthorizationCode(
+        const err = await exchangePaymentCredentials(
             client,
+            'pay-001',
             'secret',
-            'cid',
         ).catch((e: unknown) => e);
         expect(err).toBeInstanceOf(GoPaySDKError);
         expect((err as GoPaySDKError).errorCode).toBe(
@@ -126,10 +131,10 @@ describe('exchangeAuthorizationCode()', () => {
             return makeResponse({ ...validTokenPair, expires_in: undefined });
         });
 
-        const err = await exchangeAuthorizationCode(
+        const err = await exchangePaymentCredentials(
             client,
+            'pay-001',
             'secret',
-            'cid',
         ).catch((e: unknown) => e);
         expect(err).toBeInstanceOf(GoPaySDKError);
         expect((err as GoPaySDKError).errorCode).toBe(
@@ -143,7 +148,7 @@ describe('exchangeAuthorizationCode()', () => {
             return makeResponse({ ...validTokenPair, access_token: undefined });
         });
 
-        await exchangeAuthorizationCode(client, 'secret', 'cid').catch(
+        await exchangePaymentCredentials(client, 'pay-001', 'secret').catch(
             () => {},
         );
         expect(client.tokenStore.get()).toBeNull();
@@ -157,7 +162,7 @@ describe('exchangeAuthorizationCode()', () => {
                 refresh_expires_in: undefined,
             });
         });
-        await exchangeAuthorizationCode(client, 'secret', 'cid');
+        await exchangePaymentCredentials(client, 'pay-001', 'secret');
         expect(client.tokenStore.get()?.refresh_expires_in).toBe(0);
     });
 });

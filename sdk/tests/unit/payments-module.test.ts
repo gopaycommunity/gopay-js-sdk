@@ -996,11 +996,12 @@ describe('PaymentsModule', () => {
             );
         });
 
-        it('onvalidatemerchant sends Apple-Validation-Url header', async () => {
+        it('onvalidatemerchant sends validationUrl in request body', async () => {
             let capturedReq!: Request;
+            let capturedBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedReq = req;
-                await req.text();
+                capturedBody = await req.text();
                 return makeResponse({});
             });
 
@@ -1015,9 +1016,10 @@ describe('PaymentsModule', () => {
 
             await vi.waitFor(() => expect(capturedReq).toBeDefined());
 
-            expect(capturedReq.headers.get('Apple-Validation-Url')).toBe(
-                'https://apple.com/validate',
-            );
+            expect(JSON.parse(capturedBody)).toEqual({
+                validationUrl: 'https://apple.com/validate',
+            });
+            expect(capturedReq.headers.get('Apple-Validation-Url')).toBeNull();
         });
 
         it('calls completeMerchantValidation with the server response', async () => {

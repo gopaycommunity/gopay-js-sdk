@@ -117,9 +117,11 @@ describe('createGoPayBrowserSDK()', () => {
     // -------------------------------------------------------------------------
 
     describe('attachPayment()', () => {
-        it('exchanges the payment secret via authorization_code grant', async () => {
+        it('exchanges the payment secret via payment_credentials grant with Basic auth', async () => {
+            let capturedReq!: Request;
             let capturedBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
                 capturedBody = await req.text();
                 return makeResponse(validTokenPair);
             });
@@ -130,24 +132,11 @@ describe('createGoPayBrowserSDK()', () => {
             });
 
             const params = new URLSearchParams(capturedBody);
-            expect(params.get('grant_type')).toBe('authorization_code');
-            expect(params.get('authorization_code')).toBe('payment_secret_xyz');
-        });
-
-        it('includes clientId in the token request', async () => {
-            let capturedBody = '';
-            fetchMock.mockImplementation(async (req: Request) => {
-                capturedBody = await req.text();
-                return makeResponse(validTokenPair);
-            });
-
-            await sdk.attachPayment({
-                paymentId: 'pay_001',
-                paymentSecret: 'secret',
-            });
-
-            expect(new URLSearchParams(capturedBody).get('client_id')).toBe(
-                'cid_test',
+            expect(params.get('grant_type')).toBe('payment_credentials');
+            expect(params.get('authorization_code')).toBeNull();
+            expect(params.get('client_id')).toBeNull();
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                `Basic ${btoa('pay_001:payment_secret_xyz')}`,
             );
         });
 

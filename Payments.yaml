@@ -22,6 +22,7 @@ paths:
       summary: Authenticate
       operationId: post-oauth2-token
       requestBody:
+        required: true
         $ref: '#/components/requestBodies/Access-Token-Request'
       responses:
         '200':
@@ -39,8 +40,7 @@ paths:
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       security:
-        - {}
-        - client_secret: []
+        - basic: []
       servers:
         - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
           description: Sandbox
@@ -126,7 +126,7 @@ paths:
       security:
         - merchant_credentials:
             - 'payment:read'
-        - payment_secret:
+        - payment_credentials:
             - 'payment:read'
     parameters:
       - schema:
@@ -175,7 +175,7 @@ paths:
       security:
         - merchant_credentials:
             - 'payment:write'
-        - payment_secret:
+        - payment_credentials:
             - 'payment:charge'
     get:
       tags:
@@ -207,7 +207,7 @@ paths:
       security:
         - merchant_credentials:
             - 'payment:read'
-        - payment_secret:
+        - payment_credentials:
             - 'payment:read'
     parameters:
       - schema:
@@ -261,7 +261,7 @@ paths:
       security:
         - merchant_credentials:
             - 'payment:read'
-        - payment_secret:
+        - payment_credentials:
             - 'payment:read'
     parameters:
       - schema:
@@ -297,9 +297,9 @@ paths:
       x-stoplight:
         id: 43hpmsojye84d
       security:
-        - merchant_credentials:
+        - payment_credentials:
             - 'payment:read'
-        - payment_secret:
+        - merchant_credentials:
             - 'payment:read'
     parameters:
       - schema:
@@ -335,9 +335,9 @@ paths:
       x-stoplight:
         id: yqxnklshztoz9
       security:
-        - merchant_credentials:
+        - payment_credentials:
             - 'payment:read'
-        - payment_secret:
+        - merchant_credentials:
             - 'payment:read'
     parameters:
       - schema:
@@ -373,9 +373,9 @@ paths:
       x-stoplight:
         id: fnrrrug3qbcc5
       security:
-        - merchant_credentials:
+        - payment_credentials:
             - 'payment:read'
-        - payment_secret:
+        - merchant_credentials:
             - 'payment:read'
     parameters:
       - schema:
@@ -420,9 +420,9 @@ paths:
       x-stoplight:
         id: dg4vuah8nqutg
       security:
-        - merchant_credentials:
+        - payment_credentials:
             - 'payment:read'
-        - payment_secret:
+        - merchant_credentials:
             - 'payment:read'
       requestBody:
         required: true
@@ -437,6 +437,118 @@ paths:
         in: path
         required: true
         description: Payment ID
+  '/payments/{payment_id}/refunds':
+    post:
+      summary: Refund a payment
+      operationId: post-payments-payment_id-refunds
+      parameters: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund-Details'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      servers:
+        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
+          description: Sandbox
+        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
+          description: Production
+      security:
+        - merchant_credentials:
+            - 'payment:write'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Refund-Create-Request'
+      x-stoplight:
+        id: wxt4rpuely9v0
+      tags:
+        - Refunds
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+        description: Payment ID
+    get:
+      summary: List payment refunds
+      tags:
+        - Refunds
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Refund-Details'
+                  x-stoplight:
+                    id: 519pfqzfd0eqw
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: get-payments-payment_id-refunds
+      x-stoplight:
+        id: rzl10ommi9twa
+      security:
+        - merchant_credentials:
+            - 'payment:read'
+        - payment_credentials:
+            - 'payment:read'
+  '/refunds/{refund_id}':
+    parameters:
+      - schema:
+          type: string
+        name: refund_id
+        in: path
+        required: true
+    get:
+      summary: Refund details
+      tags:
+        - Refunds
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund-Details'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      operationId: get-refunds-refund_id
+      x-stoplight:
+        id: j7g8ylelmjkh4
+      security:
+        - merchant_credentials:
+            - 'payment:read'
   /cards/tokens:
     post:
       tags:
@@ -471,7 +583,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Encrypted-Card-Request-Body'
+              $ref: '#/components/schemas/Token-Create-Request'
       security:
         - merchant_credentials:
             - 'card:write'
@@ -582,9 +694,9 @@ paths:
       x-stoplight:
         id: 0odslmdm37fop
       security:
+        - shareable_key: []
         - merchant_credentials:
             - 'shared:read'
-        - shareable_key: []
   /cards/card-form-url:
     get:
       tags:
@@ -613,9 +725,9 @@ paths:
       x-stoplight:
         id: 3wvu6533dxyd5
       security:
+        - shareable_key: []
         - merchant_credentials:
             - 'shared:read'
-        - shareable_key: []
   '/eshops/{goid}/recurrences':
     parameters:
       - schema:
@@ -749,8 +861,11 @@ paths:
       x-stoplight:
         id: 1ue2i69szvqhi
       requestBody:
-        required: true
-        $ref: '#/components/requestBodies/Recurrence-Next-Request'
+        description: Shared Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment-Instance-Override'
       security:
         - merchant_credentials:
             - 'payment:write'
@@ -787,8 +902,11 @@ paths:
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: post-recurrences-rec_id-next
       requestBody:
-        required: true
-        $ref: '#/components/requestBodies/Recurrence-Next-Request'
+        description: Shared Request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment-Instance-Override'
       x-stoplight:
         id: i3qwkxoh1wg1u
       security:
@@ -899,18 +1017,25 @@ components:
           schema:
             oneOf:
               - $ref: '#/components/schemas/Client-Credentials-Request'
-              - $ref: '#/components/schemas/Authorization-Code-Request'
+                x-stoplight:
+                  id: 97kf4o6yx8tqo
+              - $ref: '#/components/schemas/Payment-Credentials-Request'
+                x-stoplight:
+                  id: 99p3icy3av6r7
           examples:
             Client Credentials:
               value:
                 grant_type: client_credentials
                 scope: 'payment:write payment:read'
-    Recurrence-Next-Request:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Payment-Update-Request'
   securitySchemes:
+    basic:
+      type: http
+      description: |-
+        Only used to issue a JWT token for further authorization.
+        - Merchant's server uses `client_id:client_secret`
+        - Merchant's client uses `payment_id:payment_secret`
+        See [RFC7617](https://www.rfc-editor.org/rfc/rfc7617) for specification
+      scheme: basic
     merchant_credentials:
       type: oauth2
       flows:
@@ -922,21 +1047,20 @@ components:
             'payment:read': Used to read data about payments
             'shared:read': Used to get shared information like public keys and URLs.
           tokenUrl: /oauth2/token
-    client_secret:
-      type: http
       description: |-
-        Use `client_id:client_secret` encoded in base64 in the Authorization header.
-        Only usable with the `/oauth2/token` endpoint using the `client_credentials` grant type.
-        See [RFC7617](https://www.rfc-editor.org/rfc/rfc7617) for specification
-      scheme: basic
-    payment_secret:
+        Authorizes a server using `client_id:client_secret`.
+        The secret and the JWT must never leave the merchant server.
+    payment_credentials:
       type: oauth2
       flows:
-        authorizationCode:
+        clientCredentials:
           tokenUrl: /oauth2/token
           scopes:
-            'payment:read': Used to read data about payments
-            'payment:charge': Used solely to charge an existing payment
+            'payment:read': Read the information about the payment
+            'payment:charge': Only used to charge the payment
+      description: |-
+        Authorizes a client for payment-specific operations using `payment_id:payment_secret`.
+        These credentials and the JWT are to be used on merchant's web or mobile app.
     shareable_key:
       type: http
       scheme: basic
@@ -1175,40 +1299,7 @@ components:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              epochTimestamp:
-                type: integer
-                examples:
-                  - 15445664606792
-              expiresAt:
-                type: integer
-                examples:
-                  - 154167344466792
-              merchantSessionIdentifier:
-                type: string
-                examples:
-                  - SSHC45CB...
-              nonce:
-                type: string
-                examples:
-                  - 8f47a9c1
-              merchantIdentifier:
-                type: string
-                examples:
-                  - 8398119642
-              domainName:
-                type: string
-                examples:
-                  - www.example.com
-              displayName:
-                type: string
-                examples:
-                  - GoPay Czech Branch
-              signature:
-                type: string
-                examples:
-                  - '3080'
+            $ref: '#/components/schemas/Refund-Details'
           examples: {}
     Bad-Request-400-Response:
       description: Bad Request
@@ -1438,14 +1529,43 @@ components:
             - client_credentials
         scope:
           type: string
-          description: 'List of required token scopes, separated with a space. See Token Scope schema for possible values.'
+          description: |-
+            List of required token scopes, separated with a space.
+            - `payment:read` reads information about payments, recurrences and links
+            - `payment:write` allow creation and modification of payments, recurrences and links
+            - `card:read` and `card:write` allow reading information about and deleting or modifying cards respectively
+            - `shared:read` allows reading public global information
           examples:
-            - 'payment:create payment:read'
-          example: 'payment:write payment:read'
+            - 'payment:write payment:read'
+    Payment-Credentials-Request:
+      type: object
+      x-stoplight:
+        id: jcwslq77j6vv9
+      title: Payment Credentials Request
+      description: Request the token pair using the `payment_credentials` grant type
+      required:
+        - grant_type
+        - scope
+      properties:
+        grant_type:
+          type: string
+          const: payment_credentials
+          description: Always `payment_credentials` for this flow
+          examples:
+            - payment_credentials
+        scope:
+          type: string
+          description: |-
+            List of required token scopes, separated with a space.
+            - `payment:read` reads information about the payment
+            - `payment:charge` allows only to charge the payment
+          examples:
+            - 'payment:write payment:read'
+          example: 'payment:charge payment:read'
     Access-Token:
       type: object
       title: Access Token
-      description: The access token and refresh token alongside useful meta information.
+      description: The access token and its meta information.
       x-stoplight:
         id: 7hygycrmoxxim
       properties:
@@ -1464,7 +1584,7 @@ components:
           description: |
             Space-separated list of token scopes.
           examples:
-            - 'payment:create payment:read'
+            - 'payment:write payment:read'
         expires_in:
           type: integer
           description: The expiration of the access JWT in seconds
@@ -1489,7 +1609,7 @@ components:
         id: ah55hvo15l0mo
     Payment-Create-Request:
       type: object
-      title: Payment-Create-Request
+      title: Payment Create Request
       description: Representation of a request for a new payment
       properties:
         amount:
@@ -1618,11 +1738,11 @@ components:
         callback:
           $ref: '#/components/schemas/Payment-Callback'
           description: Callback urls
-    Payment-Update-Request:
+    Payment-Instance-Override:
       type: object
       x-stoplight:
         id: xgda6dcdxfju7
-      title: Payment-Update-Request
+      title: Payment Instance Override
       description: Representation of a request for a new payment
       examples:
         - amount: 100
@@ -1692,7 +1812,7 @@ components:
         id: a0z9kecfvh53z
     Additional-Param:
       type: object
-      title: Additional-Param
+      title: Additional Parameter
       description: Additional payment parameters
       properties:
         name:
@@ -1713,6 +1833,59 @@ components:
           value: Custom value
       x-stoplight:
         id: fuh54ro7j3err
+    Payment-Details:
+      type: object
+      title: Payment Details
+      description: Representation of an existing payment
+      x-stoplight:
+        id: ul7e04nvq1ve2
+      required:
+        - id
+        - order_number
+        - state
+        - amount
+        - currency
+        - customer
+        - gw_url
+        - payment_secret
+      properties:
+        id:
+          type: string
+          description: Payment session ID
+          examples:
+            - '300000001'
+        order_number:
+          type: string
+          description: Order ID forwarded from the payment request
+          examples:
+            - '2025010199'
+        state:
+          $ref: '#/components/schemas/Payment-State'
+          description: Payment state
+        amount:
+          type: integer
+          description: |
+            Total amount in cents
+          examples:
+            - 100
+        currency:
+          $ref: '#/components/schemas/Currency'
+          description: |
+            Payment currency
+        customer:
+          $ref: '#/components/schemas/Customer'
+          description: Customer data
+        gw_url:
+          type: string
+          description: URL of the hosted payment gateway
+          format: uri
+        charge:
+          $ref: '#/components/schemas/Payment-Charge-Status-Response'
+        payment_secret:
+          type: string
+          x-stoplight:
+            id: v5h2t75je3qqu
+          description: 'Payment secret that can be shared to the client side. Used to generate payment-specific JWTs. **Do not embed in URLs, log or store!**'
     Customer:
       type: object
       description: Customer details associated with the payment. The email address is required as it is used for authentication and notification purposes.
@@ -1797,9 +1970,10 @@ components:
           customer_id: custom21321
       x-stoplight:
         id: k2uhlcx6o9x4j
+      title: Customer
     Payment-Callback:
       type: object
-      title: Payment-Callback
+      title: Payment Callback
       description: Object holding URLs for callback purposes related to a payment
       properties:
         notification_url:
@@ -1820,59 +1994,6 @@ components:
           return_url: 'https://example.com/return'
       x-stoplight:
         id: 02yug0ozg3dsm
-    Payment-Details:
-      type: object
-      title: Payment-Details
-      description: Representation of an existing payment
-      x-stoplight:
-        id: ul7e04nvq1ve2
-      required:
-        - id
-        - order_number
-        - state
-        - amount
-        - currency
-        - customer
-        - gw_url
-        - payment_secret
-      properties:
-        id:
-          type: string
-          description: Payment session ID
-          examples:
-            - '300000001'
-        order_number:
-          type: string
-          description: Order ID forwarded from the payment request
-          examples:
-            - '2025010199'
-        state:
-          $ref: '#/components/schemas/Payment-State'
-          description: Payment state
-        amount:
-          type: integer
-          description: |
-            Total amount in cents
-          examples:
-            - 100
-        currency:
-          $ref: '#/components/schemas/Currency'
-          description: |
-            Payment currency
-        customer:
-          $ref: '#/components/schemas/Customer'
-          description: Customer data
-        gw_url:
-          type: string
-          description: URL of the hosted payment gateway
-          format: uri
-        charge:
-          $ref: '#/components/schemas/Payment-Charge-Ref'
-        payment_secret:
-          type: string
-          x-stoplight:
-            id: v5h2t75je3qqu
-          description: 'Payment secret that can be shared to the client side. Used to generate payment-specific JWTs. **Do not embed in URLs, log or store!**'
     Payment-State:
       type: string
       enum:
@@ -1898,35 +2019,7 @@ components:
         - CREATED
       x-stoplight:
         id: a324zz0m5cu24
-    Payment-Charge-Ref:
-      type: object
-      title: Payment-Charge-Ref
-      description: A reference to a payment charge associated with the payment
-      properties:
-        id:
-          type: string
-          description: Charge ID
-          examples:
-            - '9123456789'
-        state:
-          $ref: '#/components/schemas/Charge-State'
-          description: Charge state
-        href:
-          type: string
-          description: Reference to the related charge endpoint
-          format: uri
-          examples:
-            - 'https://api.gopay.com/api/4.0/payments/9123456789/charge'
-      required:
-        - id
-        - state
-        - href
-      examples:
-        - id: '9123456789'
-          state: REQUESTED
-          href: 'https://api.gopay.com/api/4.0/payments/9123456789/charge'
-      x-stoplight:
-        id: xldxtj6e2ackz
+      title: Payment State
     Charge-State:
       type: string
       enum:
@@ -1948,7 +2041,7 @@ components:
       x-stoplight:
         id: jkmx5uadqs8w4
     Payment-Charge-Data:
-      title: Payment-Charge-Data
+      title: Payment Charge Data
       description: 'Discriminated union of the possible payment charges. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](./x3xyv4fy5blzy-payment-instrument) enum.'
       oneOf:
         - $ref: '#/components/schemas/Payment-Card-Charge-Data'
@@ -2057,7 +2150,7 @@ components:
           description: Always `CARD_TOKEN`
         card_token:
           type: string
-          description: 'Either a single use or permanent card token acquired using the [Create Card Token](z527w3pj6p22i-create-card-token) API call'
+          description: 'Permanent card token acquired using the [Create Card Token](z527w3pj6p22i-create-card-token) API call'
           examples:
             - J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
     Payment-Card-Challenge-Preference:
@@ -2212,7 +2305,7 @@ components:
         id: 9aflikahwtvjj
     Browser-Data:
       type: object
-      title: Browser-Data
+      title: Browser Data
       description: Customer browser data collected for 3-D Secure authentication purposes. This data is forwarded to the card issuer during the authentication flow.
       x-stoplight:
         id: 9o47pymlz0t7i
@@ -2424,7 +2517,7 @@ components:
       enum:
         - VISA
         - MASTERCARD
-      title: Card scheme
+      title: Card Scheme
       description: The card network scheme (VISA or MASTERCARD)
       examples:
         - VISA
@@ -2508,7 +2601,7 @@ components:
         id: q6qg3ju2stwme
     QR-Payment-Details:
       type: object
-      title: QR-Payment-Details
+      title: QR Payment Details
       description: 'Details of a QR code payment including the payment amount, recipient bank account information, and the generated QR codes in various formats.'
       properties:
         amount:
@@ -2534,7 +2627,7 @@ components:
         id: ds0drp74hqkdt
     Bank-Transfer-Recipient:
       type: object
-      title: Bank-Transfer-Recipient
+      title: Bank Transfer Recipient
       description: 'Information about the recipient of a bank transfer payment, including their name, bank account details, and address.'
       properties:
         name:
@@ -2552,7 +2645,7 @@ components:
         id: x5y9wv1qidhmd
     Recipient-Bank-Account:
       type: object
-      title: Recipient-Bank-Account
+      title: Recipient Bank Account
       description: Recipient bank account details provided in both local (country-specific) and international (IBAN/SWIFT) formats.
       properties:
         local:
@@ -2565,7 +2658,7 @@ components:
         id: ahetdr3kgbjuj
     Bank-Account-Local-Details:
       type: object
-      title: Bank-Account-Local-Details
+      title: Bank Account Local Details
       description: 'Bank account details in the local Czech/Slovak format, including the account number prefix, bank code, and variable symbol for payment identification.'
       properties:
         prefix:
@@ -2603,7 +2696,7 @@ components:
         id: 9gs5c1stac25m
     Bank-Account-International-Details:
       type: object
-      title: Bank-Account-International-Details
+      title: Bank Account International Details
       description: 'Bank account details in the international IBAN/BIC format, used for cross-border and SEPA payments.'
       x-examples:
         Example 1:
@@ -2628,7 +2721,7 @@ components:
             - '3123456789'
     Recipient-Address:
       type: object
-      title: Recipient-Address
+      title: Recipient Address
       description: Physical address of the payment recipient.
       properties:
         street:
@@ -2661,7 +2754,7 @@ components:
         id: uvhvobjqhjsnv
     QR-Code-List:
       type: object
-      title: QR-Code-List
+      title: QR Code List
       description: 'A collection of QR code images in various regional formats, each encoded as a base64 string. The available formats depend on the payment currency and recipient country.'
       properties:
         spayd:
@@ -2686,71 +2779,9 @@ components:
             - '{QR code in base64}'
       x-stoplight:
         id: g1tc3uhtyhu8o
-    Card-Lookup-Details:
+    Token-Create-Request:
       type: object
-      title: Card Lookup Details
-      description: Details of a one-time (single use) card token. This token expires after a single charge or after the time specified in `expires_in`.
-      examples:
-        - masked_pan: 406821******1234
-          expiration_month: '01'
-          expiration_year: '30'
-          scheme: VISA
-          corporate: false
-          fingerprint: 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
-          token: J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=
-          expires_in: '3600'
-          brand: GOLD
-          service_type: DEBIT
-      x-stoplight:
-        id: ipzkfutjw9av0
-      required:
-        - masked_pan
-        - expiration_month
-        - expiration_year
-        - scheme
-        - corporate
-        - fingerprint
-      properties:
-        masked_pan:
-          type: string
-          description: Masked primary account number with only the first six and last four digits visible
-          examples:
-            - 406821******1234
-        expiration_month:
-          type: string
-          description: Card expiration month (01–12)
-          pattern: '^(?:0[0-9]|1[0-2])$'
-          examples:
-            - '01'
-        expiration_year:
-          type: string
-          description: Card expiration year (two-digit format)
-          pattern: '^[0-9]{2}$'
-          examples:
-            - '30'
-        scheme:
-          $ref: '#/components/schemas/Card-scheme'
-          description: Card network scheme
-        corporate:
-          type: boolean
-          description: Whether the card is a corporate (business) card
-          default: false
-        fingerprint:
-          type: string
-          description: 'A unique hash identifying the physical card, stable across multiple tokenizations of the same card'
-          examples:
-            - 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
-        brand:
-          type: string
-          description: 'Card brand or tier (e.g. GOLD, PLATINUM, STANDARD)'
-          examples:
-            - GOLD
-        service_type:
-          $ref: '#/components/schemas/Card-Service-Type'
-          description: Whether the card is a debit or credit card
-    Encrypted-Card-Request-Body:
-      type: object
-      title: Encrypted-Card-Request-Body
+      title: Token Create Request
       description: Request body for creating a card token. Contains the encrypted card data.
       x-stoplight:
         id: 5egeqig6cgapq
@@ -2872,7 +2903,7 @@ components:
         - ACTIVE
         - SUSPENDED
         - DELETED
-      title: Card-Token-Status
+      title: Card Token Status
       description: |-
         Current status of a permanent card token.
         - `ACTIVE` - The token is valid and can be used for payments
@@ -2948,7 +2979,7 @@ components:
         id: zk1lhhij8fcn2
     Card-Form-URL:
       type: object
-      title: Card-Form-URL
+      title: Card Form URL
       description: Response containing the URL of the hosted card input form. Use this form to securely collect card details without handling raw card data on your own servers.
       properties:
         card_form_url:
@@ -2963,7 +2994,7 @@ components:
         id: i6zlunkfclth5
     Error-Response-Body:
       type: object
-      title: Error-Response-Body
+      title: Error Response Body
       description: 'Standard error response body returned for all API error responses. Contains the HTTP status code, error type, a human-readable message, and additional diagnostic details.'
       x-stoplight:
         id: 2vyzd6ap5g6vb
@@ -3007,7 +3038,7 @@ components:
           examples:
             - '2025-12-10T10:30:00Z'
     Link-Create-Request:
-      title: Link-Create-Request
+      title: Link Create Request
       x-stoplight:
         id: 6zetojhazd6qi
       type: object
@@ -3034,7 +3065,7 @@ components:
           example: true
           description: Indicates whether the link should only allow one successful payment or may be reused
     Link-Details:
-      title: Link-Details
+      title: Link Details
       x-stoplight:
         id: ptx0o90wfjege
       type: object
@@ -3088,7 +3119,7 @@ components:
             - ALREADY_PAID
             - EXPIRED
     Recurrence-Schedule:
-      title: Recurrence-Schedule
+      title: Recurrence Schedule
       x-stoplight:
         id: 9fsqtvzbz2i7w
       type: object
@@ -3110,7 +3141,7 @@ components:
             id: hsyaujzj5hkgs
           minimum: 1
     Recurrence-Create-Request:
-      title: Recurrence-Create-Request
+      title: Recurrence Create Request
       x-stoplight:
         id: 07z3iw3yqwjn7
       type: object
@@ -3130,7 +3161,7 @@ components:
           x-stoplight:
             id: jvc1a12tqlet9
     Recurrence-Details:
-      title: Recurrence-Details
+      title: Recurrence Details
       x-stoplight:
         id: kkpv9wqb2s76u
       type: object
@@ -3178,33 +3209,6 @@ components:
           $ref: '#/components/schemas/Payment-Details'
           x-stoplight:
             id: 8owft64pvrr07
-    Authorization-Code-Request:
-      title: Authorization-Code-Request
-      x-stoplight:
-        id: 27pwsxbgoi338
-      type: object
-      required:
-        - grant_type
-        - scope
-        - authorization_code
-      properties:
-        grant_type:
-          type: string
-          const: authorization_code
-          description: Always `authorization_code` for this flow
-          examples:
-            - authorization_code
-        scope:
-          type: string
-          description: 'List of required token scopes, separated with a space. See Token Scope schema for possible values.'
-          examples:
-            - 'payment:create payment:read'
-          example: 'payment:charge payment:read'
-        authorization_code:
-          type: string
-          x-stoplight:
-            id: dmyc5zja5gf2i
-          description: The `payment_secret`. Used to issue tokens that only relate to a single specific payment.
     Encrypted-Card-Input:
       title: Encrypted Card Input
       x-stoplight:
@@ -3225,7 +3229,7 @@ components:
           x-stoplight:
             id: vpkf96eo5ehgj
     Validate-Merchant-Request:
-      title: Validate-Merchant-Request
+      title: Validate Merchant Request
       x-stoplight:
         id: xr9564j1u6ycd
       type: object
@@ -3237,4 +3241,64 @@ components:
           x-stoplight:
             id: b3uhraevfzp3z
           format: uri
+    Refund-Create-Request:
+      title: Refund Create Request
+      x-stoplight:
+        id: dn6fiqygfefgr
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: integer
+          x-stoplight:
+            id: 6auiwvwfobcnw
+          description: 'Amount to be refunded in cents. For a full amount, set it equal to the payment amount'
+    Refund-Details:
+      title: Refund Details
+      x-stoplight:
+        id: 9zku6diin4l3f
+      type: object
+      required:
+        - id
+        - state
+        - amount
+        - currency
+        - created_at
+      properties:
+        id:
+          type: string
+          x-stoplight:
+            id: r0g7sj5qkgowu
+        state:
+          $ref: '#/components/schemas/Refund-State'
+          x-stoplight:
+            id: azic648t86vun
+        amount:
+          type: integer
+          x-stoplight:
+            id: lcd5dxgk4i5le
+        currency:
+          $ref: '#/components/schemas/Currency'
+          x-stoplight:
+            id: pp9zxu95fdde9
+        created_at:
+          type: string
+          x-stoplight:
+            id: 9l3ipmv6tve29
+          format: date-time
+        updated_at:
+          type: string
+          x-stoplight:
+            id: t5e33lbry8gr3
+          format: date-time
+    Refund-State:
+      type: string
+      title: Refund State
+      x-stoplight:
+        id: qbjnnnnoucium
+      enum:
+        - REQUESTED
+        - SUCCESS
+        - FAILED
 x-internal: false

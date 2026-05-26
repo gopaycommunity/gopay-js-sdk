@@ -23,7 +23,6 @@ import { createLoadingSpinner } from './loading-spinner.js';
 
 type PaymentChargeStatusResponse =
     components['schemas']['Payment-Charge-Status-Response'];
-type CardLookupDetails = components['schemas']['Card-Lookup-Details'];
 
 type PaymentsApi = ReturnType<typeof createPaymentsApi>;
 
@@ -440,22 +439,6 @@ export function createCardsApi(
                     }
                 },
             };
-        },
-
-        /**
-         * Look up card information using an encrypted card payload.
-         * POST /cards/lookup
-         */
-        async lookupCard(payload: string): Promise<CardLookupDetails> {
-            if (!payload) {
-                throw new GoPaySDKError(
-                    '[GoPayBrowserSDK] lookupCard: payload is required',
-                    {
-                        errorCode: GoPayErrorCodes.CARD_FORM_ERROR,
-                    },
-                );
-            }
-            return client.post<CardLookupDetails>('/cards/lookup', { payload });
         },
     };
 }

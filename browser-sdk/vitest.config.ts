@@ -1,7 +1,17 @@
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
+const version = (
+    JSON.parse(
+        readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'),
+    ) as { version: string }
+).version;
+
 export default defineConfig({
+    define: {
+        __GOPAY_BROWSER_SDK_VERSION__: JSON.stringify(version),
+    },
     resolve: {
         alias: [
             {

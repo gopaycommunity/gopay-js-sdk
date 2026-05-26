@@ -6,7 +6,7 @@ import {
 import type { AttachPaymentArgs, GoPayBrowserConfig } from './config.js';
 import {
     createAuthApi,
-    exchangeAuthorizationCode,
+    exchangePaymentCredentials,
 } from './modules/auth/auth.module.js';
 import { createCardsApi } from './modules/cards/cards.module.js';
 import { createPaymentsApi } from './modules/payments/payments.module.js';
@@ -77,7 +77,7 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
             paymentSecret,
         }: AttachPaymentArgs): Promise<void> {
             paymentsApi = null;
-            await exchangeAuthorizationCode(client, paymentSecret, clientId);
+            await exchangePaymentCredentials(client, paymentId, paymentSecret);
             paymentsApi = createPaymentsApi(client, paymentId);
         },
 

@@ -58,48 +58,6 @@ describe('createCardsApi() — browser SDK', () => {
     });
 
     // -------------------------------------------------------------------------
-    // lookupCard()
-    // -------------------------------------------------------------------------
-
-    describe('lookupCard()', () => {
-        beforeEach(() => {
-            client.setToken({
-                access_token: 'at-test',
-                refresh_token: 'rt-test',
-                expires_in: 900,
-                refresh_expires_in: 0,
-                token_type: 'bearer',
-            });
-        });
-
-        it('sends POST to /cards/lookup with the payload', async () => {
-            let capturedReq!: Request;
-            let capturedBody = '';
-            fetchMock.mockImplementation(async (req: Request) => {
-                capturedReq = req;
-                capturedBody = await req.text();
-                return makeResponse({});
-            });
-
-            const cards = createCardsApi(client, () => null);
-            await cards.lookupCard('enc_payload_xyz');
-
-            expect(capturedReq.method).toBe('POST');
-            expect(capturedReq.url).toBe('https://example.com/cards/lookup');
-            expect(JSON.parse(capturedBody)).toEqual({
-                payload: 'enc_payload_xyz',
-            });
-        });
-
-        it('throws when payload is empty', async () => {
-            const cards = createCardsApi(client, () => null);
-            await expect(cards.lookupCard('')).rejects.toThrow(
-                'payload is required',
-            );
-        });
-    });
-
-    // -------------------------------------------------------------------------
     // mountCardForm() — direct-charge guard
     // -------------------------------------------------------------------------
 

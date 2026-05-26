@@ -284,8 +284,9 @@ describe('createPaymentsApi() — browser SDK', () => {
 
         it('wires onvalidatemerchant to call completeMerchantValidation on success', async () => {
             const merchantSession = { key: 'ms_token' };
+            let capturedBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
-                await req.text();
+                capturedBody = await req.text();
                 return makeResponse(merchantSession);
             });
 
@@ -297,6 +298,9 @@ describe('createPaymentsApi() — browser SDK', () => {
             });
             await new Promise((r) => setTimeout(r, 0));
 
+            expect(JSON.parse(capturedBody)).toEqual({
+                validationUrl: 'https://apple.com/validate',
+            });
             expect(session.completeMerchantValidation).toHaveBeenCalledWith(
                 merchantSession,
             );

@@ -182,6 +182,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/payments/{payment_id}/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        /** List payment refunds */
+        get: operations["get-payments-payment_id-refunds"];
+        put?: never;
+        /** Refund a payment */
+        post: operations["post-payments-payment_id-refunds"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/refunds/{refund_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        /** Refund details */
+        get: operations["get-refunds-refund_id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cards/tokens": {
         parameters: {
             query?: never;
@@ -400,15 +440,38 @@ export interface components {
              */
             grant_type: "client_credentials";
             /**
-             * @description List of required token scopes, separated with a space. See Token Scope schema for possible values.
+             * @description List of required token scopes, separated with a space.
+             *     - `payment:read` reads information about payments, recurrences and links
+             *     - `payment:write` allow creation and modification of payments, recurrences and links
+             *     - `card:read` and `card:write` allow reading information about and deleting or modifying cards respectively
+             *     - `shared:read` allows reading public global information
              * @example payment:write payment:read
-             * @example payment:create payment:read
+             */
+            scope: string;
+        };
+        /**
+         * Payment Credentials Request
+         * @description Request the token pair using the `payment_credentials` grant type
+         */
+        "Payment-Credentials-Request": {
+            /**
+             * @description Always `payment_credentials` for this flow
+             * @example payment_credentials
+             * @constant
+             */
+            grant_type: "payment_credentials";
+            /**
+             * @description List of required token scopes, separated with a space.
+             *     - `payment:read` reads information about the payment
+             *     - `payment:charge` allows only to charge the payment
+             * @example payment:charge payment:read
+             * @example payment:write payment:read
              */
             scope: string;
         };
         /**
          * Access Token
-         * @description The access token and refresh token alongside useful meta information.
+         * @description The access token and its meta information.
          */
         "Access-Token": {
             /**
@@ -422,7 +485,7 @@ export interface components {
             access_token?: components["schemas"]["JWT"];
             /**
              * @description Space-separated list of token scopes.
-             * @example payment:create payment:read
+             * @example payment:write payment:read
              */
             scope?: string;
             /**
@@ -445,7 +508,7 @@ export interface components {
          */
         JWT: string;
         /**
-         * Payment-Create-Request
+         * Payment Create Request
          * @description Representation of a request for a new payment
          * @example {
          *       "amount": 100,
@@ -557,7 +620,7 @@ export interface components {
             callback: components["schemas"]["Payment-Callback"];
         };
         /**
-         * Payment-Update-Request
+         * Payment Instance Override
          * @description Representation of a request for a new payment
          * @example {
          *       "amount": 100,
@@ -587,7 +650,7 @@ export interface components {
          *       }
          *     }
          */
-        "Payment-Update-Request": {
+        "Payment-Instance-Override": {
             /**
              * @description Total amount in cents
              * @example 100
@@ -617,7 +680,7 @@ export interface components {
          */
         Currency: "CZK" | "EUR" | "PLN" | "USD" | "GBP" | "HUF" | "RON";
         /**
-         * Additional-Param
+         * Additional Parameter
          * @description Additional payment parameters
          * @example {
          *       "name": "Custom param",
@@ -637,6 +700,42 @@ export interface components {
             value: string;
         };
         /**
+         * Payment Details
+         * @description Representation of an existing payment
+         */
+        "Payment-Details": {
+            /**
+             * @description Payment session ID
+             * @example 300000001
+             */
+            id: string;
+            /**
+             * @description Order ID forwarded from the payment request
+             * @example 2025010199
+             */
+            order_number: string;
+            /** @description Payment state */
+            state: components["schemas"]["Payment-State"];
+            /**
+             * @description Total amount in cents
+             * @example 100
+             */
+            amount: number;
+            /** @description Payment currency */
+            currency: components["schemas"]["Currency"];
+            /** @description Customer data */
+            customer: components["schemas"]["Customer"];
+            /**
+             * Format: uri
+             * @description URL of the hosted payment gateway
+             */
+            gw_url: string;
+            charge?: components["schemas"]["Payment-Charge-Status-Response"];
+            /** @description Payment secret that can be shared to the client side. Used to generate payment-specific JWTs. **Do not embed in URLs, log or store!** */
+            payment_secret: string;
+        };
+        /**
+         * Customer
          * @description Customer details associated with the payment. The email address is required as it is used for authentication and notification purposes.
          * @example {
          *       "email": "john.doe@example.com",
@@ -699,7 +798,7 @@ export interface components {
             customer_id?: string;
         };
         /**
-         * Payment-Callback
+         * Payment Callback
          * @description Object holding URLs for callback purposes related to a payment
          * @example {
          *       "notification_url": "https://example.com/notify",
@@ -719,41 +818,7 @@ export interface components {
             return_url: string;
         };
         /**
-         * Payment-Details
-         * @description Representation of an existing payment
-         */
-        "Payment-Details": {
-            /**
-             * @description Payment session ID
-             * @example 300000001
-             */
-            id: string;
-            /**
-             * @description Order ID forwarded from the payment request
-             * @example 2025010199
-             */
-            order_number: string;
-            /** @description Payment state */
-            state: components["schemas"]["Payment-State"];
-            /**
-             * @description Total amount in cents
-             * @example 100
-             */
-            amount: number;
-            /** @description Payment currency */
-            currency: components["schemas"]["Currency"];
-            /** @description Customer data */
-            customer: components["schemas"]["Customer"];
-            /**
-             * Format: uri
-             * @description URL of the hosted payment gateway
-             */
-            gw_url: string;
-            charge?: components["schemas"]["Payment-Charge-Ref"];
-            /** @description Payment secret that can be shared to the client side. Used to generate payment-specific JWTs. **Do not embed in URLs, log or store!** */
-            payment_secret: string;
-        };
-        /**
+         * Payment State
          * @description The lifecycle state of a payment.
          *     - `CREATED` - The payment has been created and is awaiting further action
          *     - `PAID` - The payment has been successfully completed
@@ -768,30 +833,6 @@ export interface components {
          */
         "Payment-State": "CREATED" | "PAID" | "CANCELED" | "PAYMENT_METHOD_CHOSEN" | "TIMEOUTED" | "AUTHORIZED" | "REFUNDED" | "PARTIALLY_REFUNDED";
         /**
-         * Payment-Charge-Ref
-         * @description A reference to a payment charge associated with the payment
-         * @example {
-         *       "id": "9123456789",
-         *       "state": "REQUESTED",
-         *       "href": "https://api.gopay.com/api/4.0/payments/9123456789/charge"
-         *     }
-         */
-        "Payment-Charge-Ref": {
-            /**
-             * @description Charge ID
-             * @example 9123456789
-             */
-            id: string;
-            /** @description Charge state */
-            state: components["schemas"]["Charge-State"];
-            /**
-             * Format: uri
-             * @description Reference to the related charge endpoint
-             * @example https://api.gopay.com/api/4.0/payments/9123456789/charge
-             */
-            href: string;
-        };
-        /**
          * Charge State
          * @description The lifecycle state of a payment charge.
          *     - `REQUESTED` - The charge has been initiated
@@ -804,7 +845,7 @@ export interface components {
          */
         "Charge-State": "REQUESTED" | "PROCESSING" | "ACTION_REQUIRED" | "SUCCEEDED" | "FAILED";
         /**
-         * Payment-Charge-Data
+         * Payment Charge Data
          * @description Discriminated union of the possible payment charges. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](./x3xyv4fy5blzy-payment-instrument) enum.
          */
         "Payment-Charge-Data": components["schemas"]["Payment-Card-Charge-Data"];
@@ -865,7 +906,7 @@ export interface components {
              */
             input_type: "CARD_TOKEN";
             /**
-             * @description Either a single use or permanent card token acquired using the [Create Card Token](z527w3pj6p22i-create-card-token) API call
+             * @description Permanent card token acquired using the [Create Card Token](z527w3pj6p22i-create-card-token) API call
              * @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
              */
             card_token: string;
@@ -986,7 +1027,7 @@ export interface components {
          */
         "Bank-Swift": "GIBACZPX" | "KOMBCZPP" | "SUBASKBX" | "GIBASKBX" | "OTHERS";
         /**
-         * Browser-Data
+         * Browser Data
          * @description Customer browser data collected for 3-D Secure authentication purposes. This data is forwarded to the card issuer during the authentication flow.
          */
         "Browser-Data": {
@@ -1158,7 +1199,7 @@ export interface components {
             fingerprint?: string;
         };
         /**
-         * Card scheme
+         * Card Scheme
          * @description The card network scheme (VISA or MASTERCARD)
          * @example VISA
          * @enum {string}
@@ -1220,7 +1261,7 @@ export interface components {
          */
         "Emv-3DS-State": "CREATED" | "CHALLENGE_REQUIRED" | "AUTHENTICATED_CHALLENGE" | "AUTHENTICATED_FRICTIONLESS" | "NOT_AUTHENTICATED" | "FAILED";
         /**
-         * QR-Payment-Details
+         * QR Payment Details
          * @description Details of a QR code payment including the payment amount, recipient bank account information, and the generated QR codes in various formats.
          */
         "QR-Payment-Details": {
@@ -1237,7 +1278,7 @@ export interface components {
             qr_code: components["schemas"]["QR-Code-List"];
         };
         /**
-         * Bank-Transfer-Recipient
+         * Bank Transfer Recipient
          * @description Information about the recipient of a bank transfer payment, including their name, bank account details, and address.
          */
         "Bank-Transfer-Recipient": {
@@ -1252,7 +1293,7 @@ export interface components {
             address?: components["schemas"]["Recipient-Address"];
         };
         /**
-         * Recipient-Bank-Account
+         * Recipient Bank Account
          * @description Recipient bank account details provided in both local (country-specific) and international (IBAN/SWIFT) formats.
          */
         "Recipient-Bank-Account": {
@@ -1262,7 +1303,7 @@ export interface components {
             international?: components["schemas"]["Bank-Account-International-Details"];
         };
         /**
-         * Bank-Account-Local-Details
+         * Bank Account Local Details
          * @description Bank account details in the local Czech/Slovak format, including the account number prefix, bank code, and variable symbol for payment identification.
          */
         "Bank-Account-Local-Details": {
@@ -1288,7 +1329,7 @@ export interface components {
             variable_symbol: string;
         };
         /**
-         * Bank-Account-International-Details
+         * Bank Account International Details
          * @description Bank account details in the international IBAN/BIC format, used for cross-border and SEPA payments.
          */
         "Bank-Account-International-Details": {
@@ -1306,7 +1347,7 @@ export interface components {
             reference?: string;
         };
         /**
-         * Recipient-Address
+         * Recipient Address
          * @description Physical address of the payment recipient.
          */
         "Recipient-Address": {
@@ -1332,7 +1373,7 @@ export interface components {
             country?: string;
         };
         /**
-         * QR-Code-List
+         * QR Code List
          * @description A collection of QR code images in various regional formats, each encoded as a base64 string. The available formats depend on the payment currency and recipient country.
          */
         "QR-Code-List": {
@@ -1358,62 +1399,10 @@ export interface components {
             mnb_qr?: string;
         };
         /**
-         * Card Lookup Details
-         * @description Details of a one-time (single use) card token. This token expires after a single charge or after the time specified in `expires_in`.
-         * @example {
-         *       "masked_pan": "406821******1234",
-         *       "expiration_month": "01",
-         *       "expiration_year": "30",
-         *       "scheme": "VISA",
-         *       "corporate": false,
-         *       "fingerprint": "73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b",
-         *       "token": "J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjGcKtjv9DtCT3HLSlWHRYAbVTBLbouV77YtVSgavhi4uRZTwDy218Gog4MbZJ+umL/BkfFlNQ80PCdOjwYr8DtqZr71LHwkvg91ywirZp0=",
-         *       "expires_in": "3600",
-         *       "brand": "GOLD",
-         *       "service_type": "DEBIT"
-         *     }
-         */
-        "Card-Lookup-Details": {
-            /**
-             * @description Masked primary account number with only the first six and last four digits visible
-             * @example 406821******1234
-             */
-            masked_pan: string;
-            /**
-             * @description Card expiration month (01–12)
-             * @example 01
-             */
-            expiration_month: string;
-            /**
-             * @description Card expiration year (two-digit format)
-             * @example 30
-             */
-            expiration_year: string;
-            /** @description Card network scheme */
-            scheme: components["schemas"]["Card-scheme"];
-            /**
-             * @description Whether the card is a corporate (business) card
-             * @default false
-             */
-            corporate: boolean;
-            /**
-             * @description A unique hash identifying the physical card, stable across multiple tokenizations of the same card
-             * @example 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
-             */
-            fingerprint: string;
-            /**
-             * @description Card brand or tier (e.g. GOLD, PLATINUM, STANDARD)
-             * @example GOLD
-             */
-            brand?: string;
-            /** @description Whether the card is a debit or credit card */
-            service_type?: components["schemas"]["Card-Service-Type"];
-        };
-        /**
-         * Encrypted-Card-Request-Body
+         * Token Create Request
          * @description Request body for creating a card token. Contains the encrypted card data.
          */
-        "Encrypted-Card-Request-Body": {
+        "Token-Create-Request": {
             /** @description The encrypted card data payload in JWE compact serialization format */
             payload: components["schemas"]["JWE"];
         };
@@ -1504,7 +1493,7 @@ export interface components {
          */
         "Card-Service-Type": "DEBIT" | "CREDIT";
         /**
-         * Card-Token-Status
+         * Card Token Status
          * @description Current status of a permanent card token.
          *     - `ACTIVE` - The token is valid and can be used for payments
          *     - `SUSPENDED` - The token is temporarily suspended and cannot be used
@@ -1570,7 +1559,7 @@ export interface components {
          */
         JWE: string;
         /**
-         * Card-Form-URL
+         * Card Form URL
          * @description Response containing the URL of the hosted card input form. Use this form to securely collect card details without handling raw card data on your own servers.
          */
         "Card-Form-URL": {
@@ -1581,7 +1570,7 @@ export interface components {
             card_form_url?: string;
         };
         /**
-         * Error-Response-Body
+         * Error Response Body
          * @description Standard error response body returned for all API error responses. Contains the HTTP status code, error type, a human-readable message, and additional diagnostic details.
          */
         "Error-Response-Body": {
@@ -1617,7 +1606,7 @@ export interface components {
              */
             timestamp: string;
         };
-        /** Link-Create-Request */
+        /** Link Create Request */
         "Link-Create-Request": {
             /** @description Payment data for the payments created by clicking on the link */
             payment: components["schemas"]["Payment-From-Link-Request"];
@@ -1634,7 +1623,7 @@ export interface components {
              */
             reusable: boolean;
         };
-        /** Link-Details */
+        /** Link Details */
         "Link-Details": {
             /**
              * Format: date-time
@@ -1664,20 +1653,20 @@ export interface components {
             /** @enum {string} */
             stop_reason?: "FROM_API" | "ALREADY_PAID" | "EXPIRED";
         };
-        /** Recurrence-Schedule */
+        /** Recurrence Schedule */
         "Recurrence-Schedule": {
             /** @enum {string} */
             period: "DAY" | "WEEK" | "MONTH";
             cycle: number;
         };
-        /** Recurrence-Create-Request */
+        /** Recurrence Create Request */
         "Recurrence-Create-Request": {
             /** @enum {string} */
             type: "AUTO" | "ON_DEMAND";
             schedule?: components["schemas"]["Recurrence-Schedule"];
             payment: components["schemas"]["Payment-Create-Request"];
         };
-        /** Recurrence-Details */
+        /** Recurrence Details */
         "Recurrence-Details": {
             /** @enum {string} */
             type: "AUTO" | "ON_DEMAND";
@@ -1689,23 +1678,6 @@ export interface components {
             stop_reason?: "RECURRENCE_EXPIRED" | "CARD_EXPIRED" | "CANCELLED_VIA_API" | "CANCELLED_VIA_BACKOFFICE" | "CANCELLED_BY_GOPAY" | "UNKNOWN";
             payment: components["schemas"]["Payment-Details"];
         };
-        /** Authorization-Code-Request */
-        "Authorization-Code-Request": {
-            /**
-             * @description Always `authorization_code` for this flow
-             * @example authorization_code
-             * @constant
-             */
-            grant_type: "authorization_code";
-            /**
-             * @description List of required token scopes, separated with a space. See Token Scope schema for possible values.
-             * @example payment:charge payment:read
-             * @example payment:create payment:read
-             */
-            scope: string;
-            /** @description The `payment_secret`. Used to issue tokens that only relate to a single specific payment. */
-            authorization_code: string;
-        };
         /** Encrypted Card Input */
         "Encrypted-Card-Input": {
             /**
@@ -1715,11 +1687,32 @@ export interface components {
             input_type: "ENCRYPTED_CARD";
             payload: components["schemas"]["JWE"];
         };
-        /** Validate-Merchant-Request */
+        /** Validate Merchant Request */
         "Validate-Merchant-Request": {
             /** Format: uri */
             validationUrl: string;
         };
+        /** Refund Create Request */
+        "Refund-Create-Request": {
+            /** @description Amount to be refunded in cents. For a full amount, set it equal to the payment amount */
+            amount: number;
+        };
+        /** Refund Details */
+        "Refund-Details": {
+            id: string;
+            state: components["schemas"]["Refund-State"];
+            amount: number;
+            currency: components["schemas"]["Currency"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        /**
+         * Refund State
+         * @enum {string}
+         */
+        "Refund-State": "REQUESTED" | "SUCCESS" | "FAILED";
     };
     responses: {
         /** @description Google Pay Payment Request object consumed by the Google Payment button */
@@ -1815,24 +1808,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": {
-                    /** @example 15445664606792 */
-                    epochTimestamp?: number;
-                    /** @example 154167344466792 */
-                    expiresAt?: number;
-                    /** @example SSHC45CB... */
-                    merchantSessionIdentifier?: string;
-                    /** @example 8f47a9c1 */
-                    nonce?: string;
-                    /** @example 8398119642 */
-                    merchantIdentifier?: string;
-                    /** @example www.example.com */
-                    domainName?: string;
-                    /** @example GoPay Czech Branch */
-                    displayName?: string;
-                    /** @example 3080 */
-                    signature?: string;
-                };
+                "application/json": components["schemas"]["Refund-Details"];
             };
         };
         /** @description Bad Request */
@@ -1928,12 +1904,7 @@ export interface components {
     requestBodies: {
         "Access-Token-Request": {
             content: {
-                "application/x-www-form-urlencoded": components["schemas"]["Client-Credentials-Request"] | components["schemas"]["Authorization-Code-Request"];
-            };
-        };
-        "Recurrence-Next-Request": {
-            content: {
-                "application/json": components["schemas"]["Payment-Update-Request"];
+                "application/x-www-form-urlencoded": components["schemas"]["Client-Credentials-Request"] | components["schemas"]["Payment-Credentials-Request"];
             };
         };
     };
@@ -2205,6 +2176,92 @@ export interface operations {
             500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
+    "get-payments-payment_id-refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund-Details"][];
+                };
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-payments-payment_id-refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Refund-Create-Request"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund-Details"];
+                };
+            };
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-refunds-refund_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund-Details"];
+                };
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
     "post-cards-tokens": {
         parameters: {
             query?: never;
@@ -2214,7 +2271,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["Encrypted-Card-Request-Body"];
+                "application/json": components["schemas"]["Token-Create-Request"];
             };
         };
         responses: {
@@ -2426,7 +2483,12 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: components["requestBodies"]["Recurrence-Next-Request"];
+        /** @description Shared Request */
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Payment-Instance-Override"];
+            };
+        };
         responses: {
             /** @description Created */
             201: {
@@ -2455,7 +2517,12 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: components["requestBodies"]["Recurrence-Next-Request"];
+        /** @description Shared Request */
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Payment-Instance-Override"];
+            };
+        };
         responses: {
             /** @description Created */
             201: {

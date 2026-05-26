@@ -11,27 +11,30 @@ type TokenPair = components['schemas']['Access-Token'] & {
     refresh_expires_in?: number;
 };
 
-/** Scope issued for payment-secret tokens. */
+/** Scope issued for payment-credentials tokens. */
 const DEFAULT_PAYMENT_SCOPE = 'payment:read payment:charge shared:read';
 
 /**
- * Exchange a payment_secret for a payment-scoped token pair.
+ * Exchange a payment_id + payment_secret for a payment-scoped token pair.
  * Called internally by attachPayment() — not exposed on the public API.
  */
-export async function exchangeAuthorizationCode(
+export async function exchangePaymentCredentials(
     client: HttpClient,
+    paymentId: string,
     paymentSecret: string,
-    clientId: string,
     scope = DEFAULT_PAYMENT_SCOPE,
 ): Promise<void> {
     const form: Record<string, string> = {
-        grant_type: 'authorization_code',
-        authorization_code: paymentSecret,
-        client_id: clientId,
+        grant_type: 'payment_credentials',
         scope,
     };
+    const headers = {
+        Authorization: `Basic ${globalThis.btoa(`${paymentId}:${paymentSecret}`)}`,
+    };
 
-    const tokenPair = await client.postForm<TokenPair>('/oauth2/token', form);
+    const tokenPair = await client.postForm<TokenPair>('/oauth2/token', form, {
+        headers,
+    });
 
     if (!tokenPair.access_token || tokenPair.expires_in === undefined) {
         throw client.emitError(
