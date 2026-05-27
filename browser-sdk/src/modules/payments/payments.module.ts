@@ -37,20 +37,41 @@ type PaymentChargeRequestInput = Omit<
     payment_instrument?: CardChargeDataInput;
 };
 
+/**
+ * Controls how the SDK handles the 3DS redirect when `ACTION_REQUIRED` is encountered.
+ *
+ * - `{ mode: 'redirect' }` (default) — navigate the top-level page to the ACS URL.
+ *   The returned promise stays pending as the page unloads.
+ * - `{ mode: 'iframe', container }` — mount a sandboxed iframe inside `container`,
+ *   removed automatically on terminal charge state.
+ * - `{ mode: 'manual' }` — do nothing automatically; handle the redirect URL yourself
+ *   via the `onActionRequired` callback in `AwaitChargeOptions`.
+ */
+export type ThreeDSConfig =
+    | { mode?: 'redirect' }
+    | { mode: 'iframe'; container: HTMLElement }
+    | { mode: 'manual' };
+
 /** Options for {@link awaitChargeState}. */
 export type AwaitChargeOptions =
-    CoreAwaitChargeOptions<PaymentChargeStatusResponse>;
+    CoreAwaitChargeOptions<PaymentChargeStatusResponse> & {
+        threeDS?: ThreeDSConfig;
+    };
+
+function assertHttpsUrl(url: string): void {
+    if (new URL(url).protocol !== 'https:') {
+        throw new GoPaySDKError(
+            `[GoPayBrowserSDK] Redirect URL must use https: protocol. Got "${url}"`,
+            { errorCode: GoPayErrorCodes.CHARGE_FAILED },
+        );
+    }
+}
 
 function mountRedirectIframe(
     container: HTMLElement,
     redirectUrl: string,
 ): HTMLIFrameElement {
-    if (new URL(redirectUrl).protocol !== 'https:') {
-        throw new GoPaySDKError(
-            `[GoPayBrowserSDK] Redirect URL must use https: protocol. Got "${redirectUrl}"`,
-            { errorCode: GoPayErrorCodes.CHARGE_FAILED },
-        );
-    }
+    assertHttpsUrl(redirectUrl);
     const iframe = document.createElement('iframe');
     iframe.src = redirectUrl;
     iframe.title = 'GoPay 3DS';
@@ -65,6 +86,31 @@ function mountRedirectIframe(
     iframe.style.border = 'none';
     container.appendChild(iframe);
     return iframe;
+}
+
+function handle3DS(
+    threeDS: ThreeDSConfig | undefined,
+    redirectUrl: string,
+    onActionRequired: ((url: string) => void) | undefined,
+): HTMLIFrameElement | undefined {
+    const mode = threeDS && 'mode' in threeDS ? threeDS.mode : 'redirect';
+    if (mode === 'redirect' || mode == null) {
+        assertHttpsUrl(redirectUrl);
+        onActionRequired?.(redirectUrl);
+        globalThis.location.href = redirectUrl;
+        return undefined;
+    }
+    if (mode === 'iframe') {
+        const iframe = mountRedirectIframe(
+            (threeDS as { mode: 'iframe'; container: HTMLElement }).container,
+            redirectUrl,
+        );
+        onActionRequired?.(redirectUrl);
+        return iframe;
+    }
+    // mode === 'manual'
+    onActionRequired?.(redirectUrl);
+    return undefined;
 }
 
 export function createPaymentsApi(client: HttpClient, paymentId: string) {
@@ -134,22 +180,26 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
         /**
          * Poll the charge state until a terminal outcome.
          *
-         * When `container` is provided, a 3DS redirect iframe is mounted
-         * inside it on `ACTION_REQUIRED`. Pass `null` to suppress iframe
-         * mounting and handle `ACTION_REQUIRED` via `options.onActionRequired`
-         * instead (e.g. show a link or redirect the top frame).
+         * By default (`threeDS` omitted or `{ mode: 'redirect' }`), the top-level
+         * page is navigated to the ACS URL on `ACTION_REQUIRED` and the returned
+         * promise stays pending as the page unloads.
+         *
+         * Pass `threeDS: { mode: 'iframe', container }` to mount a sandboxed iframe
+         * instead (removed automatically on terminal state).
+         *
+         * Pass `threeDS: { mode: 'manual' }` to handle `ACTION_REQUIRED` yourself
+         * via `options.onActionRequired`.
          *
          * Resolves on `SUCCEEDED`. Rejects with `CHARGE_FAILED` on `FAILED`,
          * or `CHARGE_TIMEOUT` if the charge does not leave `REQUESTED`/
          * `PROCESSING` within `initialTimeoutMs` (default 30 s).
          */
         awaitChargeState(
-            container: HTMLElement | null,
             options?: AwaitChargeOptions,
         ): Promise<PaymentChargeStatusResponse> {
             let redirectIframe: HTMLIFrameElement | undefined;
 
-            const removeRedirectIframe = () => {
+            const cleanupIframe = () => {
                 if (!redirectIframe) {
                     return;
                 }
@@ -166,22 +216,22 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
                 {
                     ...options,
                     onActionRequired: (redirectUrl) => {
-                        if (container && !redirectIframe) {
-                            redirectIframe = mountRedirectIframe(
-                                container,
+                        if (!redirectIframe) {
+                            redirectIframe = handle3DS(
+                                options?.threeDS,
                                 redirectUrl,
+                                options?.onActionRequired,
                             );
                         }
-                        options?.onActionRequired?.(redirectUrl);
                     },
                 },
             ).then(
                 (state) => {
-                    removeRedirectIframe();
+                    cleanupIframe();
                     return state;
                 },
                 (err) => {
-                    removeRedirectIframe();
+                    cleanupIframe();
                     throw err;
                 },
             );

@@ -96,12 +96,9 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
             return (paymentsApi ?? notAttached()).getChargeState();
         },
         awaitChargeState(
-            options?: Parameters<PaymentsApi['awaitChargeState']>[1],
+            options?: Parameters<PaymentsApi['awaitChargeState']>[0],
         ) {
-            return (paymentsApi ?? notAttached()).awaitChargeState(
-                null,
-                options,
-            );
+            return (paymentsApi ?? notAttached()).awaitChargeState(options);
         },
         async getGooglePayInfo() {
             return (paymentsApi ?? notAttached()).getGooglePayInfo();

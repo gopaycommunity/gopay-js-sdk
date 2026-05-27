@@ -9,6 +9,7 @@ import type { EncryptedCardPayload } from '../../types/index.js';
 import type {
     AwaitChargeOptions,
     createPaymentsApi,
+    ThreeDSConfig,
 } from '../payments/payments.module.js';
 import { DEFAULT_CARD_FORM_THEME } from './card-form-themes.js';
 import type {
@@ -63,9 +64,9 @@ export interface CardFormController<R = EncryptedCardPayload> {
 
 type DirectChargeOptions = {
     flow: 'direct-charge';
-    /** Container where the 3DS redirect iframe will be mounted during charge polling. */
-    redirectContainer: HTMLElement;
-    awaitOptions?: AwaitChargeOptions;
+    /** Controls how the SDK handles the 3DS redirect. Defaults to full-page redirect. */
+    threeDS?: ThreeDSConfig;
+    awaitOptions?: Omit<AwaitChargeOptions, 'threeDS'>;
 };
 
 type ReturnPayloadOptions = {
@@ -286,7 +287,7 @@ export function createCardsApi(
                 container.replaceChildren(spinner);
 
                 try {
-                    const { redirectContainer, awaitOptions } = options;
+                    const { threeDS, awaitOptions } = options;
 
                     await paymentsApi.chargePayment({
                         payment_instrument: {
@@ -298,22 +299,20 @@ export function createCardsApi(
                         },
                     });
 
-                    const chargeState = await paymentsApi.awaitChargeState(
-                        redirectContainer,
-                        {
-                            ...awaitOptions,
-                            signal: chargeAbortController.signal,
-                            onStateChange: (state) => {
-                                if (
-                                    state.state === 'ACTION_REQUIRED' &&
-                                    state.action?.redirect_url
-                                ) {
-                                    spinner.remove();
-                                }
-                                awaitOptions?.onStateChange?.(state);
-                            },
+                    const chargeState = await paymentsApi.awaitChargeState({
+                        ...awaitOptions,
+                        threeDS,
+                        signal: chargeAbortController.signal,
+                        onStateChange: (state) => {
+                            if (
+                                state.state === 'ACTION_REQUIRED' &&
+                                state.action?.redirect_url
+                            ) {
+                                spinner.remove();
+                            }
+                            awaitOptions?.onStateChange?.(state);
                         },
-                    );
+                    });
 
                     spinner.remove();
                     resolveResult(chargeState);

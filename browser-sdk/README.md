@@ -124,11 +124,11 @@ await sdk.attachPayment({
 });
 
 // 3. Mount and charge.
+//    By default, 3DS redirects the whole page (recommended).
+//    Pass threeDS: { mode: 'iframe', container: redirectContainer } to use an inline iframe instead.
 const container = document.getElementById('card-form-container');
-const redirectContainer = document.getElementById('redirect-container');
 const controller = await sdk.mountCardForm(container, {
     flow: 'direct-charge',
-    redirectContainer, // required for 3DS redirect
     locale: 'en',
 });
 
@@ -206,11 +206,19 @@ mountCardForm(
 | Field | Type | Default | Notes |
 |---|---|---|---|
 | `flow` | `'return-payload' \| 'direct-charge'` | required | `direct-charge` requires prior `attachPayment()` |
-| `redirectContainer` | `Element` | — | Required when `flow: 'direct-charge'` — 3DS iframe mounts here |
+| `threeDS` | `ThreeDSConfig` | `{ mode: 'redirect' }` | `direct-charge` only — controls 3DS handling (see below) |
 | `theme` | `CardFormTheme` | built-in | See type definition in [iframe-protocol.ts](src/modules/cards/iframe-protocol.ts) |
 | `locale` | `string` | `navigator.language` | BCP 47, e.g. `'cs-CZ'` |
 | `submitMode` | `'internal' \| 'external'` | `'internal'` | `'external'` hides the iframe button; use `controller.submit()` |
 | `onValidityChange` | `(isValid: boolean) => void` | — | External submit mode only |
+
+**`ThreeDSConfig`** (used in `mountCardForm` and `awaitChargeState`):
+
+| Value | Behaviour |
+|---|---|
+| `{ mode: 'redirect' }` (default) | Navigates the top-level page to the ACS URL. The returned promise stays pending as the page unloads. After 3DS, the bank redirects to your `return_url`; call `getChargeState()` there to confirm the outcome. |
+| `{ mode: 'iframe', container: HTMLElement }` | Mounts a sandboxed iframe inside `container` for the 3DS challenge. The iframe is removed automatically on terminal charge state. |
+| `{ mode: 'manual' }` | Does nothing automatically. Handle the ACS URL yourself via the `onActionRequired` callback in `awaitChargeState`. |
 
 **`CardFormController`:**
 

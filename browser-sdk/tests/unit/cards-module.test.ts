@@ -67,7 +67,7 @@ describe('createCardsApi() — browser SDK', () => {
             const cards = createCardsApi(client, () => null);
             const ctrl = await cards.mountCardForm(container, {
                 flow: 'direct-charge',
-                redirectContainer: container,
+                threeDS: { mode: 'iframe', container },
             });
 
             const err = await ctrl.result.catch((e: unknown) => e);
@@ -81,7 +81,7 @@ describe('createCardsApi() — browser SDK', () => {
             const cards = createCardsApi(client, () => null);
             const ctrl = await cards.mountCardForm(container, {
                 flow: 'direct-charge',
-                redirectContainer: container,
+                threeDS: { mode: 'iframe', container },
             });
 
             ctrl.result.catch(() => {});
@@ -404,7 +404,7 @@ describe('createCardsApi() — browser SDK', () => {
             );
             const ctrl = await cards.mountCardForm(container, {
                 flow: 'direct-charge',
-                redirectContainer: container,
+                threeDS: { mode: 'iframe', container },
             });
 
             const iframe = container.querySelector(
@@ -435,7 +435,7 @@ describe('createCardsApi() — browser SDK', () => {
             const cards = createCardsApi(client, () => returnApi);
             const ctrl = await cards.mountCardForm(container, {
                 flow: 'direct-charge',
-                redirectContainer: container,
+                threeDS: { mode: 'iframe', container },
             });
 
             // Detach before the message fires
@@ -473,7 +473,7 @@ describe('createCardsApi() — browser SDK', () => {
             );
             const ctrl = await cards.mountCardForm(container, {
                 flow: 'direct-charge',
-                redirectContainer: container,
+                threeDS: { mode: 'iframe', container },
             });
 
             const iframe = container.querySelector(
@@ -486,6 +486,38 @@ describe('createCardsApi() — browser SDK', () => {
 
             const err = await ctrl.result.catch((e: unknown) => e);
             expect(err).toBe(chargeError);
+        });
+
+        it('default threeDS (omitted) forwards undefined threeDS to awaitChargeState', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            const cards = createCardsApi(
+                client,
+                () =>
+                    mockPaymentsApi as unknown as ReturnType<
+                        typeof createPaymentsApi
+                    >,
+            );
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+            });
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+
+            await ctrl.result;
+
+            // threeDS not provided — awaitChargeState gets undefined threeDS (defaults to redirect)
+            expect(awaitChargeStateMock).toHaveBeenCalledWith(
+                expect.objectContaining({ threeDS: undefined }),
+            );
         });
     });
 

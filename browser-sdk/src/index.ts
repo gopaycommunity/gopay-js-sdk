@@ -16,7 +16,10 @@ export type {
 } from './modules/cards/cards.module.js';
 export type { EncryptErrorCode } from './modules/cards/iframe-protocol.js';
 export { collectBrowserData } from './modules/payments/browser-data.js';
-export type { AwaitChargeOptions } from './modules/payments/payments.module.js';
+export type {
+    AwaitChargeOptions,
+    ThreeDSConfig,
+} from './modules/payments/payments.module.js';
 export type {
     BrowserData,
     EncryptedCardPayload,
