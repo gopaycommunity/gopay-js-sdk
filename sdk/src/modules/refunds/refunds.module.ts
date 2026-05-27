@@ -1,30 +1,8 @@
-import {
-    GoPayErrorCodes,
-    GoPaySDKError,
-    type HttpClient,
-} from '@gopay-internal/core';
+import { type HttpClient, requireNonEmptyString } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type RefundCreateRequest = components['schemas']['Refund-Create-Request'];
 type RefundDetails = components['schemas']['Refund-Details'];
-
-function requirePaymentId(paymentId: string): string {
-    if (typeof paymentId !== 'string' || !paymentId.trim()) {
-        throw new GoPaySDKError('[GoPaySDK] paymentId is required', {
-            errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
-        });
-    }
-    return paymentId.trim();
-}
-
-function requireRefundId(refundId: string): string {
-    if (typeof refundId !== 'string' || !refundId.trim()) {
-        throw new GoPaySDKError('[GoPaySDK] refundId is required', {
-            errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
-        });
-    }
-    return refundId.trim();
-}
 
 export function createRefundsApi(client: HttpClient) {
     return {
@@ -41,7 +19,7 @@ export function createRefundsApi(client: HttpClient) {
             paymentId: string,
             params: RefundCreateRequest,
         ): Promise<RefundDetails> {
-            const pid = requirePaymentId(paymentId);
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
             return client.post<RefundDetails>(
                 `/payments/${pid}/refunds`,
                 params,
@@ -57,7 +35,7 @@ export function createRefundsApi(client: HttpClient) {
          * @param paymentId - Payment session ID returned by {@link createPayment}
          */
         async listRefunds(paymentId: string): Promise<RefundDetails[]> {
-            const pid = requirePaymentId(paymentId);
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
             return client.get<RefundDetails[]>(`/payments/${pid}/refunds`);
         },
 
@@ -70,7 +48,7 @@ export function createRefundsApi(client: HttpClient) {
          * @param refundId - Refund ID returned by {@link refundPayment}
          */
         async getRefund(refundId: string): Promise<RefundDetails> {
-            const rid = requireRefundId(refundId);
+            const rid = requireNonEmptyString(refundId, 'refundId');
             return client.get<RefundDetails>(`/refunds/${rid}`);
         },
     };

@@ -1,8 +1,4 @@
-import {
-    GoPayErrorCodes,
-    GoPaySDKError,
-    type HttpClient,
-} from '@gopay-internal/core';
+import { type HttpClient, requireNonEmptyString } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type EncryptedCardRequest = components['schemas']['Token-Create-Request'];
@@ -19,14 +15,8 @@ export function createCardsApi(client: HttpClient) {
          * @param cardId - Unique identifier of the stored card token
          */
         async getCardDetails(cardId: string): Promise<PermanentCardToken> {
-            if (!cardId?.trim()) {
-                throw client.emitError(
-                    new GoPaySDKError('Missing or invalid cardId', {
-                        errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
-                    }),
-                );
-            }
-            return client.get<PermanentCardToken>(`/cards/tokens/${cardId}`);
+            const cid = requireNonEmptyString(cardId, 'cardId');
+            return client.get<PermanentCardToken>(`/cards/tokens/${cid}`);
         },
 
         /**
@@ -37,14 +27,8 @@ export function createCardsApi(client: HttpClient) {
          * @param cardId - Unique identifier of the stored card token
          */
         async deleteCard(cardId: string): Promise<void> {
-            if (!cardId?.trim()) {
-                throw client.emitError(
-                    new GoPaySDKError('Missing or invalid cardId', {
-                        errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
-                    }),
-                );
-            }
-            return client.delete(`/cards/tokens/${cardId}`);
+            const cid = requireNonEmptyString(cardId, 'cardId');
+            return client.delete(`/cards/tokens/${cid}`);
         },
 
         /**
@@ -63,14 +47,8 @@ export function createCardsApi(client: HttpClient) {
         async tokenizeEncryptedCard(
             payload: string,
         ): Promise<PermanentCardToken> {
-            if (!payload?.trim()) {
-                throw client.emitError(
-                    new GoPaySDKError('Missing or invalid payload', {
-                        errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
-                    }),
-                );
-            }
-            const body: EncryptedCardRequest = { payload };
+            const validPayload = requireNonEmptyString(payload, 'payload');
+            const body: EncryptedCardRequest = { payload: validPayload };
             return client.post<PermanentCardToken>('/cards/tokens', body);
         },
     };

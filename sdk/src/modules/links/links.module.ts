@@ -1,20 +1,8 @@
-import {
-    GoPayErrorCodes,
-    GoPaySDKError,
-    type HttpClient,
-} from '@gopay-internal/core';
+import { type HttpClient, requireNonEmptyString } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type LinkCreateRequest = components['schemas']['Link-Create-Request'];
 type LinkDetails = components['schemas']['Link-Details'];
-
-function requireLinkId(linkId: string): void {
-    if (!linkId || linkId.trim().length === 0) {
-        throw new GoPaySDKError('[GoPaySDK] linkId is required', {
-            errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
-        });
-    }
-}
 
 export function createLinksApi(client: HttpClient) {
     return {
@@ -43,8 +31,8 @@ export function createLinksApi(client: HttpClient) {
          * @param linkId - Link ID returned by {@link createPaymentLink}
          */
         async linkStatus(linkId: string): Promise<LinkDetails> {
-            requireLinkId(linkId);
-            return client.get<LinkDetails>(`/links/${linkId}`);
+            const lid = requireNonEmptyString(linkId, 'linkId');
+            return client.get<LinkDetails>(`/links/${lid}`);
         },
 
         /**
@@ -56,8 +44,8 @@ export function createLinksApi(client: HttpClient) {
          * @param linkId - Link ID returned by {@link createPaymentLink}
          */
         async disableLink(linkId: string): Promise<void> {
-            requireLinkId(linkId);
-            return client.delete(`/links/${linkId}`);
+            const lid = requireNonEmptyString(linkId, 'linkId');
+            return client.delete(`/links/${lid}`);
         },
     };
 }

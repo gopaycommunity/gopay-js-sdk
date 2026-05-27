@@ -2,9 +2,9 @@ import {
     assertHttpsOrigin,
     awaitCharge,
     type AwaitChargeOptions as CoreAwaitChargeOptions,
-    GoPayErrorCodes,
-    GoPaySDKError,
+    type GoPaySDKError,
     type HttpClient,
+    requireNonEmptyString,
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
@@ -26,14 +26,6 @@ type ValidateMerchantResponse =
     components['responses']['Validate-Merchant-Response']['content']['application/json'];
 type QRPaymentDetails = components['schemas']['QR-Payment-Details'];
 
-function requirePaymentId(paymentId: string): void {
-    if (typeof paymentId !== 'string' || !paymentId.trim()) {
-        throw new GoPaySDKError('[GoPaySDK] paymentId is required', {
-            errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
-        });
-    }
-}
-
 export function createPaymentsApi(client: HttpClient) {
     return {
         /**
@@ -44,8 +36,8 @@ export function createPaymentsApi(client: HttpClient) {
          * @param paymentId - Payment session ID returned by {@link createPayment}
          */
         async getPaymentStatus(paymentId: string): Promise<PaymentDetails> {
-            requirePaymentId(paymentId);
-            return client.get<PaymentDetails>(`/payments/${paymentId}`);
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            return client.get<PaymentDetails>(`/payments/${pid}`);
         },
 
         /**
@@ -82,9 +74,9 @@ export function createPaymentsApi(client: HttpClient) {
             paymentId: string,
             params: PaymentChargeRequest,
         ): Promise<PaymentChargeResponse> {
-            requirePaymentId(paymentId);
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
             return client.post<PaymentChargeResponse>(
-                `/payments/${paymentId}/charge`,
+                `/payments/${pid}/charge`,
                 params,
             );
         },
@@ -99,9 +91,9 @@ export function createPaymentsApi(client: HttpClient) {
         async getChargeState(
             paymentId: string,
         ): Promise<PaymentChargeStatusResponse> {
-            requirePaymentId(paymentId);
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
             return client.get<PaymentChargeStatusResponse>(
-                `/payments/${paymentId}/charge`,
+                `/payments/${pid}/charge`,
             );
         },
 
@@ -115,9 +107,9 @@ export function createPaymentsApi(client: HttpClient) {
         async getGooglePayInfo(
             paymentId: string,
         ): Promise<GooglePayInfoResponse> {
-            requirePaymentId(paymentId);
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
             return client.get<GooglePayInfoResponse>(
-                `/payments/${paymentId}/google-pay/info`,
+                `/payments/${pid}/google-pay/info`,
             );
         },
 
@@ -131,9 +123,9 @@ export function createPaymentsApi(client: HttpClient) {
         async getApplePayInfo(
             paymentId: string,
         ): Promise<ApplePayInfoResponse> {
-            requirePaymentId(paymentId);
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
             return client.get<ApplePayInfoResponse>(
-                `/payments/${paymentId}/apple-pay/info`,
+                `/payments/${pid}/apple-pay/info`,
             );
         },
 
@@ -158,7 +150,7 @@ export function createPaymentsApi(client: HttpClient) {
             origin: string = globalThis.location?.origin ?? '',
             callbacks?: { oncancel?: (event: unknown) => void },
         ): void {
-            requirePaymentId(paymentId);
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
             if (origin) {
                 try {
                     assertHttpsOrigin(
@@ -187,7 +179,7 @@ export function createPaymentsApi(client: HttpClient) {
                     : undefined;
                 client
                     .post<ValidateMerchantResponse>(
-                        `/payments/${paymentId}/apple-pay/validate`,
+                        `/payments/${pid}/apple-pay/validate`,
                         body,
                         { headers },
                     )
@@ -215,10 +207,10 @@ export function createPaymentsApi(client: HttpClient) {
             paymentId: string,
             format?: 'png' | 'svg',
         ): Promise<QRPaymentDetails> {
-            requirePaymentId(paymentId);
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
             const path = format
-                ? `/payments/${paymentId}/qr-payment/info?format=${format}`
-                : `/payments/${paymentId}/qr-payment/info`;
+                ? `/payments/${pid}/qr-payment/info?format=${format}`
+                : `/payments/${pid}/qr-payment/info`;
             return client.get<QRPaymentDetails>(path);
         },
 
@@ -239,11 +231,11 @@ export function createPaymentsApi(client: HttpClient) {
             paymentId: string,
             options?: AwaitChargeOptions,
         ): Promise<PaymentChargeStatusResponse> {
-            requirePaymentId(paymentId);
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
             return awaitCharge(
                 () =>
                     client.get<PaymentChargeStatusResponse>(
-                        `/payments/${paymentId}/charge`,
+                        `/payments/${pid}/charge`,
                     ),
                 options,
             );

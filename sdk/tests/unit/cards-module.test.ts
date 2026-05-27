@@ -100,7 +100,7 @@ describe('CardsModule', () => {
 
         it('throws when cardId is empty', async () => {
             await expect(cards.getCardDetails('')).rejects.toThrow(
-                'Missing or invalid cardId',
+                '[GoPaySDK] cardId is required',
             );
         });
     });
@@ -134,7 +134,7 @@ describe('CardsModule', () => {
 
         it('throws when cardId is empty', async () => {
             await expect(cards.deleteCard('')).rejects.toThrow(
-                'Missing or invalid cardId',
+                '[GoPaySDK] cardId is required',
             );
         });
     });
@@ -198,7 +198,7 @@ describe('CardsModule', () => {
 
         it('throws when payload is empty', async () => {
             await expect(cards.tokenizeEncryptedCard('')).rejects.toThrow(
-                'Missing or invalid payload',
+                '[GoPaySDK] payload is required',
             );
         });
     });

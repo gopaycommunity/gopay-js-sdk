@@ -9,4 +9,4 @@ export { createHttpClient } from './http/client.js';
 export type { StoredTokenPair } from './http/token-store.js';
 export { createTokenStore } from './http/token-store.js';
 export type { BrowserData } from './types/browser-data.js';
-export { assertHttpsOrigin } from './validate.js';
+export { assertHttpsOrigin, requireNonEmptyString } from './validate.js';

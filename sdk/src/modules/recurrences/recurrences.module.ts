@@ -1,8 +1,5 @@
-import {
-    GoPayErrorCodes,
-    GoPaySDKError,
-    type HttpClient,
-} from '@gopay-internal/core';
+import { type HttpClient, requireNonEmptyString } from '@gopay-internal/core';
+
 import type { components } from '../../types/generated.js';
 
 type RecurrenceCreateRequest =
@@ -10,14 +7,6 @@ type RecurrenceCreateRequest =
 type RecurrenceDetails = components['schemas']['Recurrence-Details'];
 type RecurrenceNextBody = components['schemas']['Payment-Instance-Override'];
 type PaymentDetails = components['schemas']['Payment-Details'];
-
-function requireRecId(recId: string): void {
-    if (typeof recId !== 'string' || !recId.trim()) {
-        throw new GoPaySDKError('[GoPaySDK] recId is required', {
-            errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
-        });
-    }
-}
 
 export function createRecurrencesApi(client: HttpClient) {
     return {
@@ -49,8 +38,8 @@ export function createRecurrencesApi(client: HttpClient) {
          * @param recId - Recurrence ID returned by {@link createRecurrence}
          */
         async recurrenceStatus(recId: string): Promise<RecurrenceDetails> {
-            requireRecId(recId);
-            return client.get<RecurrenceDetails>(`/recurrences/${recId}`);
+            const rid = requireNonEmptyString(recId, 'recId');
+            return client.get<RecurrenceDetails>(`/recurrences/${rid}`);
         },
 
         /**
@@ -62,8 +51,8 @@ export function createRecurrencesApi(client: HttpClient) {
          * @param recId - Recurrence ID returned by {@link createRecurrence}
          */
         async stopRecurrence(recId: string): Promise<void> {
-            requireRecId(recId);
-            return client.delete(`/recurrences/${recId}`);
+            const rid = requireNonEmptyString(recId, 'recId');
+            return client.delete(`/recurrences/${rid}`);
         },
 
         /**
@@ -80,9 +69,9 @@ export function createRecurrencesApi(client: HttpClient) {
             recId: string,
             params?: RecurrenceNextBody,
         ): Promise<PaymentDetails> {
-            requireRecId(recId);
+            const rid = requireNonEmptyString(recId, 'recId');
             return client.post<PaymentDetails>(
-                `/recurrences/${recId}/start`,
+                `/recurrences/${rid}/start`,
                 params,
             );
         },
@@ -101,9 +90,9 @@ export function createRecurrencesApi(client: HttpClient) {
             recId: string,
             params?: RecurrenceNextBody,
         ): Promise<PaymentDetails> {
-            requireRecId(recId);
+            const rid = requireNonEmptyString(recId, 'recId');
             return client.post<PaymentDetails>(
-                `/recurrences/${recId}/next`,
+                `/recurrences/${rid}/next`,
                 params,
             );
         },
