@@ -23,7 +23,7 @@ type ApplePayInfoResponse =
 type ApplePayAppInfoResponse =
     components['responses']['Apple-Pay-App-Info-Response']['content']['application/json'];
 type ValidateMerchantResponse =
-    components['responses']['Validate-Merchant-Response']['content']['application/json'];
+    components['schemas']['Validate-Merchant-Response'];
 type QRPaymentDetails = components['schemas']['QR-Payment-Details'];
 
 // Allow callers to omit browser_data — the SDK collects and injects it automatically.

@@ -1713,6 +1713,10 @@ export interface components {
          * @enum {string}
          */
         "Refund-State": "REQUESTED" | "SUCCESS" | "FAILED";
+        /** Validate-Merchant-Response */
+        "Validate-Merchant-Response": {
+            [key: string]: unknown;
+        };
     };
     responses: {
         /** @description Google Pay Payment Request object consumed by the Google Payment button */
@@ -1802,15 +1806,6 @@ export interface components {
                 };
             };
         };
-        /** @description Validation response containing the opaque Apple Pay issued session data. */
-        "Validate-Merchant-Response": {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Refund-Details"];
-            };
-        };
         /** @description Bad Request */
         "Bad-Request-400-Response": {
             headers: {
@@ -1898,6 +1893,12 @@ export interface components {
                     };
                 };
             };
+        };
+        "Validate-Merchant-Response": {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
         };
     };
     parameters: never;
@@ -2167,7 +2168,15 @@ export interface operations {
             };
         };
         responses: {
-            200: components["responses"]["Validate-Merchant-Response"];
+            /** @description Shared Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Validate-Merchant-Response"];
+                };
+            };
             400: components["responses"]["Bad-Request-400-Response"];
             401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];

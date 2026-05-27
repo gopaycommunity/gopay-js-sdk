@@ -23,7 +23,7 @@ type GooglePayInfoResponse =
 type ApplePayInfoResponse =
     components['responses']['Apple-Pay-Info-Response']['content']['application/json'];
 type ValidateMerchantResponse =
-    components['responses']['Validate-Merchant-Response']['content']['application/json'];
+    components['schemas']['Validate-Merchant-Response'];
 type QRPaymentDetails = components['schemas']['QR-Payment-Details'];
 
 export function createPaymentsApi(client: HttpClient) {

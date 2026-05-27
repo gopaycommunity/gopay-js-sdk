@@ -399,7 +399,11 @@ paths:
             type: string
       responses:
         '200':
-          $ref: '#/components/responses/Validate-Merchant-Response'
+          description: Shared Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Validate-Merchant-Response'
         '400':
           $ref: '#/components/responses/Bad-Request-400-Response'
         '401':
@@ -480,6 +484,11 @@ paths:
       tags:
         - Refunds
     parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
       - schema:
           type: string
         name: payment_id
@@ -1294,46 +1303,6 @@ components:
                           id: 50gfvcgfcscie
                         example: final
           examples: {}
-    Validate-Merchant-Response:
-      description: Validation response containing the opaque Apple Pay issued session data.
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              epochTimestamp:
-                type: integer
-                examples:
-                  - 15445664606792
-              expiresAt:
-                type: integer
-                examples:
-                  - 154167344466792
-              merchantSessionIdentifier:
-                type: string
-                examples:
-                  - SSHC45CB...
-              nonce:
-                type: string
-                examples:
-                  - 8f47a9c1
-              merchantIdentifier:
-                type: string
-                examples:
-                  - 8398119642
-              domainName:
-                type: string
-                examples:
-                  - www.example.com
-              displayName:
-                type: string
-                examples:
-                  - GoPay Czech Branch
-              signature:
-                type: string
-                examples:
-                  - '3080'
-          examples: {}
     Bad-Request-400-Response:
       description: Bad Request
       content:
@@ -1543,6 +1512,8 @@ components:
                         type:
                           type: string
                           example: final
+    Validate-Merchant-Response:
+      description: ''
   schemas:
     Client-Credentials-Request:
       type: object
@@ -3284,7 +3255,6 @@ components:
       properties:
         amount:
           type: integer
-          minimum: 0
           x-stoplight:
             id: 6auiwvwfobcnw
           description: 'Amount to be refunded in cents. For a full amount, set it equal to the payment amount'
@@ -3310,7 +3280,6 @@ components:
             id: azic648t86vun
         amount:
           type: integer
-          minimum: 0
           x-stoplight:
             id: lcd5dxgk4i5le
         currency:
@@ -3336,4 +3305,10 @@ components:
         - REQUESTED
         - SUCCESS
         - FAILED
+    Validate-Merchant-Response:
+      title: Validate-Merchant-Response
+      x-stoplight:
+        id: rstewt5aabdv2
+      type: object
+      additionalProperties: true
 x-internal: false
