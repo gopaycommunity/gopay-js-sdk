@@ -1,4 +1,9 @@
-import { expect, parseOutput, test } from '../fixtures/fixtures.js';
+import {
+    expandAllSections,
+    expect,
+    parseOutput,
+    test,
+} from '../fixtures/fixtures.js';
 
 const MOCK_QR_B64 = 'AAAA'; // minimal non-empty base64 placeholder
 
@@ -32,6 +37,7 @@ test('payments.getQRPaymentInfo() returns QR data and recipient info', async ({
 
     await page.goto('/');
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
+    await expandAllSections(page);
 
     // Authenticate (real call — verifies credentials)
     await page.click('[onclick="runAuthenticate()"]');

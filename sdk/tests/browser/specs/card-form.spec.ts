@@ -1,10 +1,11 @@
-import { expect, test } from '../fixtures/fixtures.js';
+import { expandAllSections, expect, test } from '../fixtures/fixtures.js';
 
 test('cards.mountCardForm() mounts iframe and the container becomes visible', async ({
     page,
 }) => {
     await page.goto('/');
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
+    await expandAllSections(page);
 
     // Authenticate and create a payment to get a payment ID
     await page.click('[onclick="runAuthenticate()"]');

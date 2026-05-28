@@ -1,4 +1,9 @@
-import { expect, parseOutput, test } from '../fixtures/fixtures.js';
+import {
+    expandAllSections,
+    expect,
+    parseOutput,
+    test,
+} from '../fixtures/fixtures.js';
 
 // Tests the full mock Apple Pay flow via the Browser SDK using the polyfill's
 // MockApplePaySession. No real Apple device or Safari required — the mock
@@ -109,6 +114,7 @@ test('mock Apple Pay flow completes merchant validation and authorises payment',
 
     await page.goto('/');
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
+    await expandAllSections(page);
 
     // Initialize browser SDK
     const pubKeyInput = page.locator('#cardpay-publishable-key');

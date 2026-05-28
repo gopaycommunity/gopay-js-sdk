@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, type Page } from '@playwright/test';
 
 // Extends the base `test` with a `page` that proxies all cross-origin requests
 // through Playwright's Node.js fetch to avoid CORS restrictions in the
@@ -30,4 +30,16 @@ export { expect };
  */
 export function parseOutput<T = unknown>(text: string): T {
     return JSON.parse(text.replace(/^── onSuccess ──\n/, '')) as T;
+}
+
+/**
+ * Open all <details> sections on the page so Playwright can interact with
+ * buttons inside collapsible sections without visibility failures.
+ */
+export async function expandAllSections(page: Page): Promise<void> {
+    await page.evaluate(() => {
+        document.querySelectorAll('details').forEach((d) => {
+            (d as HTMLDetailsElement).open = true;
+        });
+    });
 }

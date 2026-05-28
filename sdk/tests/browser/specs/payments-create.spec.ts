@@ -1,5 +1,10 @@
 import type { components } from '../../../src/types/generated.js';
-import { expect, parseOutput, test } from '../fixtures/fixtures.js';
+import {
+    expandAllSections,
+    expect,
+    parseOutput,
+    test,
+} from '../fixtures/fixtures.js';
 
 type PaymentCreateResponse =
     components['responses']['Payment-Create-Response']['content']['application/json'];
@@ -13,6 +18,7 @@ test('payments.create() returns a payment with all expected keys', async ({
 }) => {
     await page.goto('/');
     await expect(page.locator('#sdk-badge')).toHaveText('LOADED');
+    await expandAllSections(page);
 
     // Authenticate first
     await page.click('[onclick="runAuthenticate()"]');
