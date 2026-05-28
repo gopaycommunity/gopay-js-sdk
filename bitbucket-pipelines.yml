@@ -114,7 +114,7 @@ definitions:
           - yarn install --immutable
           - yarn workspace gopay-js-sdk run build
           - yarn workspace gopay-js-sdk-browser run build
-          - export REPO_URL=https://gopay-release-bot:$BITBUCKET_BOT_PUSH_TOKEN@bitbucket.org/$BITBUCKET_REPO_FULL_NAME.git
+          - REPO_URL=https://gopay-release-bot:$BITBUCKET_BOT_PUSH_TOKEN@bitbucket.org/$BITBUCKET_REPO_FULL_NAME.git
           - git remote set-url origin $REPO_URL
           # semantic-release: bumps version, tags commit, updates CHANGELOG
           # npmPublish: false in both release.config.cjs — flip to true once NPM_TOKEN is set in Bitbucket variables

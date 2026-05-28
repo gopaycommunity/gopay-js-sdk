@@ -1876,7 +1876,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@semantic-release/npm@npm:^12.0.0":
+"@semantic-release/npm@npm:^12.0.2":
   version: 12.0.2
   resolution: "@semantic-release/npm@npm:12.0.2"
   dependencies:
@@ -4574,14 +4574,14 @@ __metadata:
     "@gopay-internal/core": "workspace:*"
     "@semantic-release/changelog": "npm:^6.0.3"
     "@semantic-release/git": "npm:^10.0.1"
-    "@semantic-release/npm": "npm:^12.0.0"
+    "@semantic-release/npm": "npm:^12.0.2"
     "@types/jsdom": "npm:^28.0.1"
     "@types/node": "npm:^24.12.2"
     "@vitest/coverage-v8": "npm:^4.1.5"
     jsdom: "npm:^29.1.0"
     madge: "npm:^8.0.0"
     semantic-release: "npm:^25.0.3"
-    semantic-release-monorepo: "npm:^8.0.0"
+    semantic-release-monorepo: "npm:^8.0.2"
     ts-unused-exports: "npm:^11.0.1"
     tsup: "npm:^8.5.1"
     typescript: "npm:~6.0.3"
@@ -4609,7 +4609,7 @@ __metadata:
     "@gopay-internal/core": "workspace:*"
     "@semantic-release/changelog": "npm:^6.0.3"
     "@semantic-release/git": "npm:^10.0.1"
-    "@semantic-release/npm": "npm:^12.0.0"
+    "@semantic-release/npm": "npm:^12.0.2"
     "@types/jsdom": "npm:^28.0.1"
     "@types/node": "npm:^24.12.2"
     "@vitest/coverage-v8": "npm:^4.1.5"
@@ -4617,7 +4617,7 @@ __metadata:
     madge: "npm:^8.0.0"
     openapi-typescript: "npm:^7.13.0"
     semantic-release: "npm:^25.0.3"
-    semantic-release-monorepo: "npm:^8.0.0"
+    semantic-release-monorepo: "npm:^8.0.2"
     ts-unused-exports: "npm:^11.0.1"
     tsup: "npm:^8.5.1"
     typescript: "npm:~6.0.3"
@@ -8240,7 +8240,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semantic-release-monorepo@npm:^8.0.0":
+"semantic-release-monorepo@npm:^8.0.2":
   version: 8.0.2
   resolution: "semantic-release-monorepo@npm:8.0.2"
   dependencies:
