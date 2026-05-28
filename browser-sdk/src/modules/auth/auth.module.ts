@@ -6,10 +6,7 @@ import {
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
-type TokenPair = components['schemas']['Access-Token'] & {
-    refresh_token?: string;
-    refresh_expires_in?: number;
-};
+type TokenPair = components['schemas']['Access-Token'];
 
 /** Scope issued for payment-credentials tokens. */
 const DEFAULT_PAYMENT_SCOPE = 'payment:read payment:charge shared:read';
@@ -48,9 +45,7 @@ export async function exchangePaymentCredentials(
 
     const tokenData: Omit<StoredTokenPair, 'issued_at'> = {
         access_token: tokenPair.access_token,
-        refresh_token: tokenPair.refresh_token ?? '',
         expires_in: tokenPair.expires_in,
-        refresh_expires_in: tokenPair.refresh_expires_in ?? 0,
         token_type: 'bearer',
     };
     client.setToken(tokenData);

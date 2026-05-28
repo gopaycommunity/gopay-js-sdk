@@ -129,37 +129,32 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
     async function doRefresh(): Promise<void> {
         const { store, baseUrl, emitError, getTimeoutMs } = deps;
 
-        const refreshToken = store.getRefreshToken();
-        if (!refreshToken) {
+        const clientId = store.getClientId();
+        const clientSecret = store.getClientSecret();
+
+        if (!clientId || !clientSecret) {
             store.clear();
             return emitError(
                 new GoPaySDKError(
-                    `[GoPaySDK] Session expired and no refresh token available. ${reAuth}`,
-                    { errorCode: GoPayErrorCodes.AUTH_REFRESH_TOKEN_MISSING },
+                    `[GoPaySDK] Access token expired and no client credentials available. ${reAuth}`,
+                    { errorCode: GoPayErrorCodes.AUTH_CREDENTIALS_MISSING },
                 ),
             );
         }
 
         try {
             const url = buildUrl(baseUrl, AUTH_PATH);
+            const storedScope = store.getScope();
             const form: Record<string, string> = {
-                grant_type: 'refresh_token',
-                refresh_token: refreshToken,
+                grant_type: 'client_credentials',
+                ...(storedScope ? { scope: storedScope } : {}),
             };
+            const credentials = globalThis.btoa(`${clientId}:${clientSecret}`);
             const headers = new Headers({
                 'Content-Type': 'application/x-www-form-urlencoded',
                 Accept: 'application/json',
+                Authorization: `Basic ${credentials}`,
             });
-            const clientId = store.getClientId();
-            const clientSecret = store.getClientSecret();
-            if (clientId && clientSecret) {
-                const credentials = globalThis.btoa(
-                    `${clientId}:${clientSecret}`,
-                );
-                headers.set('Authorization', `Basic ${credentials}`);
-            } else if (clientId) {
-                form.client_id = clientId;
-            }
 
             const response = await fetch(
                 new Request(url, {
@@ -190,14 +185,6 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
             store.set({
                 access_token,
                 expires_in,
-                refresh_token:
-                    typeof body.refresh_token === 'string'
-                        ? body.refresh_token
-                        : '',
-                refresh_expires_in:
-                    typeof body.refresh_expires_in === 'number'
-                        ? body.refresh_expires_in
-                        : 0,
                 token_type: 'bearer',
             });
         } catch (cause) {

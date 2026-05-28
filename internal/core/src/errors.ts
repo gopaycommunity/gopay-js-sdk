@@ -2,9 +2,7 @@ export const GoPayErrorCodes = {
     // Authentication errors
     /** No access token in store — call authenticate() or setClientToken() */
     AUTH_TOKEN_MISSING: 'AUTH_TOKEN_MISSING',
-    /** Token expired and no refresh token present */
-    AUTH_REFRESH_TOKEN_MISSING: 'AUTH_REFRESH_TOKEN_MISSING',
-    /** Refresh token request failed */
+    /** Re-authentication (client_credentials grant) failed */
     AUTH_REFRESH_FAILED: 'AUTH_REFRESH_FAILED',
     /** Token response from server is missing required fields */
     AUTH_INVALID_RESPONSE: 'AUTH_INVALID_RESPONSE',

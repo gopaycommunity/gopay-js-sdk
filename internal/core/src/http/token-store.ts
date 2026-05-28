@@ -1,8 +1,6 @@
 export interface StoredTokenPair {
     access_token: string;
-    refresh_token: string;
     expires_in: number;
-    refresh_expires_in: number;
     token_type: 'bearer';
     issued_at: number;
 }
@@ -10,16 +8,12 @@ export interface StoredTokenPair {
 export function createTokenStore() {
     let tokens: StoredTokenPair | null = null;
     let clientId: string | null = null;
-    /** Server-side client secret, persisted across token refreshes. Never set in browser flow. */
     let clientSecret: string | null = null;
+    let scope: string | null = null;
 
     return {
         get(): StoredTokenPair | null {
             return tokens;
-        },
-
-        getRefreshToken(): string | null {
-            return tokens?.refresh_token ?? null;
         },
 
         getClientId(): string | null {
@@ -30,15 +24,21 @@ export function createTokenStore() {
             return clientSecret;
         },
 
-        setClientSecret(id: string, secret: string): void {
+        getScope(): string | null {
+            return scope;
+        },
+
+        setClientSecret(id: string, secret: string, tokenScope?: string): void {
             clientId = id;
             clientSecret = secret;
+            scope = tokenScope ?? null;
             tokens = null;
         },
 
         setClientId(id: string): void {
             clientId = id;
             clientSecret = null;
+            scope = null;
             tokens = null;
         },
 
@@ -50,6 +50,7 @@ export function createTokenStore() {
             tokens = null;
             clientId = null;
             clientSecret = null;
+            scope = null;
         },
 
         hasAccessToken(): boolean {

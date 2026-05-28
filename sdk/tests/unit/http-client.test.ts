@@ -15,17 +15,13 @@ const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
 
 const storedTokens = {
     access_token: 'at-abc',
-    refresh_token: 'rt-xyz',
     expires_in: 900,
-    refresh_expires_in: 86400,
     token_type: 'bearer' as const,
 };
 
 const freshTokens = {
     access_token: 'at-new',
-    refresh_token: 'rt-new',
     expires_in: 900,
-    refresh_expires_in: 86400,
     token_type: 'bearer' as const,
 };
 
@@ -153,7 +149,7 @@ describe('HttpClient', () => {
             const client = createHttpClient({ baseUrl: 'https://example.com' });
             await client.postForm('/oauth2/token', {
                 grant_type: 'client_credentials',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
 
             const [req] = fetchMock.mock.calls[0] as [Request];
@@ -163,7 +159,7 @@ describe('HttpClient', () => {
             );
             const params = new URLSearchParams(capturedBodyText);
             expect(params.get('grant_type')).toBe('client_credentials');
-            expect(params.get('scope')).toBe('payment:create');
+            expect(params.get('scope')).toBe('payment:write');
         });
 
         it('does NOT inject Bearer on /oauth2/token', async () => {
@@ -284,21 +280,59 @@ describe('HttpClient', () => {
     });
 
     // -------------------------------------------------------------------------
-    // refreshTokens() — credential forwarding
+    // afterResponse hook — 401 handling
     // -------------------------------------------------------------------------
 
-    describe('refreshTokens() — credential forwarding', () => {
-        it('sends Basic Authorization on refresh when clientId and clientSecret are set', async () => {
+    // -------------------------------------------------------------------------
+    // re-authentication — credential forwarding
+    // -------------------------------------------------------------------------
+
+    describe('re-authentication — credential forwarding', () => {
+        it('sends Basic Authorization with client_credentials grant on re-auth', async () => {
             let callCount = 0;
-            let capturedRefreshReq!: Request;
+            let capturedAuthHeader = '';
+            let capturedReAuthBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 callCount++;
                 if (callCount === 1) {
                     return makeResponse({}, 401, 'Unauthorized');
                 }
                 if (callCount === 2) {
-                    capturedRefreshReq = req;
-                    await req.text();
+                    capturedAuthHeader = req.headers.get('Authorization') ?? '';
+                    capturedReAuthBody = await req.text();
+                    return makeResponse(freshTokens);
+                }
+                return makeResponse({ ok: true });
+            });
+
+            const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.setClientCredentials(
+                'my-client',
+                'my-secret',
+                'payment:write',
+            );
+            client.tokenStore.set(storedTokens);
+
+            await client.get('/resource');
+
+            expect(capturedAuthHeader).toBe(
+                `Basic ${btoa('my-client:my-secret')}`,
+            );
+            const body = new URLSearchParams(capturedReAuthBody);
+            expect(body.get('grant_type')).toBe('client_credentials');
+            expect(body.get('scope')).toBe('payment:write');
+        });
+
+        it('omits scope in re-auth form when none was stored', async () => {
+            let callCount = 0;
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                callCount++;
+                if (callCount === 1) {
+                    return makeResponse({}, 401, 'Unauthorized');
+                }
+                if (callCount === 2) {
+                    capturedBody = await req.text();
                     return makeResponse(freshTokens);
                 }
                 return makeResponse({ ok: true });
@@ -310,36 +344,9 @@ describe('HttpClient', () => {
 
             await client.get('/resource');
 
-            const expected = `Basic ${btoa('my-client:my-secret')}`;
-            expect(capturedRefreshReq.headers.get('Authorization')).toBe(
-                expected,
-            );
-        });
-
-        it('includes client_id in refresh form body when only clientId is set', async () => {
-            let callCount = 0;
-            let capturedRefreshBody = '';
-            fetchMock.mockImplementation(async (req: Request) => {
-                callCount++;
-                if (callCount === 1) {
-                    return makeResponse({}, 401, 'Unauthorized');
-                }
-                if (callCount === 2) {
-                    capturedRefreshBody = await req.text();
-                    return makeResponse(freshTokens);
-                }
-                return makeResponse({ ok: true });
-            });
-
-            const client = createHttpClient({ baseUrl: 'https://example.com' });
-            client.setClientId('only-client-id');
-            client.tokenStore.set(storedTokens);
-
-            await client.get('/resource');
-
-            const params = new URLSearchParams(capturedRefreshBody);
-            expect(params.get('client_id')).toBe('only-client-id');
-            expect(params.get('grant_type')).toBe('refresh_token');
+            const params = new URLSearchParams(capturedBody);
+            expect(params.get('grant_type')).toBe('client_credentials');
+            expect(params.get('scope')).toBeNull();
         });
     });
 
@@ -365,10 +372,7 @@ describe('HttpClient', () => {
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
             const err = await client
-                .postForm('/oauth2/token', {
-                    grant_type: 'refresh_token',
-                    refresh_token: 'rt',
-                })
+                .postForm('/oauth2/token', { grant_type: 'client_credentials' })
                 .catch((e: unknown) => e);
 
             expect(err).toBeInstanceOf(GoPayHTTPError);
@@ -377,23 +381,23 @@ describe('HttpClient', () => {
             expect(fetchMock).toHaveBeenCalledTimes(1);
         });
 
-        it('throws AUTH_REFRESH_TOKEN_MISSING when no refresh token available', async () => {
+        it('throws AUTH_CREDENTIALS_MISSING when no client credentials available', async () => {
             fetchMock.mockResolvedValue(makeResponse({}, 401, 'Unauthorized'));
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set({ ...storedTokens, refresh_token: '' });
+            client.tokenStore.set(storedTokens);
             const err = await client.get('/resource').catch((e: unknown) => e);
             expect(err).toBeInstanceOf(GoPaySDKError);
             expect((err as GoPaySDKError).message).toContain(
-                'Session expired and no refresh token available',
+                'Access token expired and no client credentials available',
             );
             expect((err as GoPaySDKError).errorCode).toBe(
-                GoPayErrorCodes.AUTH_REFRESH_TOKEN_MISSING,
+                GoPayErrorCodes.AUTH_CREDENTIALS_MISSING,
             );
             expect(client.tokenStore.hasAccessToken()).toBe(false);
         });
 
-        it('throws AUTH_REFRESH_FAILED when refresh call fails', async () => {
+        it('throws AUTH_REFRESH_FAILED when re-authentication call fails', async () => {
             let callCount = 0;
             fetchMock.mockImplementation(async (req: Request) => {
                 callCount++;
@@ -405,6 +409,7 @@ describe('HttpClient', () => {
             });
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.setClientCredentials('id', 'secret');
             client.tokenStore.set(storedTokens);
 
             const err = await client.get('/resource').catch((e: unknown) => e);
@@ -418,7 +423,7 @@ describe('HttpClient', () => {
             expect(client.tokenStore.hasAccessToken()).toBe(false);
         });
 
-        it('retries with fresh token after successful refresh', async () => {
+        it('retries with fresh token after successful re-authentication', async () => {
             let callCount = 0;
             fetchMock.mockImplementation(async (req: Request) => {
                 callCount++;
@@ -433,6 +438,7 @@ describe('HttpClient', () => {
             });
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.setClientCredentials('id', 'secret');
             client.tokenStore.set(storedTokens);
 
             const result = await client.get<{ result: string }>('/resource');
@@ -444,7 +450,7 @@ describe('HttpClient', () => {
             expect(retryReq.headers.get('Authorization')).toBe('Bearer at-new');
         });
 
-        it('throws AUTH_UNAUTHORIZED when retry after refresh is also 401', async () => {
+        it('throws AUTH_UNAUTHORIZED when retry after re-authentication is also 401', async () => {
             let callCount = 0;
             fetchMock.mockImplementation(async (req: Request) => {
                 callCount++;
@@ -459,6 +465,7 @@ describe('HttpClient', () => {
             });
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.setClientCredentials('id', 'secret');
             client.tokenStore.set(storedTokens);
 
             const err = await client.get('/resource').catch((e: unknown) => e);
@@ -486,18 +493,20 @@ describe('HttpClient', () => {
             vi.useRealTimers();
         });
 
-        it('refreshes token proactively when expiring soon', async () => {
+        it('re-authenticates proactively when token is expiring soon', async () => {
             let callCount = 0;
+            let capturedReAuthBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 callCount++;
                 if (callCount === 1) {
-                    await req.text();
+                    capturedReAuthBody = await req.text();
                     return makeResponse(freshTokens);
                 }
                 return makeResponse({ result: 'ok' });
             });
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.setClientCredentials('id', 'secret', 'payment:write');
             client.tokenStore.set(storedTokens); // issued_at = 0 (fake time)
             vi.advanceTimersByTime(871_000); // 29s left — within 30s buffer
 
@@ -505,13 +514,16 @@ describe('HttpClient', () => {
 
             expect(result).toEqual({ result: 'ok' });
             expect(fetchMock).toHaveBeenCalledTimes(2);
-            const refreshReq = fetchMock.mock.calls[0][0] as Request;
-            expect(refreshReq.url).toContain('/oauth2/token');
+            const reAuthReq = fetchMock.mock.calls[0][0] as Request;
+            expect(reAuthReq.url).toContain('/oauth2/token');
+            const body = new URLSearchParams(capturedReAuthBody);
+            expect(body.get('grant_type')).toBe('client_credentials');
             expect(client.tokenStore.get()?.access_token).toBe('at-new');
         });
 
-        it('does not refresh proactively when token has plenty of time', async () => {
+        it('does not re-authenticate proactively when token has plenty of time', async () => {
             const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.setClientCredentials('id', 'secret');
             client.tokenStore.set(storedTokens);
             vi.advanceTimersByTime(1_000); // 1s elapsed — well within expiry
 
@@ -522,11 +534,11 @@ describe('HttpClient', () => {
             expect(req.url).not.toContain('/oauth2/token');
         });
 
-        it('coalesces concurrent expiry-triggered refreshes into one network call', async () => {
-            let refreshCallCount = 0;
+        it('coalesces concurrent expiry-triggered re-auths into one network call', async () => {
+            let reAuthCallCount = 0;
             fetchMock.mockImplementation(async (req: Request) => {
                 if (req.url.includes('/oauth2/token')) {
-                    refreshCallCount++;
+                    reAuthCallCount++;
                     await req.text();
                     return makeResponse(freshTokens);
                 }
@@ -534,6 +546,7 @@ describe('HttpClient', () => {
             });
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.setClientCredentials('id', 'secret');
             client.tokenStore.set(storedTokens);
             vi.advanceTimersByTime(871_000);
 
@@ -544,22 +557,22 @@ describe('HttpClient', () => {
 
             expect(r1).toEqual({ result: 'ok' });
             expect(r2).toEqual({ result: 'ok' });
-            expect(refreshCallCount).toBe(1);
+            expect(reAuthCallCount).toBe(1);
             expect(client.tokenStore.get()?.access_token).toBe('at-new');
         });
 
-        it('throws and clears store when proactive refresh has no refresh token', async () => {
+        it('throws AUTH_CREDENTIALS_MISSING and clears store when no credentials for proactive re-auth', async () => {
             const client = createHttpClient({ baseUrl: 'https://example.com' });
-            client.tokenStore.set({
-                ...storedTokens,
-                refresh_token: '',
-            });
+            client.tokenStore.set(storedTokens);
             vi.advanceTimersByTime(871_000);
 
             const err = await client.get('/resource').catch((e: unknown) => e);
             expect(err).toBeInstanceOf(GoPaySDKError);
             expect((err as GoPaySDKError).message).toContain(
-                'Session expired and no refresh token available',
+                'Access token expired and no client credentials available',
+            );
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.AUTH_CREDENTIALS_MISSING,
             );
             expect(client.tokenStore.hasAccessToken()).toBe(false);
         });

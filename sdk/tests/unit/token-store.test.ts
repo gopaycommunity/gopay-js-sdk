@@ -3,9 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pair = {
     access_token: 'at',
-    refresh_token: 'rt',
     expires_in: 900,
-    refresh_expires_in: 86400,
     token_type: 'bearer' as const,
 };
 
@@ -47,17 +45,6 @@ describe('TokenStore', () => {
         const updated = { ...pair, access_token: 'at2' };
         store.set(updated);
         expect(store.get()?.access_token).toBe('at2');
-    });
-
-    it('getRefreshToken() returns refresh_token from a stored pair', () => {
-        const store = createTokenStore();
-        store.set(pair);
-        expect(store.getRefreshToken()).toBe(pair.refresh_token);
-    });
-
-    it('getRefreshToken() returns null when store is empty', () => {
-        const store = createTokenStore();
-        expect(store.getRefreshToken()).toBeNull();
     });
 
     // -------------------------------------------------------------------------

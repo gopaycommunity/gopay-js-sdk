@@ -6,10 +6,8 @@ import { createAuthApi } from '../../src/modules/auth/auth.module.js';
 const validTokenPair = {
     token_type: 'bearer' as const,
     access_token: 'at-abc',
-    refresh_token: 'rt-xyz',
-    scope: 'payment:create',
+    scope: 'payment:write',
     expires_in: 900,
-    refresh_expires_in: 86400,
 };
 
 const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
@@ -44,24 +42,22 @@ describe('AuthModule', () => {
             grant_type: 'client_credentials',
             client_id: 'id',
             client_secret: 'secret',
-            scope: 'payment:create',
+            scope: 'payment:write',
         });
 
         const stored = client.tokenStore.get();
         expect(stored?.access_token).toBe('at-abc');
-        expect(stored?.refresh_token).toBe('rt-xyz');
         expect(stored?.expires_in).toBe(900);
-        expect(stored?.refresh_expires_in).toBe(86400);
         expect(stored?.token_type).toBe('bearer');
         expect(stored?.issued_at).toBeTypeOf('number');
     });
 
-    it('stores client credentials for future token refresh', async () => {
+    it('stores client credentials in the token store', async () => {
         await auth.authenticate({
             grant_type: 'client_credentials',
             client_id: 'my-client',
             client_secret: 'my-secret',
-            scope: 'payment:create',
+            scope: 'payment:write',
         });
 
         expect(client.tokenStore.getClientId()).toBe('my-client');
@@ -85,7 +81,7 @@ describe('AuthModule', () => {
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             })
             .catch((e: unknown) => e);
 
@@ -96,29 +92,6 @@ describe('AuthModule', () => {
         expect((err as GoPaySDKError).errorCode).toBe(
             GoPayErrorCodes.AUTH_INVALID_RESPONSE,
         );
-    });
-
-    it('accepts a token response without refresh_token (client_credentials grant)', async () => {
-        fetchMock.mockImplementation(async (req: Request) => {
-            await req.text();
-            return makeResponse({
-                ...validTokenPair,
-                refresh_token: undefined,
-                refresh_expires_in: undefined,
-            });
-        });
-
-        await auth.authenticate({
-            grant_type: 'client_credentials',
-            client_id: 'id',
-            client_secret: 'secret',
-            scope: 'payment:create',
-        });
-
-        const stored = client.tokenStore.get();
-        expect(stored?.access_token).toBe('at-abc');
-        expect(stored?.refresh_token).toBe('');
-        expect(stored?.refresh_expires_in).toBe(0);
     });
 
     it('does not populate token store when token response is invalid', async () => {
@@ -132,7 +105,7 @@ describe('AuthModule', () => {
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             }),
         ).rejects.toThrow();
 
@@ -153,7 +126,7 @@ describe('AuthModule', () => {
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
             expect(auth.isAuthenticated()).toBe(true);
         });
@@ -163,7 +136,7 @@ describe('AuthModule', () => {
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
             auth.logout();
             expect(auth.isAuthenticated()).toBe(false);
@@ -180,7 +153,7 @@ describe('AuthModule', () => {
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
             auth.logout();
 
@@ -218,7 +191,7 @@ describe('AuthModule', () => {
                     grant_type: 'client_credentials',
                     client_id: 'id',
                     client_secret: 'secret',
-                    scope: 'payment:create',
+                    scope: 'payment:write',
                 })
                 .catch(() => {});
 
@@ -256,7 +229,7 @@ describe('AuthModule', () => {
                 grant_type: 'client_credentials',
                 client_id: 'my-client',
                 client_secret: 'my-secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
 
             expect(() => auth.getBrowserKeys()).toThrow(
@@ -282,7 +255,7 @@ describe('AuthModule', () => {
                 grant_type: 'client_credentials',
                 client_id: 'my-client',
                 client_secret: 'my-secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
 
             const keys = auth.getBrowserKeys();

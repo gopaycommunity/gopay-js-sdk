@@ -6,21 +6,17 @@ import {
 import type { components } from '../../types/generated.js';
 import type { AuthenticateRequest } from '../../types/index.js';
 
-type TokenPair = components['schemas']['Access-Token'] & {
-    refresh_token?: string;
-    refresh_expires_in?: number;
-};
+type TokenPair = components['schemas']['Access-Token'];
 
 export function createAuthApi(client: HttpClient) {
     return {
         /**
          * Authenticate the server-side SDK instance using client credentials.
          *
-         * Stores the resulting token pair internally. All subsequent API calls
-         * will attach the Bearer token automatically, and the SDK will refresh
-         * it transparently before expiry.
+         * Stores the resulting access token internally. All subsequent API calls
+         * will attach the Bearer token automatically.
          *
-         * The token pair is intentionally **not** returned — tokens must remain
+         * The token is intentionally **not** returned — tokens must remain
          * server-side only and must never be exposed to callers or logged.
          * Use `isAuthenticated()` to confirm the SDK is ready.
          *
@@ -38,7 +34,11 @@ export function createAuthApi(client: HttpClient) {
             const headers = {
                 Authorization: `Basic ${globalThis.btoa(raw)}`,
             };
-            client.setClientCredentials(params.client_id, params.client_secret);
+            client.setClientCredentials(
+                params.client_id,
+                params.client_secret,
+                params.scope,
+            );
 
             const tokenPair = await client.postForm<TokenPair>(
                 '/oauth2/token',
@@ -56,15 +56,7 @@ export function createAuthApi(client: HttpClient) {
             }
             client.setToken({
                 access_token: tokenPair.access_token,
-                refresh_token:
-                    typeof tokenPair.refresh_token === 'string'
-                        ? tokenPair.refresh_token
-                        : '',
                 expires_in: tokenPair.expires_in,
-                refresh_expires_in:
-                    typeof tokenPair.refresh_expires_in === 'number'
-                        ? tokenPair.refresh_expires_in
-                        : 0,
                 token_type: 'bearer',
             });
         },
