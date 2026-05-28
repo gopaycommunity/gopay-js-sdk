@@ -14,9 +14,7 @@ const makeResponse = (data: unknown, status = 200) =>
 
 const validTokenPair = {
     access_token: 'at-browser-test',
-    refresh_token: 'rt-browser-test',
     expires_in: 1800,
-    refresh_expires_in: 86400,
     token_type: 'bearer',
 };
 
@@ -95,19 +93,6 @@ describe('exchangePaymentCredentials()', () => {
         expect(client.tokenStore.get()?.expires_in).toBe(1800);
     });
 
-    it('defaults refresh_token to empty string when absent in the response', async () => {
-        fetchMock.mockImplementation(async (req: Request) => {
-            await req.text();
-            return makeResponse({
-                ...validTokenPair,
-                refresh_token: undefined,
-            });
-        });
-
-        await exchangePaymentCredentials(client, 'pay-001', 'secret');
-        expect(client.tokenStore.get()?.refresh_token).toBe('');
-    });
-
     it('throws GoPaySDKError(AUTH_INVALID_RESPONSE) when access_token is missing', async () => {
         fetchMock.mockImplementation(async (req: Request) => {
             await req.text();
@@ -153,18 +138,6 @@ describe('exchangePaymentCredentials()', () => {
         );
         expect(client.tokenStore.get()).toBeNull();
     });
-
-    it('defaults refresh_expires_in to 0 when absent in the response', async () => {
-        fetchMock.mockImplementation(async (req: Request) => {
-            await req.text();
-            return makeResponse({
-                ...validTokenPair,
-                refresh_expires_in: undefined,
-            });
-        });
-        await exchangePaymentCredentials(client, 'pay-001', 'secret');
-        expect(client.tokenStore.get()?.refresh_expires_in).toBe(0);
-    });
 });
 
 describe('createAuthApi()', () => {
@@ -173,9 +146,7 @@ describe('createAuthApi()', () => {
 
     const storedToken = {
         access_token: 'at',
-        refresh_token: 'rt',
         expires_in: 900,
-        refresh_expires_in: 0,
         token_type: 'bearer' as const,
     };
 

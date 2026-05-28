@@ -12,9 +12,7 @@ const makeResponse = (data: unknown, status = 200) =>
 
 const validTokenPair = {
     access_token: 'at-attach',
-    refresh_token: 'rt-attach',
     expires_in: 1800,
-    refresh_expires_in: 86400,
     token_type: 'bearer',
 };
 
@@ -183,6 +181,22 @@ describe('createGoPayBrowserSDK()', () => {
     // -------------------------------------------------------------------------
 
     describe('mountCardForm()', () => {
+        it('rejects with PAYMENT_NOT_ATTACHED for direct-charge before attachPayment', async () => {
+            const container = document.createElement('div');
+            document.body.appendChild(container);
+
+            const ctrl = await sdk.mountCardForm(container, {
+                flow: 'direct-charge',
+            });
+
+            const err = await ctrl.result.catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+            );
+            container.remove();
+        });
+
         it('mounts an iframe for the return-payload flow', async () => {
             fetchMock.mockResolvedValue(
                 makeResponse({ card_form_url: CARD_FORM_URL }),

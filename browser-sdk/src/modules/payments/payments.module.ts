@@ -216,13 +216,11 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
                 {
                     ...options,
                     onActionRequired: (redirectUrl) => {
-                        if (!redirectIframe) {
-                            redirectIframe = handle3DS(
-                                options?.threeDS,
-                                redirectUrl,
-                                options?.onActionRequired,
-                            );
-                        }
+                        redirectIframe ??= handle3DS(
+                            options?.threeDS,
+                            redirectUrl,
+                            options?.onActionRequired,
+                        );
                     },
                 },
             ).then(

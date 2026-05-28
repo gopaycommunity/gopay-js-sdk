@@ -152,6 +152,29 @@ describe('createCardsApi() — browser SDK', () => {
             );
         });
 
+        it('sends GOPAY_CARD_FORM_INIT postMessage when the iframe loads', async () => {
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl.result.catch(() => {});
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            const postMessageSpy = vi.spyOn(
+                iframe.contentWindow as Window,
+                'postMessage',
+            );
+
+            iframe.onload?.(new Event('load'));
+
+            expect(postMessageSpy).toHaveBeenCalledWith(
+                expect.objectContaining({ type: 'GOPAY_CARD_FORM_INIT' }),
+                CARD_FORM_ORIGIN,
+            );
+        });
+
         it('resolves result with { encryptedPayload } on GOPAY_CARD_ENCRYPT_RESULT', async () => {
             const cards = createCardsApi(client, () => null);
             const ctrl = await cards.mountCardForm(container, {
@@ -340,6 +363,59 @@ describe('createCardsApi() — browser SDK', () => {
             expect(ctrl.isValid).toBe(true);
         });
 
+        it('ignores GOPAY_CARD_ENCRYPT_READY messages without settling result', async () => {
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl.result.catch(() => {});
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, { type: 'GOPAY_CARD_ENCRYPT_READY' });
+
+            let settled = false;
+            ctrl.result.then(
+                () => {
+                    settled = true;
+                },
+                () => {
+                    settled = true;
+                },
+            );
+            await new Promise((r) => setTimeout(r, 20));
+            expect(settled).toBe(false);
+        });
+
+        it('ignores unknown message types without settling result', async () => {
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl.result.catch(() => {});
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_SOME_FUTURE_EVENT',
+                payload: 42,
+            });
+
+            let settled = false;
+            ctrl.result.then(
+                () => {
+                    settled = true;
+                },
+                () => {
+                    settled = true;
+                },
+            );
+            await new Promise((r) => setTimeout(r, 20));
+            expect(settled).toBe(false);
+        });
+
         it('does not call onValidityChange when isValid value is unchanged', async () => {
             const onValidityChange = vi.fn();
             const cards = createCardsApi(client, () => null);
@@ -519,6 +595,112 @@ describe('createCardsApi() — browser SDK', () => {
                 expect.objectContaining({ threeDS: undefined }),
             );
         });
+
+        it('removes the spinner when onStateChange fires ACTION_REQUIRED with a redirect_url', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            awaitChargeStateMock.mockImplementation(
+                async (opts: { onStateChange?: (s: unknown) => void }) => {
+                    opts?.onStateChange?.({
+                        state: 'ACTION_REQUIRED',
+                        action: { redirect_url: 'https://3ds.example.com' },
+                    });
+                    return { state: 'SUCCEEDED', id: 'pay_001' };
+                },
+            );
+
+            const cards = createCardsApi(
+                client,
+                () =>
+                    mockPaymentsApi as unknown as ReturnType<
+                        typeof createPaymentsApi
+                    >,
+            );
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+            });
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+
+            const result = await ctrl.result;
+            expect(result).toMatchObject({ state: 'SUCCEEDED' });
+        });
+
+        it('uses default spinner color when theme lacks submitBackgroundColor', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            const cards = createCardsApi(
+                client,
+                () =>
+                    mockPaymentsApi as unknown as ReturnType<
+                        typeof createPaymentsApi
+                    >,
+            );
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+                theme: { labelColor: '#000000' }, // no submitBackgroundColor
+            });
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+
+            const result = await ctrl.result;
+            expect(result).toMatchObject({ state: 'SUCCEEDED' });
+        });
+
+        it('forwards awaitOptions.onStateChange calls to the caller', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            const onStateChange = vi.fn();
+            awaitChargeStateMock.mockImplementation(
+                async (opts: { onStateChange?: (s: unknown) => void }) => {
+                    opts?.onStateChange?.({ state: 'PROCESSING' });
+                    return { state: 'SUCCEEDED', id: 'pay_001' };
+                },
+            );
+
+            const cards = createCardsApi(
+                client,
+                () =>
+                    mockPaymentsApi as unknown as ReturnType<
+                        typeof createPaymentsApi
+                    >,
+            );
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+                awaitOptions: { onStateChange },
+            });
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+
+            await ctrl.result;
+            expect(onStateChange).toHaveBeenCalledWith(
+                expect.objectContaining({ state: 'PROCESSING' }),
+            );
+        });
     });
 
     // -------------------------------------------------------------------------
@@ -568,6 +750,91 @@ describe('createCardsApi() — browser SDK', () => {
             ctrl.result.catch(() => {});
 
             expect(() => ctrl.submit()).not.toThrow();
+        });
+
+        it('submit() is a silent no-op after unmount (external mode)', async () => {
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+                submitMode: 'external',
+            });
+            ctrl.result.catch(() => {});
+
+            ctrl.unmount();
+            expect(() => ctrl.submit()).not.toThrow();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // CardFormController — unmount()
+    // -------------------------------------------------------------------------
+
+    describe('CardFormController — unmount()', () => {
+        it('rejects result with CARD_FORM_ERROR and removes the iframe', async () => {
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+
+            ctrl.unmount();
+
+            const err = await ctrl.result.catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CARD_FORM_ERROR,
+            );
+            expect(container.querySelector('iframe')).toBeNull();
+        });
+
+        it('is a no-op when called a second time', async () => {
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl.result.catch(() => {});
+
+            ctrl.unmount();
+            expect(() => ctrl.unmount()).not.toThrow();
+        });
+
+        it('setTheme() and setLocale() are silent no-ops after unmount', async () => {
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+
+            ctrl.unmount();
+            ctrl.result.catch(() => {});
+
+            expect(() => ctrl.setTheme({} as never)).not.toThrow();
+            expect(() => ctrl.setLocale('cs')).not.toThrow();
+        });
+
+        it('fires the onError callback with the unmount error', async () => {
+            const onError = vi.fn();
+            const c = createHttpClient({
+                baseUrl: 'https://example.com',
+                publishableKey: 'pk_test',
+                onError,
+            });
+            c.setClientId('cid_test');
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            const cards = createCardsApi(c, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+
+            ctrl.unmount();
+            ctrl.result.catch(() => {});
+
+            expect(onError).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    errorCode: GoPayErrorCodes.CARD_FORM_ERROR,
+                }),
+            );
         });
     });
 

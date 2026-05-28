@@ -13,9 +13,7 @@ const PAYMENT_ID = 'pay_browser_001';
 
 const storedToken = {
     access_token: 'at-test',
-    refresh_token: 'rt-test',
     expires_in: 900,
-    refresh_expires_in: 0,
     token_type: 'bearer' as const,
 };
 
@@ -266,6 +264,20 @@ describe('createPaymentsApi() — browser SDK', () => {
         it('calls session.begin()', () => {
             const session = makeMockSession();
             api.startApplePaySession(session, 'https://example.com');
+            expect(session.begin).toHaveBeenCalledOnce();
+        });
+
+        it('skips origin validation when origin is an empty string', () => {
+            const session = makeMockSession();
+            expect(() => api.startApplePaySession(session, '')).not.toThrow();
+            expect(session.begin).toHaveBeenCalledOnce();
+        });
+
+        it('uses empty string origin when globalThis.location is undefined', () => {
+            vi.stubGlobal('location', undefined);
+            const session = makeMockSession();
+            // No origin arg — default resolves to '' because location is undefined
+            expect(() => api.startApplePaySession(session)).not.toThrow();
             expect(session.begin).toHaveBeenCalledOnce();
         });
 
