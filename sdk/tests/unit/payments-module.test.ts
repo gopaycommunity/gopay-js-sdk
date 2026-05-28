@@ -88,6 +88,7 @@ describe('PaymentsModule', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     describe('create()', () => {
