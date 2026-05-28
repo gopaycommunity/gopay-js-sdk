@@ -47,7 +47,7 @@ test('mock Apple Pay flow completes merchant validation and authorises payment',
                 access_token: 'mock-payment-token',
                 token_type: 'bearer',
                 expires_in: 900,
-                scope: 'payment:read payment:charge shared:read',
+                scope: 'payment:read payment:charge',
             }),
         });
     });

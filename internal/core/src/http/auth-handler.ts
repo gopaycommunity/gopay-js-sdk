@@ -131,8 +131,9 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
 
         const clientId = store.getClientId();
         const clientSecret = store.getClientSecret();
+        const storedScope = store.getScope();
 
-        if (!clientId || !clientSecret) {
+        if (!clientId || !clientSecret || !storedScope) {
             store.clear();
             return emitError(
                 new GoPaySDKError(
@@ -144,10 +145,9 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
 
         try {
             const url = buildUrl(baseUrl, AUTH_PATH);
-            const storedScope = store.getScope();
             const form: Record<string, string> = {
                 grant_type: 'client_credentials',
-                ...(storedScope ? { scope: storedScope } : {}),
+                scope: storedScope,
             };
             const credentials = globalThis.btoa(`${clientId}:${clientSecret}`);
             const headers = new Headers({

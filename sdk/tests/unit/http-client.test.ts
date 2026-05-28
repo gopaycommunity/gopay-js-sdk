@@ -323,30 +323,22 @@ describe('HttpClient', () => {
             expect(body.get('scope')).toBe('payment:write');
         });
 
-        it('omits scope in re-auth form when none was stored', async () => {
-            let callCount = 0;
-            let capturedBody = '';
-            fetchMock.mockImplementation(async (req: Request) => {
-                callCount++;
-                if (callCount === 1) {
-                    return makeResponse({}, 401, 'Unauthorized');
-                }
-                if (callCount === 2) {
-                    capturedBody = await req.text();
-                    return makeResponse(freshTokens);
-                }
-                return makeResponse({ ok: true });
-            });
+        it('throws AUTH_CREDENTIALS_MISSING when credentials have no scope', async () => {
+            fetchMock.mockResolvedValue(makeResponse({}, 401, 'Unauthorized'));
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
-            client.setClientCredentials('my-client', 'my-secret');
+            client.setClientCredentials('my-client', 'my-secret'); // no scope
             client.tokenStore.set(storedTokens);
 
-            await client.get('/resource');
-
-            const params = new URLSearchParams(capturedBody);
-            expect(params.get('grant_type')).toBe('client_credentials');
-            expect(params.get('scope')).toBeNull();
+            const err = await client.get('/resource').catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).message).toContain(
+                'Access token expired and no client credentials available',
+            );
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.AUTH_CREDENTIALS_MISSING,
+            );
+            expect(client.tokenStore.hasAccessToken()).toBe(false);
         });
     });
 
@@ -409,7 +401,7 @@ describe('HttpClient', () => {
             });
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
-            client.setClientCredentials('id', 'secret');
+            client.setClientCredentials('id', 'secret', 'payment:write');
             client.tokenStore.set(storedTokens);
 
             const err = await client.get('/resource').catch((e: unknown) => e);
@@ -438,7 +430,7 @@ describe('HttpClient', () => {
             });
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
-            client.setClientCredentials('id', 'secret');
+            client.setClientCredentials('id', 'secret', 'payment:write');
             client.tokenStore.set(storedTokens);
 
             const result = await client.get<{ result: string }>('/resource');
@@ -465,7 +457,7 @@ describe('HttpClient', () => {
             });
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
-            client.setClientCredentials('id', 'secret');
+            client.setClientCredentials('id', 'secret', 'payment:write');
             client.tokenStore.set(storedTokens);
 
             const err = await client.get('/resource').catch((e: unknown) => e);
@@ -546,7 +538,7 @@ describe('HttpClient', () => {
             });
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
-            client.setClientCredentials('id', 'secret');
+            client.setClientCredentials('id', 'secret', 'payment:write');
             client.tokenStore.set(storedTokens);
             vi.advanceTimersByTime(871_000);
 

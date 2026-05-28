@@ -46,7 +46,7 @@ describe('auth.authenticate() — E2E', () => {
             grant_type: 'client_credentials',
             client_id: clientId,
             client_secret: clientSecret,
-            scope: 'payment:create',
+            scope: 'payment:write',
         });
 
         // Token pair is stored internally only — never returned to callers.

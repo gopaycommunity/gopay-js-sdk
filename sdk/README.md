@@ -26,7 +26,7 @@ await sdk.authenticate({
   grant_type: 'client_credentials',
   client_id: process.env.GOPAY_CLIENT_ID,
   client_secret: process.env.GOPAY_CLIENT_SECRET,
-  scope: 'payment:create',
+  scope: 'payment:write',
 });
 
 // Create a payment session
@@ -91,7 +91,7 @@ await sdk.authenticate({
   grant_type: 'client_credentials',
   client_id: process.env.GOPAY_CLIENT_ID,
   client_secret: process.env.GOPAY_CLIENT_SECRET,
-  scope: 'payment:create payment:read',
+  scope: 'payment:write payment:read',
 });
 
 // All subsequent calls attach the Bearer token automatically.
@@ -110,12 +110,12 @@ Credentials must never leave the server. The SDK provides a two-step handoff:
 ```ts
 // Server: issue a fresh token pair for the browser.
 // Include the scopes needed for the flows the browser will run:
-//   payment:create — create() and charge()
+//   payment:write — create() and charge()
 //   payment:read   — getGooglePayInfo(), getApplePayInfo(), getQRPaymentInfo()
-//   card:save      — mountCardForm()
+//   card:write      — mountCardForm()
 app.get('/session/gopay-token', async (req, res) => {
   // Protect this endpoint with your own session check
-  const clientToken = await sdk.issueClientToken('payment:create payment:read card:save card:read');
+  const clientToken = await sdk.issueClientToken('payment:write payment:read card:write card:read');
   res.json(clientToken);
 });
 ```
@@ -354,7 +354,7 @@ document.body.appendChild(img);
 
 | Method | Description |
 |---|---|
-| `mountCardForm(container, options?)` | Fetches the GoPay-hosted iframe URL from `GET /encryption/card-form-url`, mounts it into `container`, and returns `Promise<CardFormController>`. The controller exposes a `result` promise (resolves to the card token on submit), `setTheme()`, `setLocale()`, `submit()`, and `isValid` for runtime control. Handles iframe creation, internal communication, and `POST /cards/tokens` internally. Requires the `card:save` scope. |
+| `mountCardForm(container, options?)` | Fetches the GoPay-hosted iframe URL from `GET /encryption/card-form-url`, mounts it into `container`, and returns `Promise<CardFormController>`. The controller exposes a `result` promise (resolves to the card token on submit), `setTheme()`, `setLocale()`, `submit()`, and `isValid` for runtime control. Handles iframe creation, internal communication, and `POST /cards/tokens` internally. Requires the `card:write` scope. |
 | `getCardDetails(cardId)` | Retrieve details of a stored permanent card token (`GET /cards/tokens/{cardId}`). Returns masked PAN, expiry, scheme, fingerprint, and the reusable token. Requires the `card:read` scope. |
 | `deleteCard(cardId)` | Delete a stored permanent card token (`DELETE /cards/tokens/{cardId}`). Returns `void`. |
 
@@ -501,11 +501,11 @@ await sdk.deleteCard(card.card_id);
 
 | Method | Description |
 |---|---|
-| `createRecurrence(goid, params)` | Create a recurring payment agreement (`POST /eshops/{goid}/recurrences`). Requires `payment:create` scope. |
+| `createRecurrence(goid, params)` | Create a recurring payment agreement (`POST /eshops/{goid}/recurrences`). Requires `payment:write` scope. |
 | `recurrenceStatus(recId)` | Retrieve the current state of a recurrence (`GET /recurrences/{rec_id}`). Requires `payment:read` scope. |
-| `stopRecurrence(recId)` | Stop a recurrence permanently (`DELETE /recurrences/{rec_id}`). Requires `payment:create` scope. |
-| `startRecurrence(recId, params?)` | Trigger the first charge of a recurrence in `NEW` state (`POST /recurrences/{rec_id}/start`). Requires `payment:create` scope. |
-| `recurrenceNext(recId, params?)` | Charge the next instalment of a `STARTED` recurrence (`POST /recurrences/{rec_id}/next`). Requires `payment:create` scope. |
+| `stopRecurrence(recId)` | Stop a recurrence permanently (`DELETE /recurrences/{rec_id}`). Requires `payment:write` scope. |
+| `startRecurrence(recId, params?)` | Trigger the first charge of a recurrence in `NEW` state (`POST /recurrences/{rec_id}/start`). Requires `payment:write` scope. |
+| `recurrenceNext(recId, params?)` | Charge the next instalment of a `STARTED` recurrence (`POST /recurrences/{rec_id}/next`). Requires `payment:write` scope. |
 
 ```ts
 // Create an ON_DEMAND recurrence (customer can be charged any time)
@@ -539,9 +539,9 @@ await sdk.stopRecurrence(recurrence.id);
 
 | Method | Description |
 |---|---|
-| `createPaymentLink(goid, params)` | Create a shareable payment link (`POST /eshops/{goid}/links`). Requires `payment:create` scope. |
-| `linkStatus(linkId)` | Retrieve the current state of a payment link (`GET /links/{link_id}`). Requires `payment:create` scope. |
-| `disableLink(linkId)` | Disable a link so it can no longer be used (`DELETE /links/{link_id}`). Requires `payment:create` scope. |
+| `createPaymentLink(goid, params)` | Create a shareable payment link (`POST /eshops/{goid}/links`). Requires `payment:write` scope. |
+| `linkStatus(linkId)` | Retrieve the current state of a payment link (`GET /links/{link_id}`). Requires `payment:write` scope. |
+| `disableLink(linkId)` | Disable a link so it can no longer be used (`DELETE /links/{link_id}`). Requires `payment:write` scope. |
 
 ```ts
 // Create a reusable link that expires at a set date

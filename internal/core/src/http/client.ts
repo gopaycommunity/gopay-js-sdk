@@ -92,8 +92,12 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
             tokenStore.setClientId(clientId);
         },
 
-        setClientCredentials(clientId: string, clientSecret: string): void {
-            tokenStore.setClientSecret(clientId, clientSecret);
+        setClientCredentials(
+            clientId: string,
+            clientSecret: string,
+            scope?: string,
+        ): void {
+            tokenStore.setClientSecret(clientId, clientSecret, scope);
         },
 
         getClientId(): string | null {

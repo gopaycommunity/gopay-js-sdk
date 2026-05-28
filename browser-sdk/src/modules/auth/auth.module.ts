@@ -9,7 +9,7 @@ import type { components } from '../../types/generated.js';
 type TokenPair = components['schemas']['Access-Token'];
 
 /** Scope issued for payment-credentials tokens. */
-const DEFAULT_PAYMENT_SCOPE = 'payment:read payment:charge shared:read';
+const DEFAULT_PAYMENT_SCOPE = 'payment:read payment:charge';
 
 /**
  * Exchange a payment_id + payment_secret for a payment-scoped token pair.

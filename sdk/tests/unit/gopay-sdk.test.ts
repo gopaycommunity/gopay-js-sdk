@@ -87,7 +87,7 @@ describe('GoPaySDK', () => {
             token_type: 'bearer' as const,
             access_token: 'access_abc123',
             refresh_token: 'refresh_xyz789',
-            scope: 'payment:create',
+            scope: 'payment:write',
             expires_in: 3600,
             refresh_expires_in: 86400,
         } satisfies TokenPair;
@@ -137,7 +137,7 @@ describe('GoPaySDK', () => {
                 grant_type: 'client_credentials',
                 client_id: 'my-client',
                 client_secret: 'my-secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
 
             expect(sdk.isAuthenticated()).toBe(true);
@@ -153,7 +153,7 @@ describe('GoPaySDK', () => {
             );
             const body = new URLSearchParams(capturedBodyText);
             expect(body.get('grant_type')).toBe('client_credentials');
-            expect(body.get('scope')).toBe('payment:create');
+            expect(body.get('scope')).toBe('payment:write');
         });
 
         it('authenticate() throws on non-ok HTTP response', async () => {
@@ -171,7 +171,7 @@ describe('GoPaySDK', () => {
                     grant_type: 'client_credentials',
                     client_id: 'bad-client',
                     client_secret: 'bad-secret',
-                    scope: 'payment:create',
+                    scope: 'payment:write',
                 }),
             ).rejects.toThrow('HTTP 401');
         });
@@ -230,7 +230,7 @@ describe('GoPaySDK', () => {
                                 token_type: 'bearer',
                                 access_token: 'at-test',
                                 refresh_token: 'rt-test',
-                                scope: 'payment:create',
+                                scope: 'payment:write',
                                 expires_in: 900,
                                 refresh_expires_in: 86400,
                             }),
@@ -253,7 +253,7 @@ describe('GoPaySDK', () => {
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
             const result = await sdk.createPayment('test-goid', {
                 amount: 1000,
@@ -302,7 +302,7 @@ describe('GoPaySDK', () => {
                                 token_type: 'bearer',
                                 access_token: 'at-test',
                                 refresh_token: 'rt-test',
-                                scope: 'payment:create',
+                                scope: 'payment:write',
                                 expires_in: 900,
                                 refresh_expires_in: 86400,
                             }),
@@ -325,7 +325,7 @@ describe('GoPaySDK', () => {
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
             const result = await sdk.chargePayment('pay_300000001', {
                 payment_instrument: {
@@ -383,7 +383,7 @@ describe('GoPaySDK', () => {
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
             const result = await sdk.getGooglePayInfo('payment-123');
 
@@ -443,7 +443,7 @@ describe('GoPaySDK', () => {
                 grant_type: 'client_credentials',
                 client_id: 'id',
                 client_secret: 'secret',
-                scope: 'payment:create',
+                scope: 'payment:write',
             });
             const result = await sdk.getQRPaymentInfo('payment-123', 'svg');
 

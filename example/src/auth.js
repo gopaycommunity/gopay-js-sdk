@@ -16,7 +16,7 @@ function getSelectedScopes() {
     return (
         Array.from(el.selectedOptions)
             .map((o) => o.value)
-            .join(' ') || 'payment:create'
+            .join(' ') || 'payment:write'
     );
 }
 
