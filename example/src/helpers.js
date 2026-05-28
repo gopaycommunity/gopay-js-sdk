@@ -1,6 +1,7 @@
 import { GoPayHTTPError, GoPaySDKError } from 'gopay-js-sdk';
 import { getBrowserSDK, isSdkAttached } from './browser-sdk.js';
 import { sanitizeBody } from './sanitize.js';
+import { sdkConfig } from './sdk.js';
 
 // Shared mutable state across modules
 export const state = {
@@ -106,6 +107,30 @@ export function updateBrowserBadge() {
         badge.style.background = '#cce5ff';
         badge.style.color = '#004085';
     }
+    updateBrowserSdkInfo(sdk);
+}
+
+function updateBrowserSdkInfo(sdk) {
+    const pre = document.getElementById('browser-sdk-info');
+    if (!pre) {
+        return;
+    }
+    if (!sdk) {
+        pre.textContent = 'not initialized';
+        return;
+    }
+    pre.textContent = JSON.stringify(
+        {
+            version: sdk.version,
+            baseUrl:
+                sdkConfig.baseUrl ?? `(${sdkConfig.environment ?? 'sandbox'})`,
+            methods: Object.keys(sdk).filter(
+                (k) => typeof sdk[k] === 'function',
+            ),
+        },
+        null,
+        2,
+    );
 }
 
 export function prefillPaymentId(result) {

@@ -11,7 +11,11 @@ import {
 import { browserApplePayLoadInfo } from './browser-apple-pay.js';
 import { runBrowserCharge } from './browser-charge.js';
 import { browserGooglePayLoadInfo } from './browser-google-pay.js';
-import { browserGetStatus, browserQRPaymentInfo } from './browser-payments.js';
+import {
+    browserGetChargeState,
+    browserGetStatus,
+    browserQRPaymentInfo,
+} from './browser-payments.js';
 import { initBrowserSDK, runAttachPayment } from './browser-sdk.js';
 import {
     cardPayExtSubmit,
@@ -142,6 +146,7 @@ window.runBrowserCharge = runBrowserCharge;
 window.browserGooglePayLoadInfo = browserGooglePayLoadInfo;
 window.browserApplePayLoadInfo = browserApplePayLoadInfo;
 window.browserQRPaymentInfo = browserQRPaymentInfo;
+window.browserGetChargeState = browserGetChargeState;
 window.browserGetStatus = browserGetStatus;
 window.runGetPaymentStatus = runGetPaymentStatus;
 window.runGetChargeState = runGetChargeState;

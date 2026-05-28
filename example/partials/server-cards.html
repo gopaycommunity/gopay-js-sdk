@@ -1,0 +1,36 @@
+<!-- ── Cards ──────────────────────────────────────────────────── -->
+<details class="group">
+    <summary class="flex items-center gap-3 pt-1 cursor-pointer select-none">
+        <div class="h-px w-4 bg-[#E1E5EB] shrink-0"></div>
+        <svg aria-hidden="true" class="h-3 w-3 text-[#6B7280] transition-transform group-open:rotate-90 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-[0.68rem] font-semibold text-[#6B7280] tracking-widest uppercase shrink-0">Cards · gopay-js-sdk</span>
+        <div class="h-px flex-1 bg-[#E1E5EB]"></div>
+    </summary>
+    <div class="space-y-5 mt-3">
+
+        <!-- Card details -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.getDetails()</h2>
+            <p class="desc">GET /cards/tokens/{card_id} — retrieve details of a stored permanent card token (masked PAN, expiry, scheme, fingerprint). Requires <code>card:read</code> scope.</p>
+            <div class="fields">
+                <label>Card ID<input id="card-details-id" type="text" placeholder="8007127320" /></label>
+            </div>
+            <button type="button" onclick="runGetCardDetails()">Run</button>
+            <pre id="card-details-output">—</pre>
+        </section>
+
+        <!-- Delete card -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.deleteCard()</h2>
+            <p class="desc">DELETE /cards/tokens/{card_id} — permanently remove a stored card token. Returns no content on success.</p>
+            <div class="fields">
+                <label>Card ID<input id="delete-card-id" type="text" placeholder="8007127320" /></label>
+            </div>
+            <button type="button" onclick="runDeleteCard()">Run</button>
+            <pre id="delete-card-output">—</pre>
+        </section>
+
+    </div>
+</details>

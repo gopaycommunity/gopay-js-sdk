@@ -1,40 +1,48 @@
 <!-- ── Refunds ────────────────────────────────────────────────── -->
-<div class="flex items-center gap-4 pt-1">
-    <div class="h-px flex-1 bg-[#E1E5EB]"></div>
-    <span class="text-[0.68rem] font-semibold text-[#6B7280] tracking-widest uppercase shrink-0">Refunds · gopay-js-sdk</span>
-    <div class="h-px flex-1 bg-[#E1E5EB]"></div>
-</div>
+<details class="group">
+    <summary class="flex items-center gap-3 pt-1 cursor-pointer select-none">
+        <div class="h-px w-4 bg-[#E1E5EB] shrink-0"></div>
+        <svg aria-hidden="true" class="h-3 w-3 text-[#6B7280] transition-transform group-open:rotate-90 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-[0.68rem] font-semibold text-[#6B7280] tracking-widest uppercase shrink-0">Refunds · gopay-js-sdk</span>
+        <div class="h-px flex-1 bg-[#E1E5EB]"></div>
+    </summary>
+    <div class="space-y-5 mt-3">
 
-<!-- Refund payment -->
-<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-    <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.refundPayment()</h2>
-    <p class="desc">POST /payments/{id}/refunds — refund a payment fully or partially. The returned refund <code>id</code> is auto-filled below.</p>
-    <div class="fields">
-        <label>Payment ID<input id="refund-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
-        <label>Amount (cents)<input id="refund-amount" type="number" value="1000" /></label>
-    </div>
-    <button type="button" onclick="runRefundPayment()">Run</button>
-    <pre id="refund-create-output">—</pre>
-</section>
+        <!-- Refund payment -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.refundPayment()</h2>
+            <p class="desc">POST /payments/{id}/refunds — refund a payment fully or partially. The returned refund <code>id</code> is auto-filled below.</p>
+            <div class="fields">
+                <label>Payment ID<input id="refund-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+                <label>Amount (cents)<input id="refund-amount" type="number" value="1000" /></label>
+            </div>
+            <button type="button" onclick="runRefundPayment()">Run</button>
+            <pre id="refund-create-output">—</pre>
+        </section>
 
-<!-- List refunds -->
-<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-    <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.listRefunds()</h2>
-    <p class="desc">GET /payments/{id}/refunds — list all refunds for a payment.</p>
-    <div class="fields">
-        <label>Payment ID<input id="refund-list-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
-    </div>
-    <button type="button" onclick="runListRefunds()">Run</button>
-    <pre id="refund-list-output">—</pre>
-</section>
+        <!-- List refunds -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.listRefunds()</h2>
+            <p class="desc">GET /payments/{id}/refunds — list all refunds for a payment.</p>
+            <div class="fields">
+                <label>Payment ID<input id="refund-list-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+            </div>
+            <button type="button" onclick="runListRefunds()">Run</button>
+            <pre id="refund-list-output">—</pre>
+        </section>
 
-<!-- Get refund -->
-<section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-    <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.getRefund()</h2>
-    <p class="desc">GET /refunds/{refund_id} — retrieve details of a single refund.</p>
-    <div class="fields">
-        <label>Refund ID<input id="refund-get-id" type="text" placeholder="auto-filled by refundPayment()" /></label>
+        <!-- Get refund -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.getRefund()</h2>
+            <p class="desc">GET /refunds/{refund_id} — retrieve details of a single refund.</p>
+            <div class="fields">
+                <label>Refund ID<input id="refund-get-id" type="text" placeholder="auto-filled by refundPayment()" /></label>
+            </div>
+            <button type="button" onclick="runGetRefund()">Run</button>
+            <pre id="refund-get-output">—</pre>
+        </section>
+
     </div>
-    <button type="button" onclick="runGetRefund()">Run</button>
-    <pre id="refund-get-output">—</pre>
-</section>
+</details>

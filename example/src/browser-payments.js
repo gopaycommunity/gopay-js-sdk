@@ -17,6 +17,21 @@ export async function browserGetStatus() {
     }
 }
 
+export async function browserGetChargeState() {
+    const pre = document.getElementById('bcharge-state-output');
+    const browserSdk = requireAttachedSDK(pre);
+    if (!browserSdk) {
+        return;
+    }
+    pre.textContent = '── fetching charge state ──';
+    try {
+        const result = await browserSdk.getChargeState();
+        pre.textContent = `── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
+    } catch (err) {
+        pre.textContent = `── onError ──\n${formatError(err)}`;
+    }
+}
+
 export async function browserQRPaymentInfo() {
     const pre = document.getElementById('bqr-output');
     const format = document.getElementById('bqr-format').value || undefined;

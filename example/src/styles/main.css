@@ -133,6 +133,13 @@ button:hover {
         0px 1px 1px 0px rgba(13, 71, 161, 0.24);
 }
 
+details > summary {
+    list-style: none;
+}
+details > summary::-webkit-details-marker {
+    display: none;
+}
+
 /* JS-controlled states — prefix js- signals these are toggled by JavaScript */
 .js-btn-inactive,
 .js-btn-inactive:hover {
