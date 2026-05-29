@@ -93,24 +93,16 @@ function handle3DS(
     redirectUrl: string,
     onActionRequired: ((url: string) => void) | undefined,
 ): HTMLIFrameElement | undefined {
-    const mode = threeDS && 'mode' in threeDS ? threeDS.mode : 'redirect';
-    if (mode === 'redirect' || mode == null) {
-        assertHttpsUrl(redirectUrl);
-        onActionRequired?.(redirectUrl);
-        globalThis.location.href = redirectUrl;
-        return undefined;
-    }
-    if (mode === 'iframe') {
-        const iframe = mountRedirectIframe(
-            (threeDS as { mode: 'iframe'; container: HTMLElement }).container,
-            redirectUrl,
-        );
+    if (threeDS && threeDS.mode === 'iframe') {
+        const iframe = mountRedirectIframe(threeDS.container, redirectUrl);
         onActionRequired?.(redirectUrl);
         return iframe;
     }
-    // mode === 'manual'
     assertHttpsUrl(redirectUrl);
     onActionRequired?.(redirectUrl);
+    if (threeDS?.mode !== 'manual') {
+        globalThis.location.href = redirectUrl;
+    }
     return undefined;
 }
 

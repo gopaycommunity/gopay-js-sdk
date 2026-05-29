@@ -2,6 +2,7 @@ import {
     createHttpClient,
     GoPayErrorCodes,
     GoPaySDKError,
+    requireNonEmptyString,
 } from '@gopay-internal/core';
 import type { AttachPaymentArgs, GoPayBrowserConfig } from './config.js';
 import {
@@ -76,9 +77,14 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
             paymentId,
             paymentSecret,
         }: AttachPaymentArgs): Promise<void> {
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const secret = requireNonEmptyString(
+                paymentSecret,
+                'paymentSecret',
+            );
             paymentsApi = null;
-            await exchangePaymentCredentials(client, paymentId, paymentSecret);
-            paymentsApi = createPaymentsApi(client, paymentId);
+            await exchangePaymentCredentials(client, pid, secret);
+            paymentsApi = createPaymentsApi(client, pid);
         },
 
         ...createCardsApi(client, getPaymentsApi),

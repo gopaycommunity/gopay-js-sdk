@@ -4,9 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'tsup';
 
 const pkgDir = dirname(fileURLToPath(import.meta.url));
-const { version } = JSON.parse(
+const pkg: { version: string } = JSON.parse(
     readFileSync(join(pkgDir, 'package.json'), 'utf-8'),
-) as { version: string };
+);
+const { version } = pkg;
 
 export default defineConfig({
     entry: { index: 'src/index.ts' },
