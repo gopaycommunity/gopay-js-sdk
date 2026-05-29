@@ -109,6 +109,7 @@ function handle3DS(
         return iframe;
     }
     // mode === 'manual'
+    assertHttpsUrl(redirectUrl);
     onActionRequired?.(redirectUrl);
     return undefined;
 }

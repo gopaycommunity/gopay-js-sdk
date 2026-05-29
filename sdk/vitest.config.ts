@@ -79,6 +79,7 @@ export default defineConfig({
         ],
     },
     test: {
+        unstubGlobals: true,
         exclude: [...defaultExclude, 'tests/browser/**'],
         pool: 'forks',
         testTimeout: 15_000,
