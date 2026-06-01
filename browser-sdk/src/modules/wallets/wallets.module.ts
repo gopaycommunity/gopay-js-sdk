@@ -323,64 +323,64 @@ export function createWalletsApi(
                     info.applePayPaymentRequest ?? {},
                 );
 
-                session.onpaymentauthorized = (event: unknown) => {
-                    void (async () => {
-                        const paymentData =
-                            event != null &&
-                            typeof event === 'object' &&
-                            'payment' in event
-                                ? (
-                                      event as {
-                                          payment: {
-                                              token: { paymentData: unknown };
-                                          };
-                                      }
-                                  ).payment?.token?.paymentData
-                                : undefined;
+                const handlePaymentAuthorized = async (
+                    event: unknown,
+                ): Promise<void> => {
+                    const paymentData =
+                        event != null &&
+                        typeof event === 'object' &&
+                        'payment' in event
+                            ? (
+                                  event as {
+                                      payment: {
+                                          token: { paymentData: unknown };
+                                      };
+                                  }
+                              ).payment?.token?.paymentData
+                            : undefined;
 
-                        if (!paymentData || typeof paymentData !== 'object') {
-                            session.completePayment(
-                                ApplePaySession.STATUS_FAILURE,
-                            );
-                            rejectResult(
-                                new GoPaySDKError(
-                                    '[GoPayBrowserSDK] Apple Pay: missing payment data in authorisation event.',
-                                    {
-                                        errorCode:
-                                            GoPayErrorCodes.WALLET_BUTTON_ERROR,
-                                    },
-                                ),
-                            );
-                            cleanup();
-                            return;
-                        }
-
-                        try {
-                            session.completePayment(
-                                ApplePaySession.STATUS_SUCCESS,
-                            );
-                        } catch {
-                            // completePayment may throw if session is in wrong state
-                        }
-
+                    if (!paymentData || typeof paymentData !== 'object') {
+                        session.completePayment(ApplePaySession.STATUS_FAILURE);
+                        rejectResult(
+                            new GoPaySDKError(
+                                '[GoPayBrowserSDK] Apple Pay: missing payment data in authorisation event.',
+                                {
+                                    errorCode:
+                                        GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                                },
+                            ),
+                        );
                         cleanup();
+                        return;
+                    }
 
-                        const instrument = extractApplePayInstrument(
-                            paymentData as Parameters<
-                                typeof extractApplePayInstrument
-                            >[0],
-                        );
+                    try {
+                        session.completePayment(ApplePaySession.STATUS_SUCCESS);
+                    } catch {
+                        // completePayment may throw if session is in wrong state
+                    }
 
-                        await runChargeFlow(
-                            paymentsApi,
-                            container,
-                            instrument,
-                            options,
-                            chargeAbortController.signal,
-                            resolveResult,
-                            rejectResult,
-                        );
-                    })();
+                    cleanup();
+
+                    const instrument = extractApplePayInstrument(
+                        paymentData as Parameters<
+                            typeof extractApplePayInstrument
+                        >[0],
+                    );
+
+                    await runChargeFlow(
+                        paymentsApi,
+                        container,
+                        instrument,
+                        options,
+                        chargeAbortController.signal,
+                        resolveResult,
+                        rejectResult,
+                    );
+                };
+
+                session.onpaymentauthorized = (event: unknown) => {
+                    void handlePaymentAuthorized(event);
                 };
 
                 paymentsApi.startApplePaySession(session, options.origin, {
