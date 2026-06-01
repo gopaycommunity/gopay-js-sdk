@@ -98,41 +98,6 @@ await sdk.authenticate({
 const payment = await sdk.createPayment(goid, params);
 ```
 
-### Browser client
-
-Credentials must never leave the server. The SDK provides a two-step handoff:
-
-1. **Server** calls `issueClientToken()` — obtains a fresh token pair for every browser client without touching its own session. The browser may use a **narrower scope** than the server.
-2. **Server** returns the `ClientToken` to the browser (e.g. via a session endpoint).
-3. **Browser** calls `setClientToken()` — seeds the SDK with both tokens. The `client_id` is extracted automatically from the JWT; no credentials are needed in the browser.
-4. All subsequent browser API calls use the access token directly, renewing via the refresh token transparently before expiry. The browser should finish its business before refreshToken expires (usually 24 hrs) because it can't renew it. Else you need to provide a mechanism to get new client tokens.
-
-```ts
-// Server: issue a fresh token pair for the browser.
-// Include the scopes needed for the flows the browser will run:
-//   payment:write — create() and charge()
-//   payment:read   — getGooglePayInfo(), getApplePayInfo(), getQRPaymentInfo()
-//   card:write      — mountCardForm()
-app.get('/session/gopay-token', async (req, res) => {
-  // Protect this endpoint with your own session check
-  const clientToken = await sdk.issueClientToken('payment:write payment:read card:write card:read');
-  res.json(clientToken);
-});
-```
-
-ESM / bundler:
-
-```ts
-import { createGoPaySDK } from 'gopay-js-sdk';
-
-const browserSdk = createGoPaySDK({ environment: 'production' });
-
-const clientToken = await fetch('/session/gopay-token').then(r => r.json());
-browserSdk.setClientToken(clientToken);
-
-// SDK is now authenticated — make API calls as normal.
-```
-
 ---
 
 ## Configuration
@@ -186,8 +151,6 @@ The one exception is `startApplePaySession`: it returns `void` instead of a Prom
 | Method | Description |
 |---|---|
 | `authenticate(params)` | Server-side: obtain an access/refresh token pair using `client_credentials`. Stores the token internally for automatic refresh. |
-| `issueClientToken(scope?)` | Server-side: obtain a fresh token pair for a browser client without affecting the server session. Use a narrower `scope` if the browser only needs a subset of permissions. |
-| `setClientToken(token)` | Browser-side: seed the SDK with a `ClientToken` obtained from the server. Extracts `client_id` automatically from the JWT `access_token`. |
 | `isAuthenticated()` | Returns `true` if a token is currently stored. Does not check expiry — expired tokens are refreshed transparently on the next API call. |
 | `logout()` | Clear all stored tokens and credentials. All subsequent API calls will throw until the SDK is re-authenticated. |
 
@@ -535,6 +498,16 @@ await sdk.stopRecurrence(recurrence.id);
 
 ---
 
+### Refunds
+
+| Method | Description |
+|---|---|
+| `refundPayment(paymentId, params)` | Refund a payment fully or partially (`POST /payments/{paymentId}/refunds`). Requires `payment:write` scope. |
+| `listRefunds(paymentId)` | List all refunds for a payment (`GET /payments/{paymentId}/refunds`). Requires `payment:read` scope. |
+| `getRefund(refundId)` | Retrieve details of a single refund (`GET /refunds/{refundId}`). Requires `payment:read` scope. |
+
+---
+
 ### Payment Links
 
 | Method | Description |
@@ -583,11 +556,10 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 | `errorCode` | When thrown |
 |---|---|
 | `AUTH_TOKEN_MISSING` | A protected API call was made before authenticating. |
-| `AUTH_REFRESH_TOKEN_MISSING` | Token expired and no refresh token is stored. |
-| `AUTH_REFRESH_FAILED` | Token refresh request failed (network or API error). |
+| `AUTH_REFRESH_FAILED` | Token re-authentication (client_credentials grant) failed. |
 | `AUTH_INVALID_RESPONSE` | The OAuth2 endpoint returned an incomplete token response. |
-| `AUTH_CREDENTIALS_MISSING` | `issueClientToken()` called without prior `authenticate()`. |
-| `AUTH_INVALID_TOKEN` | `setClientToken()` received a JWT without a valid `sub` claim. |
+| `AUTH_CREDENTIALS_MISSING` | No client credentials stored — call `authenticate()` first. |
+| `AUTH_INVALID_TOKEN` | A JWT is malformed or missing the `sub` claim. |
 | `AUTH_UNAUTHORIZED` | Still 401 after a successful token refresh — check OAuth2 scopes. |
 | `NETWORK_TIMEOUT` | Request exceeded `requestTimeoutMs`. |
 | `NETWORK_ERROR` | Network-level failure (no response received). |

@@ -9,8 +9,8 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(__dirname, '..');
 
 function readPkgVersion(path: string): string {
-    return (JSON.parse(readFileSync(path, 'utf-8')) as { version: string })
-        .version;
+    const pkg: { version: string } = JSON.parse(readFileSync(path, 'utf-8'));
+    return pkg.version;
 }
 const sdkVersion = readPkgVersion(resolve(repoRoot, 'sdk/package.json'));
 const browserSdkVersion = readPkgVersion(

@@ -93,7 +93,7 @@ function handle3DS(
     redirectUrl: string,
     onActionRequired: ((url: string) => void) | undefined,
 ): HTMLIFrameElement | undefined {
-    if (threeDS && threeDS.mode === 'iframe') {
+    if (threeDS?.mode === 'iframe') {
         const iframe = mountRedirectIframe(threeDS.container, redirectUrl);
         onActionRequired?.(redirectUrl);
         return iframe;

@@ -2,11 +2,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
-const version = (
-    JSON.parse(
-        readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'),
-    ) as { version: string }
-).version;
+const pkg: { version: string } = JSON.parse(
+    readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'),
+);
+const version = pkg.version;
 
 export default defineConfig({
     define: {
@@ -31,6 +30,7 @@ export default defineConfig({
         ],
     },
     test: {
+        unstubGlobals: true,
         environment: 'jsdom',
         reporters: ['verbose', 'junit'],
         outputFile: { junit: 'test-results/junit.xml' },
