@@ -135,6 +135,77 @@ const controller = await sdk.mountCardForm(container, {
 const chargeResult = await controller.result; // PaymentChargeResponseData
 ```
 
+### Apple Pay & Google Pay buttons (Flow B)
+
+`mountApplePayButton` and `mountGooglePayButton` provide a one-call alternative
+to wiring wallets manually. Each method:
+
+1. Checks that `attachPayment()` was called.
+2. Auto-injects the required wallet script (no `<script>` tag needed).
+3. Detects device/browser support and calls `onUnavailable` if the wallet cannot be used.
+4. Fetches payment configuration (`GET /payments/{id}/apple-pay/info` or `/google-pay/info`).
+5. Renders the official wallet button inside `container`.
+6. Handles the entire payment flow: wallet sheet → (Apple only) merchant validation → charge → 3DS/poll → terminal state.
+
+```ts
+// Apple Pay
+await sdk.attachPayment({ paymentId, paymentSecret });
+
+const appleCtrl = await sdk.mountApplePayButton(container, {
+    threeDS: { mode: 'iframe', container: threeDsContainer },
+    onUnavailable: () => console.log('Apple Pay not available'),
+    onCancel: () => console.log('User cancelled'),
+    appleButtonOptions: { buttonstyle: 'black', type: 'buy', locale: 'en-US' },
+});
+
+const chargeResult = await appleCtrl.result; // PaymentChargeStatusResponse
+// call appleCtrl.unmount() on component teardown
+```
+
+```ts
+// Google Pay
+await sdk.attachPayment({ paymentId, paymentSecret });
+
+const googleCtrl = await sdk.mountGooglePayButton(container, {
+    threeDS: { mode: 'redirect' },
+    onUnavailable: () => console.log('Google Pay not available'),
+    onCancel: () => console.log('User cancelled'),
+});
+
+const chargeResult = await googleCtrl.result;
+```
+
+**Shared options** (`ApplePayButtonOptions` / `GooglePayButtonOptions`):
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `threeDS` | `ThreeDSConfig` | `{ mode: 'redirect' }` | See 3DS table above |
+| `awaitOptions` | `Omit<AwaitChargeOptions, 'threeDS'>` | — | Extra polling / timeout options |
+| `onUnavailable` | `() => void` | — | Called (and `result` rejected) when the wallet is not usable on this device |
+| `onCancel` | `() => void` | — | Called when the user dismisses the payment sheet |
+
+**Apple Pay only** (`appleButtonOptions`):
+
+| Field | Type | Default |
+|---|---|---|
+| `buttonstyle` | `'black' \| 'white' \| 'white-outline'` | `'black'` |
+| `type` | `string` | `'buy'` |
+| `locale` | `string` | `navigator.language` |
+| `origin` | `string` | `location.origin` |
+
+**Google Pay only** — `googleButtonOptions` is forwarded verbatim to `PaymentsClient.createButton()`. See [Google Pay ButtonOptions](https://developers.google.com/pay/api/web/reference/request-objects#ButtonOptions).
+
+**`WalletButtonController`:**
+
+| Member | Description |
+|---|---|
+| `result` | `Promise<PaymentChargeStatusResponse>` — resolves on terminal charge state |
+| `unmount()` | Remove the button, abort in-flight charge, reject `result` |
+
+> **Availability detection:** `mountApplePayButton` calls `ApplePaySession.canMakePayments()`;
+> `mountGooglePayButton` calls `isReadyToPay()`. If either returns false, `onUnavailable` is
+> called and `result` rejects with `WALLET_BUTTON_ERROR`. Render a fallback UI in `onUnavailable`.
+
 ### Other Flow B methods (available after `attachPayment`)
 
 | Method | Description |
@@ -144,7 +215,7 @@ const chargeResult = await controller.result; // PaymentChargeResponseData
 | `getGooglePayInfo()` | `GET /payments/{id}/google-pay/info` |
 | `getApplePayInfo()` | `GET /payments/{id}/apple-pay/info` |
 | `getApplePayAppInfo()` | `GET /payments/{id}/apple-pay/app-info` — native app config for `PKPaymentRequest` |
-| `startApplePaySession(session, origin?)` | Wires merchant validation and begins an `ApplePaySession` |
+| `startApplePaySession(session, origin?)` | Wires merchant validation and begins an `ApplePaySession` (low-level; use `mountApplePayButton` for the full flow) |
 | `getQRPaymentInfo(format?)` | `GET /payments/{id}/qr-payment/info` |
 
 For the equivalent server-side methods and their request/response shapes, see the [server SDK README](../sdk/README.md).
@@ -230,6 +301,22 @@ mountCardForm(
 | `submit()` | Trigger submission (external submit mode only) |
 | `isValid` | Current validity (external submit mode only) |
 
+### `sdk.mountApplePayButton(container, options)` / `sdk.mountGooglePayButton(container, options)`
+
+```ts
+mountApplePayButton(
+    container: HTMLElement,
+    options?: ApplePayButtonOptions,
+): Promise<WalletButtonController>
+
+mountGooglePayButton(
+    container: HTMLElement,
+    options?: GooglePayButtonOptions,
+): Promise<WalletButtonController>
+```
+
+See [Apple Pay & Google Pay buttons](#apple-pay--google-pay-buttons-flow-b) above for the full options and controller reference.
+
 ### `collectBrowserData()`
 
 ```ts
@@ -258,6 +345,7 @@ Returns an empty object when called outside a browser (Node.js / SSR).
 |---|---|
 | `PAYMENT_NOT_ATTACHED` | Payment-action methods called before `attachPayment()` |
 | `CARD_FORM_ERROR` | Iframe error or untrusted card-form origin |
+| `WALLET_BUTTON_ERROR` | `mountApplePayButton` / `mountGooglePayButton` — unavailable, script load failure, or session error |
 | `AUTH_INVALID_RESPONSE` | `/oauth2/token` response missing required fields |
 | `CHARGE_TIMEOUT` | Charge polling exceeded initial timeout |
 | `CHARGE_FAILED` | Payment reached terminal `FAILED` state |

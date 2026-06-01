@@ -21,6 +21,11 @@ export type {
     ThreeDSConfig,
 } from './modules/payments/payments.module.js';
 export type {
+    ApplePayButtonOptions,
+    GooglePayButtonOptions,
+    WalletButtonController,
+} from './modules/wallets/wallets.module.js';
+export type {
     BrowserData,
     EncryptedCardPayload,
     GoPayEnvironment,

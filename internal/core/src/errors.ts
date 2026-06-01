@@ -28,6 +28,9 @@ export const GoPayErrorCodes = {
     // Browser SDK payment attachment
     /** attachPayment() must be called before payment-scoped operations (charge, Apple/Google Pay, status) */
     PAYMENT_NOT_ATTACHED: 'PAYMENT_NOT_ATTACHED',
+    // Wallet button errors (mountApplePayButton / mountGooglePayButton)
+    /** The Apple Pay or Google Pay button encountered an error (unavailable, script load failure, charge error) */
+    WALLET_BUTTON_ERROR: 'WALLET_BUTTON_ERROR',
     // Usage errors
     /** SDK configuration is invalid (e.g. malformed baseUrl, wrong runtime environment) */
     INVALID_CONFIG: 'INVALID_CONFIG',

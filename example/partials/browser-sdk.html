@@ -66,11 +66,10 @@
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">Google Pay (Browser SDK)</h2>
             <p class="desc">
-                Step 1: <code>getGooglePayInfo()</code> — attach the payment and fetch config, render Google Pay button.<br>
-                Step 2: Click the Google Pay button — user selects a card. Charges via <code>chargePayment()</code> and polls <code>getChargeState()</code> to completion.
+                <code>mountGooglePayButton()</code> — auto-fetches config, renders the official Google Pay button, handles the payment sheet, charges, and polls to completion. Requires an attached payment.
             </p>
             <div class="flex items-center gap-2 flex-wrap">
-                <button type="button" onclick="browserGooglePayLoadInfo()">Load Google Pay Config</button>
+                <button type="button" onclick="browserGooglePayLoadInfo()">Mount Google Pay Button</button>
                 <div id="bgpay-button-container" class="flex items-center gap-2"></div>
             </div>
             <pre id="bgpay-output">—</pre>
@@ -81,17 +80,15 @@
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">Apple Pay (Browser SDK)</h2>
             <p class="desc">
-                Step 1: <code>getApplePayInfo()</code> — attach the payment and fetch config, render Apple Pay button.<br>
-                Step 2: Click the Apple Pay button — merchant validation runs automatically via <code>startApplePaySession()</code>. Charges via <code>chargePayment()</code> and polls <code>getChargeState()</code> to completion.
+                <code>mountApplePayButton()</code> — auto-fetches config, renders the <code>&lt;apple-pay-button&gt;</code>, handles merchant validation and the payment sheet, charges, and polls to completion. Requires an attached payment.
             </p>
             <div class="flex items-center gap-2 flex-wrap">
-                <button type="button" onclick="browserApplePayLoadInfo()">Load Apple Pay Config</button>
+                <button type="button" onclick="browserApplePayLoadInfo()">Mount Apple Pay Button</button>
                 <div id="bapplepay-button-container" class="flex items-center gap-2"></div>
             </div>
             <pre id="bapplepay-output">—</pre>
             <p class="note">Requires a payment created with Apple Pay as an allowed instrument.
-                <strong>ApplePaySession</strong>: native on Safari; simulated by a dev polyfill in other browsers.
-                <strong>PaymentRequest</strong>: shown on Chrome/Edge when the browser supports Apple Pay — triggers a cross-device QR code flow authenticated via iPhone or Apple Watch.</p>
+                <strong>ApplePaySession</strong>: native on Safari; simulated by a dev polyfill in other browsers.</p>
         </section>
 
         <!-- Browser QR Payment Info -->

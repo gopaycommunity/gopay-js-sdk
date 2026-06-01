@@ -1,81 +1,48 @@
 import { requireAttachedSDK } from './browser-sdk.js';
-import {
-    createGooglePayButton,
-    ensureGooglePayLoaded,
-    extractGooglePayInstrument,
-    loadGooglePayData,
-} from './google-pay-shared.js';
-import { formatError, pollChargeState, show3dsPrompt } from './helpers.js';
+import { formatError } from './helpers.js';
 
-let _gpInfo = null;
-let _gpBrowserSdk = null;
+let _ctrl = null;
 
 export async function browserGooglePayLoadInfo() {
     const pre = document.getElementById('bgpay-output');
     const container = document.getElementById('bgpay-button-container');
-    container.innerHTML = '';
-    _gpInfo = null;
-    _gpBrowserSdk = null;
 
-    if (!ensureGooglePayLoaded(pre)) {
+    _ctrl?.unmount();
+    _ctrl = null;
+    container.replaceChildren();
+
+    const sdk = requireAttachedSDK(pre);
+    if (!sdk) {
         return;
     }
 
-    const browserSdk = requireAttachedSDK(pre);
-    if (!browserSdk) {
-        return;
-    }
+    pre.textContent = '── mounting Google Pay button ──';
 
-    pre.textContent = '── fetching Google Pay info ──';
     try {
-        _gpInfo = await browserSdk.getGooglePayInfo();
-        _gpBrowserSdk = browserSdk;
-        pre.textContent = `── onSuccess (getGooglePayInfo) ──\n${JSON.stringify(_gpInfo, null, 2)}\n\nClick the Google Pay button to proceed.`;
-    } catch (err) {
-        pre.textContent = `── onError ──\n${formatError(err)}`;
-        return;
-    }
-
-    const btn = createGooglePayButton(_gpInfo, _browserGooglePayCharge);
-    container.appendChild(btn);
-}
-
-async function _browserGooglePayCharge() {
-    const pre = document.getElementById('bgpay-output');
-    if (!_gpBrowserSdk || !_gpInfo) {
-        return;
-    }
-
-    const paymentData = await loadGooglePayData(_gpInfo, pre);
-    if (!paymentData) {
-        return;
-    }
-
-    pre.textContent += '\n── charging ──';
-    try {
-        const instrument = extractGooglePayInstrument(paymentData);
-        const chargeResult = await _gpBrowserSdk.chargePayment({
-            payment_instrument: instrument,
+        _ctrl = await sdk.mountGooglePayButton(container, {
+            onUnavailable: () => {
+                pre.textContent =
+                    '── Google Pay not available on this device or browser ──';
+            },
+            onCancel: () => {
+                pre.textContent +=
+                    '\n\n── onCancel (user dismissed the Google Pay sheet) ──';
+            },
         });
-        pre.textContent += `\n${JSON.stringify(chargeResult, null, 2)}`;
-
-        if (
-            chargeResult.state === 'ACTION_REQUIRED' &&
-            chargeResult.action?.redirect_url
-        ) {
-            show3dsPrompt(pre, chargeResult.action.redirect_url);
-        }
-
-        if (
-            chargeResult.state !== 'SUCCEEDED' &&
-            chargeResult.state !== 'FAILED'
-        ) {
-            await pollChargeState(
-                (opts) => _gpBrowserSdk.awaitChargeState(null, opts),
-                pre,
-            );
-        }
     } catch (err) {
-        pre.textContent += `\n\n── onError (charge) ──\n${formatError(err)}`;
+        pre.textContent = `── onError (mount) ──\n${formatError(err)}`;
+        return;
     }
+
+    pre.textContent =
+        '── Google Pay button mounted — click it to start payment ──';
+
+    _ctrl.result.then(
+        (chargeState) => {
+            pre.textContent = `── onSuccess ──\n${JSON.stringify(chargeState, null, 2)}`;
+        },
+        (err) => {
+            pre.textContent = `── onError ──\n${formatError(err)}`;
+        },
+    );
 }
