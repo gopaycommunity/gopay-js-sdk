@@ -135,6 +135,79 @@ const APPLE_PAY_SCRIPT_SRC =
 const GOOGLE_PAY_SCRIPT_SRC = 'https://pay.google.com/gp/p/js/pay.js';
 
 // ---------------------------------------------------------------------------
+// Shared helpers (module-level — no closure over factory state)
+// ---------------------------------------------------------------------------
+
+function makeNotAttachedController(): WalletButtonController {
+    const result = Promise.reject<PaymentChargeStatusResponse>(
+        new GoPaySDKError(
+            '[GoPayBrowserSDK] Payment not attached. Call attachPayment({ paymentId, paymentSecret }) before mounting a wallet button.',
+            { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
+        ),
+    );
+    // Prevent unhandled-rejection noise — callers subscribe via .result
+    result.catch(() => {});
+    return { result, unmount: () => {} };
+}
+
+function makeUnavailableController(
+    onUnavailable: (() => void) | undefined,
+): WalletButtonController {
+    onUnavailable?.();
+    const result = Promise.reject<PaymentChargeStatusResponse>(
+        new GoPaySDKError(
+            '[GoPayBrowserSDK] Wallet payment method not available on this device or browser.',
+            { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
+        ),
+    );
+    result.catch(() => {});
+    return { result, unmount: () => {} };
+}
+
+async function runChargeFlow(
+    paymentsApi: PaymentsApi,
+    container: HTMLElement,
+    instrument: Omit<
+        components['schemas']['Payment-Card-Charge-Data'],
+        'browser_data'
+    >,
+    options: WalletButtonBaseOptions,
+    abortSignal: AbortSignal,
+    resolveResult: (v: PaymentChargeStatusResponse) => void,
+    rejectResult: (e: unknown) => void,
+): Promise<void> {
+    const spinner = createLoadingSpinner('#1899d6');
+    container.replaceChildren(spinner);
+
+    try {
+        await paymentsApi.chargePayment({
+            payment_instrument: instrument,
+        });
+
+        const chargeState = await paymentsApi.awaitChargeState({
+            ...options.awaitOptions,
+            threeDS: options.threeDS,
+            signal: abortSignal,
+            onStateChange: (state) => {
+                if (
+                    state.state === 'ACTION_REQUIRED' &&
+                    state.action?.redirect_url
+                ) {
+                    spinner.remove();
+                }
+                options.awaitOptions?.onStateChange?.(state);
+            },
+        });
+
+        spinner.remove();
+        resolveResult(chargeState);
+    } catch (err) {
+        spinner.remove();
+        rejectResult(err);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
 
@@ -144,83 +217,6 @@ export function createWalletsApi(
 ) {
     let activeAppleCleanup: (() => void) | undefined;
     let activeGoogleCleanup: (() => void) | undefined;
-
-    // -----------------------------------------------------------------------
-    // Shared helpers
-    // -----------------------------------------------------------------------
-
-    function makeNotAttachedController(): WalletButtonController {
-        const result = Promise.reject<PaymentChargeStatusResponse>(
-            new GoPaySDKError(
-                '[GoPayBrowserSDK] Payment not attached. Call attachPayment({ paymentId, paymentSecret }) before mounting a wallet button.',
-                { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
-            ),
-        );
-        // Prevent unhandled-rejection noise — callers subscribe via .result
-        result.catch(() => {});
-        return { result, unmount: () => {} };
-    }
-
-    function makeUnavailableController(
-        onUnavailable: (() => void) | undefined,
-    ): WalletButtonController {
-        onUnavailable?.();
-        const result = Promise.reject<PaymentChargeStatusResponse>(
-            new GoPaySDKError(
-                '[GoPayBrowserSDK] Wallet payment method not available on this device or browser.',
-                { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
-            ),
-        );
-        result.catch(() => {});
-        return { result, unmount: () => {} };
-    }
-
-    // -----------------------------------------------------------------------
-    // Charge phase — shared by Apple and Google
-    // -----------------------------------------------------------------------
-
-    async function runChargeFlow(
-        paymentsApi: PaymentsApi,
-        container: HTMLElement,
-        instrument: Omit<
-            components['schemas']['Payment-Card-Charge-Data'],
-            'browser_data'
-        >,
-        options: WalletButtonBaseOptions,
-        abortSignal: AbortSignal,
-        resolveResult: (v: PaymentChargeStatusResponse) => void,
-        rejectResult: (e: unknown) => void,
-    ): Promise<void> {
-        const spinner = createLoadingSpinner('#1899d6');
-        container.replaceChildren(spinner);
-
-        try {
-            await paymentsApi.chargePayment({
-                payment_instrument: instrument,
-            });
-
-            const chargeState = await paymentsApi.awaitChargeState({
-                ...options.awaitOptions,
-                threeDS: options.threeDS,
-                signal: abortSignal,
-                onStateChange: (state) => {
-                    if (
-                        state.state === 'ACTION_REQUIRED' &&
-                        state.action?.redirect_url
-                    ) {
-                        spinner.remove();
-                    }
-                    options.awaitOptions?.onStateChange?.(state);
-                },
-            });
-
-            spinner.remove();
-            resolveResult(chargeState);
-        } catch (err) {
-            spinner.remove();
-            rejectResult(err);
-        }
-    }
 
     // -----------------------------------------------------------------------
     // mountApplePayButton
@@ -327,58 +323,64 @@ export function createWalletsApi(
                     info.applePayPaymentRequest ?? {},
                 );
 
-                session.onpaymentauthorized = async (event: unknown) => {
-                    const paymentData =
-                        event != null &&
-                        typeof event === 'object' &&
-                        'payment' in event
-                            ? (
-                                  event as {
-                                      payment: {
-                                          token: { paymentData: unknown };
-                                      };
-                                  }
-                              ).payment?.token?.paymentData
-                            : undefined;
+                session.onpaymentauthorized = (event: unknown) => {
+                    void (async () => {
+                        const paymentData =
+                            event != null &&
+                            typeof event === 'object' &&
+                            'payment' in event
+                                ? (
+                                      event as {
+                                          payment: {
+                                              token: { paymentData: unknown };
+                                          };
+                                      }
+                                  ).payment?.token?.paymentData
+                                : undefined;
 
-                    if (!paymentData || typeof paymentData !== 'object') {
-                        session.completePayment(ApplePaySession.STATUS_FAILURE);
-                        rejectResult(
-                            new GoPaySDKError(
-                                '[GoPayBrowserSDK] Apple Pay: missing payment data in authorisation event.',
-                                {
-                                    errorCode:
-                                        GoPayErrorCodes.WALLET_BUTTON_ERROR,
-                                },
-                            ),
-                        );
+                        if (!paymentData || typeof paymentData !== 'object') {
+                            session.completePayment(
+                                ApplePaySession.STATUS_FAILURE,
+                            );
+                            rejectResult(
+                                new GoPaySDKError(
+                                    '[GoPayBrowserSDK] Apple Pay: missing payment data in authorisation event.',
+                                    {
+                                        errorCode:
+                                            GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                                    },
+                                ),
+                            );
+                            cleanup();
+                            return;
+                        }
+
+                        try {
+                            session.completePayment(
+                                ApplePaySession.STATUS_SUCCESS,
+                            );
+                        } catch {
+                            // completePayment may throw if session is in wrong state
+                        }
+
                         cleanup();
-                        return;
-                    }
 
-                    try {
-                        session.completePayment(ApplePaySession.STATUS_SUCCESS);
-                    } catch {
-                        // completePayment may throw if session is in wrong state
-                    }
+                        const instrument = extractApplePayInstrument(
+                            paymentData as Parameters<
+                                typeof extractApplePayInstrument
+                            >[0],
+                        );
 
-                    cleanup();
-
-                    const instrument = extractApplePayInstrument(
-                        paymentData as Parameters<
-                            typeof extractApplePayInstrument
-                        >[0],
-                    );
-
-                    await runChargeFlow(
-                        paymentsApi,
-                        container,
-                        instrument,
-                        options,
-                        chargeAbortController.signal,
-                        resolveResult,
-                        rejectResult,
-                    );
+                        await runChargeFlow(
+                            paymentsApi,
+                            container,
+                            instrument,
+                            options,
+                            chargeAbortController.signal,
+                            resolveResult,
+                            rejectResult,
+                        );
+                    })();
                 };
 
                 paymentsApi.startApplePaySession(session, options.origin, {
