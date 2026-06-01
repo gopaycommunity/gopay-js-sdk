@@ -265,19 +265,33 @@ export function createWalletsApi(
                 return makeUnavailableController(options.onUnavailable);
             }
 
-            const info = await paymentsApi.getApplePayInfo();
+            let info: Awaited<ReturnType<typeof paymentsApi.getApplePayInfo>>;
+            try {
+                info = await paymentsApi.getApplePayInfo();
+            } catch (err) {
+                const result = Promise.reject<PaymentChargeStatusResponse>(err);
+                result.catch(() => {});
+                return { result, unmount: () => {} };
+            }
 
             // Tear down any previous Apple Pay button mount
             container.replaceChildren();
 
             const chargeAbortController = new AbortController();
             let active = true;
+            let settled = false;
             let resolveResult!: (v: PaymentChargeStatusResponse) => void;
             let rejectResult!: (e: unknown) => void;
             const result = new Promise<PaymentChargeStatusResponse>(
                 (res, rej) => {
-                    resolveResult = res;
-                    rejectResult = rej;
+                    resolveResult = (v) => {
+                        settled = true;
+                        res(v);
+                    };
+                    rejectResult = (e) => {
+                        settled = true;
+                        rej(e);
+                    };
                 },
             );
 
@@ -395,7 +409,7 @@ export function createWalletsApi(
             return {
                 result,
                 unmount: () => {
-                    if (!active) {
+                    if (settled) {
                         return;
                     }
                     if (activeAppleCleanup === teardownThisSession) {
@@ -470,7 +484,14 @@ export function createWalletsApi(
                 return makeUnavailableController(options.onUnavailable);
             }
 
-            const info = await paymentsApi.getGooglePayInfo();
+            let info: Awaited<ReturnType<typeof paymentsApi.getGooglePayInfo>>;
+            try {
+                info = await paymentsApi.getGooglePayInfo();
+            } catch (err) {
+                const result = Promise.reject<PaymentChargeStatusResponse>(err);
+                result.catch(() => {});
+                return { result, unmount: () => {} };
+            }
 
             const paymentsClient = new googleGlobal.payments.api.PaymentsClient(
                 {
@@ -495,12 +516,19 @@ export function createWalletsApi(
 
             const chargeAbortController = new AbortController();
             let active = true;
+            let settled = false;
             let resolveResult!: (v: PaymentChargeStatusResponse) => void;
             let rejectResult!: (e: unknown) => void;
             const result = new Promise<PaymentChargeStatusResponse>(
                 (res, rej) => {
-                    resolveResult = res;
-                    rejectResult = rej;
+                    resolveResult = (v) => {
+                        settled = true;
+                        res(v);
+                    };
+                    rejectResult = (e) => {
+                        settled = true;
+                        rej(e);
+                    };
                 },
             );
 
@@ -574,8 +602,13 @@ export function createWalletsApi(
                     return;
                 }
 
-                const instrument =
-                    extractGooglePayInstrument(paymentMethodData);
+                let instrument: ReturnType<typeof extractGooglePayInstrument>;
+                try {
+                    instrument = extractGooglePayInstrument(paymentMethodData);
+                } catch (err) {
+                    rejectResult(err);
+                    return;
+                }
 
                 await runChargeFlow(
                     paymentsApi,
@@ -597,7 +630,7 @@ export function createWalletsApi(
             return {
                 result,
                 unmount: () => {
-                    if (!active) {
+                    if (settled) {
                         return;
                     }
                     if (activeGoogleCleanup === teardownThisSession) {

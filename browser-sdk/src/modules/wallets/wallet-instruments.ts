@@ -1,3 +1,4 @@
+import { GoPayErrorCodes, GoPaySDKError } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type ApplePayInput = components['schemas']['Apple-Pay-Input'];
@@ -60,12 +61,20 @@ export function extractApplePayInstrument(
 export function extractGooglePayInstrument(
     paymentMethodData: GooglePayPaymentMethodData,
 ): WalletChargeData {
-    const tokenData = JSON.parse(paymentMethodData.tokenizationData.token) as {
+    let tokenData: {
         protocolVersion?: string;
         signature?: string;
         intermediateSigningKey?: { signedKey?: string; signatures?: string[] };
         signedMessage?: string;
     };
+    try {
+        tokenData = JSON.parse(paymentMethodData.tokenizationData.token);
+    } catch {
+        throw new GoPaySDKError(
+            '[GoPayBrowserSDK] Google Pay: failed to parse payment token.',
+            { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
+        );
+    }
 
     const input: GooglePayInput = {
         input_type: 'GOOGLE_PAY',
