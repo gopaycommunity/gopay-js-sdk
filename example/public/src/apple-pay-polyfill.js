@@ -287,8 +287,17 @@
 
     ApplePaySession.__isPolyfill = true;
 
-    // Always expose as MockApplePaySession so the dev mock button works in any browser.
+    // Expose as MockApplePaySession so dev code can reference it explicitly.
     window.MockApplePaySession = ApplePaySession;
+
+    // Also set window.ApplePaySession when native Apple Pay is absent (non-Safari /
+    // Chromium) so mountApplePayButton() can find a session class and render the
+    // button during development and automated testing.  The guard ensures we never
+    // override a real ApplePaySession that Safari already provides.
+    if (!window.ApplePaySession) {
+        window.ApplePaySession = ApplePaySession;
+    }
+
     console.info(
         '[apple-pay-polyfill] MockApplePaySession available (dev mock only).',
     );

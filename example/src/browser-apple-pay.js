@@ -39,10 +39,10 @@ export async function browserApplePayLoadInfo() {
 
     _ctrl.result.then(
         (chargeState) => {
-            pre.textContent = `── onSuccess ──\n${JSON.stringify(chargeState, null, 2)}`;
+            pre.textContent = `── onSuccess (charge) ──\n${JSON.stringify(chargeState, null, 2)}`;
         },
         (err) => {
-            pre.textContent = `── onError ──\n${formatError(err)}`;
+            pre.textContent = `── onError (charge) ──\n${formatError(err)}`;
         },
     );
 }

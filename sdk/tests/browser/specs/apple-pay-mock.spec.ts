@@ -167,13 +167,17 @@ test('mock Apple Pay flow completes merchant validation and authorises payment',
         'getApplePayInfo() should not have returned an error',
     ).not.toMatch(/^── onError/);
 
-    // The mock button should now be rendered
-    await expect(page.locator('#bapplepay-mock-btn')).toBeVisible({
-        timeout: 5_000,
-    });
+    // The Apple Pay button should now be rendered in the container.
+    // mountApplePayButton() renders <apple-pay-button> (real) or falls back to
+    // the polyfill session when window.ApplePaySession is the mock.
+    const applePayBtn = page.locator(
+        '#bapplepay-button-container > apple-pay-button',
+    );
+    await expect(applePayBtn).toBeVisible({ timeout: 5_000 });
 
-    // Click the mock button — triggers MockApplePaySession, shows modal
-    await page.click('#bapplepay-mock-btn');
+    // Click the button — triggers MockApplePaySession (set by the polyfill when
+    // native Apple Pay is absent), which shows the polyfill modal.
+    await applePayBtn.click();
 
     // Wait for merchant validation to complete (stubbed → Pay button enables immediately)
     await expect(page.locator('#ap-polyfill-pay')).toBeEnabled({
