@@ -1,3 +1,41 @@
+# [1.1.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.0.0...browser-sdk-1.1.0) (2026-06-02)
+
+
+### Bug Fixes
+
+* add typeof guard before .trim() in ID validators GPOMA-2311 ([42a00ae](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/42a00ae93c062baf177a7dd2fa97bbaaba0b76cb))
+* add version and show on example page GPOMA-2311 ([4469207](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4469207940f827516ec074aa10ca7885e55a219a))
+* address CodeRabbit review comments GPOMA-2311 ([10ac0f6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/10ac0f6e2099594cffaf3bf0c63d72d1268ee358))
+* improve error logging GPOMA-2311 ([9800092](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/98000926ee4c6f5c6333f728b165e96903eb5ff6))
+* remove refresh tokens GPOMA-2311 ([7267094](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/726709485f6fe495bc81d585cdd3c1c22146affa))
+* sanitize id's GPOMA-2311 ([6da9f7c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/6da9f7ca7dd6d443f05bee86629ba310259e1073))
+* **sonar:** extract async payment-authorised handler to fix S2004 GPOMA-2311 ([671ba31](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/671ba3124c4a4258879367983f5ae9d9499a33f3))
+* **sonar:** move wallet helpers to module scope, fix async event handler GPOMA-2311 ([4380c54](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4380c549aefdbc70cd9fe4373257a8ea5da6d4e2))
+* split example page to collapsible sections GPOMA-2311 ([e6ba695](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e6ba695e6f099c53548c8eeb3ee7cca7849b51f1))
+* **test:** add xpay tests GPOMA-2311 ([610331c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/610331c7051bed27dd440433934c08c4a51f7d97))
+* **test:** restore applePayLoadInfo deleted by refunds commit GPOMA-2311 ([0e4c4c0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0e4c4c05470eee79740a28f0d1e7e30ed679ca07))
+* **tests:** add vi.unstubAllGlobals() to payments-module teardown GPOMA-2311 ([bd9eeab](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bd9eeab0ef24400a092cf14b8925979ac44d8f12))
+* **tests:** expand collapsible sections before browser smoke tests GPOMA-2311 ([0796d72](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0796d726fe89e0d07df83d34f6f644d69b43fcea))
+* **tests:** fix apple-pay-mock browser smoke test GPOMA-2311 ([ceed284](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ceed284c60d14d982228a9133623775b74e45ce5)), closes [#bapplepay-mock-btn](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issue/bapplepay-mock-btn) [#bapplepay-button-container](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issue/bapplepay-button-container)
+* **tests:** remove refresh token GPOMA-2311 ([c3c14ab](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c3c14ab7d67473105a5003a79ab102eb26db8c34))
+* type-safe 3DS narrowing, validate attachPayment args, typed JSON.parse GPOMA-2311 ([ed51c23](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ed51c23aa6f43455f678d6cc8b22d2e6321f079c))
+* unify ID validation via requireNonEmptyString in internal/core GPOMA-2311 ([78489ec](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/78489ec2e06c5d1c9a1c80e512053e0ad43c0e36))
+* update apple pay validate merchant response schema GPOMA-2311 ([ef24150](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ef24150038c82754893f2f44b4c07a3a36ecc25a))
+* update examples GPOMA-2311 ([7a893cc](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/7a893cccb5c97f8c4ef07354746cedf7c2aeb87d))
+* update packages GPOMA-2311 ([e9502dc](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e9502dc9abaaeead3d5a233dc08072daa6503635))
+* update readme GPOMA-2311 ([21b9913](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/21b9913a670612d5388c8a95e9c7b18aaf21bb6a))
+* update tests GPOMA-2311 ([06e329d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/06e329d06fd239519a96a4c57d55c50b1a3493ff))
+* validate redirectUrl in manual 3DS mode and auto-unstub globals in tests GPOMA-2311 ([b643bdb](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b643bdbd6e9181f16a3da9b0b99f424e98fd044e))
+* **wallets:** settled flag, getInfo try/catch, wrap JSON.parse token GPOMA-2311 ([d48a025](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d48a0255e6443a86f96476724104271702e12604))
+
+
+### Features
+
+* add 3ds iframe redirect GPOMA-2311 ([4f026ef](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4f026eff43b0e18aa36f17cb57a0666988f3f107))
+* implement refunds GPOMA-2311 ([139599c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/139599c6a7425ce18e683aa3bac989009dba9000))
+* implement xpay buttons GPOMA-2311 ([2d21cec](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2d21cec10dd75bba5dc7ef5f7d1a94d26e395709))
+* update scopes by new schema GPOMA-2311 ([919953f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/919953f3afc1091404b97e779590e33303ad055a))
+
 # 1.0.0 (2026-05-25)
 
 
