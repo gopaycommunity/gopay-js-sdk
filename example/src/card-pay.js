@@ -87,8 +87,9 @@ export async function cardPayOpenIframe() {
             ? DARK_CARD_FORM_THEME
             : DEFAULT_CARD_FORM_THEME;
 
+    let controller = null;
     try {
-        cardFormController = await browserSdk.mountCardForm(container, {
+        controller = await browserSdk.mountCardForm(container, {
             flow: 'return-payload',
             theme,
             locale: currentLang,
@@ -104,17 +105,24 @@ export async function cardPayOpenIframe() {
                   }
                 : undefined,
         });
+        cardFormController = controller;
 
         pre.textContent += '\n\nWaiting for card confirmation in iframe';
 
-        const result = await cardFormController.result;
-        cardFormController = null;
+        const result = await controller.result;
+        if (cardFormController === controller) {
+            cardFormController = null;
+        }
         container.style.display = 'none';
         pre.textContent += `\n\n── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
         pre.textContent +=
             '\n\nEncrypted payload auto-filled in the Browser charge section below.';
         prefillBrowserCharge(result.encryptedPayload);
     } catch (err) {
+        if (controller !== null && cardFormController !== controller) {
+            // A newer mountCardForm call has taken over; don't disrupt its state.
+            return;
+        }
         cardFormController = null;
         container.style.display = 'none';
         pre.textContent += `\n\n── onError ──\n${formatError(err)}`;

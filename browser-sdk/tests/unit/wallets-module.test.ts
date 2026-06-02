@@ -276,10 +276,15 @@ describe('mountApplePayButton()', () => {
         );
 
         await api.mountApplePayButton(container);
-        const btn = container.querySelector('apple-pay-button')!;
 
-        expect(btn.getAttribute('buttonstyle')).toBe('black');
-        expect(btn.getAttribute('type')).toBe('buy');
+        expect(
+            container
+                .querySelector('apple-pay-button')
+                ?.getAttribute('buttonstyle'),
+        ).toBe('black');
+        expect(
+            container.querySelector('apple-pay-button')?.getAttribute('type'),
+        ).toBe('buy');
     });
 
     it('forwards appleButtonOptions attributes', async () => {
@@ -296,11 +301,18 @@ describe('mountApplePayButton()', () => {
                 locale: 'cs-CZ',
             },
         });
-        const btn = container.querySelector('apple-pay-button')!;
 
-        expect(btn.getAttribute('buttonstyle')).toBe('white');
-        expect(btn.getAttribute('type')).toBe('check-out');
-        expect(btn.getAttribute('locale')).toBe('cs-CZ');
+        expect(
+            container
+                .querySelector('apple-pay-button')
+                ?.getAttribute('buttonstyle'),
+        ).toBe('white');
+        expect(
+            container.querySelector('apple-pay-button')?.getAttribute('type'),
+        ).toBe('check-out');
+        expect(
+            container.querySelector('apple-pay-button')?.getAttribute('locale'),
+        ).toBe('cs-CZ');
     });
 
     it('creates ApplePaySession with version and request from getApplePayInfo on click', async () => {
@@ -315,7 +327,7 @@ describe('mountApplePayButton()', () => {
         );
 
         await api.mountApplePayButton(container);
-        container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        container.querySelector<HTMLElement>('apple-pay-button')?.click();
 
         expect(applePayCtorArgs).toHaveLength(1);
         expect(applePayCtorArgs[0]).toEqual([6, info.applePayPaymentRequest]);
@@ -330,9 +342,9 @@ describe('mountApplePayButton()', () => {
         );
 
         const ctrl = await api.mountApplePayButton(container);
-        container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        container.querySelector<HTMLElement>('apple-pay-button')?.click();
 
-        lastSession.onpaymentauthorized!({
+        lastSession.onpaymentauthorized?.({
             payment: { token: { paymentData: validApplePaymentData } },
         });
 
@@ -357,8 +369,8 @@ describe('mountApplePayButton()', () => {
         );
 
         await api.mountApplePayButton(container);
-        container.querySelector<HTMLElement>('apple-pay-button')!.click();
-        lastSession.onpaymentauthorized!({
+        container.querySelector<HTMLElement>('apple-pay-button')?.click();
+        lastSession.onpaymentauthorized?.({
             payment: { token: { paymentData: validApplePaymentData } },
         });
 
@@ -376,8 +388,8 @@ describe('mountApplePayButton()', () => {
         );
 
         const ctrl = await api.mountApplePayButton(container);
-        container.querySelector<HTMLElement>('apple-pay-button')!.click();
-        lastSession.onpaymentauthorized!({ payment: { token: {} } });
+        container.querySelector<HTMLElement>('apple-pay-button')?.click();
+        lastSession.onpaymentauthorized?.({ payment: { token: {} } });
 
         const err = await ctrl.result.catch((e: unknown) => e);
 
@@ -397,8 +409,8 @@ describe('mountApplePayButton()', () => {
         );
 
         await api.mountApplePayButton(container, { onCancel });
-        container.querySelector<HTMLElement>('apple-pay-button')!.click();
-        lastSession.oncancel!({});
+        container.querySelector<HTMLElement>('apple-pay-button')?.click();
+        lastSession.oncancel?.({});
 
         expect(onCancel).toHaveBeenCalledOnce();
     });
@@ -431,8 +443,8 @@ describe('mountApplePayButton()', () => {
         );
 
         const ctrl = await api.mountApplePayButton(container);
-        container.querySelector<HTMLElement>('apple-pay-button')!.click();
-        lastSession.onpaymentauthorized!({
+        container.querySelector<HTMLElement>('apple-pay-button')?.click();
+        lastSession.onpaymentauthorized?.({
             payment: { token: { paymentData: validApplePaymentData } },
         });
         await ctrl.result;
@@ -656,7 +668,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        await capturedOnClick!();
+        await capturedOnClick?.();
 
         expect(paymentsApi.chargePayment).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -685,7 +697,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         await api.mountGooglePayButton(container, { onCancel });
-        await capturedOnClick!();
+        await capturedOnClick?.();
 
         expect(onCancel).toHaveBeenCalledOnce();
         expect(paymentsApi.chargePayment).not.toHaveBeenCalled();
@@ -703,7 +715,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         await api.mountGooglePayButton(container, { onCancel });
-        await capturedOnClick!();
+        await capturedOnClick?.();
 
         expect(onCancel).toHaveBeenCalledOnce();
     });
@@ -719,7 +731,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        await capturedOnClick!();
+        await capturedOnClick?.();
 
         const err = await ctrl.result.catch((e: unknown) => e);
         expect(err).toBe(networkError);
@@ -735,7 +747,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        await capturedOnClick!();
+        await capturedOnClick?.();
 
         const err = await ctrl.result.catch((e: unknown) => e);
         expect((err as GoPaySDKError).errorCode).toBe(
@@ -757,7 +769,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        await capturedOnClick!();
+        await capturedOnClick?.();
 
         const err = await ctrl.result.catch((e: unknown) => e);
         expect((err as GoPaySDKError).errorCode).toBe(
@@ -793,7 +805,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        await capturedOnClick!();
+        await capturedOnClick?.();
         await ctrl.result;
 
         expect(() => ctrl.unmount()).not.toThrow();
