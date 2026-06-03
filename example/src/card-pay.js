@@ -110,9 +110,10 @@ export async function cardPayOpenIframe() {
         pre.textContent += '\n\nWaiting for card confirmation in iframe';
 
         const result = await controller.result;
-        if (cardFormController === controller) {
-            cardFormController = null;
+        if (cardFormController !== controller) {
+            return;
         }
+        cardFormController = null;
         container.style.display = 'none';
         pre.textContent += `\n\n── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
         pre.textContent +=

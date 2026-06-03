@@ -668,7 +668,8 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        await capturedOnClick?.();
+        expect(capturedOnClick).toBeDefined();
+        await (capturedOnClick as () => Promise<void>)();
 
         expect(paymentsApi.chargePayment).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -697,7 +698,8 @@ describe('mountGooglePayButton()', () => {
         );
 
         await api.mountGooglePayButton(container, { onCancel });
-        await capturedOnClick?.();
+        expect(capturedOnClick).toBeDefined();
+        await (capturedOnClick as () => Promise<void>)();
 
         expect(onCancel).toHaveBeenCalledOnce();
         expect(paymentsApi.chargePayment).not.toHaveBeenCalled();
@@ -715,7 +717,8 @@ describe('mountGooglePayButton()', () => {
         );
 
         await api.mountGooglePayButton(container, { onCancel });
-        await capturedOnClick?.();
+        expect(capturedOnClick).toBeDefined();
+        await (capturedOnClick as () => Promise<void>)();
 
         expect(onCancel).toHaveBeenCalledOnce();
     });
@@ -731,7 +734,8 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        await capturedOnClick?.();
+        expect(capturedOnClick).toBeDefined();
+        await (capturedOnClick as () => Promise<void>)();
 
         const err = await ctrl.result.catch((e: unknown) => e);
         expect(err).toBe(networkError);
@@ -747,7 +751,8 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        await capturedOnClick?.();
+        expect(capturedOnClick).toBeDefined();
+        await (capturedOnClick as () => Promise<void>)();
 
         const err = await ctrl.result.catch((e: unknown) => e);
         expect((err as GoPaySDKError).errorCode).toBe(
@@ -769,7 +774,8 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        await capturedOnClick?.();
+        expect(capturedOnClick).toBeDefined();
+        await (capturedOnClick as () => Promise<void>)();
 
         const err = await ctrl.result.catch((e: unknown) => e);
         expect((err as GoPaySDKError).errorCode).toBe(
@@ -805,7 +811,8 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        await capturedOnClick?.();
+        expect(capturedOnClick).toBeDefined();
+        await (capturedOnClick as () => Promise<void>)();
         await ctrl.result;
 
         expect(() => ctrl.unmount()).not.toThrow();
