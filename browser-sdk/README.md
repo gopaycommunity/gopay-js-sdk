@@ -295,7 +295,7 @@ mountCardForm(
 
 | Member | Description |
 |---|---|
-| `result` | `Promise` — resolves with `{ encryptedPayload }` (return-payload) or `PaymentChargeResponseData` (direct-charge) |
+| `result` | `Promise` — resolves with `{ encryptedPayload }` (return-payload) or `PaymentChargeStatusResponse` (direct-charge) |
 | `setTheme(theme)` | Update theme at runtime |
 | `setLocale(locale)` | Update locale at runtime |
 | `submit()` | Trigger submission (external submit mode only) |

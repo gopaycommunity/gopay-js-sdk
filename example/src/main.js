@@ -20,6 +20,8 @@ import { initBrowserSDK, runAttachPayment } from './browser-sdk.js';
 import {
     cardPayExtSubmit,
     cardPayOpenIframe,
+    cardPaySet3DSMode,
+    cardPaySetFlow,
     cardPaySetLang,
     cardPaySetSubmitMode,
     cardPaySetTheme,
@@ -141,6 +143,8 @@ window.cardPayOpenIframe = cardPayOpenIframe;
 window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;
 window.cardPaySetSubmitMode = cardPaySetSubmitMode;
+window.cardPaySetFlow = cardPaySetFlow;
+window.cardPaySet3DSMode = cardPaySet3DSMode;
 window.cardPayExtSubmit = cardPayExtSubmit;
 window.runBrowserCharge = runBrowserCharge;
 window.browserGooglePayLoadInfo = browserGooglePayLoadInfo;
