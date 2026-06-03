@@ -3,7 +3,12 @@ import {
     DEFAULT_CARD_FORM_THEME,
 } from 'gopay-js-sdk-browser';
 import { getBrowserSDK } from './browser-sdk.js';
-import { formatError, prefillBrowserCharge, show3dsPrompt } from './helpers.js';
+import {
+    formatError,
+    prefillBrowserCharge,
+    prefillTokenize,
+    show3dsPrompt,
+} from './helpers.js';
 
 let currentLang = 'en';
 let currentTheme = 'default';
@@ -172,8 +177,9 @@ export async function cardPayOpenIframe() {
         pre.textContent += `\n\n── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
         if (!isDirectCharge) {
             pre.textContent +=
-                '\n\nEncrypted payload auto-filled in the Browser charge section below.';
+                '\n\nEncrypted payload auto-filled in the Browser charge and Cards · tokenize sections.';
             prefillBrowserCharge(result.encryptedPayload);
+            prefillTokenize(result.encryptedPayload);
         }
     } catch (err) {
         if (controller !== null && cardFormController !== controller) {

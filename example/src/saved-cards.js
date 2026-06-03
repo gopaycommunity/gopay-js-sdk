@@ -1,6 +1,11 @@
 import { run } from './helpers.js';
 import { sdk } from './sdk.js';
 
+export function runTokenizeEncryptedCard() {
+    const payload = document.getElementById('tokenize-payload').value.trim();
+    run('tokenize-output', () => sdk.tokenizeEncryptedCard(payload));
+}
+
 // Retrieve details of a stored permanent card token.
 // Requires card:read scope.
 // Example:

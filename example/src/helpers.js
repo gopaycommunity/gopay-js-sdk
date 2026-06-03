@@ -207,6 +207,13 @@ export function prefillBrowserCharge(encryptedPayload) {
     }
 }
 
+export function prefillTokenize(encryptedPayload) {
+    const el = document.getElementById('tokenize-payload');
+    if (el && encryptedPayload) {
+        el.value = encryptedPayload;
+    }
+}
+
 export function prefillCharge(paymentId, instrument) {
     state.pendingInstrument = instrument;
     if (paymentId) {

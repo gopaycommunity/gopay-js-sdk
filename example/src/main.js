@@ -49,7 +49,11 @@ import {
     runStopRecurrence,
 } from './recurrences.js';
 import { runGetRefund, runListRefunds, runRefundPayment } from './refunds.js';
-import { runDeleteCard, runGetCardDetails } from './saved-cards.js';
+import {
+    runDeleteCard,
+    runGetCardDetails,
+    runTokenizeEncryptedCard,
+} from './saved-cards.js';
 import { clientId, clientSecret, goid, publishableKey, sdk } from './sdk.js';
 
 // -----------------------------------------------------------------------
@@ -156,6 +160,7 @@ window.runGetPaymentStatus = runGetPaymentStatus;
 window.runGetChargeState = runGetChargeState;
 window.runGetCardDetails = runGetCardDetails;
 window.runDeleteCard = runDeleteCard;
+window.runTokenizeEncryptedCard = runTokenizeEncryptedCard;
 window.runCreateRecurrence = runCreateRecurrence;
 window.runRecurrenceStatus = runRecurrenceStatus;
 window.runStartRecurrence = runStartRecurrence;

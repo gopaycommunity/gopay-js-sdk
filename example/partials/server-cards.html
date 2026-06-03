@@ -21,6 +21,17 @@
             <pre id="card-details-output">—</pre>
         </section>
 
+        <!-- Tokenize encrypted card -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.tokenizeEncryptedCard()</h2>
+            <p class="desc">POST /cards/tokens — exchange the JWE payload produced by the card form (<code>submitMode: 'return-payload'</code>) for a permanent card token. Call this server-side; the payload is auto-filled when the card form completes. Requires <code>card:write</code> scope.</p>
+            <div class="fields">
+                <label>Encrypted Payload<input id="tokenize-payload" type="text" placeholder="auto-filled by card form (return-payload mode)" /></label>
+            </div>
+            <button type="button" onclick="runTokenizeEncryptedCard()">Run</button>
+            <pre id="tokenize-output">—</pre>
+        </section>
+
         <!-- Delete card -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.deleteCard()</h2>
