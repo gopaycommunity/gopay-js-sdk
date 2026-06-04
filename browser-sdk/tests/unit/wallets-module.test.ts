@@ -470,6 +470,30 @@ describe('mountApplePayButton()', () => {
             GoPayErrorCodes.WALLET_BUTTON_ERROR,
         );
     });
+
+    it('clicking the apple-pay-button after unmount is a no-op', async () => {
+        const paymentsApi = makePaymentsApi();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        // Keep reference to the button before unmount removes it from the container.
+        const btn = container.querySelector<HTMLElement>('apple-pay-button');
+        expect(btn).not.toBeNull();
+        ctrl.unmount();
+
+        // Invoke onclick directly — active is false so it returns immediately.
+        // biome-ignore lint/suspicious/noExplicitAny: test-only invocation
+        (btn as any)?.onclick?.();
+
+        await new Promise((r) => setTimeout(r, 0));
+        expect(paymentsApi.chargePayment).not.toHaveBeenCalled();
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -835,5 +859,27 @@ describe('mountGooglePayButton()', () => {
         expect((err as GoPaySDKError).errorCode).toBe(
             GoPayErrorCodes.WALLET_BUTTON_ERROR,
         );
+    });
+
+    it('calling onClick after unmount is a no-op', async () => {
+        const paymentsApi = makePaymentsApi();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(capturedOnClick).toBeDefined();
+        ctrl.unmount();
+
+        // active is now false — onClick should return early without charging.
+        if (capturedOnClick) {
+            await capturedOnClick();
+        }
+
+        expect(paymentsApi.chargePayment).not.toHaveBeenCalled();
     });
 });

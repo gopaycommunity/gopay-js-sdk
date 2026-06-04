@@ -948,6 +948,52 @@ describe('PaymentsModule', () => {
             expect(() => mockSession.oncancel?.({})).not.toThrow();
         });
 
+        it('uses empty string origin when globalThis.location is undefined', () => {
+            vi.stubGlobal('location', undefined);
+
+            expect(() =>
+                payments.startApplePaySession('pay_123', mockSession),
+            ).not.toThrow();
+            expect(mockSession.begin).toHaveBeenCalledOnce();
+        });
+
+        it('onvalidatemerchant sends no Origin header when origin is empty string', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                await req.text();
+                return makeResponse({});
+            });
+
+            payments.startApplePaySession('pay_123', mockSession, '');
+            mockSession.onvalidatemerchant?.({
+                validationURL: 'https://apple.com/validate',
+            });
+
+            await vi.waitFor(() => expect(capturedReq).toBeDefined());
+
+            expect(capturedReq.headers.get('Origin')).toBeNull();
+        });
+
+        it('onvalidatemerchant sends no body when event has no validationURL', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse({});
+            });
+
+            payments.startApplePaySession(
+                'pay_123',
+                mockSession,
+                'https://merchant.example.com',
+            );
+            mockSession.onvalidatemerchant?.({});
+
+            await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+            expect(capturedBody).toBe('');
+        });
+
         it('onvalidatemerchant POSTs to apple-pay/validate', async () => {
             let capturedReq!: Request;
             fetchMock.mockImplementation(async (req: Request) => {
@@ -1103,6 +1149,138 @@ describe('PaymentsModule', () => {
                 .awaitChargeState('pay_300000001', {
                     intervalMs: 10,
                     initialTimeoutMs: 5000,
+                })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CHARGE_FAILED,
+            );
+        });
+
+        it('rejects with CHARGE_TIMEOUT when charge stays in REQUESTED within timeout', async () => {
+            vi.useFakeTimers();
+
+            fetchMock.mockImplementation(async () =>
+                makeResponse({
+                    id: 'pay_300000001',
+                    state: 'REQUESTED',
+                    payment_instrument: { payment_instrument: 'PAYMENT_CARD' },
+                }),
+            );
+
+            const promise = payments.awaitChargeState('pay_300000001', {
+                intervalMs: 100,
+                initialTimeoutMs: 500,
+            });
+
+            // Attach catch before advancing timers so the rejection is not unhandled.
+            const errPromise = promise.catch((e: unknown) => e);
+
+            await vi.advanceTimersByTimeAsync(600);
+            vi.clearAllTimers();
+            vi.useRealTimers();
+
+            const err = await errPromise;
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CHARGE_TIMEOUT,
+            );
+        });
+
+        it('fires onActionRequired when ACTION_REQUIRED state is polled', async () => {
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({
+                        id: 'pay_300000001',
+                        state: 'ACTION_REQUIRED',
+                        action: { redirect_url: 'https://3ds.example.com' },
+                    }),
+                )
+                .mockResolvedValue(
+                    makeResponse({
+                        id: 'pay_300000001',
+                        state: 'SUCCEEDED',
+                    }),
+                );
+
+            const onActionRequired = vi.fn();
+            const result = await payments.awaitChargeState('pay_300000001', {
+                intervalMs: 10,
+                initialTimeoutMs: 5000,
+                onActionRequired,
+            });
+
+            expect(onActionRequired).toHaveBeenCalledOnce();
+            expect(onActionRequired).toHaveBeenCalledWith(
+                'https://3ds.example.com',
+            );
+            expect(result.state).toBe('SUCCEEDED');
+        });
+
+        it('fires onStateChange for each polled state including terminal', async () => {
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({
+                        id: 'pay_300000001',
+                        state: 'PROCESSING',
+                    }),
+                )
+                .mockResolvedValue(
+                    makeResponse({
+                        id: 'pay_300000001',
+                        state: 'SUCCEEDED',
+                    }),
+                );
+
+            const onStateChange = vi.fn();
+            await payments.awaitChargeState('pay_300000001', {
+                intervalMs: 10,
+                initialTimeoutMs: 5000,
+                onStateChange,
+            });
+
+            expect(onStateChange).toHaveBeenCalledTimes(2);
+            expect(onStateChange).toHaveBeenCalledWith(
+                expect.objectContaining({ state: 'PROCESSING' }),
+            );
+            expect(onStateChange).toHaveBeenCalledWith(
+                expect.objectContaining({ state: 'SUCCEEDED' }),
+            );
+        });
+
+        it('rejects with CHARGE_FAILED when aborted via AbortSignal', async () => {
+            fetchMock.mockImplementation(async () =>
+                makeResponse({
+                    id: 'pay_300000001',
+                    state: 'REQUESTED',
+                }),
+            );
+
+            const ac = new AbortController();
+            const promise = payments.awaitChargeState('pay_300000001', {
+                intervalMs: 50,
+                initialTimeoutMs: 5000,
+                signal: ac.signal,
+            });
+
+            ac.abort();
+
+            const err = await promise.catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CHARGE_FAILED,
+            );
+        });
+
+        it('rejects immediately with CHARGE_FAILED when signal is already aborted', async () => {
+            const ac = new AbortController();
+            ac.abort();
+
+            const err = await payments
+                .awaitChargeState('pay_300000001', {
+                    signal: ac.signal,
                 })
                 .catch((e: unknown) => e);
 

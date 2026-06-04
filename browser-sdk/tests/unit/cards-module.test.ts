@@ -884,4 +884,41 @@ describe('createCardsApi() — browser SDK', () => {
             expect(container.querySelectorAll('iframe')).toHaveLength(1);
         });
     });
+
+    // -------------------------------------------------------------------------
+    // getCardFormUrl() — cache invalidation on failure
+    // -------------------------------------------------------------------------
+
+    describe('getCardFormUrl() cache', () => {
+        it('retries the fetch on a subsequent mountCardForm call after a previous failure', async () => {
+            // First call: API returns no card_form_url — triggers CARD_FORM_ERROR.
+            fetchMock.mockResolvedValueOnce(makeResponse({}));
+
+            const cards = createCardsApi(client, () => null);
+            const err = await cards
+                .mountCardForm(container, { flow: 'return-payload' })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CARD_FORM_ERROR,
+            );
+
+            // Allow the internal p.catch() that clears cardFormUrlPromise to run.
+            await new Promise((r) => setTimeout(r, 0));
+
+            // Second call: API now returns a valid URL — should succeed (cache was cleared).
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+            const ctrl2 = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl2.result.catch(() => {});
+
+            expect(container.querySelector('iframe')).not.toBeNull();
+            // Two separate fetches were made (the failed one was not cached).
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+    });
 });
