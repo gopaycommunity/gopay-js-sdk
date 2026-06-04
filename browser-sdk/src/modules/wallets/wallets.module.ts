@@ -242,6 +242,17 @@ export function createWalletsApi(
                 return makeNotAttachedController();
             }
 
+            if (activeAppleCleanup) {
+                const result = Promise.reject<PaymentChargeStatusResponse>(
+                    new GoPaySDKError(
+                        '[GoPayBrowserSDK] Apple Pay button is already active. Call unmount() on the existing controller first.',
+                        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
+                    ),
+                );
+                result.catch(() => {});
+                return { result, unmount: () => {} };
+            }
+
             // Inject Apple Pay JS SDK (needed for the <apple-pay-button> web component)
             try {
                 await loadScriptOnce(APPLE_PAY_SCRIPT_SRC);
@@ -286,10 +297,12 @@ export function createWalletsApi(
                 (res, rej) => {
                     resolveResult = (v) => {
                         settled = true;
+                        activeAppleCleanup = undefined;
                         res(v);
                     };
                     rejectResult = (e) => {
                         settled = true;
+                        activeAppleCleanup = undefined;
                         rej(e);
                     };
                 },
@@ -300,18 +313,7 @@ export function createWalletsApi(
                 container.replaceChildren();
             };
 
-            activeAppleCleanup?.();
-            const teardownThisSession = () => {
-                cleanup();
-                activeAppleCleanup = undefined;
-                rejectResult(
-                    new GoPaySDKError(
-                        '[GoPayBrowserSDK] Apple Pay button replaced by a new mountApplePayButton call.',
-                        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
-                    ),
-                );
-            };
-            activeAppleCleanup = teardownThisSession;
+            activeAppleCleanup = cleanup;
 
             // Render the button
             const appleBtn = document.createElement('apple-pay-button');
@@ -412,9 +414,6 @@ export function createWalletsApi(
                     if (settled) {
                         return;
                     }
-                    if (activeAppleCleanup === teardownThisSession) {
-                        activeAppleCleanup = undefined;
-                    }
                     chargeAbortController.abort();
                     cleanup();
                     const unmountError = new GoPaySDKError(
@@ -451,6 +450,17 @@ export function createWalletsApi(
             const paymentsApi = getPaymentsApi();
             if (!paymentsApi) {
                 return makeNotAttachedController();
+            }
+
+            if (activeGoogleCleanup) {
+                const result = Promise.reject<PaymentChargeStatusResponse>(
+                    new GoPaySDKError(
+                        '[GoPayBrowserSDK] Google Pay button is already active. Call unmount() on the existing controller first.',
+                        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
+                    ),
+                );
+                result.catch(() => {});
+                return { result, unmount: () => {} };
             }
 
             // Inject Google Pay JS library
@@ -523,10 +533,12 @@ export function createWalletsApi(
                 (res, rej) => {
                     resolveResult = (v) => {
                         settled = true;
+                        activeGoogleCleanup = undefined;
                         res(v);
                     };
                     rejectResult = (e) => {
                         settled = true;
+                        activeGoogleCleanup = undefined;
                         rej(e);
                     };
                 },
@@ -537,18 +549,7 @@ export function createWalletsApi(
                 container.replaceChildren();
             };
 
-            activeGoogleCleanup?.();
-            const teardownThisSession = () => {
-                cleanup();
-                activeGoogleCleanup = undefined;
-                rejectResult(
-                    new GoPaySDKError(
-                        '[GoPayBrowserSDK] Google Pay button replaced by a new mountGooglePayButton call.',
-                        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
-                    ),
-                );
-            };
-            activeGoogleCleanup = teardownThisSession;
+            activeGoogleCleanup = cleanup;
 
             const onClick = async () => {
                 if (!active) {
@@ -632,9 +633,6 @@ export function createWalletsApi(
                 unmount: () => {
                     if (settled) {
                         return;
-                    }
-                    if (activeGoogleCleanup === teardownThisSession) {
-                        activeGoogleCleanup = undefined;
                     }
                     chargeAbortController.abort();
                     cleanup();

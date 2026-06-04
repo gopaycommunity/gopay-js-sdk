@@ -453,7 +453,7 @@ describe('mountApplePayButton()', () => {
         expect(client.emitError).not.toHaveBeenCalled();
     });
 
-    it('second mountApplePayButton call rejects the previous result', async () => {
+    it('second mountApplePayButton call while active rejects the new call, leaves the first alive', async () => {
         const paymentsApi = makePaymentsApi();
         const client = makeClient();
         const api = createWalletsApi(
@@ -462,13 +462,16 @@ describe('mountApplePayButton()', () => {
         );
 
         const first = await api.mountApplePayButton(container);
-        await api.mountApplePayButton(container);
+        first.result.catch(() => {});
 
-        const err = await first.result.catch((e: unknown) => e);
+        const second = await api.mountApplePayButton(container);
+        const err = await second.result.catch((e: unknown) => e);
 
         expect((err as GoPaySDKError).errorCode).toBe(
             GoPayErrorCodes.WALLET_BUTTON_ERROR,
         );
+        // First controller is still live — its button is still in the container
+        expect(container.querySelector('apple-pay-button')).not.toBeNull();
     });
 
     it('clicking the apple-pay-button after unmount is a no-op', async () => {
@@ -843,7 +846,7 @@ describe('mountGooglePayButton()', () => {
         expect(client.emitError).not.toHaveBeenCalled();
     });
 
-    it('second mountGooglePayButton call rejects the previous result', async () => {
+    it('second mountGooglePayButton call while active rejects the new call, leaves the first alive', async () => {
         const paymentsApi = makePaymentsApi();
         const client = makeClient();
         const api = createWalletsApi(
@@ -852,13 +855,16 @@ describe('mountGooglePayButton()', () => {
         );
 
         const first = await api.mountGooglePayButton(container);
-        await api.mountGooglePayButton(container);
+        first.result.catch(() => {});
 
-        const err = await first.result.catch((e: unknown) => e);
+        const second = await api.mountGooglePayButton(container);
+        const err = await second.result.catch((e: unknown) => e);
 
         expect((err as GoPaySDKError).errorCode).toBe(
             GoPayErrorCodes.WALLET_BUTTON_ERROR,
         );
+        // First controller is still live — its button is still in the container
+        expect(container.querySelector('button')).not.toBeNull();
     });
 
     it('calling onClick after unmount is a no-op', async () => {
