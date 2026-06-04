@@ -327,6 +327,7 @@ describe('mountApplePayButton()', () => {
         );
 
         await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
         container.querySelector<HTMLElement>('apple-pay-button')!.click();
 
         expect(applePayCtorArgs).toHaveLength(1);
@@ -342,8 +343,10 @@ describe('mountApplePayButton()', () => {
         );
 
         const ctrl = await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
         container.querySelector<HTMLElement>('apple-pay-button')!.click();
 
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         lastSession.onpaymentauthorized!({
             payment: { token: { paymentData: validApplePaymentData } },
         });
@@ -369,7 +372,9 @@ describe('mountApplePayButton()', () => {
         );
 
         await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
         container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         lastSession.onpaymentauthorized!({
             payment: { token: { paymentData: validApplePaymentData } },
         });
@@ -388,7 +393,9 @@ describe('mountApplePayButton()', () => {
         );
 
         const ctrl = await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
         container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         lastSession.onpaymentauthorized!({ payment: { token: {} } });
 
         const err = await ctrl.result.catch((e: unknown) => e);
@@ -409,6 +416,7 @@ describe('mountApplePayButton()', () => {
         );
 
         await api.mountApplePayButton(container, { onCancel });
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
         container.querySelector<HTMLElement>('apple-pay-button')!.click();
         lastSession.oncancel?.({});
 
@@ -443,7 +451,9 @@ describe('mountApplePayButton()', () => {
         );
 
         const ctrl = await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
         container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         lastSession.onpaymentauthorized!({
             payment: { token: { paymentData: validApplePaymentData } },
         });
@@ -696,6 +706,7 @@ describe('mountGooglePayButton()', () => {
 
         const ctrl = await api.mountGooglePayButton(container);
         expect(capturedOnClick).toBeDefined();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         await capturedOnClick!();
 
         expect(paymentsApi.chargePayment).toHaveBeenCalledWith(
@@ -726,6 +737,7 @@ describe('mountGooglePayButton()', () => {
 
         await api.mountGooglePayButton(container, { onCancel });
         expect(capturedOnClick).toBeDefined();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         await capturedOnClick!();
 
         expect(onCancel).toHaveBeenCalledOnce();
@@ -745,6 +757,7 @@ describe('mountGooglePayButton()', () => {
 
         await api.mountGooglePayButton(container, { onCancel });
         expect(capturedOnClick).toBeDefined();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         await capturedOnClick!();
 
         expect(onCancel).toHaveBeenCalledOnce();
@@ -762,6 +775,7 @@ describe('mountGooglePayButton()', () => {
 
         const ctrl = await api.mountGooglePayButton(container);
         expect(capturedOnClick).toBeDefined();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         await capturedOnClick!();
 
         const err = await ctrl.result.catch((e: unknown) => e);
@@ -779,6 +793,7 @@ describe('mountGooglePayButton()', () => {
 
         const ctrl = await api.mountGooglePayButton(container);
         expect(capturedOnClick).toBeDefined();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         await capturedOnClick!();
 
         const err = await ctrl.result.catch((e: unknown) => e);
@@ -802,6 +817,7 @@ describe('mountGooglePayButton()', () => {
 
         const ctrl = await api.mountGooglePayButton(container);
         expect(capturedOnClick).toBeDefined();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         await capturedOnClick!();
 
         const err = await ctrl.result.catch((e: unknown) => e);
@@ -839,6 +855,7 @@ describe('mountGooglePayButton()', () => {
 
         const ctrl = await api.mountGooglePayButton(container);
         expect(capturedOnClick).toBeDefined();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
         await capturedOnClick!();
         await ctrl.result;
 
