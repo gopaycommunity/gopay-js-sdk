@@ -16,6 +16,7 @@ let currentSubmitMode = 'internal';
 let currentFlow = 'return-payload';
 let currentThreeDS = 'redirect';
 let cardFormController = null;
+let cardFormMounting = false;
 
 export function cardPaySetLang(lang) {
     currentLang = lang;
@@ -88,6 +89,9 @@ export function cardPayExtSubmit() {
 }
 
 export async function cardPayOpenIframe() {
+    if (cardFormMounting) {
+        return;
+    }
     const pre = document.getElementById('cardpay-output');
     const container = document.getElementById('cardpay-iframe-container');
     const threeDSContainer = document.getElementById('cardpay-3ds-container');
@@ -159,7 +163,9 @@ export async function cardPayOpenIframe() {
 
     let controller = null;
     try {
+        cardFormMounting = true;
         controller = await browserSdk.mountCardForm(container, options);
+        cardFormMounting = false;
         cardFormController = controller;
 
         pre.textContent += '\n\nWaiting for card confirmation in iframe';
@@ -183,6 +189,7 @@ export async function cardPayOpenIframe() {
             prefillTokenize(result.encryptedPayload);
         }
     } catch (err) {
+        cardFormMounting = false;
         if (controller !== null && cardFormController !== controller) {
             // A newer mountCardForm call has taken over; don't disrupt its state.
             return;

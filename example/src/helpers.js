@@ -200,18 +200,19 @@ export async function pollChargeState(awaitFn, pre) {
     }
 }
 
-export function prefillBrowserCharge(encryptedPayload) {
-    const el = document.getElementById('bcharge-encrypted-payload');
-    if (el && encryptedPayload) {
-        el.value = encryptedPayload;
+function prefillField(id, value) {
+    const el = document.getElementById(id);
+    if (el && value) {
+        el.value = value;
     }
 }
 
+export function prefillBrowserCharge(encryptedPayload) {
+    prefillField('bcharge-encrypted-payload', encryptedPayload);
+}
+
 export function prefillTokenize(encryptedPayload) {
-    const el = document.getElementById('tokenize-payload');
-    if (el && encryptedPayload) {
-        el.value = encryptedPayload;
-    }
+    prefillField('tokenize-payload', encryptedPayload);
 }
 
 export function prefillCharge(paymentId, instrument) {
