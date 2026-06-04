@@ -142,6 +142,29 @@ export function createCardsApi(
                 EncryptedCardPayload | PaymentChargeStatusResponse
             >
         > {
+            if (activeCleanup) {
+                const result = Promise.reject<
+                    EncryptedCardPayload | PaymentChargeStatusResponse
+                >(
+                    new GoPaySDKError(
+                        '[GoPayBrowserSDK] A card form is already mounted. Call unmount() on the existing controller before mounting a new one.',
+                        {
+                            errorCode:
+                                GoPayErrorCodes.CARD_FORM_ALREADY_MOUNTED,
+                        },
+                    ),
+                );
+                result.catch(() => {});
+                return {
+                    result,
+                    setTheme: () => {},
+                    setLocale: () => {},
+                    submit: () => {},
+                    unmount: () => {},
+                    isValid: false,
+                };
+            }
+
             if (options.flow === 'direct-charge' && !getPaymentsApi()) {
                 const result = Promise.reject<EncryptedCardPayload>(
                     new GoPaySDKError(
@@ -160,9 +183,6 @@ export function createCardsApi(
                 };
             }
 
-            // Defer tearing down the previous session until the new iframe is
-            // fully created and origin-validated. If getCardFormUrl() or origin
-            // validation throws, the previous controller stays alive.
             const iframeSrc = await getCardFormUrl();
             const expectedOrigin = new URL(iframeSrc, globalThis.location?.href)
                 .origin;
@@ -231,25 +251,10 @@ export function createCardsApi(
                     window.removeEventListener('message', onMessage);
                 }
                 iframe.remove();
+                activeCleanup = undefined;
             };
 
-            // Tear down the previous session now that this one is ready.
-            // activeCleanup from the previous call rejects that session's result
-            // promise so it cannot hang.
-            activeCleanup?.();
-            // Capture reference so unmount() can compare and avoid clobbering a
-            // newer session's activeCleanup if called after remount.
-            const teardownThisSession = () => {
-                cleanup();
-                activeCleanup = undefined;
-                rejectResult(
-                    new GoPaySDKError(
-                        '[GoPayBrowserSDK] Card form replaced by a new mountCardForm call.',
-                        { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
-                    ),
-                );
-            };
-            activeCleanup = teardownThisSession;
+            activeCleanup = cleanup;
 
             iframe.onload = () => {
                 iframe.contentWindow?.postMessage(
@@ -426,9 +431,6 @@ export function createCardsApi(
                 unmount: () => {
                     if (!active) {
                         return;
-                    }
-                    if (activeCleanup === teardownThisSession) {
-                        activeCleanup = undefined;
                     }
                     chargeAbortController.abort();
                     cleanup();

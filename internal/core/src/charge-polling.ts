@@ -29,6 +29,14 @@ export function awaitCharge<
     const intervalMs = options?.intervalMs ?? 2_000;
     const initialTimeoutMs = options?.initialTimeoutMs ?? 30_000;
 
+    if (options?.signal?.aborted) {
+        return Promise.reject(
+            new GoPaySDKError('[GoPaySDK] Charge polling aborted.', {
+                errorCode: GoPayErrorCodes.CHARGE_FAILED,
+            }),
+        );
+    }
+
     return new Promise<T>((resolve, reject) => {
         let stopped = false;
         let lastActionRequiredUrl: string | null = null;
@@ -54,10 +62,6 @@ export function awaitCharge<
             );
         };
 
-        if (options?.signal?.aborted) {
-            onAbort();
-            return;
-        }
         options?.signal?.addEventListener('abort', onAbort, { once: true });
 
         const initialTimer = setTimeout(() => {

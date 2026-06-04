@@ -21,6 +21,7 @@ export function loadScriptOnce(src: string): Promise<void> {
         script.onload = () => resolve();
         script.onerror = () => {
             cache.delete(src);
+            script.remove();
             reject(
                 new Error(`[GoPayBrowserSDK] Failed to load script: ${src}`),
             );

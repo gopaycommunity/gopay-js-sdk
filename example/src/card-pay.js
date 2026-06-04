@@ -90,7 +90,7 @@ export function cardPayExtSubmit() {
 }
 
 export async function cardPayOpenIframe() {
-    if (cardFormMounting) {
+    if (cardFormMounting || cardFormController) {
         return;
     }
     const pre = document.getElementById('cardpay-output');

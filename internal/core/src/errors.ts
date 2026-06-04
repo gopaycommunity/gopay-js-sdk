@@ -20,6 +20,8 @@ export const GoPayErrorCodes = {
     // Card form errors
     /** The GoPay card encryption iframe reported an error */
     CARD_FORM_ERROR: 'CARD_FORM_ERROR',
+    /** mountCardForm() was called while a session is already active — call unmount() first */
+    CARD_FORM_ALREADY_MOUNTED: 'CARD_FORM_ALREADY_MOUNTED',
     // Charge polling errors
     /** Charge did not leave REQUESTED/PROCESSING within the initial timeout */
     CHARGE_TIMEOUT: 'CHARGE_TIMEOUT',
