@@ -109,6 +109,27 @@ describe('createCardsApi() — browser SDK', () => {
             expect(container.querySelector('iframe')).not.toBeNull();
         });
 
+        it('always uses Basic auth with the shareable key for /cards/card-form-url, even when a bearer token is present', async () => {
+            let capturedAuth = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedAuth = req.headers.get('Authorization') ?? '';
+                return makeResponse({ card_form_url: CARD_FORM_URL });
+            });
+
+            // Seed a bearer token to prove it is NOT used for this endpoint.
+            client.setToken({
+                access_token: 'bearer_should_not_be_used',
+                expires_in: 3600,
+                token_type: 'bearer',
+            });
+
+            const cards = createCardsApi(client, () => null);
+            await cards.mountCardForm(container, { flow: 'return-payload' });
+
+            const expectedCredentials = btoa('cid_test:pk_test');
+            expect(capturedAuth).toBe(`Basic ${expectedCredentials}`);
+        });
+
         it('sets sandbox attribute on the iframe', async () => {
             const cards = createCardsApi(client, () => null);
             await cards.mountCardForm(container, { flow: 'return-payload' });

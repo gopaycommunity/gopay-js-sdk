@@ -92,9 +92,15 @@ export function createCardsApi(
 
     function getCardFormUrl(): Promise<string> {
         if (!cardFormUrlPromise) {
+            const shareableKey = client.getShareableKey() ?? '';
+            const clientId = client.getClientId();
+            const credentials = clientId
+                ? globalThis.btoa(`${clientId}:${shareableKey}`)
+                : globalThis.btoa(`:${shareableKey}`);
             const p = client
                 .get<components['schemas']['Card-Form-URL']>(
                     '/cards/card-form-url',
+                    { headers: { Authorization: `Basic ${credentials}` } },
                 )
                 .then((result) => {
                     if (!result.card_form_url) {
