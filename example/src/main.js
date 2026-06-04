@@ -35,6 +35,7 @@ import {
 import {
     clearCharge,
     runCharge,
+    runChargeEncrypted,
     runCreatePayment,
     runGetChargeState,
     runGetGooglePayInfo,
@@ -139,6 +140,7 @@ window.runAuthenticate = runAuthenticate;
 window.runLogout = runLogout;
 window.runGetBrowserKeys = runGetBrowserKeys;
 window.runCreatePayment = runCreatePayment;
+window.runChargeEncrypted = runChargeEncrypted;
 window.runCharge = runCharge;
 window.clearCharge = clearCharge;
 window.runQRPaymentInfo = runQRPaymentInfo;

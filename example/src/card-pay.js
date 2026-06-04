@@ -6,6 +6,7 @@ import { getBrowserSDK } from './browser-sdk.js';
 import {
     formatError,
     prefillBrowserCharge,
+    prefillServerChargeEncrypted,
     prefillTokenize,
     show3dsPrompt,
 } from './helpers.js';
@@ -184,7 +185,8 @@ export async function cardPayOpenIframe() {
         pre.textContent += `\n\n── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
         if (!isDirectCharge) {
             pre.textContent +=
-                '\n\nEncrypted payload auto-filled in the Browser charge and Cards · tokenize sections.';
+                '\n\nEncrypted payload auto-filled in the Server charge, Browser charge and Cards · tokenize sections.';
+            prefillServerChargeEncrypted(result.encryptedPayload);
             prefillBrowserCharge(result.encryptedPayload);
             prefillTokenize(result.encryptedPayload);
         }

@@ -139,6 +139,7 @@ export function prefillPaymentId(result) {
         return;
     }
     for (const fieldId of [
+        'charge-enc-payment-id',
         'charge-payment-id',
         'status-payment-id',
         'charge-state-payment-id',
@@ -209,6 +210,10 @@ function prefillField(id, value) {
 
 export function prefillBrowserCharge(encryptedPayload) {
     prefillField('bcharge-encrypted-payload', encryptedPayload);
+}
+
+export function prefillServerChargeEncrypted(encryptedPayload) {
+    prefillField('charge-enc-payload', encryptedPayload);
 }
 
 export function prefillTokenize(encryptedPayload) {

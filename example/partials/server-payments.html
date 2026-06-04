@@ -68,10 +68,23 @@
             <p class="note">QR codes are returned base64-encoded. The available field depends on currency: <code>spayd</code> (CZK), <code>paybysquare</code>/<code>sepa</code> (EUR), <code>mnb_qr</code> (HUF).</p>
         </section>
 
-        <!-- Charge payment -->
+        <!-- Charge payment — encrypted card -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.charge()</h2>
-            <p class="desc">POST /payments/{id}/charge — submit a payment instrument token obtained from Google Pay or a saved card token. The Google Pay flow above prefills the instrument automatically. For one-time card payments use the Browser SDK's Card Pay section below.</p>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.charge() — encrypted card</h2>
+            <p class="desc">POST /payments/{id}/charge — charge with a one-time encrypted card payload (JWE) from the card iframe. Auto-filled from the Card Pay section below when a card form completes.</p>
+            <div class="fields">
+                <label>Payment ID<input id="charge-enc-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
+                <label>Return URL<input id="charge-enc-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+                <label>Encrypted Payload (JWE)<input id="charge-enc-payload" type="text" placeholder="auto-filled from Card Pay" /></label>
+            </div>
+            <button type="button" onclick="runChargeEncrypted()">Run</button>
+            <pre id="charge-enc-output">—</pre>
+        </section>
+
+        <!-- Charge payment — tokenized card -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.charge() — tokenized card</h2>
+            <p class="desc">POST /payments/{id}/charge — charge with a saved card token (<code>CARD_TOKEN</code>) or a wallet instrument prefilled by Google Pay / Apple Pay.</p>
             <div class="fields">
                 <label>Payment ID<input id="charge-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
                 <label>Return URL<input id="charge-return-url" type="text" value="https://yourshop.example.com/return" /></label>

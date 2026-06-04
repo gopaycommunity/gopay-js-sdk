@@ -33,7 +33,7 @@ export async function runBrowserCharge() {
             payment_instrument: {
                 payment_instrument: 'PAYMENT_CARD',
                 input: {
-                    input_type: 'Encrypted-Card-Input',
+                    input_type: 'ENCRYPTED_CARD',
                     payload: encryptedPayload,
                 },
             },

@@ -88,7 +88,7 @@ describe('createPaymentsApi() — browser SDK', () => {
                 payment_instrument: {
                     payment_instrument: 'PAYMENT_CARD',
                     input: {
-                        input_type: 'Encrypted-Card-Input',
+                        input_type: 'ENCRYPTED_CARD',
                         payload: 'enc_payload',
                     },
                 },
@@ -112,7 +112,7 @@ describe('createPaymentsApi() — browser SDK', () => {
                 payment_instrument: {
                     payment_instrument: 'PAYMENT_CARD',
                     input: {
-                        input_type: 'Encrypted-Card-Input',
+                        input_type: 'ENCRYPTED_CARD',
                         payload: 'enc_payload',
                     },
                     browser_data: { language: 'fr-FR' },

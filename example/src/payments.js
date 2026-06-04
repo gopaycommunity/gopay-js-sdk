@@ -70,6 +70,37 @@ function collectBrowserData() {
     };
 }
 
+export function runChargeEncrypted() {
+    const paymentId = document
+        .getElementById('charge-enc-payment-id')
+        .value.trim();
+    const return_url = document
+        .getElementById('charge-enc-return-url')
+        .value.trim();
+    const payload = document.getElementById('charge-enc-payload').value.trim();
+
+    run(
+        'charge-enc-output',
+        () =>
+            sdk.chargePayment(paymentId, {
+                payment_instrument: {
+                    payment_instrument: 'PAYMENT_CARD',
+                    input: {
+                        input_type: 'ENCRYPTED_CARD',
+                        payload,
+                    },
+                    browser_data: collectBrowserData(),
+                },
+                ...(return_url && { return_url }),
+            }),
+        (result) =>
+            show3dsPrompt(
+                document.getElementById('charge-enc-output'),
+                result.action?.redirect_url,
+            ),
+    );
+}
+
 export function runCharge() {
     const paymentId = document.getElementById('charge-payment-id').value.trim();
     const return_url = document
