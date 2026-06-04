@@ -9,14 +9,14 @@ import type { RequestOptions } from './types.js';
 export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
     const baseUrl = resolveBaseUrl(config);
     const tokenStore = createTokenStore();
-    let publishableKey: string | undefined = config.publishableKey;
+    let shareableKey: string | undefined = config.shareableKey;
     const auth = createAuthHandler({
         store: tokenStore,
         baseUrl,
         emitError: (e) => emitError(e),
         getTimeoutMs: () => timeoutMs(),
         debugLogResponse: (r) => debugLogResponse(r),
-        getPublishableKey: () => publishableKey,
+        getShareableKey: () => shareableKey,
         getClientId: () => tokenStore.getClientId(),
         reAuthAction,
     });
@@ -104,12 +104,12 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
             return tokenStore.getClientId();
         },
 
-        getPublishableKey(): string | undefined {
-            return publishableKey;
+        getShareableKey(): string | undefined {
+            return shareableKey;
         },
 
-        setPublishableKey(key: string): void {
-            publishableKey = key;
+        setShareableKey(key: string): void {
+            shareableKey = key;
         },
 
         getClientCredentials(): {

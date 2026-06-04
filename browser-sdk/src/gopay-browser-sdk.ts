@@ -26,15 +26,15 @@ function notAttached(): never {
 /**
  * Create a GoPay browser SDK instance.
  *
- * Requires a `publishableKey` and `clientId` — obtain both server-side via
+ * Requires a `shareableKey` and `clientId` — obtain both server-side via
  * `serverSdk.getBrowserKeys()` and forward them to the browser.
  *
  * ```ts
  * // Server:
- * const { publishable_key, client_id } = await serverSdk.getBrowserKeys();
+ * const { shareable_key, client_id } = await serverSdk.getBrowserKeys();
  *
  * // Browser (Flow A — encrypt-only, charge on your server):
- * const sdk = createGoPayBrowserSDK({ environment: 'production', publishableKey, clientId });
+ * const sdk = createGoPayBrowserSDK({ environment: 'production', shareableKey, clientId });
  * const ctrl = await sdk.mountCardForm(container, { flow: 'return-payload' });
  * const { encryptedPayload } = await ctrl.result;
  * // → forward encryptedPayload to your server → server calls tokenizeEncryptedCard + chargePayment
@@ -55,9 +55,9 @@ function notAttached(): never {
  * ```
  */
 export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
-    const { publishableKey, clientId, ...coreConfig } = config;
+    const { shareableKey, clientId, ...coreConfig } = config;
     const client = createHttpClient(
-        { ...coreConfig, publishableKey },
+        { ...coreConfig, shareableKey },
         'Call attachPayment({ paymentId, paymentSecret }) again.',
     );
     client.setClientId(clientId);

@@ -25,7 +25,7 @@ describe('createGoPayBrowserSDK()', () => {
         vi.stubGlobal('fetch', fetchMock);
         sdk = createGoPayBrowserSDK({
             baseUrl: 'https://example.com',
-            publishableKey: 'pk_test',
+            shareableKey: 'pk_test',
             clientId: 'cid_test',
         });
     });

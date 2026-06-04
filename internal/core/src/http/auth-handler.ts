@@ -13,7 +13,7 @@ interface AuthHandlerDeps {
     emitError: <E extends GoPaySDKError | GoPayHTTPError>(error: E) => never;
     getTimeoutMs: () => number;
     debugLogResponse: (response: Response) => void;
-    getPublishableKey?: () => string | undefined;
+    getShareableKey?: () => string | undefined;
     getClientId?: () => string | null;
     /** Appended to auth error messages to tell the caller how to recover. */
     reAuthAction?: string;
@@ -52,12 +52,12 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
 
         const tokens = deps.store.get();
         if (!tokens) {
-            const publishableKey = deps.getPublishableKey?.();
-            if (publishableKey) {
+            const shareableKey = deps.getShareableKey?.();
+            if (shareableKey) {
                 const clientId = deps.getClientId?.();
                 const credentials = clientId
-                    ? globalThis.btoa(`${clientId}:${publishableKey}`)
-                    : globalThis.btoa(`:${publishableKey}`);
+                    ? globalThis.btoa(`${clientId}:${shareableKey}`)
+                    : globalThis.btoa(`:${shareableKey}`);
                 headers.set('Authorization', `Basic ${credentials}`);
                 return;
             }

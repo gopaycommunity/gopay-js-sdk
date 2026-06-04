@@ -80,26 +80,26 @@ export function createAuthApi(client: HttpClient) {
         },
 
         /**
-         * Store the publishable key on the SDK instance.
+         * Store the shareable key on the SDK instance.
          * Useful when the key is obtained separately from the SDK config
          * (e.g. entered at runtime in a dev tool or fetched from an admin API).
          */
-        setPublishableKey(key: string): void {
-            client.setPublishableKey(key);
+        setShareableKey(key: string): void {
+            client.setShareableKey(key);
         },
 
-        getBrowserKeys(): { publishable_key: string; client_id: string } {
-            const publishableKey = client.getPublishableKey();
+        getBrowserKeys(): { shareable_key: string; client_id: string } {
+            const shareableKey = client.getShareableKey();
             const clientId = client.getClientId();
-            if (!publishableKey || !clientId) {
+            if (!shareableKey || !clientId) {
                 throw client.emitError(
                     new GoPaySDKError(
-                        '[GoPaySDK] getBrowserKeys() requires publishableKey in config and a prior authenticate() call.',
+                        '[GoPaySDK] getBrowserKeys() requires shareableKey in config and a prior authenticate() call.',
                         { errorCode: GoPayErrorCodes.AUTH_CREDENTIALS_MISSING },
                     ),
                 );
             }
-            return { publishable_key: publishableKey, client_id: clientId };
+            return { shareable_key: shareableKey, client_id: clientId };
         },
     };
 }

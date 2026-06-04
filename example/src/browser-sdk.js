@@ -22,10 +22,10 @@ function formatBrowserError(err) {
     return String(err);
 }
 
-export function initBrowserSDK(publishableKey, clientId) {
+export function initBrowserSDK(shareableKey, clientId) {
     _browserSdk = createGoPayBrowserSDK({
         ...sdkConfig,
-        publishableKey,
+        shareableKey,
         clientId,
     });
     _attached = false;

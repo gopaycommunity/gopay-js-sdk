@@ -117,7 +117,7 @@ test('mock Apple Pay flow completes merchant validation and authorises payment',
     await expandAllSections(page);
 
     // Initialize browser SDK
-    const pubKeyInput = page.locator('#cardpay-publishable-key');
+    const pubKeyInput = page.locator('#cardpay-shareable-key');
     if (!(await pubKeyInput.inputValue())) {
         await pubKeyInput.fill('test-key');
     }

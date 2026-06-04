@@ -6,7 +6,7 @@ export const SENSITIVE_KEYS = new Set([
     'cardToken',
     'card_token',
     'token',
-    'publishable_key',
+    'shareable_key',
     'cvv',
     'cvv2',
     'security_code',

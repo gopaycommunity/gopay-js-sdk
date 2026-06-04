@@ -14,11 +14,11 @@ export interface CoreConfig {
     /** Called whenever the SDK throws a GoPaySDKError or GoPayHTTPError. */
     onError?: (error: GoPaySDKError | GoPayHTTPError) => void;
     /**
-     * Publishable key (X-API-Key for browser requests). Public — safe to expose in
+     * Shareable key (X-API-Key for browser requests). Public — safe to expose in
      * the browser. Set this on the server SDK so `getBrowserKeys()` can return it
      * alongside `client_id` for initializing the browser SDK.
      */
-    publishableKey?: string;
+    shareableKey?: string;
 }
 
 export const BASE_URLS: Record<GoPayEnvironment, string> = {

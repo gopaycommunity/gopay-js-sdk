@@ -25,15 +25,15 @@ export function runAuthenticate() {
     const client_secret = document
         .getElementById('auth-client-secret')
         .value.trim();
-    const publishable_key = document
-        .getElementById('auth-publishable-key')
+    const shareable_key = document
+        .getElementById('auth-shareable-key')
         .value.trim();
     const scope = getSelectedScopes();
     run(
         'auth-output',
         async () => {
-            if (publishable_key) {
-                sdk.setPublishableKey(publishable_key);
+            if (shareable_key) {
+                sdk.setShareableKey(shareable_key);
             }
             await sdk.authenticate({
                 grant_type: 'client_credentials',
@@ -56,10 +56,10 @@ export function runLogout() {
 export function runGetBrowserKeys() {
     run('get-browser-keys-output', async () => {
         const keys = sdk.getBrowserKeys();
-        document.getElementById('cardpay-publishable-key').value =
-            keys.publishable_key;
+        document.getElementById('cardpay-shareable-key').value =
+            keys.shareable_key;
         document.getElementById('cardpay-client-id').value = keys.client_id;
-        initBrowserSDK(keys.publishable_key, keys.client_id);
+        initBrowserSDK(keys.shareable_key, keys.client_id);
         updateBrowserBadge();
         return keys;
     });

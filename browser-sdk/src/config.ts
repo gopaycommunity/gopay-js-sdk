@@ -6,9 +6,9 @@ export interface GoPayBrowserConfig extends CoreConfig {
      * Obtain it server-side via `serverSdk.getBrowserKeys()` and ship it to your frontend.
      * Safe to embed in client-side code — it carries no payment-action authority on its own.
      */
-    publishableKey: string;
+    shareableKey: string;
     /**
-     * Your GoPay OAuth client_id. Returned alongside `publishable_key` by
+     * Your GoPay OAuth client_id. Returned alongside `shareable_key` by
      * `serverSdk.getBrowserKeys()`. Embedded in the encrypted card payload for
      * backend merchant identification.
      */

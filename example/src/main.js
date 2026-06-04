@@ -54,7 +54,7 @@ import {
     runGetCardDetails,
     runTokenizeEncryptedCard,
 } from './saved-cards.js';
-import { clientId, clientSecret, goid, publishableKey, sdk } from './sdk.js';
+import { clientId, clientSecret, goid, sdk, shareableKey } from './sdk.js';
 
 // -----------------------------------------------------------------------
 // Pre-populate auth fields from Vite env (sdk/.env.e2e) — fall back to empty
@@ -65,17 +65,17 @@ if (clientId) {
 if (clientSecret) {
     document.getElementById('auth-client-secret').value = clientSecret;
 }
-if (publishableKey) {
-    document.getElementById('auth-publishable-key').value = publishableKey;
-    document.getElementById('cardpay-publishable-key').value = publishableKey;
+if (shareableKey) {
+    document.getElementById('auth-shareable-key').value = shareableKey;
+    document.getElementById('cardpay-shareable-key').value = shareableKey;
 }
 if (clientId) {
     document.getElementById('cardpay-client-id').value = clientId;
 }
 
 // Auto-init browser SDK if both keys are available from env
-if (publishableKey && clientId) {
-    initBrowserSDK(publishableKey, clientId);
+if (shareableKey && clientId) {
+    initBrowserSDK(shareableKey, clientId);
 }
 if (goid) {
     for (const fieldId of [
@@ -121,17 +121,17 @@ updateBrowserBadge();
 window.runAttachPayment = runAttachPayment;
 
 window.runInitBrowserSDK = () => {
-    const publishableKey = document
-        .getElementById('cardpay-publishable-key')
+    const shareableKey = document
+        .getElementById('cardpay-shareable-key')
         .value.trim();
     const clientId = document.getElementById('cardpay-client-id').value.trim();
-    if (!publishableKey || !clientId) {
+    if (!shareableKey || !clientId) {
         alert(
-            'Publishable Key and Client ID are required.\nRun auth.getBrowserKeys() first.',
+            'Shareable Key and Client ID are required.\nRun auth.getBrowserKeys() first.',
         );
         return;
     }
-    initBrowserSDK(publishableKey, clientId);
+    initBrowserSDK(shareableKey, clientId);
     updateBrowserBadge();
 };
 

@@ -16,7 +16,7 @@
     <p class="note">
         Run <code>yarn example</code> from the repo root.
         Credentials and base URL can be supplied for testing in <code>sdk/.env.e2e</code>
-        (<code>GP_GW_JS_SDK_CLIENT_ID</code>, <code>GP_GW_JS_SDK_CLIENT_SECRET</code>, <code>GP_GW_JS_SDK_BASE_URL</code>, <code>GP_GW_JS_SDK_PUBLISHABLE_KEY</code>).
+        (<code>GP_GW_JS_SDK_CLIENT_ID</code>, <code>GP_GW_JS_SDK_CLIENT_SECRET</code>, <code>GP_GW_JS_SDK_BASE_URL</code>, <code>GP_GW_JS_SDK_SHAREABLE_KEY</code>).
     </p>
 </section>
 
@@ -27,7 +27,7 @@
     <div class="fields">
         <label>Client ID<input id="auth-client-id" type="text" placeholder="your-client-id" /></label>
         <label>Client Secret<input id="auth-client-secret" type="password" placeholder="your-client-secret" /></label>
-        <label>Publishable Key<input id="auth-publishable-key" type="text" placeholder="from GoPay admin" /></label>
+        <label>Shareable Key<input id="auth-shareable-key" type="text" placeholder="from GoPay admin" /></label>
         <label>Scope (⌘/Ctrl+click to select multiple)
             <select id="auth-scope" multiple size="4">
                 <option value="payment:write" selected>payment:write</option>
@@ -45,7 +45,7 @@
 <!-- getBrowserKeys -->
 <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
     <h2 class="text-base font-semibold text-[#2D3643] mb-4">auth.getBrowserKeys()</h2>
-    <p class="desc">Returns <code>{ publishable_key, client_id }</code> for initializing the browser SDK. Requires <code>publishableKey</code> in the server SDK config (<code>GP_GW_JS_SDK_PUBLISHABLE_KEY</code>) and prior authentication. Auto-fills the browser SDK fields below.</p>
+    <p class="desc">Returns <code>{ shareable_key, client_id }</code> for initializing the browser SDK. Requires <code>shareableKey</code> in the server SDK config (<code>GP_GW_JS_SDK_SHAREABLE_KEY</code>) and prior authentication. Auto-fills the browser SDK fields below.</p>
     <button type="button" onclick="runGetBrowserKeys()">Run</button>
     <pre id="get-browser-keys-output">—</pre>
 </section>

@@ -99,7 +99,7 @@ export function createCardsApi(
                 .then((result) => {
                     if (!result.card_form_url) {
                         throw new GoPaySDKError(
-                            '[GoPayBrowserSDK] Card form URL not available. Ensure the publishable key has the required scope.',
+                            '[GoPayBrowserSDK] Card form URL not available. Ensure the shareable key has the required scope.',
                             { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
                         );
                     }
@@ -192,7 +192,7 @@ export function createCardsApi(
             iframe.style.cssText = 'width:100%;height:100%;border:none;';
             iframe.title = 'GoPay';
             container.appendChild(iframe);
-            const publishableKey = client.getPublishableKey() ?? '';
+            const shareableKey = client.getShareableKey() ?? '';
             const clientId = client.getClientId() ?? '';
             const theme = options.theme ?? DEFAULT_CARD_FORM_THEME;
             const locale =
@@ -250,7 +250,7 @@ export function createCardsApi(
                     {
                         type: 'GOPAY_CARD_FORM_INIT',
                         environment,
-                        publishable_key: publishableKey,
+                        shareable_key: shareableKey,
                         client_id: clientId,
                         theme,
                         locale,

@@ -203,19 +203,19 @@ describe('AuthModule', () => {
     });
 
     // -------------------------------------------------------------------------
-    // setPublishableKey()
+    // setShareableKey()
     // -------------------------------------------------------------------------
 
-    describe('setPublishableKey()', () => {
+    describe('setShareableKey()', () => {
         it('stores the key on the client', () => {
-            auth.setPublishableKey('pk-test-123');
-            expect(client.getPublishableKey()).toBe('pk-test-123');
+            auth.setShareableKey('pk-test-123');
+            expect(client.getShareableKey()).toBe('pk-test-123');
         });
 
         it('overwrites a previously set key', () => {
-            auth.setPublishableKey('pk-old');
-            auth.setPublishableKey('pk-new');
-            expect(client.getPublishableKey()).toBe('pk-new');
+            auth.setShareableKey('pk-old');
+            auth.setShareableKey('pk-new');
+            expect(client.getShareableKey()).toBe('pk-new');
         });
     });
 
@@ -224,7 +224,7 @@ describe('AuthModule', () => {
     // -------------------------------------------------------------------------
 
     describe('getBrowserKeys()', () => {
-        it('throws AUTH_CREDENTIALS_MISSING when publishable key is not set', async () => {
+        it('throws AUTH_CREDENTIALS_MISSING when shareable key is not set', async () => {
             await auth.authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'my-client',
@@ -240,7 +240,7 @@ describe('AuthModule', () => {
         });
 
         it('throws AUTH_CREDENTIALS_MISSING when client_id is not set', () => {
-            auth.setPublishableKey('pk-test');
+            auth.setShareableKey('pk-test');
 
             expect(() => auth.getBrowserKeys()).toThrow(
                 expect.objectContaining({
@@ -249,8 +249,8 @@ describe('AuthModule', () => {
             );
         });
 
-        it('returns publishable_key and client_id when both are set', async () => {
-            auth.setPublishableKey('pk-test-456');
+        it('returns shareable_key and client_id when both are set', async () => {
+            auth.setShareableKey('pk-test-456');
             await auth.authenticate({
                 grant_type: 'client_credentials',
                 client_id: 'my-client',
@@ -260,7 +260,7 @@ describe('AuthModule', () => {
 
             const keys = auth.getBrowserKeys();
 
-            expect(keys.publishable_key).toBe('pk-test-456');
+            expect(keys.shareable_key).toBe('pk-test-456');
             expect(keys.client_id).toBe('my-client');
         });
     });

@@ -16,7 +16,7 @@ const makeResponse = (data: unknown, status = 200) =>
 function makeClient(env?: 'sandbox' | 'production') {
     const c = createHttpClient({
         baseUrl: 'https://example.com',
-        publishableKey: 'pk_test',
+        shareableKey: 'pk_test',
         environment: env,
     });
     c.setClientId('cid_test');
@@ -814,7 +814,7 @@ describe('createCardsApi() — browser SDK', () => {
             const onError = vi.fn();
             const c = createHttpClient({
                 baseUrl: 'https://example.com',
-                publishableKey: 'pk_test',
+                shareableKey: 'pk_test',
                 onError,
             });
             c.setClientId('cid_test');
