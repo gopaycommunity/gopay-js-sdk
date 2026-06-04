@@ -112,6 +112,7 @@ export async function cardPayOpenIframe() {
     }
 
     pre.textContent = 'Mounting card form…';
+    show3dsPrompt(pre, null);
 
     const theme =
         currentTheme === 'dark'

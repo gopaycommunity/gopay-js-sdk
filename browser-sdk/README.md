@@ -22,16 +22,16 @@ CDN (IIFE — exposes `window.GoPayBrowserSDK`):
 
 | | Flow A — encrypt-only | Flow B — full browser payments |
 |---|---|---|
-| **Required inputs** | `publishableKey`, `clientId` | + `paymentId`, `paymentSecret` |
+| **Required inputs** | `shareableKey`, `clientId` | + `paymentId`, `paymentSecret` |
 | **Browser methods** | `mountCardForm({ flow: 'return-payload' })` | + `chargePayment`, Apple Pay, Google Pay, `getStatus` |
-| **Iframe auth** | `X-API-Key: publishableKey` | same — iframe never sees JWT |
+| **Iframe auth** | `X-API-Key: shareableKey` | same — iframe never sees JWT |
 | **Server handles** | tokenize + charge (or save token for later) | — (browser charges directly) |
 
 ---
 
 ## Where the inputs come from
 
-### `publishableKey` and `clientId`
+### `shareableKey` and `clientId`
 
 Both are issued in the GoPay admin alongside your `client_id` / `client_secret`.
 
@@ -39,13 +39,13 @@ Both are issued in the GoPay admin alongside your `client_id` / `client_secret`.
 
 ```ts
 // On your server:
-const { publishable_key, client_id } = await serverSdk.getBrowserKeys();
+const { shareable_key, client_id } = await serverSdk.getBrowserKeys();
 // Ship both to the browser through your own API endpoint.
 ```
 
 **Without the server SDK:** implement the equivalent server call yourself — see the [server SDK README § Browser keys](../sdk/README.md) for the API endpoint and auth scheme.
 
-`publishableKey` is public and safe to embed in client-side code. It carries no payment-action authority on its own.
+`shareableKey` is public and safe to embed in client-side code. It carries no payment-action authority on its own.
 
 ### `paymentId` and `paymentSecret` (Flow B only)
 
@@ -72,10 +72,10 @@ Flow A covers two server-side use cases with the same browser code:
 import { createGoPayBrowserSDK, collectBrowserData } from 'gopay-js-sdk-browser';
 
 // 1. Create the browser SDK (synchronous).
-//    publishableKey + clientId come from your server via getBrowserKeys().
+//    shareableKey + clientId come from your server via getBrowserKeys().
 const sdk = createGoPayBrowserSDK({
     environment: 'production', // or 'sandbox'
-    publishableKey: 'pk_live_…',
+    shareableKey: 'pk_live_…',
     clientId: 'your-client-id',
 });
 
@@ -112,7 +112,7 @@ import { createGoPayBrowserSDK } from 'gopay-js-sdk-browser';
 // 1. Create the browser SDK (same as Flow A).
 const sdk = createGoPayBrowserSDK({
     environment: 'production',
-    publishableKey: 'pk_live_…',
+    shareableKey: 'pk_live_…',
     clientId: 'your-client-id',
 });
 
@@ -132,7 +132,7 @@ const controller = await sdk.mountCardForm(container, {
     locale: 'en',
 });
 
-const chargeResult = await controller.result; // PaymentChargeResponseData
+const chargeResult = await controller.result; // PaymentChargeStatusResponse
 ```
 
 ### Apple Pay & Google Pay buttons (Flow B)
@@ -226,7 +226,7 @@ For the equivalent server-side methods and their request/response shapes, see th
 
 The browser SDK is server-agnostic. You need two things from your server:
 
-1. **Browser key bundle** — an HTTPS endpoint that returns `publishable_key` and `client_id`.
+1. **Browser key bundle** — an HTTPS endpoint that returns `shareable_key` and `client_id`.
 2. **Payment creation** (Flow B only) — an HTTPS endpoint that creates a payment and returns `payment_id` and `payment_secret`.
 
 The exact API contracts are documented in the [server SDK README](../sdk/README.md). You can implement these calls in any server language.
@@ -239,7 +239,7 @@ The exact API contracts are documented in the [server SDK README](../sdk/README.
 
 ```ts
 createGoPayBrowserSDK(config: {
-    publishableKey: string;
+    shareableKey: string;
     clientId: string;
     environment?: 'sandbox' | 'production'; // default: 'sandbox'
     baseUrl?: string;                        // override for mock servers
@@ -361,7 +361,7 @@ For shared error types (`GoPaySDKError`, `GoPayHTTPError`, network codes) see th
 <script>
     const sdk = GoPayBrowserSDK.createGoPayBrowserSDK({
         environment: 'production',
-        publishableKey: 'pk_live_…',
+        shareableKey: 'pk_live_…',
         clientId: 'your-client-id',
     });
     (async () => {
@@ -383,6 +383,6 @@ Browse the source at [github.com/gopaycommunity/gopay-js-sdk](https://github.com
 ## Security notes
 
 - Card data is encrypted inside a GoPay-hosted iframe (`sandbox="allow-scripts allow-forms allow-same-origin"`). The SDK never sees PAN or CVV.
-- `publishableKey` is public; embed it freely.
+- `shareableKey` is public; embed it freely.
 - `paymentSecret` is short-lived but server-confidential — never log it, never embed it in URLs. Forward it from your server to the browser over your own authenticated HTTPS endpoint.
 - JWE plaintext contains `client_id` for backend merchant identification.
