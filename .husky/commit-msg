@@ -1,1 +1,2 @@
-yarn commitlint --edit $1
+set -o pipefail
+yarn commitlint --edit "$1" 2>&1 | sed $'s/\033\[[0-9;]*[a-zA-Z]//g; s/\033\][^\007]*\007//g'
