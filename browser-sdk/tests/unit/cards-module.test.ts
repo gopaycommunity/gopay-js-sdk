@@ -109,6 +109,24 @@ describe('createCardsApi() — browser SDK', () => {
             expect(container.querySelector('iframe')).not.toBeNull();
         });
 
+        it('uses `:shareableKey` Basic credential when client_id is absent', async () => {
+            let capturedAuth = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedAuth = req.headers.get('Authorization') ?? '';
+                return makeResponse({ card_form_url: CARD_FORM_URL });
+            });
+
+            const noIdClient = createHttpClient({
+                baseUrl: 'https://example.com',
+                shareableKey: 'pk_only',
+            });
+            const cards = createCardsApi(noIdClient, () => null);
+            await cards.mountCardForm(container, { flow: 'return-payload' });
+
+            const expectedCredentials = btoa(':pk_only');
+            expect(capturedAuth).toBe(`Basic ${expectedCredentials}`);
+        });
+
         it('always uses Basic auth with the shareable key for /cards/card-form-url, even when a bearer token is present', async () => {
             let capturedAuth = '';
             fetchMock.mockImplementation(async (req: Request) => {
@@ -154,6 +172,23 @@ describe('createCardsApi() — browser SDK', () => {
             );
         });
 
+        it('does not throw in production when card form origin is trusted', async () => {
+            const prodClient = makeClient('production');
+            fetchMock.mockResolvedValue(
+                makeResponse({
+                    card_form_url: 'https://secure.gopay.com/card-form',
+                }),
+            );
+
+            const cards = createCardsApi(prodClient, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl.result.catch(() => {});
+
+            expect(container.querySelector('iframe')).not.toBeNull();
+        });
+
         it('throws GoPaySDKError(CARD_FORM_ERROR) in production when origin is not trusted', async () => {
             const prodClient = makeClient('production');
             fetchMock.mockResolvedValue(
@@ -170,6 +205,30 @@ describe('createCardsApi() — browser SDK', () => {
             expect(err).toBeInstanceOf(GoPaySDKError);
             expect((err as GoPaySDKError).errorCode).toBe(
                 GoPayErrorCodes.CARD_FORM_ERROR,
+            );
+        });
+
+        it('defaults locale to "en" when options.locale is absent and navigator.language is not set', async () => {
+            vi.stubGlobal('navigator', { language: null });
+
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl.result.catch(() => {});
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            const postMessageSpy = vi.spyOn(
+                iframe.contentWindow as Window,
+                'postMessage',
+            );
+            iframe.onload?.(new Event('load'));
+
+            expect(postMessageSpy).toHaveBeenCalledWith(
+                expect.objectContaining({ locale: 'en' }),
+                CARD_FORM_ORIGIN,
             );
         });
 
@@ -890,6 +949,27 @@ describe('createCardsApi() — browser SDK', () => {
     // -------------------------------------------------------------------------
 
     describe('getCardFormUrl() cache', () => {
+        it('reuses the cached card form URL on a subsequent mount without re-fetching', async () => {
+            const cards = createCardsApi(client, () => null);
+
+            // First mount — fetches and caches the URL
+            const ctrl1 = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl1.unmount();
+            await ctrl1.result.catch(() => {});
+
+            // Second mount — activeCleanup is now cleared; cache should be reused
+            fetchMock.mockClear();
+            const ctrl2 = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl2.result.catch(() => {});
+
+            expect(fetchMock).not.toHaveBeenCalled();
+            expect(container.querySelector('iframe')).not.toBeNull();
+        });
+
         it('retries the fetch on a subsequent mountCardForm call after a previous failure', async () => {
             // First call: API returns no card_form_url — triggers CARD_FORM_ERROR.
             fetchMock.mockResolvedValueOnce(makeResponse({}));

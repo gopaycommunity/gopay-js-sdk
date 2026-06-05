@@ -484,6 +484,118 @@ describe('mountApplePayButton()', () => {
         expect(container.querySelector('apple-pay-button')).not.toBeNull();
     });
 
+    it('uses default version 3 and empty payment request when applepayVersion and applePayPaymentRequest are absent', async () => {
+        const paymentsApi = makePaymentsApi({
+            getApplePayInfo: vi.fn().mockResolvedValue({}),
+        });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
+        container.querySelector<HTMLElement>('apple-pay-button')!.click();
+
+        expect(applePayCtorArgs[0]).toEqual([3, {}]);
+    });
+
+    it('falls back to en-US locale when no appleButtonOptions.locale and navigator.language is absent', async () => {
+        vi.stubGlobal('navigator', { language: null });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        await api.mountApplePayButton(container);
+
+        expect(
+            container.querySelector('apple-pay-button')?.getAttribute('locale'),
+        ).toBe('en-US');
+    });
+
+    it('rejects with WALLET_BUTTON_ERROR when onpaymentauthorized fires without a payment key', async () => {
+        const paymentsApi = makePaymentsApi();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
+        container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        lastSession.onpaymentauthorized!('not-an-object');
+
+        const err = await ctrl.result.catch((e: unknown) => e);
+        expect((err as GoPaySDKError).errorCode).toBe(
+            GoPayErrorCodes.WALLET_BUTTON_ERROR,
+        );
+    });
+
+    it('rejects result when awaitChargeState throws during the Apple Pay charge flow', async () => {
+        const chargeError = new Error('charge flow failed');
+        const paymentsApi = makePaymentsApi({
+            awaitChargeState: vi.fn().mockRejectedValue(chargeError),
+        });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
+        container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        lastSession.onpaymentauthorized!({
+            payment: { token: { paymentData: validApplePaymentData } },
+        });
+
+        const err = await ctrl.result.catch((e: unknown) => e);
+        expect(err).toBe(chargeError);
+    });
+
+    it('removes spinner and forwards onStateChange when ACTION_REQUIRED fires with redirect_url in Apple Pay flow', async () => {
+        const paymentsApi = makePaymentsApi({
+            awaitChargeState: vi
+                .fn()
+                .mockImplementation(
+                    async (opts: { onStateChange?: (s: unknown) => void }) => {
+                        opts.onStateChange?.({
+                            state: 'ACTION_REQUIRED',
+                            action: { redirect_url: 'https://3ds.example.com' },
+                        });
+                        return mockChargeState;
+                    },
+                ),
+        });
+        const onStateChange = vi.fn();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container, {
+            awaitOptions: { onStateChange },
+        });
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
+        container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        lastSession.onpaymentauthorized!({
+            payment: { token: { paymentData: validApplePaymentData } },
+        });
+
+        await ctrl.result;
+        expect(onStateChange).toHaveBeenCalledWith(
+            expect.objectContaining({ state: 'ACTION_REQUIRED' }),
+        );
+    });
+
     it('clicking the apple-pay-button after unmount is a no-op', async () => {
         const paymentsApi = makePaymentsApi();
         const client = makeClient();
@@ -882,6 +994,79 @@ describe('mountGooglePayButton()', () => {
         );
         // First controller is still live — its button is still in the container
         expect(container.querySelector('button')).not.toBeNull();
+    });
+
+    it('rejects result when awaitChargeState throws during the charge flow', async () => {
+        const chargeError = new Error('3DS timeout');
+        const paymentsApi = makePaymentsApi({
+            awaitChargeState: vi.fn().mockRejectedValue(chargeError),
+        });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        await capturedOnClick!();
+
+        const err = await ctrl.result.catch((e: unknown) => e);
+        expect(err).toBe(chargeError);
+    });
+
+    it('removes spinner and forwards onStateChange when ACTION_REQUIRED fires with redirect_url', async () => {
+        const paymentsApi = makePaymentsApi({
+            awaitChargeState: vi
+                .fn()
+                .mockImplementation(
+                    async (opts: { onStateChange?: (s: unknown) => void }) => {
+                        opts.onStateChange?.({
+                            state: 'ACTION_REQUIRED',
+                            action: { redirect_url: 'https://3ds.example.com' },
+                        });
+                        return mockChargeState;
+                    },
+                ),
+        });
+        const onStateChange = vi.fn();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container, {
+            awaitOptions: { onStateChange },
+        });
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        await capturedOnClick!();
+
+        await ctrl.result;
+        expect(onStateChange).toHaveBeenCalledWith(
+            expect.objectContaining({ state: 'ACTION_REQUIRED' }),
+        );
+    });
+
+    it('uses empty object for isReadyToPay and loadPaymentData when paymentDataRequest is absent', async () => {
+        const paymentsApi = makePaymentsApi({
+            getGooglePayInfo: vi
+                .fn()
+                .mockResolvedValue({ environment: 'TEST' }),
+        });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        await capturedOnClick!();
+        await ctrl.result;
+
+        expect(mockIsReadyToPay).toHaveBeenCalledWith({});
+        expect(mockLoadPaymentData).toHaveBeenCalledWith({});
     });
 
     it('calling onClick after unmount is a no-op', async () => {
