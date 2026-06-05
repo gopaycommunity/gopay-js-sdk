@@ -1,3 +1,28 @@
+## [1.5.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.5.0...1.5.1) (2026-06-05)
+
+
+### Bug Fixes
+
+* add example card encrypt GPOMA-2322 ([d910f37](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d910f375a2cb8788c412cfcb1cf67023e0a5d26f))
+* add iframe charge flow GPOMA-2322 ([e4409c0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e4409c01efc0ce64bb235e1a28316471b9a13f64))
+* align placeholder text with page convention GPOMA-2322 ([3cf0ce2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3cf0ce2de5c33f39da95ff6af4a169cd2cdbafb6))
+* always use shareable key auth GPOMA-2322 ([b218c27](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b218c27e8fb4b731b5ade3cea0359fcc083e4b02))
+* **ci:** rewrite lcov SF paths so Sonar resolves coverage correctly GPOMA-2322 ([8a1ceb0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8a1ceb0a974477467237c1fb135f4ac9da814977))
+* clean up button remounting GPOMA-2322 ([4befd24](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4befd24b3ca4258f3eea20ec78c2613c5d00d920))
+* clean up card-form iframe remount GPOMA-2322 ([ce5c996](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ce5c996525e863c7063ef39f1bc0260703c067e7))
+* don't mount iframe twice GPOMA-2322 ([1e4e7c2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1e4e7c29cba6b73170e1ef31f76b853f94b43ff6))
+* enable example button when pay now enabled GPOMA-2322 ([edbbd67](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/edbbd670e4b0e317aae85604ac1391b067419461))
+* example charge encrypted payload GPOMA-2322 ([23d0f2e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/23d0f2e6ffc4fc74ffe172021badc651244e136c))
+* fail-fast on onClick capture, guard stale card controller GPOMA-2322 ([d0fd54d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d0fd54de323c83b2d39ee222bfe7b2bc23c65136))
+* fail-fast test assertions, prefillField helper, card-form remount guard GPOMA-2322 ([a44d22c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a44d22c6e1873b069c06f62e2cd6528247d464f9))
+* fix stale type name in README and clear 3DS prompt on remount GPOMA-2322 ([d2fd6ab](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d2fd6abb8c676f992b807183a6916d24136d7a00))
+* readable pre-commit error GPOMA-2322 ([1d1cec3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1d1cec37165c2f35636f59952cd852190f3c1fce))
+* rename publishableKey to shareableKey across SDK and example GPOMA-2322 ([5d19e9b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5d19e9bbeaa536954cd724e681d1f7f299ab1e33))
+* rename shareable key GPOMA-2322 ([1966261](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/19662617287cb542f3ff6ccf493555972240aff2))
+* **test:** improve browser-sdk test coverage GPOMA-2322 ([93f9d7f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/93f9d7fae7ed44831f7ba06c2479f9c0e058ae44))
+* **test:** improve test coverage GPOMA-2322 ([2cfb4eb](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2cfb4eba0359f0b1d8266aa9daf3cdfbb51ad983))
+* **test:** suppress noNonNullAssertion in wallets tests GPOMA-2322 ([e64088a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e64088ac167c95f50a4f0899e8b2ca7473f2b90c))
+
 # [1.5.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.4.0...1.5.0) (2026-06-02)
 
 
