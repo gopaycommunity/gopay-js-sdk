@@ -38,6 +38,8 @@ definitions:
           - yarn install --immutable
           - yarn workspace gopay-js-sdk run test
           - yarn workspace gopay-js-sdk-browser run test
+          - sed -i 's|^SF:src/|SF:sdk/src/|' sdk/coverage/lcov.info
+          - sed -i 's|^SF:src/|SF:browser-sdk/src/|' browser-sdk/coverage/lcov.info
         artifacts:
           - sdk/coverage/**
           - sdk/test-results/**
