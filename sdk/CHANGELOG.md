@@ -1,3 +1,10 @@
+## [1.5.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.5.1...1.5.2) (2026-06-08)
+
+
+### Bug Fixes
+
+* remove applepay mock GPOMA-2322 ([b4deb57](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b4deb573f715fe2ecddb20ebb004d7fb05c1f3bd))
+
 ## [1.5.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.5.0...1.5.1) (2026-06-05)
 
 
