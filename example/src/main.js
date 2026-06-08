@@ -58,6 +58,36 @@ import {
 import { clientId, clientSecret, goid, sdk, shareableKey } from './sdk.js';
 
 // -----------------------------------------------------------------------
+// Pre-populate return/notification URL fields from the current origin
+// -----------------------------------------------------------------------
+for (const id of [
+    'create-return-url',
+    'charge-enc-return-url',
+    'charge-return-url',
+    'link-create-return-url',
+    'rec-create-return-url',
+    'bgpay-return-url',
+    'bapplepay-return-url',
+    'bcharge-return-url',
+    'cardpay-return-url',
+]) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.value = window.location.origin;
+    }
+}
+for (const id of [
+    'create-notification-url',
+    'link-create-notification-url',
+    'rec-create-notification-url',
+]) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.value = `${window.location.origin}/notify`;
+    }
+}
+
+// -----------------------------------------------------------------------
 // Pre-populate auth fields from Vite env (sdk/.env.e2e) — fall back to empty
 // -----------------------------------------------------------------------
 if (clientId) {

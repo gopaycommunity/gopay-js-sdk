@@ -30,11 +30,13 @@ type QRPaymentDetails = components['schemas']['QR-Payment-Details'];
 type CardChargeDataInput = Omit<PaymentCardChargeData, 'browser_data'> & {
     browser_data?: Partial<BrowserDataSchema>;
 };
+// TODO: return_url is optional per spec but the backend incorrectly requires it — remove this override once the backend is fixed.
 type PaymentChargeRequestInput = Omit<
     PaymentChargeRequest,
-    'payment_instrument'
+    'payment_instrument' | 'return_url'
 > & {
     payment_instrument?: CardChargeDataInput;
+    return_url?: string;
 };
 
 /**

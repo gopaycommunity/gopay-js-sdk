@@ -83,6 +83,8 @@ export function runChargeEncrypted() {
         'charge-enc-output',
         () =>
             sdk.chargePayment(paymentId, {
+                // TODO: optional per spec — backend erroneously requires it
+                return_url,
                 payment_instrument: {
                     payment_instrument: 'PAYMENT_CARD',
                     input: {
@@ -91,7 +93,6 @@ export function runChargeEncrypted() {
                     },
                     browser_data: collectBrowserData(),
                 },
-                ...(return_url && { return_url }),
             }),
         (result) =>
             show3dsPrompt(
@@ -125,8 +126,9 @@ export function runCharge() {
         'payment-charge-output',
         () =>
             sdk.chargePayment(paymentId, {
+                // TODO: optional per spec — backend erroneously requires it
+                return_url,
                 payment_instrument: chargeInstrument,
-                ...(return_url && { return_url }),
             }),
         (result) =>
             show3dsPrompt(

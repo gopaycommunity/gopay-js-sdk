@@ -16,10 +16,15 @@ export async function browserApplePayLoadInfo() {
         return;
     }
 
+    const return_url = document
+        .getElementById('bapplepay-return-url')
+        .value.trim();
     pre.textContent = '── mounting Apple Pay button ──';
 
     try {
         _ctrl = await sdk.mountApplePayButton(container, {
+            // TODO: optional per spec — backend erroneously requires it
+            return_url,
             onUnavailable: () => {
                 pre.textContent =
                     '── Apple Pay not available on this device or browser ──';

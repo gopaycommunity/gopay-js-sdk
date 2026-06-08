@@ -7,6 +7,9 @@ export async function runBrowserCharge() {
     const encryptedPayload = document
         .getElementById('bcharge-encrypted-payload')
         .value.trim();
+    const return_url = document
+        .getElementById('bcharge-return-url')
+        .value.trim();
     const pre = document.getElementById('bcharge-output');
 
     const browserSdk = getBrowserSDK();
@@ -30,6 +33,8 @@ export async function runBrowserCharge() {
 
     try {
         const chargeResult = await browserSdk.chargePayment({
+            // TODO: optional per spec — backend erroneously requires it
+            return_url,
             payment_instrument: {
                 payment_instrument: 'PAYMENT_CARD',
                 input: {

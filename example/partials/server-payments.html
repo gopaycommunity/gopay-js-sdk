@@ -20,8 +20,8 @@
                 <label>Currency<input id="create-currency" type="text" value="CZK" /></label>
                 <label>Order Number<input id="create-order-number" type="text" value="ORDER-001" /></label>
                 <label>Customer Email<input id="create-customer-email" type="text" value="customer@example.com" /></label>
-                <label>Notification URL<input id="create-notification-url" type="text" value="https://yourshop.example.com/notify" /></label>
-                <label>Return URL<input id="create-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+                <label>Notification URL<input id="create-notification-url" type="text" value="" /></label>
+                <label>Return URL<input id="create-return-url" type="text" value="" /></label>
             </div>
             <button type="button" onclick="runCreatePayment()">Run</button>
             <pre id="payment-create-output">—</pre>
@@ -74,7 +74,7 @@
             <p class="desc">POST /payments/{id}/charge — charge with a one-time encrypted card payload (JWE) from the card iframe. Auto-filled from the Card Pay section below when a card form completes.</p>
             <div class="fields">
                 <label>Payment ID<input id="charge-enc-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
-                <label>Return URL<input id="charge-enc-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+                <label>Return URL<input id="charge-enc-return-url" type="text" value="" /></label>
                 <label>Encrypted Payload (JWE)<input id="charge-enc-payload" type="text" placeholder="auto-filled from Card Pay" /></label>
             </div>
             <button type="button" onclick="runChargeEncrypted()">Run</button>
@@ -87,7 +87,7 @@
             <p class="desc">POST /payments/{id}/charge — charge with a saved card token (<code>CARD_TOKEN</code>) or a wallet instrument prefilled by Google Pay / Apple Pay.</p>
             <div class="fields">
                 <label>Payment ID<input id="charge-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
-                <label>Return URL<input id="charge-return-url" type="text" value="https://yourshop.example.com/return" /></label>
+                <label>Return URL<input id="charge-return-url" type="text" value="" /></label>
             </div>
             <pre id="charge-instrument-info" class="mb-2 text-[0.78rem]">No instrument prefilled — complete a Google Pay or Apple Pay flow above, or enter a card token manually.</pre>
             <div class="fields" id="charge-token-fields">

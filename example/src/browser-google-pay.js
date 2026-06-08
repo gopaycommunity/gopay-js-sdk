@@ -16,10 +16,13 @@ export async function browserGooglePayLoadInfo() {
         return;
     }
 
+    const return_url = document.getElementById('bgpay-return-url').value.trim();
     pre.textContent = '── mounting Google Pay button ──';
 
     try {
         _ctrl = await sdk.mountGooglePayButton(container, {
+            // TODO: optional per spec — backend erroneously requires it
+            return_url,
             onUnavailable: () => {
                 pre.textContent =
                     '── Google Pay not available on this device or browser ──';

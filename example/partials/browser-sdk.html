@@ -60,6 +60,9 @@
                 <button type="button" id="cardpay-flow-return-payload" onclick="cardPaySetFlow('return-payload')" class="!text-xs !py-1 !px-3">Return Payload</button>
                 <button type="button" id="cardpay-flow-direct-charge" onclick="cardPaySetFlow('direct-charge')" class="!text-xs !py-1 !px-3 js-btn-inactive">Direct Charge</button>
             </div>
+            <div id="cardpay-return-url-row" class="fields hidden">
+                <label class="w-full">Return URL<input id="cardpay-return-url" type="text" /></label>
+            </div>
             <div id="cardpay-3ds-row" class="flex items-center gap-2 flex-wrap mb-3 hidden">
                 <span class="text-xs text-[#6B7280] font-medium">3DS:</span>
                 <button type="button" id="cardpay-3ds-redirect" onclick="cardPaySet3DSMode('redirect')" class="!text-xs !py-1 !px-3">Redirect</button>
@@ -83,6 +86,9 @@
             <p class="desc">
                 <code>mountGooglePayButton()</code> — auto-fetches config, renders the official Google Pay button, handles the payment sheet, charges, and polls to completion. Requires an attached payment.
             </p>
+            <div class="fields">
+                <label>Return URL<input id="bgpay-return-url" type="text" value="" /></label>
+            </div>
             <div class="flex items-center gap-2 flex-wrap">
                 <button type="button" onclick="browserGooglePayLoadInfo()">Mount Google Pay Button</button>
                 <div id="bgpay-button-container" class="flex items-center gap-2"></div>
@@ -97,6 +103,9 @@
             <p class="desc">
                 <code>mountApplePayButton()</code> — auto-fetches config, renders the <code>&lt;apple-pay-button&gt;</code>, handles merchant validation and the payment sheet, charges, and polls to completion. Requires an attached payment.
             </p>
+            <div class="fields">
+                <label>Return URL<input id="bapplepay-return-url" type="text" value="" /></label>
+            </div>
             <div class="flex items-center gap-2 flex-wrap">
                 <button type="button" onclick="browserApplePayLoadInfo()">Mount Apple Pay Button</button>
                 <div id="bapplepay-button-container" class="flex items-center gap-2"></div>
@@ -129,6 +138,7 @@
             <p class="desc">Charge the attached payment using the encrypted card payload from the card form above. <code>attachPayment()</code> is called automatically after <code>payments.create()</code>. Polls <code>getChargeState()</code> automatically until SUCCEEDED or FAILED.</p>
             <div class="fields">
                 <label class="w-full">Encrypted Payload<input id="bcharge-encrypted-payload" type="text" placeholder="auto-filled by card form" /></label>
+                <label class="w-full">Return URL<input id="bcharge-return-url" type="text" value="" /></label>
             </div>
             <button type="button" onclick="runBrowserCharge()">Charge</button>
             <pre id="bcharge-output">—</pre>

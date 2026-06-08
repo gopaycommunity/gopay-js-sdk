@@ -74,6 +74,9 @@ export function cardPaySetFlow(flow) {
     document
         .getElementById('cardpay-3ds-row')
         .classList.toggle('hidden', flow !== 'direct-charge');
+    document
+        .getElementById('cardpay-return-url-row')
+        .classList.toggle('hidden', flow !== 'direct-charge');
 }
 
 export function cardPaySet3DSMode(mode) {
@@ -155,6 +158,10 @@ export async function cardPayOpenIframe() {
         options = {
             ...baseOptions,
             flow: 'direct-charge',
+            // TODO: optional per spec — backend erroneously requires it
+            return_url: document
+                .getElementById('cardpay-return-url')
+                .value.trim(),
             threeDS,
             ...(awaitOptions && { awaitOptions }),
         };
