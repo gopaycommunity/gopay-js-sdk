@@ -1,6 +1,14 @@
 # Build stage
 FROM repo.gopay.com/base/node-24:1.0.0 AS builder
 
+# SDK_VERSION is passed from the release pipeline step via --build-arg.
+# The docker-build-push step clones the pre-release commit (before semantic-release
+# commits the version bump), so sdk/package.json here still has the old version.
+# Patching it before the build ensures the version string baked into the SDK bundle
+# and the example page matches the actual release version.
+ARG SDK_VERSION=dev
+ENV SDK_VERSION=$SDK_VERSION
+
 WORKDIR /app
 
 # Copy workspace manifests first for layer caching
@@ -17,6 +25,8 @@ COPY internal/core/ internal/core/
 COPY sdk/ sdk/
 COPY browser-sdk/ browser-sdk/
 COPY example/ example/
+
+RUN if [ "$SDK_VERSION" != "dev" ]; then npm pkg set version="$SDK_VERSION" --prefix sdk; fi
 
 # Build SDK first (example workspace:* dep resolves via dist/)
 RUN yarn workspace gopay-js-sdk run build
