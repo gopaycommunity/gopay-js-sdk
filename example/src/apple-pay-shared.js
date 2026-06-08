@@ -51,22 +51,9 @@ export function extractApplePayInstrument(paymentData) {
 export async function renderApplePayButtons({
     container,
     info,
-    mockButtonId,
     onBeginSession,
     onPaymentRequestFlow,
 }) {
-    if (window.MockApplePaySession) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        if (mockButtonId) {
-            btn.id = mockButtonId;
-        }
-        btn.textContent = ' Pay (Mock — dev only)';
-        btn.style.background = '#856404';
-        btn.onclick = () => onBeginSession(window.MockApplePaySession);
-        container.appendChild(btn);
-    }
-
     if (window.ApplePaySession) {
         const appleBtn = document.createElement('apple-pay-button');
         appleBtn.setAttribute('buttonstyle', 'black');
