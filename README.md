@@ -120,7 +120,11 @@ cd sdk && yarn codegen
 
 ## Releasing
 
-Releases are fully automated via [semantic-release](https://semantic-release.gitbook.io/semantic-release/) on the `master` branch. Each package releases independently — only the package(s) whose files changed get a new version.
+Releases are fully automated via [semantic-release](https://semantic-release.gitbook.io/semantic-release/) on the `master` branch.
+
+`gopay-js-sdk` (server SDK) analyzes **all** commits and bumps on every releasable change. Its version is used as the Docker image tag (`repo.gopay.com/gp-gw-js-sdk:<version>`) — the image bundles both SDKs, so the tag must advance whenever either one changes.
+
+`gopay-js-sdk-browser` only releases when `browser-sdk/` files changed. A server-SDK bump without a browser bump is therefore normal.
 
 | Package | Tag format | npm |
 |---|---|---|

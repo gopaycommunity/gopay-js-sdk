@@ -9,9 +9,12 @@ export default {
 
     // analyzeCommits is set at the top level (not inside plugins) so the monorepo
     // decorator can intercept plugins[0] (@semantic-release/commit-analyzer) and
-    // filter commits to only those that touched browser-sdk/ or internal/core/ before
-    // letting the analyzer decide the version bump. If no relevant commits exist,
-    // the entire release is skipped — this package only releases when its files change.
+    // filter commits to only those that touched browser-sdk/ before letting the analyzer
+    // decide the version bump. If no relevant commits exist, the entire release is
+    // skipped — this package only releases when browser-sdk/ files change.
+    // Note: internal/core/ changes are NOT included in this filter (semantic-release-monorepo
+    // v8 matches only the package's own directory). Core-only changes bump gopay-js-sdk (which
+    // analyzes all commits) but not this package.
     analyzeCommits,
 
     plugins: [

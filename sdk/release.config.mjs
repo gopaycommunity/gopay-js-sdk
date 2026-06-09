@@ -1,5 +1,4 @@
 import { fileURLToPath } from 'node:url';
-import { analyzeCommits } from 'semantic-release-monorepo';
 
 /** @type {import('semantic-release').GlobalConfig} */
 export default {
@@ -7,20 +6,25 @@ export default {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release template, not JS
     tagFormat: '${version}',
 
-    // analyzeCommits is set at the top level (not inside plugins) so the monorepo
-    // decorator can intercept plugins[0] (@semantic-release/commit-analyzer) and
-    // filter commits to only those that touched sdk/ or internal/core/ before
-    // letting the analyzer decide the version bump. If no relevant commits exist,
-    // the entire release is skipped — this package only releases when its files change.
-    analyzeCommits,
+    // analyzeCommits is intentionally NOT set here — this package uses the default semantic-release
+    // behavior and analyzes ALL commits since the last tag. This means it bumps on every releasable
+    // change anywhere in the repo (sdk/, browser-sdk/, internal/core/, example/, etc.).
+    //
+    // Rationale: the gopay-js-sdk version is the Docker deploy tag
+    // (repo.gopay.com/gp-gw-js-sdk:<version>). The Docker image bundles both the server SDK and
+    // the browser SDK, so it must be rebuilt and retagged whenever either SDK changes. Making this
+    // package the umbrella version ensures the tag always advances on every release, so the
+    // pipeline's idempotency check (docker pull → skip-if-exists) never falsely skips a build.
+    //
+    // browser-sdk/ (gopay-js-sdk-browser) still uses semantic-release-monorepo to filter commits,
+    // so it only releases when browser-sdk/ files changed. Server-SDK bumps without a browser
+    // bump are therefore fine and expected.
 
     plugins: [
-        // analyzeCommits above calls this at index 0 with path-filtered commits
+        // Analyze all commits since the last tag to decide the version bump.
         '@semantic-release/commit-analyzer',
 
-        // Generate release notes (uses all commits since last tag — see note below)
-        // Note: release notes may include commits from browser-sdk/ or internal/core/,
-        // but the version bump and release gate are controlled by the filtered analyzeCommits above.
+        // Generate release notes from all commits since the last tag.
         '@semantic-release/release-notes-generator',
 
         // Update CHANGELOG.md

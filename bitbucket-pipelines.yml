@@ -119,8 +119,10 @@ definitions:
           - REPO_URL=https://gopay-release-bot:$BITBUCKET_BOT_PUSH_TOKEN@bitbucket.org/$BITBUCKET_REPO_FULL_NAME.git
           - git remote set-url origin $REPO_URL
           # semantic-release: bumps version, tags commit, updates CHANGELOG
-          # npmPublish: false in both release.config.cjs — flip to true once NPM_TOKEN is set in Bitbucket variables
-          # Each package only releases when its own files changed (filtered by semantic-release-monorepo)
+          # npmPublish: false in both release.config.mjs — flip to true once NPM_TOKEN is set in Bitbucket variables
+          # sdk/ (gopay-js-sdk) analyzes ALL commits and bumps on every releasable change — its
+          # version drives the Docker deploy tag. browser-sdk/ (gopay-js-sdk-browser) only bumps
+          # when browser-sdk/ files changed (filtered by semantic-release-monorepo).
           - (cd sdk && yarn dlx semantic-release)
           - (cd browser-sdk && yarn dlx semantic-release)
           - npm pkg get version --prefix sdk | tr -d '"' > version
@@ -148,7 +150,7 @@ definitions:
           - ./scripts/bitbucket-config.sh
           - VERSION=$(cat version)
           - BROWSER_VERSION=$(cat browser-sdk-version)
-          - IMAGE="repo.gopay.com/gp-gw-js-sdk:${VERSION}-browser-${BROWSER_VERSION}"
+          - IMAGE="repo.gopay.com/gp-gw-js-sdk:${VERSION}"
           - IMAGE_NOT_EXISTS=true; docker pull "$IMAGE" > /dev/null 2>&1 && IMAGE_NOT_EXISTS=false
           - if [ "$IMAGE_NOT_EXISTS" = true ]; then (docker build --build-arg SDK_VERSION="$VERSION" --build-arg BROWSER_SDK_VERSION="$BROWSER_VERSION" . -t "$IMAGE" && docker push "$IMAGE"); fi
 
