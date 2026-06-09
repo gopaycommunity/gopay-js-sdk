@@ -38,7 +38,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.recurrenceStatus(recId)</h2>
             <p class="desc">GET /recurrences/{rec_id} — retrieve the current state of a recurrence (NEW, STARTED, STOPPED, etc.).</p>
             <div class="fields">
-                <label>Recurrence ID<input id="rec-status-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
+                <label>Recurrence ID<input id="rec-status-id" type="text" placeholder="auto-filled by sdk.createRecurrence()" /></label>
             </div>
             <button type="button" onclick="runRecurrenceStatus()">Run</button>
             <pre id="rec-status-output">—</pre>
@@ -49,7 +49,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.startRecurrence(recId, params?)</h2>
             <p class="desc">POST /recurrences/{rec_id}/start — trigger the first charge of a recurrence that is in the <code>NEW</code> state.</p>
             <div class="fields">
-                <label>Recurrence ID<input id="rec-start-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
+                <label>Recurrence ID<input id="rec-start-id" type="text" placeholder="auto-filled by sdk.createRecurrence()" /></label>
             </div>
             <button type="button" onclick="runStartRecurrence()">Run</button>
             <pre id="rec-start-output">—</pre>
@@ -60,7 +60,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.recurrenceNext(recId, params?)</h2>
             <p class="desc">POST /recurrences/{rec_id}/next — charge the next instalment of a <code>STARTED</code> recurrence. Amount and order number are optional overrides.</p>
             <div class="fields">
-                <label>Recurrence ID<input id="rec-next-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
+                <label>Recurrence ID<input id="rec-next-id" type="text" placeholder="auto-filled by sdk.createRecurrence()" /></label>
                 <label>Amount override (cents)<input id="rec-next-amount" type="number" placeholder="leave blank to keep original" /></label>
                 <label>Order Number override<input id="rec-next-order-number" type="text" placeholder="leave blank to keep original" /></label>
             </div>
@@ -73,7 +73,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.stopRecurrence(recId)</h2>
             <p class="desc">DELETE /recurrences/{rec_id} — permanently stop a recurrence. This cannot be undone.</p>
             <div class="fields">
-                <label>Recurrence ID<input id="rec-stop-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
+                <label>Recurrence ID<input id="rec-stop-id" type="text" placeholder="auto-filled by sdk.createRecurrence()" /></label>
             </div>
             <button type="button" onclick="runStopRecurrence()">Run</button>
             <pre id="rec-stop-output">—</pre>

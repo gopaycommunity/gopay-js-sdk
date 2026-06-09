@@ -40,7 +40,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.linkStatus(linkId)</h2>
             <p class="desc">GET /links/{link_id} — retrieve the current state of a payment link (active, stop_reason, etc.).</p>
             <div class="fields">
-                <label>Link ID<input id="link-status-id" type="text" placeholder="auto-filled by createPaymentLink()" /></label>
+                <label>Link ID<input id="link-status-id" type="text" placeholder="auto-filled by sdk.createPaymentLink()" /></label>
             </div>
             <button type="button" onclick="runLinkStatus()">Run</button>
             <pre id="link-status-output">—</pre>
@@ -51,7 +51,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.disableLink(linkId)</h2>
             <p class="desc">DELETE /links/{link_id} — disable a payment link so it can no longer be used.</p>
             <div class="fields">
-                <label>Link ID<input id="link-disable-id" type="text" placeholder="auto-filled by createPaymentLink()" /></label>
+                <label>Link ID<input id="link-disable-id" type="text" placeholder="auto-filled by sdk.createPaymentLink()" /></label>
             </div>
             <button type="button" onclick="runDisableLink()">Run</button>
             <pre id="link-disable-output">—</pre>
