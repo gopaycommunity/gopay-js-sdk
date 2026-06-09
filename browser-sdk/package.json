@@ -1,6 +1,6 @@
 {
     "name": "gopay-js-sdk-browser",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "description": "GoPay JavaScript SDK for browser use (payment_secret / authorization_code flow)",
     "keywords": [
         "gopay",
