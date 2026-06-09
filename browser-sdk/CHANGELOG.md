@@ -1,3 +1,10 @@
+## [1.1.4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.1.3...browser-sdk-1.1.4) (2026-06-09)
+
+
+### Bug Fixes
+
+* bump the sdk version on every change GPOMA-2322 ([499d79c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/499d79c93eb396d8b13ef784ce9b5b18b8cda7e4))
+
 ## [1.1.3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.1.2...browser-sdk-1.1.3) (2026-06-09)
 
 
