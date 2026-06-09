@@ -13,7 +13,7 @@ const PAYMENT_KEYS = ['id', 'state', 'amount'] as const satisfies ReadonlyArray<
     keyof PaymentCreateResponse
 >;
 
-test('payments.create() returns a payment with all expected keys', async ({
+test('sdk.createPayment() returns a payment with all expected keys', async ({
     page,
 }) => {
     await page.goto('/');
@@ -39,7 +39,7 @@ test('payments.create() returns a payment with all expected keys', async ({
     const text = (await output.textContent()) ?? '';
     expect(
         text,
-        'payments.create() should not have returned an error',
+        'sdk.createPayment() should not have returned an error',
     ).not.toMatch(/^── onError/);
 
     const json = parseOutput(text);

@@ -36,7 +36,7 @@ test('cards.mountCardForm() mounts iframe and the container becomes visible', as
     await expect(createOutput).not.toHaveText('Running…', { timeout: 15_000 });
     expect(
         (await createOutput.textContent()) ?? '',
-        'payments.create() should not have returned an error',
+        'sdk.createPayment() should not have returned an error',
     ).not.toMatch(/^── onError/);
 
     // The card iframe container starts hidden

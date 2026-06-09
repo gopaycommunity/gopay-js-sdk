@@ -57,7 +57,7 @@ test('payments.getQRPaymentInfo() returns QR data and recipient info', async ({
     const createText = (await createOutput.textContent()) ?? '';
     expect(
         createText,
-        'payments.create() should not have returned an error',
+        'sdk.createPayment() should not have returned an error',
     ).not.toMatch(/^── onError/);
     const paymentId = parseOutput<{ id: string }>(createText).id;
 
