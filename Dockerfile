@@ -7,7 +7,9 @@ FROM repo.gopay.com/base/node-24:1.0.0 AS builder
 # Patching it before the build ensures the version string baked into the SDK bundle
 # and the example page matches the actual release version.
 ARG SDK_VERSION=dev
+ARG BROWSER_SDK_VERSION=dev
 ENV SDK_VERSION=$SDK_VERSION
+ENV BROWSER_SDK_VERSION=$BROWSER_SDK_VERSION
 
 WORKDIR /app
 
@@ -27,6 +29,7 @@ COPY browser-sdk/ browser-sdk/
 COPY example/ example/
 
 RUN if [ "$SDK_VERSION" != "dev" ]; then npm pkg set version="$SDK_VERSION" --prefix sdk; fi
+RUN if [ "$BROWSER_SDK_VERSION" != "dev" ]; then npm pkg set version="$BROWSER_SDK_VERSION" --prefix browser-sdk; fi
 
 # Build SDK first (example workspace:* dep resolves via dist/)
 RUN yarn workspace gopay-js-sdk run build
