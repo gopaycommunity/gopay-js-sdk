@@ -1,3 +1,10 @@
+## [1.1.5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.1.4...browser-sdk-1.1.5) (2026-06-09)
+
+
+### Bug Fixes
+
+* make return_url optional for charge calls GPOMA-2322 ([1496a8e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1496a8ecc4c7c6298dc1e73d8a970f2de715fb6f))
+
 ## [1.1.4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.1.3...browser-sdk-1.1.4) (2026-06-09)
 
 
