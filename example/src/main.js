@@ -73,7 +73,7 @@ for (const id of [
 ]) {
     const el = document.getElementById(id);
     if (el) {
-        el.value = window.location.origin;
+        el.value = window.location.href;
     }
 }
 for (const id of [
