@@ -33,7 +33,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getPaymentStatus(paymentId)</h2>
             <p class="desc">GET /payments/{id} — retrieve the current state of a payment (CREATED, PAID, CANCELED, etc.).</p>
             <div class="fields">
-                <label>Payment ID<input id="status-payment-id" type="text" placeholder="auto-filled by sdk.create()" /></label>
+                <label>Payment ID<input id="status-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
             </div>
             <button type="button" onclick="runGetPaymentStatus()">Run</button>
             <pre id="status-output">—</pre>
@@ -44,7 +44,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getGooglePayInfo(paymentId)</h2>
             <p class="desc">GET /payments/{id}/google-pay/info — fetch the PaymentsClient config and paymentDataRequest needed to render a Google Pay button.</p>
             <div class="fields">
-                <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="auto-filled by sdk.create()" /></label>
+                <label>Payment ID<input id="googlepay-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
             </div>
             <button type="button" onclick="runGetGooglePayInfo()">Run</button>
             <pre id="googlepay-output">—</pre>
@@ -56,7 +56,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getQRPaymentInfo(paymentId, format?)</h2>
             <p class="desc">GET /payments/{id}/qr-payment/info — fetch QR code (base64) and recipient info.</p>
             <div class="fields">
-                <label>Payment ID<input id="qr-payment-id" type="text" placeholder="auto-filled by sdk.create()" /></label>
+                <label>Payment ID<input id="qr-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
                 <label>Format
                     <select id="qr-format">
                         <option value="">png (default)</option>
@@ -74,7 +74,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.chargePayment(paymentId, params) — encrypted card</h2>
             <p class="desc">POST /payments/{id}/charge — charge with a one-time encrypted card payload (JWE) from the card iframe. Auto-filled from the Card Pay section below when a card form completes.</p>
             <div class="fields">
-                <label>Payment ID<input id="charge-enc-payment-id" type="text" placeholder="auto-filled by sdk.create()" /></label>
+                <label>Payment ID<input id="charge-enc-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
                 <label>Encrypted Payload (JWE)<input id="charge-enc-payload" type="text" placeholder="auto-filled from Card Pay" /></label>
             </div>
             <button type="button" onclick="runChargeEncrypted()">Run</button>
@@ -86,7 +86,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.chargePayment(paymentId, params) — tokenized card</h2>
             <p class="desc">POST /payments/{id}/charge — charge with a saved card token (<code>CARD_TOKEN</code>) or a wallet instrument prefilled by Google Pay / Apple Pay.</p>
             <div class="fields">
-                <label>Payment ID<input id="charge-payment-id" type="text" placeholder="auto-filled by sdk.create()" /></label>
+                <label>Payment ID<input id="charge-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
             </div>
             <pre id="charge-instrument-info" class="mb-2 text-[0.78rem]">No instrument prefilled — complete a Google Pay or Apple Pay flow above, or enter a card token manually.</pre>
             <div class="fields" id="charge-token-fields">
@@ -102,7 +102,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getChargeState(paymentId)</h2>
             <p class="desc">GET /payments/{id}/charge — retrieve the current state of a charge (REQUESTED, PROCESSING, SUCCEEDED, FAILED, etc.).</p>
             <div class="fields">
-                <label>Payment ID<input id="charge-state-payment-id" type="text" placeholder="auto-filled by sdk.create()" /></label>
+                <label>Payment ID<input id="charge-state-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
             </div>
             <button type="button" onclick="runGetChargeState()">Run</button>
             <pre id="charge-state-output">—</pre>

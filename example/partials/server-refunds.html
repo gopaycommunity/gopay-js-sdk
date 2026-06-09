@@ -15,7 +15,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.refundPayment(paymentId, params)</h2>
             <p class="desc">POST /payments/{id}/refunds — refund a payment fully or partially. The returned refund <code>id</code> is auto-filled below.</p>
             <div class="fields">
-                <label>Payment ID<input id="refund-payment-id" type="text" placeholder="auto-filled by sdk.create()" /></label>
+                <label>Payment ID<input id="refund-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
                 <label>Amount (cents)<input id="refund-amount" type="number" value="1000" /></label>
             </div>
             <button type="button" onclick="runRefundPayment()">Run</button>
@@ -27,7 +27,7 @@
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.listRefunds(paymentId)</h2>
             <p class="desc">GET /payments/{id}/refunds — list all refunds for a payment.</p>
             <div class="fields">
-                <label>Payment ID<input id="refund-list-payment-id" type="text" placeholder="auto-filled by sdk.create()" /></label>
+                <label>Payment ID<input id="refund-list-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
             </div>
             <button type="button" onclick="runListRefunds()">Run</button>
             <pre id="refund-list-output">—</pre>
