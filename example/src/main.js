@@ -58,7 +58,7 @@ import {
 import { clientId, clientSecret, goid, sdk, shareableKey } from './sdk.js';
 
 // -----------------------------------------------------------------------
-// Pre-populate return/notification URL fields from the current origin
+// Pre-populate return/notification URL fields from the current href
 // -----------------------------------------------------------------------
 for (const id of [
     'create-return-url',
@@ -166,16 +166,7 @@ window.runInitBrowserSDK = () => {
         '#browser-sdk-threeDS-row [data-active="true"]',
     )?.dataset.mode;
     const threeDS =
-        threedsMode === 'iframe'
-            ? {
-                  mode: 'iframe',
-                  container: document.getElementById(
-                      'browser-sdk-threeDS-container',
-                  ),
-              }
-            : threedsMode === 'manual'
-              ? { mode: 'manual' }
-              : { mode: 'redirect' };
+        threedsMode === 'manual' ? { mode: 'manual' } : { mode: 'redirect' };
     initBrowserSDK(shareableKey, clientId, threeDS);
     updateBrowserBadge();
 };
@@ -203,10 +194,6 @@ window.browserSDKSet3DSMode = (mode) => {
     for (const btn of row.querySelectorAll('button[data-mode]')) {
         btn.dataset.active = btn.dataset.mode === mode ? 'true' : 'false';
         btn.classList.toggle('js-btn-inactive', btn.dataset.mode !== mode);
-    }
-    const container = document.getElementById('browser-sdk-threeDS-container');
-    if (container) {
-        container.style.display = mode === 'iframe' ? 'block' : 'none';
     }
 };
 window.cardPayExtSubmit = cardPayExtSubmit;
