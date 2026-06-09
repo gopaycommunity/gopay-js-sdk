@@ -16,10 +16,10 @@
             <div class="flex items-center gap-2 mb-3">
                 <span class="badge" id="browser-sdk-badge" style="background:#e2e3e5;color:#383d41;">not initialized</span>
             </div>
-            <p class="desc">Initialize the browser SDK with a <code>shareableKey</code> and <code>clientId</code> obtained from your server. Run <code>auth.getBrowserKeys()</code> to auto-fill, or enter the values manually.</p>
+            <p class="desc">Initialize the browser SDK with a <code>shareableKey</code> and <code>clientId</code> obtained from your server. Run <code>sdk.getBrowserKeys()</code> to auto-fill, or enter the values manually.</p>
             <pre id="browser-sdk-info">not initialized</pre>
             <div class="fields">
-                <label>Shareable Key<input id="cardpay-shareable-key" type="text" placeholder="from auth.getBrowserKeys()" /></label>
+                <label>Shareable Key<input id="cardpay-shareable-key" type="text" placeholder="from sdk.getBrowserKeys()" /></label>
                 <label>Client ID<input id="cardpay-client-id" type="text" placeholder="auto-filled from config" /></label>
             </div>
             <div id="browser-sdk-threeDS-row" class="flex items-center gap-2 flex-wrap mb-3">
@@ -34,10 +34,10 @@
         <!-- Attach Payment -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">Browser SDK — Step 2: sdk.attachPayment({ paymentId, paymentSecret })</h2>
-            <p class="desc">Your server creates a payment and returns <code>id</code> and <code>payment_secret</code> to the browser. Call <code>attachPayment()</code> to bind the browser SDK to that payment. Run <code>payments.create()</code> above to auto-fill these fields.</p>
+            <p class="desc">Your server creates a payment and returns <code>id</code> and <code>payment_secret</code> to the browser. Call <code>sdk.attachPayment()</code> to bind the browser SDK to that payment. Run <code>sdk.createPayment()</code> above to auto-fill these fields.</p>
             <div class="fields">
-                <label>Payment ID<input id="browser-attach-payment-id" type="text" placeholder="auto-filled from payments.create()" /></label>
-                <label>Payment Secret<input id="browser-attach-payment-secret" type="password" placeholder="auto-filled from payments.create()" /></label>
+                <label>Payment ID<input id="browser-attach-payment-id" type="text" placeholder="auto-filled from sdk.createPayment()" /></label>
+                <label>Payment Secret<input id="browser-attach-payment-secret" type="password" placeholder="auto-filled from sdk.createPayment()" /></label>
             </div>
             <button type="button" onclick="runAttachPayment()">Attach Payment</button>
             <pre id="battach-output">—</pre>
@@ -47,7 +47,7 @@
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.mountCardForm(container, options)</h2>
             <p class="desc">Mounts the GoPay-hosted card encryption iframe. Two flows:
-                <strong>return-payload</strong> — resolves with <code>{ encryptedPayload }</code>, auto-filled into the Browser charge section below; forward the payload to your server and call <code>serverSdk.tokenizeEncryptedCard()</code>.
+                <strong>return-payload</strong> — resolves with <code>{ encryptedPayload }</code>, auto-filled into the Browser charge section below; forward the payload to your server and call <code>sdk.tokenizeEncryptedCard()</code>.
                 <strong>direct-charge</strong> — the SDK charges the attached payment in the browser and returns the terminal <code>PaymentChargeStatusResponse</code>; requires <code>attachPayment()</code> to have been called first. 3DS is handled automatically per the chosen mode.</p>
             <p class="note">Test card: <code>4111 1111 1111 1111</code> — any future expiry (e.g. <code>12/30</code>), any 3-digit CVV.</p>
             <div class="flex items-center gap-2 flex-wrap mb-3">
@@ -124,7 +124,7 @@
         <!-- Browser charge -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.chargePayment(params)</h2>
-            <p class="desc">Charge the attached payment using the encrypted card payload from the card form above. <code>attachPayment()</code> is called automatically after <code>payments.create()</code>. Polls <code>getChargeState()</code> automatically until SUCCEEDED or FAILED.</p>
+            <p class="desc">Charge the attached payment using the encrypted card payload from the card form above. <code>sdk.attachPayment()</code> is called automatically after <code>sdk.createPayment()</code>. Polls <code>sdk.getChargeState()</code> automatically until SUCCEEDED or FAILED.</p>
             <div class="fields">
                 <label class="w-full">Encrypted Payload<input id="bcharge-encrypted-payload" type="text" placeholder="auto-filled by card form" /></label>
             </div>
