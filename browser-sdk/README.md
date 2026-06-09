@@ -286,7 +286,7 @@ mountCardForm(
 
 | Value | Behaviour |
 |---|---|
-| `{ mode: 'redirect' }` (default) | Navigates the top-level page to the ACS URL. The returned promise stays pending as the page unloads. After 3DS, the bank redirects to your `return_url`; call `getChargeState()` there to confirm the outcome. |
+| `{ mode: 'redirect' }` (default) | Navigates the top-level page to the ACS URL. The returned promise stays pending as the page unloads. After 3DS, the bank redirects to the `return_url` set at payment creation; call `getChargeState()` there to confirm the outcome. |
 | `{ mode: 'manual' }` | Does nothing automatically. Handle the ACS URL yourself via the `onActionRequired` callback in `awaitChargeState`. |
 
 **`CardFormController`:**

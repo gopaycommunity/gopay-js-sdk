@@ -62,14 +62,8 @@ import { clientId, clientSecret, goid, sdk, shareableKey } from './sdk.js';
 // -----------------------------------------------------------------------
 for (const id of [
     'create-return-url',
-    'charge-enc-return-url',
-    'charge-return-url',
     'link-create-return-url',
     'rec-create-return-url',
-    'bgpay-return-url',
-    'bapplepay-return-url',
-    'bcharge-return-url',
-    'cardpay-return-url',
 ]) {
     const el = document.getElementById(id);
     if (el) {

@@ -60,7 +60,6 @@ const charge = await sdk.chargePayment(payment.id, {
       challenge_preferrence: 'AUTO',
     },
   },
-  return_url: 'https://yourshop.com/return',
 });
 
 // For bank account payments, use BANK_ACCOUNT with an account token:
@@ -214,7 +213,6 @@ const charge = await sdk.chargePayment(payment.id, {
       signedMessage,
     },
   },
-  return_url: 'https://yourshop.com/return',
 });
 ```
 
@@ -256,7 +254,6 @@ session.onpaymentauthorized = async (event) => {
         header: token.header,
       },
     },
-    return_url: 'https://yourshop.com/return',
   });
   // Tell the sheet to show a success or failure animation, then close.
   session.completePayment(
@@ -425,7 +422,6 @@ const charge = await sdk.chargePayment(payment.id, {
       challenge_preferrence: 'AUTO',
     },
   },
-  return_url: 'https://yourshop.com/return',
 });
 
 if (charge.action?.redirect_url) {
@@ -449,7 +445,6 @@ const charge = await sdk.chargePayment(payment.id, {
     payment_instrument: 'PAYMENT_CARD',
     input: { input_type: 'CARD_TOKEN', card_token: card.token },
   },
-  return_url: 'https://yourshop.com/return',
 });
 
 // Delete the card when the customer removes it from their account

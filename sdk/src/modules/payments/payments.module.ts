@@ -10,11 +10,7 @@ import type { components } from '../../types/generated.js';
 
 type PaymentCreateRequest = components['schemas']['Payment-Create-Request'];
 type PaymentDetails = components['schemas']['Payment-Details'];
-// TODO: return_url is optional per spec but the backend incorrectly requires it — remove this override once the backend is fixed.
-type PaymentChargeRequest = Omit<
-    components['schemas']['Payment-Charge-Input'],
-    'return_url'
-> & { return_url: string };
+type PaymentChargeRequest = components['schemas']['Payment-Charge-Input'];
 type PaymentChargeResponse = components['schemas']['Payment-Charge-Response'];
 type PaymentChargeStatusResponse =
     components['schemas']['Payment-Charge-Status-Response'];

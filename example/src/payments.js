@@ -56,7 +56,7 @@ export function runGetChargeState() {
 // (Google Pay, Apple Pay or card iframe).
 // If result.action.redirect_url is present, redirect the customer there for 3DS verification.
 // Example:
-//   const result = await sdk.chargePayment(paymentId, { payment_instrument: instrument, return_url });
+//   const result = await sdk.chargePayment(paymentId, { payment_instrument: instrument });
 //   if (result.action?.redirect_url) window.location.href = result.action.redirect_url;
 function collectBrowserData() {
     return {
@@ -74,17 +74,12 @@ export function runChargeEncrypted() {
     const paymentId = document
         .getElementById('charge-enc-payment-id')
         .value.trim();
-    const return_url = document
-        .getElementById('charge-enc-return-url')
-        .value.trim();
     const payload = document.getElementById('charge-enc-payload').value.trim();
 
     run(
         'charge-enc-output',
         () =>
             sdk.chargePayment(paymentId, {
-                // TODO: optional per spec — backend erroneously requires it
-                return_url,
                 payment_instrument: {
                     payment_instrument: 'PAYMENT_CARD',
                     input: {
@@ -104,9 +99,6 @@ export function runChargeEncrypted() {
 
 export function runCharge() {
     const paymentId = document.getElementById('charge-payment-id').value.trim();
-    const return_url = document
-        .getElementById('charge-return-url')
-        .value.trim();
     const instrument = state.pendingInstrument ?? {
         payment_instrument: 'PAYMENT_CARD',
         input: {
@@ -126,8 +118,6 @@ export function runCharge() {
         'payment-charge-output',
         () =>
             sdk.chargePayment(paymentId, {
-                // TODO: optional per spec — backend erroneously requires it
-                return_url,
                 payment_instrument: chargeInstrument,
             }),
         (result) =>
