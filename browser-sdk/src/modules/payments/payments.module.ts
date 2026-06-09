@@ -108,7 +108,11 @@ function handle3DS(
     return undefined;
 }
 
-export function createPaymentsApi(client: HttpClient, paymentId: string) {
+export function createPaymentsApi(
+    client: HttpClient,
+    paymentId: string,
+    defaultThreeDS?: ThreeDSConfig,
+) {
     async function validateApplePayMerchant(
         validationURL?: string,
     ): Promise<ValidateMerchantResponse> {
@@ -175,9 +179,11 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
         /**
          * Poll the charge state until a terminal outcome.
          *
-         * By default (`threeDS` omitted or `{ mode: 'redirect' }`), the top-level
-         * page is navigated to the ACS URL on `ACTION_REQUIRED` and the returned
-         * promise stays pending as the page unloads.
+         * The 3DS redirect mode is resolved in order:
+         * 1. The `threeDS` option passed to this call (highest priority).
+         * 2. The `threeDS` option passed to `createGoPayBrowserSDK()` at SDK init.
+         * 3. `{ mode: 'redirect' }` — navigate the top-level page to the ACS URL;
+         *    the returned promise stays pending as the page unloads.
          *
          * Pass `threeDS: { mode: 'iframe', container }` to mount a sandboxed iframe
          * instead (removed automatically on terminal state).
@@ -193,6 +199,7 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
             options?: AwaitChargeOptions,
         ): Promise<PaymentChargeStatusResponse> {
             let redirectIframe: HTMLIFrameElement | undefined;
+            const effectiveThreeDS = options?.threeDS ?? defaultThreeDS;
 
             const cleanupIframe = () => {
                 if (!redirectIframe) {
@@ -212,7 +219,7 @@ export function createPaymentsApi(client: HttpClient, paymentId: string) {
                     ...options,
                     onActionRequired: (redirectUrl) => {
                         redirectIframe ??= handle3DS(
-                            options?.threeDS,
+                            effectiveThreeDS,
                             redirectUrl,
                             options?.onActionRequired,
                         );

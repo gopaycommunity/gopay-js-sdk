@@ -22,6 +22,14 @@
                 <label>Shareable Key<input id="cardpay-shareable-key" type="text" placeholder="from auth.getBrowserKeys()" /></label>
                 <label>Client ID<input id="cardpay-client-id" type="text" placeholder="auto-filled from config" /></label>
             </div>
+            <div id="browser-sdk-threeDS-row" class="flex items-center gap-2 flex-wrap mb-3">
+                <span class="text-xs text-[#6B7280] font-medium">Default 3DS mode:</span>
+                <button type="button" data-mode="redirect" data-active="true" onclick="browserSDKSet3DSMode('redirect')" class="!text-xs !py-1 !px-3">Redirect</button>
+                <button type="button" data-mode="iframe" data-active="false" onclick="browserSDKSet3DSMode('iframe')" class="!text-xs !py-1 !px-3 js-btn-inactive">Iframe</button>
+                <button type="button" data-mode="manual" data-active="false" onclick="browserSDKSet3DSMode('manual')" class="!text-xs !py-1 !px-3 js-btn-inactive">Manual</button>
+                <span class="text-xs text-[#9CA3AF] ml-1">Applied to all charges (wallets + browser charge). The Card Pay section can override per-call.</span>
+            </div>
+            <div id="browser-sdk-threeDS-container" style="display:none;min-height:400px" class="my-3 border border-[#E1E5EB] rounded-2xl overflow-hidden"></div>
             <button type="button" onclick="runInitBrowserSDK()">Initialize Browser SDK</button>
         </section>
 

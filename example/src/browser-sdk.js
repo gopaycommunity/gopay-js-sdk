@@ -22,11 +22,12 @@ function formatBrowserError(err) {
     return String(err);
 }
 
-export function initBrowserSDK(shareableKey, clientId) {
+export function initBrowserSDK(shareableKey, clientId, threeDS) {
     _browserSdk = createGoPayBrowserSDK({
         ...sdkConfig,
         shareableKey,
         clientId,
+        ...(threeDS ? { threeDS } : {}),
     });
     _attached = false;
 }

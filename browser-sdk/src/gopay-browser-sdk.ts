@@ -55,7 +55,7 @@ function notAttached(): never {
  * ```
  */
 export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
-    const { shareableKey, clientId, ...coreConfig } = config;
+    const { shareableKey, clientId, threeDS, ...coreConfig } = config;
     const client = createHttpClient(
         { ...coreConfig, shareableKey },
         'Call attachPayment({ paymentId, paymentSecret }) again.',
@@ -85,7 +85,7 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
             );
             paymentsApi = null;
             await exchangePaymentCredentials(client, pid, secret);
-            paymentsApi = createPaymentsApi(client, pid);
+            paymentsApi = createPaymentsApi(client, pid, threeDS);
         },
 
         ...createCardsApi(client, getPaymentsApi),

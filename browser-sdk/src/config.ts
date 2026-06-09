@@ -1,4 +1,5 @@
 import type { CoreConfig } from '@gopay-internal/core';
+import type { ThreeDSConfig } from './modules/payments/payments.module.js';
 
 export interface GoPayBrowserConfig extends CoreConfig {
     /**
@@ -13,6 +14,14 @@ export interface GoPayBrowserConfig extends CoreConfig {
      * backend merchant identification.
      */
     clientId: string;
+    /**
+     * Default 3DS handling mode applied to every charge made through this SDK instance.
+     * A per-call `threeDS` on `awaitChargeState`, `mountCardForm`, or wallet buttons
+     * takes precedence over this value.
+     *
+     * @default `{ mode: 'redirect' }` — navigates the top-level page to the ACS URL.
+     */
+    threeDS?: ThreeDSConfig;
 }
 
 export interface AttachPaymentArgs {

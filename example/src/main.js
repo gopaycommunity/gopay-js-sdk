@@ -162,7 +162,21 @@ window.runInitBrowserSDK = () => {
         );
         return;
     }
-    initBrowserSDK(shareableKey, clientId);
+    const threedsMode = document.querySelector(
+        '#browser-sdk-threeDS-row [data-active="true"]',
+    )?.dataset.mode;
+    const threeDS =
+        threedsMode === 'iframe'
+            ? {
+                  mode: 'iframe',
+                  container: document.getElementById(
+                      'browser-sdk-threeDS-container',
+                  ),
+              }
+            : threedsMode === 'manual'
+              ? { mode: 'manual' }
+              : { mode: 'redirect' };
+    initBrowserSDK(shareableKey, clientId, threeDS);
     updateBrowserBadge();
 };
 
@@ -181,6 +195,20 @@ window.cardPaySetTheme = cardPaySetTheme;
 window.cardPaySetSubmitMode = cardPaySetSubmitMode;
 window.cardPaySetFlow = cardPaySetFlow;
 window.cardPaySet3DSMode = cardPaySet3DSMode;
+window.browserSDKSet3DSMode = (mode) => {
+    const row = document.getElementById('browser-sdk-threeDS-row');
+    if (!row) {
+        return;
+    }
+    for (const btn of row.querySelectorAll('button[data-mode]')) {
+        btn.dataset.active = btn.dataset.mode === mode ? 'true' : 'false';
+        btn.classList.toggle('js-btn-inactive', btn.dataset.mode !== mode);
+    }
+    const container = document.getElementById('browser-sdk-threeDS-container');
+    if (container) {
+        container.style.display = mode === 'iframe' ? 'block' : 'none';
+    }
+};
 window.cardPayExtSubmit = cardPayExtSubmit;
 window.runBrowserCharge = runBrowserCharge;
 window.browserGooglePayLoadInfo = browserGooglePayLoadInfo;
