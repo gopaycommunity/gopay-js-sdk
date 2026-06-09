@@ -20,7 +20,6 @@ import { initBrowserSDK, runAttachPayment } from './browser-sdk.js';
 import {
     cardPayExtSubmit,
     cardPayOpenIframe,
-    cardPaySet3DSMode,
     cardPaySetFlow,
     cardPaySetLang,
     cardPaySetSubmitMode,
@@ -179,7 +178,6 @@ window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;
 window.cardPaySetSubmitMode = cardPaySetSubmitMode;
 window.cardPaySetFlow = cardPaySetFlow;
-window.cardPaySet3DSMode = cardPaySet3DSMode;
 window.browserSDKSet3DSMode = (mode) => {
     const row = document.getElementById('browser-sdk-threeDS-row');
     if (!row) {

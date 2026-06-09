@@ -8,14 +8,12 @@ import {
     prefillBrowserCharge,
     prefillServerChargeEncrypted,
     prefillTokenize,
-    show3dsPrompt,
 } from './helpers.js';
 
 let currentLang = 'en';
 let currentTheme = 'default';
 let currentSubmitMode = 'internal';
 let currentFlow = 'return-payload';
-let currentThreeDS = 'redirect';
 let cardFormController = null;
 let cardFormMounting = false;
 
@@ -71,18 +69,6 @@ export function cardPaySetFlow(flow) {
     document
         .getElementById('cardpay-flow-direct-charge')
         .classList.toggle('js-btn-inactive', flow !== 'direct-charge');
-    document
-        .getElementById('cardpay-3ds-row')
-        .classList.toggle('hidden', flow !== 'direct-charge');
-}
-
-export function cardPaySet3DSMode(mode) {
-    currentThreeDS = mode;
-    for (const m of ['redirect', 'iframe', 'manual']) {
-        document
-            .getElementById(`cardpay-3ds-${m}`)
-            .classList.toggle('js-btn-inactive', mode !== m);
-    }
 }
 
 export function cardPayExtSubmit() {
@@ -95,7 +81,6 @@ export async function cardPayOpenIframe() {
     }
     const pre = document.getElementById('cardpay-output');
     const container = document.getElementById('cardpay-iframe-container');
-    const threeDSContainer = document.getElementById('cardpay-3ds-container');
     const extSubmitBtn = document.getElementById('cardpay-ext-submit');
     const extValidIndicator = document.getElementById('cardpay-ext-valid');
 
@@ -117,7 +102,6 @@ export async function cardPayOpenIframe() {
     }
 
     pre.textContent = 'Mounting card form…';
-    show3dsPrompt(pre, null);
 
     const theme =
         currentTheme === 'dark'
@@ -137,30 +121,9 @@ export async function cardPayOpenIframe() {
             : undefined,
     };
 
-    let options;
-    if (isDirectCharge) {
-        let threeDS;
-        let awaitOptions;
-        if (currentThreeDS === 'iframe') {
-            threeDSContainer.style.display = 'block';
-            threeDS = { mode: 'iframe', container: threeDSContainer };
-        } else if (currentThreeDS === 'manual') {
-            threeDS = { mode: 'manual' };
-            awaitOptions = {
-                onActionRequired: (url) => show3dsPrompt(pre, url),
-            };
-        } else {
-            threeDS = { mode: 'redirect' };
-        }
-        options = {
-            ...baseOptions,
-            flow: 'direct-charge',
-            threeDS,
-            ...(awaitOptions && { awaitOptions }),
-        };
-    } else {
-        options = { ...baseOptions, flow: 'return-payload' };
-    }
+    const options = isDirectCharge
+        ? { ...baseOptions, flow: 'direct-charge' }
+        : { ...baseOptions, flow: 'return-payload' };
 
     let controller = null;
     try {
@@ -181,7 +144,6 @@ export async function cardPayOpenIframe() {
         }
         cardFormController = null;
         container.style.display = 'none';
-        threeDSContainer.style.display = 'none';
         pre.textContent += `\n\n── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
         if (!isDirectCharge) {
             pre.textContent +=
@@ -198,7 +160,6 @@ export async function cardPayOpenIframe() {
         }
         cardFormController = null;
         container.style.display = 'none';
-        threeDSContainer.style.display = 'none';
         pre.textContent += `\n\n── onError ──\n${formatError(err)}`;
     }
 }
