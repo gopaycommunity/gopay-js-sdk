@@ -17,7 +17,7 @@ export async function runBrowserCharge() {
     }
     if (!isSdkAttached()) {
         pre.textContent =
-            'Error: No payment attached.\nRun payments.create() first.';
+            'Error: No payment attached.\nRun sdk.createPayment() first.';
         return;
     }
     if (!encryptedPayload) {

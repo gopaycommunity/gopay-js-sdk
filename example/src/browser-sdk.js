@@ -64,7 +64,7 @@ export async function runAttachPayment() {
     }
     if (!paymentId || !paymentSecret) {
         pre.textContent =
-            'Error: Payment ID and Payment Secret are required.\nRun payments.create() to auto-fill.';
+            'Error: Payment ID and Payment Secret are required.\nRun sdk.createPayment() to auto-fill.';
         return;
     }
 
@@ -87,7 +87,7 @@ export function requireAttachedSDK(pre) {
     }
     if (!_attached) {
         pre.textContent =
-            'Error: No payment attached.\nRun payments.create() first.';
+            'Error: No payment attached.\nRun sdk.createPayment() first.';
         return null;
     }
     return _browserSdk;
