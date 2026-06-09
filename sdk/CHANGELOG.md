@@ -1,3 +1,13 @@
+## [1.5.3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.5.2...1.5.3) (2026-06-09)
+
+
+### Bug Fixes
+
+* close unused example sections GPOMA-2322 ([70a9fe1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/70a9fe101ad254dc1ddac731b4a22af6ba9f2a1e))
+* docker image will have the current version GPOMA-2322 ([d15d8f9](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d15d8f9450be66406f346199f4aa35f8b93a5f8e))
+* make return_url consistent GPOMA-2322 ([44ca53e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/44ca53e3e2d7ecfb6ec13aeb4afa12343e7c8874))
+* return_url is required by backend by mistake GPOMA-2322 ([3543b6a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3543b6a2258ca39a56df397abefe819b2d2903b3))
+
 ## [1.5.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.5.1...1.5.2) (2026-06-08)
 
 
