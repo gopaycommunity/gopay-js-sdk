@@ -22,7 +22,7 @@
 
 <!-- Authentication -->
 <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-    <h2 class="text-base font-semibold text-[#2D3643] mb-4">auth.authenticate() <span class="text-xs text-red-700 font-normal">(server-only — never call from a browser)</span></h2>
+    <h2 class="text-base font-semibold text-[#2D3643] mb-4">auth.authenticate({ client_id, client_secret, scope }) <span class="text-xs text-red-700 font-normal">(server-only — never call from a browser)</span></h2>
     <p class="desc">POST /oauth2/token — obtain an access token using client credentials. <strong>Keep  <code>client_secret</code> on the server.</strong></p>
     <div class="fields">
         <label>Client ID<input id="auth-client-id" type="text" placeholder="your-client-id" /></label>

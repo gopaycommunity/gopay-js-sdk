@@ -12,7 +12,7 @@
 
         <!-- Create recurrence -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.createRecurrence()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.createRecurrence(goid, params)</h2>
             <p class="desc">POST /eshops/{goid}/recurrences — create a recurring payment agreement. The returned <code>id</code> is auto-filled into the status / start / next / stop fields below.</p>
             <div class="fields">
                 <label>GoID<input id="rec-create-goid" type="text" value="8123456789" /></label>
@@ -35,7 +35,7 @@
 
         <!-- Recurrence status -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.recurrenceStatus()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.recurrenceStatus(recId)</h2>
             <p class="desc">GET /recurrences/{rec_id} — retrieve the current state of a recurrence (NEW, STARTED, STOPPED, etc.).</p>
             <div class="fields">
                 <label>Recurrence ID<input id="rec-status-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
@@ -46,7 +46,7 @@
 
         <!-- Start recurrence -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.startRecurrence()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.startRecurrence(recId, params?)</h2>
             <p class="desc">POST /recurrences/{rec_id}/start — trigger the first charge of a recurrence that is in the <code>NEW</code> state.</p>
             <div class="fields">
                 <label>Recurrence ID<input id="rec-start-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
@@ -57,7 +57,7 @@
 
         <!-- Recurrence next -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.recurrenceNext()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.recurrenceNext(recId, params?)</h2>
             <p class="desc">POST /recurrences/{rec_id}/next — charge the next instalment of a <code>STARTED</code> recurrence. Amount and order number are optional overrides.</p>
             <div class="fields">
                 <label>Recurrence ID<input id="rec-next-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>
@@ -70,7 +70,7 @@
 
         <!-- Stop recurrence -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.stopRecurrence()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">recurrences.stopRecurrence(recId)</h2>
             <p class="desc">DELETE /recurrences/{rec_id} — permanently stop a recurrence. This cannot be undone.</p>
             <div class="fields">
                 <label>Recurrence ID<input id="rec-stop-id" type="text" placeholder="auto-filled by createRecurrence()" /></label>

@@ -12,7 +12,7 @@
 
         <!-- Browser SDK status -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">Browser SDK — Step 1: Initialize</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">Browser SDK — Step 1: createGoPayBrowserSDK({ shareableKey, clientId, environment? })</h2>
             <div class="flex items-center gap-2 mb-3">
                 <span class="badge" id="browser-sdk-badge" style="background:#e2e3e5;color:#383d41;">not initialized</span>
             </div>
@@ -33,7 +33,7 @@
 
         <!-- Attach Payment -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">Browser SDK — Step 2: attachPayment()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">Browser SDK — Step 2: sdk.attachPayment({ paymentId, paymentSecret })</h2>
             <p class="desc">Your server creates a payment and returns <code>id</code> and <code>payment_secret</code> to the browser. Call <code>attachPayment()</code> to bind the browser SDK to that payment. Run <code>payments.create()</code> above to auto-fill these fields.</p>
             <div class="fields">
                 <label>Payment ID<input id="browser-attach-payment-id" type="text" placeholder="auto-filled from payments.create()" /></label>
@@ -45,7 +45,7 @@
 
         <!-- Card Pay -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.mountCardForm()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.mountCardForm(container, options)</h2>
             <p class="desc">Mounts the GoPay-hosted card encryption iframe. Two flows:
                 <strong>return-payload</strong> — resolves with <code>{ encryptedPayload }</code>, auto-filled into the Browser charge section below; forward the payload to your server and call <code>serverSdk.tokenizeEncryptedCard()</code>.
                 <strong>direct-charge</strong> — the SDK charges the attached payment in the browser and returns the terminal <code>PaymentChargeStatusResponse</code>; requires <code>attachPayment()</code> to have been called first. 3DS is handled automatically per the chosen mode.</p>
@@ -77,7 +77,7 @@
 
         <!-- Browser Google Pay -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">Google Pay (Browser SDK)</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">wallets.mountGooglePayButton(container, options?)</h2>
             <p class="desc">
                 <code>mountGooglePayButton()</code> — auto-fetches config, renders the official Google Pay button, handles the payment sheet, charges, and polls to completion. Requires an attached payment.
             </p>
@@ -91,7 +91,7 @@
 
         <!-- Browser Apple Pay -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">Apple Pay (Browser SDK)</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">wallets.mountApplePayButton(container, options?)</h2>
             <p class="desc">
                 <code>mountApplePayButton()</code> — auto-fetches config, renders the <code>&lt;apple-pay-button&gt;</code>, handles merchant validation and the payment sheet, charges, and polls to completion. Requires an attached payment.
             </p>
@@ -106,7 +106,7 @@
 
         <!-- Browser QR Payment Info -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">QR Payment Info (Browser SDK)</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getQRPaymentInfo(format?)</h2>
             <p class="desc">Attach the payment and call <code>getQRPaymentInfo()</code> — returns QR code (base64) and recipient info.</p>
             <div class="fields">
                 <label>Format
@@ -123,7 +123,7 @@
 
         <!-- Browser charge -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">chargePayment()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.chargePayment(params)</h2>
             <p class="desc">Charge the attached payment using the encrypted card payload from the card form above. <code>attachPayment()</code> is called automatically after <code>payments.create()</code>. Polls <code>getChargeState()</code> automatically until SUCCEEDED or FAILED.</p>
             <div class="fields">
                 <label class="w-full">Encrypted Payload<input id="bcharge-encrypted-payload" type="text" placeholder="auto-filled by card form" /></label>
@@ -134,7 +134,7 @@
 
         <!-- Browser getChargeState -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">getChargeState()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getChargeState()</h2>
             <p class="desc">GET /payments/{id}/charge — retrieve the current charge state (REQUESTED, PROCESSING, SUCCEEDED, FAILED, ACTION_REQUIRED) for the attached payment.</p>
             <button type="button" onclick="browserGetChargeState()">Run</button>
             <pre id="bcharge-state-output">—</pre>
@@ -142,7 +142,7 @@
 
         <!-- Browser getStatus -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">getStatus()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">payments.getStatus()</h2>
             <p class="desc">GET /payments/{id} — retrieve the full payment details for the currently attached payment. Useful to inspect state, amounts, and instrument details at any point after <code>attachPayment()</code>.</p>
             <button type="button" onclick="browserGetStatus()">Run</button>
             <pre id="bstatus-output">—</pre>

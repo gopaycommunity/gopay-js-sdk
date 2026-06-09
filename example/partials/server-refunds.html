@@ -12,7 +12,7 @@
 
         <!-- Refund payment -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.refundPayment()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.refundPayment(paymentId, params)</h2>
             <p class="desc">POST /payments/{id}/refunds — refund a payment fully or partially. The returned refund <code>id</code> is auto-filled below.</p>
             <div class="fields">
                 <label>Payment ID<input id="refund-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
@@ -24,7 +24,7 @@
 
         <!-- List refunds -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.listRefunds()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.listRefunds(paymentId)</h2>
             <p class="desc">GET /payments/{id}/refunds — list all refunds for a payment.</p>
             <div class="fields">
                 <label>Payment ID<input id="refund-list-payment-id" type="text" placeholder="auto-filled by payments.create()" /></label>
@@ -35,7 +35,7 @@
 
         <!-- Get refund -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.getRefund()</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">refunds.getRefund(refundId)</h2>
             <p class="desc">GET /refunds/{refund_id} — retrieve details of a single refund.</p>
             <div class="fields">
                 <label>Refund ID<input id="refund-get-id" type="text" placeholder="auto-filled by refundPayment()" /></label>
