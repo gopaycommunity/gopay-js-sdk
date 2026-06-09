@@ -2,13 +2,7 @@ import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
 import { createRefundsApi } from '../../src/modules/refunds/refunds.module.js';
-
-const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
-    new Response(JSON.stringify(data), {
-        status,
-        statusText,
-        headers: { 'content-type': 'application/json' },
-    });
+import { makeResponse } from './helpers.js';
 
 const mockRefundDetails = {
     id: 'ref_100000001',
@@ -29,9 +23,7 @@ describe('RefundsModule', () => {
         client = createHttpClient({ baseUrl: 'https://example.com' });
         client.setToken({
             access_token: 'test-token',
-            refresh_token: '',
             expires_in: 3600,
-            refresh_expires_in: 0,
             token_type: 'bearer',
         });
         refunds = createRefundsApi(client);

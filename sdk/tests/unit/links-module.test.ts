@@ -1,16 +1,7 @@
 import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLinksApi } from '../../src/modules/links/links.module.js';
-
-const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
-    new Response(JSON.stringify(data), {
-        status,
-        statusText,
-        headers: { 'content-type': 'application/json' },
-    });
-
-const makeEmptyResponse = (status = 204) =>
-    new Response(null, { status, statusText: 'No Content' });
+import { makeEmptyResponse, makeResponse } from './helpers.js';
 
 const mockLinkDetails = {
     id: 'lnk_200000001',
@@ -44,11 +35,9 @@ describe('LinksModule', () => {
         fetchMock = vi.fn().mockResolvedValue(makeResponse(mockLinkDetails));
         vi.stubGlobal('fetch', fetchMock);
         client = createHttpClient({ baseUrl: 'https://example.com' });
-        client.tokenStore.set({
+        client.setToken({
             access_token: 'at-test',
-            refresh_token: 'rt-test',
             expires_in: 900,
-            refresh_expires_in: 86400,
             token_type: 'bearer',
         });
         links = createLinksApi(client);
@@ -56,6 +45,7 @@ describe('LinksModule', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     describe('createPaymentLink()', () => {

@@ -2,6 +2,7 @@ import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
 import { createAuthApi } from '../../src/modules/auth/auth.module.js';
+import { makeResponse } from './helpers.js';
 
 const validTokenPair = {
     token_type: 'bearer' as const,
@@ -9,13 +10,6 @@ const validTokenPair = {
     scope: 'payment:write',
     expires_in: 900,
 };
-
-const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
-    new Response(JSON.stringify(data), {
-        status,
-        statusText,
-        headers: { 'content-type': 'application/json' },
-    });
 
 describe('AuthModule', () => {
     let fetchMock: ReturnType<typeof vi.fn>;
@@ -31,6 +25,7 @@ describe('AuthModule', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     // -------------------------------------------------------------------------

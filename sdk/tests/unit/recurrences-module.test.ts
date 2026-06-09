@@ -1,16 +1,7 @@
 import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRecurrencesApi } from '../../src/modules/recurrences/recurrences.module.js';
-
-const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
-    new Response(JSON.stringify(data), {
-        status,
-        statusText,
-        headers: { 'content-type': 'application/json' },
-    });
-
-const makeEmptyResponse = (status = 204) =>
-    new Response(null, { status, statusText: 'No Content' });
+import { makeEmptyResponse, makeResponse } from './helpers.js';
 
 const mockRecurrenceDetails = {
     id: 'rec_100000001',
@@ -66,11 +57,9 @@ describe('RecurrencesModule', () => {
             .mockResolvedValue(makeResponse(mockRecurrenceDetails));
         vi.stubGlobal('fetch', fetchMock);
         client = createHttpClient({ baseUrl: 'https://example.com' });
-        client.tokenStore.set({
+        client.setToken({
             access_token: 'at-test',
-            refresh_token: 'rt-test',
             expires_in: 900,
-            refresh_expires_in: 86400,
             token_type: 'bearer',
         });
         recurrences = createRecurrencesApi(client);
@@ -78,6 +67,7 @@ describe('RecurrencesModule', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     describe('createRecurrence()', () => {

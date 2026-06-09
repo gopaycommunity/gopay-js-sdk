@@ -1,13 +1,7 @@
 import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCardsApi } from '../../src/modules/cards/cards.module.js';
-
-const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
-    new Response(JSON.stringify(data), {
-        status,
-        statusText,
-        headers: { 'content-type': 'application/json' },
-    });
+import { makeResponse } from './helpers.js';
 
 const mockCardDetailsResponse = {
     card_id: '8007127320',
@@ -33,11 +27,9 @@ describe('CardsModule', () => {
             .mockResolvedValue(makeResponse(mockCardDetailsResponse));
         vi.stubGlobal('fetch', fetchMock);
         client = createHttpClient({ baseUrl: 'https://example.com' });
-        client.tokenStore.set({
+        client.setToken({
             access_token: 'at-test',
-            refresh_token: 'rt-test',
             expires_in: 900,
-            refresh_expires_in: 86400,
             token_type: 'bearer',
         });
         cards = createCardsApi(client);
@@ -45,6 +37,7 @@ describe('CardsModule', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     describe('getCardDetails()', () => {

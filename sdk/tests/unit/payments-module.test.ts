@@ -2,13 +2,7 @@ import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
 import { createPaymentsApi } from '../../src/modules/payments/payments.module.js';
-
-const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
-    new Response(JSON.stringify(data), {
-        status,
-        statusText,
-        headers: { 'content-type': 'application/json' },
-    });
+import { makeResponse } from './helpers.js';
 
 const mockPaymentResponse = {
     id: 'pay_300000001',
@@ -76,11 +70,9 @@ describe('PaymentsModule', () => {
             .mockResolvedValue(makeResponse(mockPaymentResponse));
         vi.stubGlobal('fetch', fetchMock);
         client = createHttpClient({ baseUrl: 'https://example.com' });
-        client.tokenStore.set({
+        client.setToken({
             access_token: 'at-test',
-            refresh_token: 'rt-test',
             expires_in: 900,
-            refresh_expires_in: 86400,
             token_type: 'bearer',
         });
         payments = createPaymentsApi(client);
@@ -91,7 +83,7 @@ describe('PaymentsModule', () => {
         vi.unstubAllGlobals();
     });
 
-    describe('create()', () => {
+    describe('createPayment()', () => {
         it('sends POST to /eshops/{goid}/payments', async () => {
             let capturedReq!: Request;
             fetchMock.mockImplementation(async (req: Request) => {
@@ -174,7 +166,7 @@ describe('PaymentsModule', () => {
         });
     });
 
-    describe('charge()', () => {
+    describe('chargePayment()', () => {
         beforeEach(() => {
             fetchMock.mockResolvedValue(makeResponse(mockChargeResponse, 201));
         });
@@ -265,6 +257,25 @@ describe('PaymentsModule', () => {
             expect(result).toEqual(mockChargeResponse);
             expect(result.id).toBe('pay_300000001');
             expect(result.state).toBe('REQUESTED');
+        });
+
+        it('succeeds without return_url (return_url is optional)', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse(mockChargeResponse, 201);
+            });
+
+            const paramsWithoutReturnUrl = {
+                payment_instrument: chargeParams.payment_instrument,
+            };
+
+            await expect(
+                payments.chargePayment('pay_300000001', paramsWithoutReturnUrl),
+            ).resolves.toBeDefined();
+
+            const body = JSON.parse(capturedBody);
+            expect(body).not.toHaveProperty('return_url');
         });
     });
 
@@ -395,7 +406,7 @@ describe('PaymentsModule', () => {
         });
     });
 
-    describe('charge() with Google Pay instrument', () => {
+    describe('chargePayment() with Google Pay instrument', () => {
         const mockGooglePayChargeResponse = {
             id: 'pay_300000001',
             state: 'REQUESTED',
@@ -499,7 +510,7 @@ describe('PaymentsModule', () => {
         });
     });
 
-    describe('charge() with Apple Pay instrument', () => {
+    describe('chargePayment() with Apple Pay instrument', () => {
         const mockApplePayChargeResponse = {
             id: 'pay_300000001',
             state: 'REQUESTED',
@@ -675,7 +686,7 @@ describe('PaymentsModule', () => {
         });
     });
 
-    describe('getStatus()', () => {
+    describe('getPaymentStatus()', () => {
         beforeEach(() => {
             fetchMock.mockResolvedValue(makeResponse(mockPaymentResponse));
         });

@@ -5,13 +5,7 @@ import {
     GoPayHTTPError,
     GoPaySDKError,
 } from '../../src/errors.js';
-
-const makeResponse = (data: unknown, status = 200, statusText = 'OK') =>
-    new Response(JSON.stringify(data), {
-        status,
-        statusText,
-        headers: { 'content-type': 'application/json' },
-    });
+import { makeResponse } from './helpers.js';
 
 const storedTokens = {
     access_token: 'at-abc',
@@ -35,6 +29,7 @@ describe('HttpClient', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     // -------------------------------------------------------------------------

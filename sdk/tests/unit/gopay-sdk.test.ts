@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGoPaySDK } from '../../src/index.js';
 import type { components } from '../../src/types/generated.js';
 
-type TokenPair = components['schemas']['Token-Pair'];
+type AccessToken = components['schemas']['Access-Token'];
 
 describe('buildUrl', () => {
     it.each([
@@ -71,26 +71,49 @@ describe('GoPaySDK', () => {
 
     it('exposes flat methods', () => {
         const sdk = createGoPaySDK({ environment: 'sandbox' });
+        // Auth
         expect(typeof sdk.authenticate).toBe('function');
         expect(typeof sdk.isAuthenticated).toBe('function');
         expect(typeof sdk.logout).toBe('function');
-        expect(typeof sdk.createPayment).toBe('function');
-        expect(typeof sdk.getPaymentStatus).toBe('function');
-        expect(typeof sdk.chargePayment).toBe('function');
+        expect(typeof sdk.setShareableKey).toBe('function');
+        expect(typeof sdk.getBrowserKeys).toBe('function');
+        // Cards
         expect(typeof sdk.tokenizeEncryptedCard).toBe('function');
         expect(typeof sdk.getCardDetails).toBe('function');
         expect(typeof sdk.deleteCard).toBe('function');
+        // Payments
+        expect(typeof sdk.createPayment).toBe('function');
+        expect(typeof sdk.getPaymentStatus).toBe('function');
+        expect(typeof sdk.chargePayment).toBe('function');
+        expect(typeof sdk.getChargeState).toBe('function');
+        expect(typeof sdk.getGooglePayInfo).toBe('function');
+        expect(typeof sdk.getApplePayInfo).toBe('function');
+        expect(typeof sdk.startApplePaySession).toBe('function');
+        expect(typeof sdk.getQRPaymentInfo).toBe('function');
+        expect(typeof sdk.awaitChargeState).toBe('function');
+        // Links
+        expect(typeof sdk.createPaymentLink).toBe('function');
+        expect(typeof sdk.linkStatus).toBe('function');
+        expect(typeof sdk.disableLink).toBe('function');
+        // Recurrences
+        expect(typeof sdk.createRecurrence).toBe('function');
+        expect(typeof sdk.recurrenceStatus).toBe('function');
+        expect(typeof sdk.stopRecurrence).toBe('function');
+        expect(typeof sdk.startRecurrence).toBe('function');
+        expect(typeof sdk.recurrenceNext).toBe('function');
+        // Refunds
+        expect(typeof sdk.refundPayment).toBe('function');
+        expect(typeof sdk.listRefunds).toBe('function');
+        expect(typeof sdk.getRefund).toBe('function');
     });
 
     describe('AuthModule', () => {
         const mockTokenPair = {
             token_type: 'bearer' as const,
             access_token: 'access_abc123',
-            refresh_token: 'refresh_xyz789',
             scope: 'payment:write',
             expires_in: 3600,
-            refresh_expires_in: 86400,
-        } satisfies TokenPair;
+        } satisfies AccessToken;
 
         const makeMockResponse = (
             data: unknown,
@@ -195,20 +218,6 @@ describe('GoPaySDK', () => {
     });
 
     describe('PaymentsModule', () => {
-        const paymentMethods = [
-            'createPayment',
-            'chargePayment',
-            'getPaymentStatus',
-            'getChargeState',
-            'getGooglePayInfo',
-            'getApplePayInfo',
-        ] as const;
-
-        it.each(paymentMethods)('exposes %s()', (method) => {
-            const sdk = createGoPaySDK();
-            expect(typeof sdk[method]).toBe('function');
-        });
-
         it('createPayment() sends POST to /eshops/{goid}/payments and returns response', async () => {
             const mockPayment = {
                 id: 'pay_300000001',
@@ -229,10 +238,8 @@ describe('GoPaySDK', () => {
                             JSON.stringify({
                                 token_type: 'bearer',
                                 access_token: 'at-test',
-                                refresh_token: 'rt-test',
                                 scope: 'payment:write',
                                 expires_in: 900,
-                                refresh_expires_in: 86400,
                             }),
                             {
                                 status: 200,
@@ -301,10 +308,8 @@ describe('GoPaySDK', () => {
                             JSON.stringify({
                                 token_type: 'bearer',
                                 access_token: 'at-test',
-                                refresh_token: 'rt-test',
                                 scope: 'payment:write',
                                 expires_in: 900,
-                                refresh_expires_in: 86400,
                             }),
                             {
                                 status: 200,
@@ -360,9 +365,7 @@ describe('GoPaySDK', () => {
                             JSON.stringify({
                                 token_type: 'bearer',
                                 access_token: 'at-test',
-                                refresh_token: 'rt-test',
                                 expires_in: 900,
-                                refresh_expires_in: 86400,
                             }),
                             {
                                 status: 200,
@@ -420,9 +423,7 @@ describe('GoPaySDK', () => {
                             JSON.stringify({
                                 token_type: 'bearer',
                                 access_token: 'at-test',
-                                refresh_token: 'rt-test',
                                 expires_in: 900,
-                                refresh_expires_in: 86400,
                             }),
                             {
                                 status: 200,
