@@ -12,7 +12,7 @@
 
         <!-- Card details -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.getCardDetails(cardId)</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getCardDetails(cardId)</h2>
             <p class="desc">GET /cards/tokens/{card_id} — retrieve details of a stored permanent card token (masked PAN, expiry, scheme, fingerprint). Requires <code>card:read</code> scope.</p>
             <div class="fields">
                 <label>Card ID<input id="card-details-id" type="text" placeholder="8007127320" /></label>
@@ -23,7 +23,7 @@
 
         <!-- Tokenize encrypted card -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.tokenizeEncryptedCard(payload)</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.tokenizeEncryptedCard(payload)</h2>
             <p class="desc">POST /cards/tokens — exchange the JWE payload produced by the card form (<code>submitMode: 'return-payload'</code>) for a permanent card token. Call this server-side; the payload is auto-filled when the card form completes. Requires <code>card:write</code> scope.</p>
             <div class="fields">
                 <label>Encrypted Payload<input id="tokenize-payload" type="text" placeholder="auto-filled by card form (return-payload mode)" /></label>
@@ -34,7 +34,7 @@
 
         <!-- Delete card -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">cards.deleteCard(cardId)</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.deleteCard(cardId)</h2>
             <p class="desc">DELETE /cards/tokens/{card_id} — permanently remove a stored card token. Returns no content on success.</p>
             <div class="fields">
                 <label>Card ID<input id="delete-card-id" type="text" placeholder="8007127320" /></label>

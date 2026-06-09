@@ -12,7 +12,7 @@
 
         <!-- Create link -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">links.createPaymentLink(goid, params)</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.createPaymentLink(goid, params)</h2>
             <p class="desc">POST /eshops/{goid}/links — create a shareable payment link. The returned <code>id</code> and URL are auto-filled below.</p>
             <div class="fields">
                 <label>GoID<input id="link-create-goid" type="text" value="8123456789" /></label>
@@ -37,7 +37,7 @@
 
         <!-- Link status -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">links.linkStatus(linkId)</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.linkStatus(linkId)</h2>
             <p class="desc">GET /links/{link_id} — retrieve the current state of a payment link (active, stop_reason, etc.).</p>
             <div class="fields">
                 <label>Link ID<input id="link-status-id" type="text" placeholder="auto-filled by createPaymentLink()" /></label>
@@ -48,7 +48,7 @@
 
         <!-- Disable link -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
-            <h2 class="text-base font-semibold text-[#2D3643] mb-4">links.disableLink(linkId)</h2>
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.disableLink(linkId)</h2>
             <p class="desc">DELETE /links/{link_id} — disable a payment link so it can no longer be used.</p>
             <div class="fields">
                 <label>Link ID<input id="link-disable-id" type="text" placeholder="auto-filled by createPaymentLink()" /></label>
