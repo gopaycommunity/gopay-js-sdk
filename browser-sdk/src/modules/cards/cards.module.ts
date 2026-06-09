@@ -64,7 +64,7 @@ export interface CardFormController<R = EncryptedCardPayload> {
 
 type DirectChargeOptions = {
     flow: 'direct-charge';
-    return_url: string;
+    return_url?: string;
     /** Controls how the SDK handles the 3DS redirect. Defaults to full-page redirect. */
     threeDS?: ThreeDSConfig;
     awaitOptions?: Omit<AwaitChargeOptions, 'threeDS'>;
