@@ -1,3 +1,15 @@
+## [1.1.3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.1.2...browser-sdk-1.1.3) (2026-06-09)
+
+
+### Bug Fixes
+
+* remove iframe 3DS mode from browser SDK example GPOMA-2322 ([1d73c15](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1d73c15fd4dc8479406216398843b5eb72e6f139))
+* suppress age-gated dependency advisories (audit) GPOMA-2322 ([0ddbb1e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0ddbb1e0d2d06afec6e89d0ea3a66474bdab796f))
+* update browser-sdk-version to current GPOMA-2322 ([a32c3ed](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a32c3ed569de7ca3001a604775c676b23e7e790d))
+* use full url for return url GPOMA-2322 ([fc3b425](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fc3b425bf4abf83b9b3525fab3121f51537bf7a4))
+* use the same options for all charges redirect/iframe GPOMA-2322 ([3e468ec](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3e468ecedc30a168d1a9753eb65a8d6dfe2328b2))
+* use the same options for all charges redirect/iframe GPOMA-2322 ([7f11303](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/7f11303eca237980539eb8f809aba54e917274c7))
+
 ## [1.1.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.1.1...browser-sdk-1.1.2) (2026-06-09)
 
 
