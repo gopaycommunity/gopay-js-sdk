@@ -125,7 +125,6 @@ await sdk.attachPayment({
 
 // 3. Mount and charge.
 //    By default, 3DS redirects the whole page (recommended).
-//    Pass threeDS: { mode: 'iframe', container: redirectContainer } to use an inline iframe instead.
 const container = document.getElementById('card-form-container');
 const controller = await sdk.mountCardForm(container, {
     flow: 'direct-charge',
@@ -152,7 +151,7 @@ to wiring wallets manually. Each method:
 await sdk.attachPayment({ paymentId, paymentSecret });
 
 const appleCtrl = await sdk.mountApplePayButton(container, {
-    threeDS: { mode: 'iframe', container: threeDsContainer },
+    threeDS: { mode: 'redirect' },
     onUnavailable: () => console.log('Apple Pay not available'),
     onCancel: () => console.log('User cancelled'),
     appleButtonOptions: { buttonstyle: 'black', type: 'buy', locale: 'en-US' },
@@ -288,7 +287,6 @@ mountCardForm(
 | Value | Behaviour |
 |---|---|
 | `{ mode: 'redirect' }` (default) | Navigates the top-level page to the ACS URL. The returned promise stays pending as the page unloads. After 3DS, the bank redirects to your `return_url`; call `getChargeState()` there to confirm the outcome. |
-| `{ mode: 'iframe', container: HTMLElement }` | Mounts a sandboxed iframe inside `container` for the 3DS challenge. The iframe is removed automatically on terminal charge state. |
 | `{ mode: 'manual' }` | Does nothing automatically. Handle the ACS URL yourself via the `onActionRequired` callback in `awaitChargeState`. |
 
 **`CardFormController`:**

@@ -44,15 +44,10 @@ type PaymentChargeRequestInput = Omit<
  *
  * - `{ mode: 'redirect' }` (default) — navigate the top-level page to the ACS URL.
  *   The returned promise stays pending as the page unloads.
- * - `{ mode: 'iframe', container }` — mount a sandboxed iframe inside `container`,
- *   removed automatically on terminal charge state.
  * - `{ mode: 'manual' }` — do nothing automatically; handle the redirect URL yourself
  *   via the `onActionRequired` callback in `AwaitChargeOptions`.
  */
-export type ThreeDSConfig =
-    | { mode?: 'redirect' }
-    | { mode: 'iframe'; container: HTMLElement }
-    | { mode: 'manual' };
+export type ThreeDSConfig = { mode?: 'redirect' } | { mode: 'manual' };
 
 /** Options for {@link awaitChargeState}. */
 export type AwaitChargeOptions =
@@ -69,43 +64,16 @@ function assertHttpsUrl(url: string): void {
     }
 }
 
-function mountRedirectIframe(
-    container: HTMLElement,
-    redirectUrl: string,
-): HTMLIFrameElement {
-    assertHttpsUrl(redirectUrl);
-    const iframe = document.createElement('iframe');
-    iframe.src = redirectUrl;
-    iframe.title = 'GoPay 3DS';
-    iframe.setAttribute(
-        'sandbox',
-        'allow-scripts allow-forms allow-same-origin',
-    );
-    iframe.referrerPolicy = 'strict-origin';
-    iframe.style.display = 'block';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    container.appendChild(iframe);
-    return iframe;
-}
-
 function handle3DS(
     threeDS: ThreeDSConfig | undefined,
     redirectUrl: string,
     onActionRequired: ((url: string) => void) | undefined,
-): HTMLIFrameElement | undefined {
-    if (threeDS?.mode === 'iframe') {
-        const iframe = mountRedirectIframe(threeDS.container, redirectUrl);
-        onActionRequired?.(redirectUrl);
-        return iframe;
-    }
+): void {
     assertHttpsUrl(redirectUrl);
     onActionRequired?.(redirectUrl);
     if (threeDS?.mode !== 'manual') {
         globalThis.location.href = redirectUrl;
     }
-    return undefined;
 }
 
 export function createPaymentsApi(
@@ -185,9 +153,6 @@ export function createPaymentsApi(
          * 3. `{ mode: 'redirect' }` — navigate the top-level page to the ACS URL;
          *    the returned promise stays pending as the page unloads.
          *
-         * Pass `threeDS: { mode: 'iframe', container }` to mount a sandboxed iframe
-         * instead (removed automatically on terminal state).
-         *
          * Pass `threeDS: { mode: 'manual' }` to handle `ACTION_REQUIRED` yourself
          * via `options.onActionRequired`.
          *
@@ -198,17 +163,7 @@ export function createPaymentsApi(
         awaitChargeState(
             options?: AwaitChargeOptions,
         ): Promise<PaymentChargeStatusResponse> {
-            let redirectIframe: HTMLIFrameElement | undefined;
             const effectiveThreeDS = options?.threeDS ?? defaultThreeDS;
-
-            const cleanupIframe = () => {
-                if (!redirectIframe) {
-                    return;
-                }
-                redirectIframe.src = '';
-                redirectIframe.remove();
-                redirectIframe = undefined;
-            };
 
             return awaitCharge(
                 () =>
@@ -218,21 +173,12 @@ export function createPaymentsApi(
                 {
                     ...options,
                     onActionRequired: (redirectUrl) => {
-                        redirectIframe ??= handle3DS(
+                        handle3DS(
                             effectiveThreeDS,
                             redirectUrl,
                             options?.onActionRequired,
                         );
                     },
-                },
-            ).then(
-                (state) => {
-                    cleanupIframe();
-                    return state;
-                },
-                (err) => {
-                    cleanupIframe();
-                    throw err;
                 },
             );
         },

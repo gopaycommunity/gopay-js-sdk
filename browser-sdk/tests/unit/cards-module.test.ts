@@ -67,7 +67,7 @@ describe('createCardsApi() — browser SDK', () => {
             const cards = createCardsApi(client, () => null);
             const ctrl = await cards.mountCardForm(container, {
                 flow: 'direct-charge',
-                threeDS: { mode: 'iframe', container },
+                threeDS: { mode: 'manual' },
             });
 
             const err = await ctrl.result.catch((e: unknown) => e);
@@ -81,7 +81,7 @@ describe('createCardsApi() — browser SDK', () => {
             const cards = createCardsApi(client, () => null);
             const ctrl = await cards.mountCardForm(container, {
                 flow: 'direct-charge',
-                threeDS: { mode: 'iframe', container },
+                threeDS: { mode: 'manual' },
             });
 
             ctrl.result.catch(() => {});
@@ -560,7 +560,7 @@ describe('createCardsApi() — browser SDK', () => {
             );
             const ctrl = await cards.mountCardForm(container, {
                 flow: 'direct-charge',
-                threeDS: { mode: 'iframe', container },
+                threeDS: { mode: 'manual' },
             });
 
             const iframe = container.querySelector(
@@ -591,7 +591,7 @@ describe('createCardsApi() — browser SDK', () => {
             const cards = createCardsApi(client, () => returnApi);
             const ctrl = await cards.mountCardForm(container, {
                 flow: 'direct-charge',
-                threeDS: { mode: 'iframe', container },
+                threeDS: { mode: 'manual' },
             });
 
             // Detach before the message fires
@@ -629,7 +629,7 @@ describe('createCardsApi() — browser SDK', () => {
             );
             const ctrl = await cards.mountCardForm(container, {
                 flow: 'direct-charge',
-                threeDS: { mode: 'iframe', container },
+                threeDS: { mode: 'manual' },
             });
 
             const iframe = container.querySelector(

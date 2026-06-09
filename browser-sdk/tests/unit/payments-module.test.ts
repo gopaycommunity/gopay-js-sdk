@@ -450,38 +450,6 @@ describe('createPaymentsApi() — browser SDK', () => {
             );
         });
 
-        it('mounts a redirect iframe in the container on ACTION_REQUIRED and removes it on success', async () => {
-            fetchMock
-                .mockResolvedValueOnce(
-                    makeResponse({
-                        state: 'ACTION_REQUIRED',
-                        action: { redirect_url: 'https://3ds.example.com' },
-                    }),
-                )
-                .mockResolvedValue(makeResponse({ state: 'SUCCEEDED' }));
-
-            const redirectContainer = document.createElement('div');
-            document.body.appendChild(redirectContainer);
-
-            let iframeAtCallback: Element | null = null;
-            const onActionRequired = vi.fn(() => {
-                iframeAtCallback = redirectContainer.querySelector('iframe');
-            });
-
-            await api.awaitChargeState({
-                threeDS: { mode: 'iframe', container: redirectContainer },
-                intervalMs: 5,
-                initialTimeoutMs: 5000,
-                onActionRequired,
-            });
-
-            // iframe was already mounted when the callback fired
-            expect(iframeAtCallback).not.toBeNull();
-            // iframe is removed after success
-            expect(redirectContainer.querySelector('iframe')).toBeNull();
-            redirectContainer.remove();
-        });
-
         it('does not mount an iframe in manual mode', async () => {
             fetchMock
                 .mockResolvedValueOnce(
@@ -544,6 +512,9 @@ describe('createPaymentsApi() — browser SDK', () => {
                 mode: 'manual',
             });
 
+            const location = { href: '' };
+            vi.stubGlobal('location', location);
+
             fetchMock
                 .mockResolvedValueOnce(
                     makeResponse({
@@ -553,45 +524,14 @@ describe('createPaymentsApi() — browser SDK', () => {
                 )
                 .mockResolvedValue(makeResponse({ state: 'SUCCEEDED' }));
 
-            const redirectContainer = document.createElement('div');
-            document.body.appendChild(redirectContainer);
-
-            // per-call overrides the init 'manual' → should mount iframe
+            // per-call 'redirect' overrides the init 'manual' → should navigate
             await apiManual.awaitChargeState({
-                threeDS: { mode: 'iframe', container: redirectContainer },
+                threeDS: { mode: 'redirect' },
                 intervalMs: 5,
                 initialTimeoutMs: 5000,
             });
 
-            // iframe was mounted and cleaned up after SUCCEEDED
-            expect(redirectContainer.querySelector('iframe')).toBeNull();
-            redirectContainer.remove();
-        });
-
-        it('removes the redirect iframe on failure (CHARGE_FAILED)', async () => {
-            fetchMock
-                .mockResolvedValueOnce(
-                    makeResponse({
-                        state: 'ACTION_REQUIRED',
-                        action: { redirect_url: 'https://3ds.example.com' },
-                    }),
-                )
-                .mockResolvedValue(makeResponse({ state: 'FAILED' }));
-
-            const redirectContainer = document.createElement('div');
-            document.body.appendChild(redirectContainer);
-
-            await api
-                .awaitChargeState({
-                    threeDS: { mode: 'iframe', container: redirectContainer },
-                    intervalMs: 5,
-                    initialTimeoutMs: 5000,
-                })
-                .catch(() => {});
-
-            await new Promise((r) => setTimeout(r, 20));
-            expect(redirectContainer.querySelector('iframe')).toBeNull();
-            redirectContainer.remove();
+            expect(location.href).toBe('https://3ds.example.com');
         });
     });
 });

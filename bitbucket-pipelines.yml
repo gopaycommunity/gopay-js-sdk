@@ -147,9 +147,9 @@ definitions:
         script:
           - ./scripts/bitbucket-config.sh
           - VERSION=$(cat version)
-          - IMAGE="repo.gopay.com/gp-gw-js-sdk:$VERSION"
-          - IMAGE_NOT_EXISTS=true; docker pull "$IMAGE" > /dev/null 2>&1 && IMAGE_NOT_EXISTS=false
           - BROWSER_VERSION=$(cat browser-sdk-version)
+          - IMAGE="repo.gopay.com/gp-gw-js-sdk:${VERSION}-browser-${BROWSER_VERSION}"
+          - IMAGE_NOT_EXISTS=true; docker pull "$IMAGE" > /dev/null 2>&1 && IMAGE_NOT_EXISTS=false
           - if [ "$IMAGE_NOT_EXISTS" = true ]; then (docker build --build-arg SDK_VERSION="$VERSION" --build-arg BROWSER_SDK_VERSION="$BROWSER_VERSION" . -t "$IMAGE" && docker push "$IMAGE"); fi
 
     - step: &docker-build-dry-run
