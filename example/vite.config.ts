@@ -77,6 +77,14 @@ export default defineConfig(() => {
                 },
             },
         ],
+        build: {
+            rollupOptions: {
+                input: {
+                    main: resolve(__dirname, 'index.html'),
+                    checkout: resolve(__dirname, 'checkout.html'),
+                },
+            },
+        },
         server: {
             port: 8080,
             fs: {

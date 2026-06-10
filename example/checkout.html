@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="cs">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Noviny Premium — dokončení objednávky</title>
+    <script src="/env.js"></script>
+    <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
+    <script async src="https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js"></script>
+</head>
+
+<body class="bg-[#F5F5F5] text-[#1A1A1A]">
+
+    <!-- #include "checkout/_header.html" -->
+
+    <main class="max-w-3xl mx-auto px-4 py-6 space-y-5">
+        <!-- #include "checkout/_order-summary.html" -->
+        <!-- #include "checkout/_payment-methods.html" -->
+        <!-- #include "checkout/_article-preview.html" -->
+        <!-- #include "checkout/_status.html" -->
+    </main>
+
+    <script type="module" src="./src/checkout/main.js"></script>
+
+</body>
+
+</html>

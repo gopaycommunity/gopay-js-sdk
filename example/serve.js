@@ -51,14 +51,20 @@ const server = createServer((req, res) => {
     let file = join(dist, url.pathname);
 
     if (!existsSync(file) || statSync(file).isDirectory()) {
-        // Only fall back to index.html for extensionless paths (SPA routes).
+        // Only fall back to an HTML file for extensionless paths (SPA routes).
         // Missing assets (e.g. .js, .css) get a 404 to avoid masking build errors.
         if (extname(file)) {
             res.writeHead(404);
             res.end();
             return;
         }
-        file = join(dist, 'index.html');
+        // Route /checkout (or /checkout/) to the checkout page.
+        const stripped = url.pathname.replace(/\/$/, '');
+        if (stripped === '/checkout') {
+            file = join(dist, 'checkout.html');
+        } else {
+            file = join(dist, 'index.html');
+        }
     }
 
     const type = mime[extname(file)] ?? 'application/octet-stream';
