@@ -36,11 +36,11 @@ export default defineConfig(() => {
                 // Point workspace packages to TypeScript source so Vite doesn't
                 // require a dist build before starting the dev server.
                 {
-                    find: 'gopay-js-sdk',
+                    find: '@gopaycz/gopay-js-sdk',
                     replacement: resolve(repoRoot, 'sdk/src/index.ts'),
                 },
                 {
-                    find: 'gopay-js-sdk-browser',
+                    find: '@gopaycz/gopay-js-sdk-browser',
                     replacement: resolve(repoRoot, 'browser-sdk/src/index.ts'),
                 },
                 {

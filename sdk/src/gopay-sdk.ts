@@ -13,7 +13,7 @@ import { SDK_VERSION } from './version.js';
  *
  * ESM / CommonJS:
  * ```ts
- * import { createGoPaySDK } from 'gopay-js-sdk';
+ * import { createGoPaySDK } from '@gopaycz/gopay-js-sdk';
  * const sdk = createGoPaySDK({ environment: 'sandbox' });
  * await sdk.authenticate({ grant_type: 'client_credentials', client_id: '...', client_secret: '...', scope: '...' });
  * ```

@@ -10,11 +10,11 @@
     ],
     "scripts": {
         "lint": "biome check .",
-        "ci": "yarn biome ci . && yarn workspace @gopay-internal/core run typecheck && yarn workspace gopay-js-sdk run typecheck && yarn workspace gopay-js-sdk run check:circular && yarn workspace gopay-js-sdk run check:exports && yarn workspace gopay-js-sdk-browser run typecheck && yarn workspace gopay-js-sdk-browser run check:circular && yarn workspace gopay-js-sdk-browser run check:exports",
+        "ci": "yarn biome ci . && yarn workspace @gopay-internal/core run typecheck && yarn workspace @gopaycz/gopay-js-sdk run typecheck && yarn workspace @gopaycz/gopay-js-sdk run check:circular && yarn workspace @gopaycz/gopay-js-sdk run check:exports && yarn workspace @gopaycz/gopay-js-sdk-browser run typecheck && yarn workspace @gopaycz/gopay-js-sdk-browser run check:circular && yarn workspace @gopaycz/gopay-js-sdk-browser run check:exports",
         "codegen": "yarn workspace @gopay-internal/core run codegen",
         "prepare": "husky",
         "test:e2e": "playwright test",
-        "example": "yarn workspace gopay-js-sdk run build && yarn workspace gopay-js-sdk-example run dev",
+        "example": "yarn workspace @gopaycz/gopay-js-sdk run build && yarn workspace gopay-js-sdk-example run dev",
         "docker": "yarn docker:clean && yarn docker:build && yarn docker:start",
         "docker:build": "docker build -t gopay-js-sdk:latest .",
         "docker:clean": "docker ps -aq --filter ancestor=gopay-js-sdk:latest | grep . | xargs docker rm -f || true",

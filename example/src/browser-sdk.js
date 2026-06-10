@@ -2,7 +2,7 @@ import {
     createGoPayBrowserSDK,
     GoPayHTTPError,
     GoPaySDKError,
-} from 'gopay-js-sdk-browser';
+} from '@gopaycz/gopay-js-sdk-browser';
 import { sanitizeBody } from './sanitize.js';
 import { sdkConfig } from './sdk.js';
 

@@ -36,8 +36,8 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          - yarn workspace gopay-js-sdk run test
-          - yarn workspace gopay-js-sdk-browser run test
+          - yarn workspace @gopaycz/gopay-js-sdk run test
+          - yarn workspace @gopaycz/gopay-js-sdk-browser run test
           - sed -i 's|^SF:src/|SF:sdk/src/|' sdk/coverage/lcov.info
           - sed -i 's|^SF:src/|SF:browser-sdk/src/|' browser-sdk/coverage/lcov.info
         artifacts:
@@ -85,8 +85,8 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          - yarn workspace gopay-js-sdk run build
-          - yarn workspace gopay-js-sdk-browser run build
+          - yarn workspace @gopaycz/gopay-js-sdk run build
+          - yarn workspace @gopaycz/gopay-js-sdk-browser run build
         artifacts:
           - sdk/dist/**
           - browser-sdk/dist/**
@@ -100,7 +100,7 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          - yarn workspace gopay-js-sdk run build
+          - yarn workspace @gopaycz/gopay-js-sdk run build
           - yarn test:e2e
         artifacts:
           - playwright-report/**
@@ -114,15 +114,16 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          - yarn workspace gopay-js-sdk run build
-          - yarn workspace gopay-js-sdk-browser run build
+          - yarn workspace @gopaycz/gopay-js-sdk run build
+          - yarn workspace @gopaycz/gopay-js-sdk-browser run build
           - REPO_URL=https://gopay-release-bot:$BITBUCKET_BOT_PUSH_TOKEN@bitbucket.org/$BITBUCKET_REPO_FULL_NAME.git
           - git remote set-url origin $REPO_URL
-          # semantic-release: bumps version, tags commit, updates CHANGELOG
-          # npmPublish: false in both release.config.mjs — flip to true once NPM_TOKEN is set in Bitbucket variables
-          # sdk/ (gopay-js-sdk) analyzes ALL commits and bumps on every releasable change — its
-          # version drives the Docker deploy tag. browser-sdk/ (gopay-js-sdk-browser) only bumps
+          # semantic-release: bumps version, tags commit, updates CHANGELOG, publishes to npm
+          # Requires NPM_PUSH_TOKEN set as a Secured repository variable in Bitbucket settings
+          # sdk/ (@gopaycz/gopay-js-sdk) analyzes ALL commits and bumps on every releasable change — its
+          # version drives the Docker deploy tag. browser-sdk/ (@gopaycz/gopay-js-sdk-browser) only bumps
           # when browser-sdk/ files changed (filtered by semantic-release-monorepo).
+          - export NPM_TOKEN=$NPM_PUSH_TOKEN
           - (cd sdk && yarn dlx semantic-release)
           - (cd browser-sdk && yarn dlx semantic-release)
           - npm pkg get version --prefix sdk | tr -d '"' > version

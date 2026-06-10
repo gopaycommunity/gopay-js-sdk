@@ -1,15 +1,15 @@
-# gopay-js-sdk
+# @gopaycz/gopay-js-sdk
 
 GoPay JavaScript SDK for server-side use (Node.js) — wraps the GoPay Payments API v4.0.
 
-> **Building a browser integration?** Use [`gopay-js-sdk-browser`](../browser-sdk/README.md) — it handles in-browser card encryption, direct-charge flows, and exposes an IIFE bundle for CDN use.
+> **Building a browser integration?** Use [`@gopaycz/gopay-js-sdk-browser`](../browser-sdk/README.md) — it handles in-browser card encryption, direct-charge flows, and exposes an IIFE bundle for CDN use.
 
 ## Installation
 
 ```bash
-npm install gopay-js-sdk
+npm install @gopaycz/gopay-js-sdk
 # or
-yarn add gopay-js-sdk
+yarn add @gopaycz/gopay-js-sdk
 ```
 
 ---
@@ -17,7 +17,7 @@ yarn add gopay-js-sdk
 ## Quick start
 
 ```ts
-import { createGoPaySDK } from 'gopay-js-sdk';
+import { createGoPaySDK } from '@gopaycz/gopay-js-sdk';
 
 const sdk = createGoPaySDK({ environment: 'production' });
 
@@ -82,7 +82,7 @@ The SDK uses OAuth2. **Client credentials (`client_id` / `client_secret`) must n
 Your backend holds the credentials. Call `authenticate()` once on startup — the SDK stores the token and refreshes it transparently before expiry:
 
 ```ts
-import { createGoPaySDK } from 'gopay-js-sdk';
+import { createGoPaySDK } from '@gopaycz/gopay-js-sdk';
 
 const sdk = createGoPaySDK({ environment: 'production' });
 
@@ -345,7 +345,7 @@ import {
   GoPaySDK,
   DEFAULT_CARD_FORM_THEME,
   DARK_CARD_FORM_THEME,
-} from 'gopay-js-sdk';
+} from '@gopaycz/gopay-js-sdk';
 
 // Default theme, locale from navigator.language (options can be omitted entirely)
 const cardForm = await sdk.mountCardForm(container);
@@ -561,7 +561,7 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 | `CARD_FORM_ERROR` | The card form iframe encountered an error (e.g. URL unavailable, init timeout, or encryption failure). |
 
 ```ts
-import { GoPaySDKError, GoPayErrorCodes } from 'gopay-js-sdk';
+import { GoPaySDKError, GoPayErrorCodes } from '@gopaycz/gopay-js-sdk';
 
 try {
   await sdk.createPayment(goid, params);
@@ -583,7 +583,7 @@ try {
 Thrown when the GoPay API returns a non-2xx response. Exposes the HTTP `status` code and the parsed response `body`.
 
 ```ts
-import { GoPayHTTPError } from 'gopay-js-sdk';
+import { GoPayHTTPError } from '@gopaycz/gopay-js-sdk';
 
 try {
   await sdk.authenticate({ grant_type: 'client_credentials', ... });

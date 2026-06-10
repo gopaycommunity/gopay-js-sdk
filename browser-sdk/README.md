@@ -1,19 +1,19 @@
-# gopay-js-sdk-browser
+# @gopaycz/gopay-js-sdk-browser
 
 GoPay browser SDK for card encryption and in-browser payments.
 
 ## Installation
 
 ```bash
-npm install gopay-js-sdk-browser
+npm install @gopaycz/gopay-js-sdk-browser
 # or
-yarn add gopay-js-sdk-browser
+yarn add @gopaycz/gopay-js-sdk-browser
 ```
 
 CDN (IIFE — exposes `window.GoPayBrowserSDK`):
 
 ```html
-<script src="https://unpkg.com/gopay-js-sdk-browser@1/dist/gopay-browser-sdk.min.js"></script>
+<script src="https://unpkg.com/@gopaycz/gopay-js-sdk-browser@1/dist/gopay-browser-sdk.min.js"></script>
 ```
 
 ---
@@ -69,7 +69,7 @@ Flow A covers two server-side use cases with the same browser code:
 - **Save card for future payments** — tokenize the payload and store the returned card token; skip the charge or charge later. Use the saved token in future `chargePayment` calls without asking the customer to re-enter their card.
 
 ```ts
-import { createGoPayBrowserSDK, collectBrowserData } from 'gopay-js-sdk-browser';
+import { createGoPayBrowserSDK, collectBrowserData } from '@gopaycz/gopay-js-sdk-browser';
 
 // 1. Create the browser SDK (synchronous).
 //    shareableKey + clientId come from your server via getBrowserKeys().
@@ -107,7 +107,7 @@ const response = await fetch('/api/charge', {
 Adds payment-scoped operations (charge, Apple/Google Pay, status) by exchanging the `payment_secret` for a short-lived JWT directly in the browser.
 
 ```ts
-import { createGoPayBrowserSDK } from 'gopay-js-sdk-browser';
+import { createGoPayBrowserSDK } from '@gopaycz/gopay-js-sdk-browser';
 
 // 1. Create the browser SDK (same as Flow A).
 const sdk = createGoPayBrowserSDK({
@@ -355,7 +355,7 @@ For shared error types (`GoPaySDKError`, `GoPayHTTPError`, network codes) see th
 ## CDN / IIFE
 
 ```html
-<script src="https://unpkg.com/gopay-js-sdk-browser@1/dist/gopay-browser-sdk.min.js"></script>
+<script src="https://unpkg.com/@gopaycz/gopay-js-sdk-browser@1/dist/gopay-browser-sdk.min.js"></script>
 <script>
     const sdk = GoPayBrowserSDK.createGoPayBrowserSDK({
         environment: 'production',

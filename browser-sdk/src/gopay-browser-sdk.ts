@@ -47,7 +47,7 @@ function notAttached(): never {
  *
  * CDN (IIFE):
  * ```html
- * <script src="https://unpkg.com/gopay-js-sdk-browser@1/dist/gopay-browser-sdk.min.js"></script>
+ * <script src="https://unpkg.com/@gopaycz/gopay-js-sdk-browser@1/dist/gopay-browser-sdk.min.js"></script>
  * <script>
  *   const sdk = GoPayBrowserSDK.createGoPayBrowserSDK({ ... });
  *   (async () => { await sdk.attachPayment({ ... }); })();

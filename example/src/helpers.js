@@ -1,4 +1,4 @@
-import { GoPayHTTPError, GoPaySDKError } from 'gopay-js-sdk';
+import { GoPayHTTPError, GoPaySDKError } from '@gopaycz/gopay-js-sdk';
 import { getBrowserSDK, isSdkAttached } from './browser-sdk.js';
 import { sanitizeBody } from './sanitize.js';
 import { sdkConfig } from './sdk.js';

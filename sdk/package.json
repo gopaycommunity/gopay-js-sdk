@@ -1,5 +1,5 @@
 {
-    "name": "gopay-js-sdk",
+    "name": "@gopaycz/gopay-js-sdk",
     "version": "1.5.5",
     "description": "GoPay JavaScript SDK for server-side use (Node.js)",
     "keywords": [
@@ -23,6 +23,9 @@
             "import": "./dist/index.js",
             "require": "./dist/index.cjs"
         }
+    },
+    "publishConfig": {
+        "access": "public"
     },
     "files": [
         "dist",

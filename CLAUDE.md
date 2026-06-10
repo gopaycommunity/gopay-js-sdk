@@ -43,8 +43,8 @@ yarn npm audit --recursive --environment production
 
 Two separate npm packages:
 
-- **`gopay-js-sdk`** (`sdk/`) — server-side SDK for Node.js / bundler-based projects (ESM and CJS builds).
-- **`gopay-js-sdk-browser`** (`browser-sdk/`) — browser SDK. Includes ESM/CJS builds and a standalone IIFE bundle (`gopay-browser-sdk.min.js`) that exposes `window.GoPayBrowserSDK` for CDN use via `<script src="...">`.
+- **`@gopaycz/gopay-js-sdk`** (`sdk/`) — server-side SDK for Node.js / bundler-based projects (ESM and CJS builds).
+- **`@gopaycz/gopay-js-sdk-browser`** (`browser-sdk/`) — browser SDK. Includes ESM/CJS builds and a standalone IIFE bundle (`gopay-browser-sdk.min.js`) that exposes `window.GoPayBrowserSDK` for CDN use via `<script src="...">`.
 - **`@gopay-internal/core`** (`internal/core/`) — private shared package; inlined into both public bundles at build time via `noExternal`, not published to npm.
 
 ---
@@ -85,7 +85,7 @@ Before merging to master, check whether any public API changes are breaking (req
 Consumer-facing breaking changes (bump major):
 - Removed or renamed exported functions, classes, types, or constants
 - Changed method signatures (added required params, changed return types)
-- Changed `window.GoPayBrowserSDK` global shape — affects `gopay-js-sdk-browser` IIFE consumers on unpkg (pin to `@1`)
+- Changed `window.GoPayBrowserSDK` global shape — affects `@gopaycz/gopay-js-sdk-browser` IIFE consumers on unpkg (pin to `@1`)
 - Changed error codes in `GoPayErrorCodes`
 
 **postMessage protocol** (`sdk/src/modules/cards/iframe-protocol.ts`) changes are **not** consumer-facing — the wire protocol between the SDK and the GoPay-hosted iframe is invisible to e-shops. However, they require **coordinated deployment** with `gw-ui-cc-v4`: deploy the iframe side first, or make the change backward-compatible, to avoid a compatibility gap between the two.

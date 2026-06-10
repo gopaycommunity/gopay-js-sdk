@@ -1,4 +1,4 @@
-import { DEFAULT_CARD_FORM_THEME } from 'gopay-js-sdk-browser';
+import { DEFAULT_CARD_FORM_THEME } from '@gopaycz/gopay-js-sdk-browser';
 import { getBrowserSDK } from '../browser-sdk.js';
 import {
     setPayButtonEnabled,

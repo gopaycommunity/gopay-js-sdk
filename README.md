@@ -9,11 +9,11 @@ Monorepo for the GoPay JavaScript SDKs — two npm packages wrapping the GoPay P
 
 ```
 gp-gw-js-sdk/
-├── sdk/                  # npm: gopay-js-sdk (server-side / Node.js)
+├── sdk/                  # npm: @gopaycz/gopay-js-sdk (server-side / Node.js)
 │   ├── src/              # TypeScript source
 │   ├── tests/            # Unit + E2E tests (vitest)
 │   └── dist/             # Build output (git-ignored)
-├── browser-sdk/          # npm: gopay-js-sdk-browser (in-browser payments)
+├── browser-sdk/          # npm: @gopaycz/gopay-js-sdk-browser (in-browser payments)
 │   ├── src/              # TypeScript source
 │   ├── tests/            # Unit tests (vitest)
 │   └── dist/             # Build output — includes IIFE for CDN use (git-ignored)
@@ -30,7 +30,7 @@ Before merging to master, check whether any public API changes are breaking (req
 Consumer-facing breaking changes (bump major):
 - Removed or renamed exported functions, classes, types, or constants
 - Changed method signatures (added required params, changed return types)
-- Changed `window.GoPayBrowserSDK` global shape — affects `gopay-js-sdk-browser` IIFE consumers pinned via unpkg (`@1`)
+- Changed `window.GoPayBrowserSDK` global shape — affects `@gopaycz/gopay-js-sdk-browser` IIFE consumers pinned via unpkg (`@1`)
 - Changed error codes in `GoPayErrorCodes`
 
 **postMessage protocol** (`sdk/src/modules/cards/iframe-protocol.ts`) changes are **not** consumer-facing — the wire protocol between the SDK and the GoPay-hosted iframe is invisible to e-shops. However, they require **coordinated deployment** with `gw-ui-cc-v4`: deploy the iframe side first, or make the change backward-compatible, to avoid a compatibility gap between the two.
@@ -122,14 +122,14 @@ cd sdk && yarn codegen
 
 Releases are fully automated via [semantic-release](https://semantic-release.gitbook.io/semantic-release/) on the `master` branch.
 
-`gopay-js-sdk` (server SDK) analyzes **all** commits and bumps on every releasable change. Its version is used as the Docker image tag (`repo.gopay.com/gp-gw-js-sdk:<version>`) — the image bundles both SDKs, so the tag must advance whenever either one changes.
+`@gopaycz/gopay-js-sdk` (server SDK) analyzes **all** commits and bumps on every releasable change. Its version is used as the Docker image tag (`repo.gopay.com/gp-gw-js-sdk:<version>`) — the image bundles both SDKs, so the tag must advance whenever either one changes.
 
-`gopay-js-sdk-browser` only releases when `browser-sdk/` files changed. A server-SDK bump without a browser bump is therefore normal.
+`@gopaycz/gopay-js-sdk-browser` only releases when `browser-sdk/` files changed. A server-SDK bump without a browser bump is therefore normal.
 
 | Package | Tag format | npm |
 |---|---|---|
-| `gopay-js-sdk` | `1.3.5` | [npmjs.com/package/gopay-js-sdk](https://www.npmjs.com/package/gopay-js-sdk) |
-| `gopay-js-sdk-browser` | `browser-sdk-1.0.0` | [npmjs.com/package/gopay-js-sdk-browser](https://www.npmjs.com/package/gopay-js-sdk-browser) |
+| `@gopaycz/gopay-js-sdk` | `1.3.5` | [npmjs.com/package/@gopaycz/gopay-js-sdk](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk) |
+| `@gopaycz/gopay-js-sdk-browser` | `browser-sdk-1.0.0` | [npmjs.com/package/@gopaycz/gopay-js-sdk-browser](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk-browser) |
 
 Write commits following the [Conventional Commits](https://www.conventionalcommits.org/) spec:
 

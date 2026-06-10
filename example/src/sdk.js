@@ -1,4 +1,4 @@
-import { createGoPaySDK } from 'gopay-js-sdk';
+import { createGoPaySDK } from '@gopaycz/gopay-js-sdk';
 
 export const clientId = import.meta.env.GP_GW_JS_SDK_CLIENT_ID;
 export const clientSecret = import.meta.env.GP_GW_JS_SDK_CLIENT_SECRET;

@@ -762,6 +762,51 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@gopaycz/gopay-js-sdk-browser@workspace:*, @gopaycz/gopay-js-sdk-browser@workspace:browser-sdk":
+  version: 0.0.0-use.local
+  resolution: "@gopaycz/gopay-js-sdk-browser@workspace:browser-sdk"
+  dependencies:
+    "@gopay-internal/core": "workspace:*"
+    "@semantic-release/changelog": "npm:^6.0.3"
+    "@semantic-release/git": "npm:^10.0.1"
+    "@semantic-release/npm": "npm:^12.0.2"
+    "@types/jsdom": "npm:^28.0.1"
+    "@types/node": "npm:^24.12.2"
+    "@vitest/coverage-v8": "npm:^4.1.5"
+    jsdom: "npm:^29.1.0"
+    madge: "npm:^8.0.0"
+    semantic-release: "npm:^25.0.3"
+    semantic-release-monorepo: "npm:^8.0.2"
+    ts-unused-exports: "npm:^11.0.1"
+    tsup: "npm:^8.5.1"
+    typescript: "npm:~6.0.3"
+    vitest: "npm:^4.1.5"
+  languageName: unknown
+  linkType: soft
+
+"@gopaycz/gopay-js-sdk@workspace:*, @gopaycz/gopay-js-sdk@workspace:sdk":
+  version: 0.0.0-use.local
+  resolution: "@gopaycz/gopay-js-sdk@workspace:sdk"
+  dependencies:
+    "@gopay-internal/core": "workspace:*"
+    "@semantic-release/changelog": "npm:^6.0.3"
+    "@semantic-release/git": "npm:^10.0.1"
+    "@semantic-release/npm": "npm:^12.0.2"
+    "@types/jsdom": "npm:^28.0.1"
+    "@types/node": "npm:^24.12.2"
+    "@vitest/coverage-v8": "npm:^4.1.5"
+    jsdom: "npm:^29.1.0"
+    madge: "npm:^8.0.0"
+    openapi-typescript: "npm:^7.13.0"
+    semantic-release: "npm:^25.0.3"
+    semantic-release-monorepo: "npm:^8.0.2"
+    ts-unused-exports: "npm:^11.0.1"
+    tsup: "npm:^8.5.1"
+    typescript: "npm:~6.0.3"
+    vitest: "npm:^4.1.5"
+  languageName: unknown
+  linkType: soft
+
 "@isaacs/cliui@npm:^8.0.2":
   version: 8.0.2
   resolution: "@isaacs/cliui@npm:8.0.2"
@@ -4567,61 +4612,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"gopay-js-sdk-browser@workspace:*, gopay-js-sdk-browser@workspace:browser-sdk":
-  version: 0.0.0-use.local
-  resolution: "gopay-js-sdk-browser@workspace:browser-sdk"
-  dependencies:
-    "@gopay-internal/core": "workspace:*"
-    "@semantic-release/changelog": "npm:^6.0.3"
-    "@semantic-release/git": "npm:^10.0.1"
-    "@semantic-release/npm": "npm:^12.0.2"
-    "@types/jsdom": "npm:^28.0.1"
-    "@types/node": "npm:^24.12.2"
-    "@vitest/coverage-v8": "npm:^4.1.5"
-    jsdom: "npm:^29.1.0"
-    madge: "npm:^8.0.0"
-    semantic-release: "npm:^25.0.3"
-    semantic-release-monorepo: "npm:^8.0.2"
-    ts-unused-exports: "npm:^11.0.1"
-    tsup: "npm:^8.5.1"
-    typescript: "npm:~6.0.3"
-    vitest: "npm:^4.1.5"
-  languageName: unknown
-  linkType: soft
-
 "gopay-js-sdk-example@workspace:example":
   version: 0.0.0-use.local
   resolution: "gopay-js-sdk-example@workspace:example"
   dependencies:
+    "@gopaycz/gopay-js-sdk": "workspace:*"
+    "@gopaycz/gopay-js-sdk-browser": "workspace:*"
     "@tailwindcss/vite": "npm:^4.2.4"
     "@vitejs/plugin-basic-ssl": "npm:^2.3.0"
-    gopay-js-sdk: "workspace:*"
-    gopay-js-sdk-browser: "workspace:*"
     tailwindcss: "npm:^4.2.4"
     vite: "npm:^8.0.10"
-  languageName: unknown
-  linkType: soft
-
-"gopay-js-sdk@workspace:*, gopay-js-sdk@workspace:sdk":
-  version: 0.0.0-use.local
-  resolution: "gopay-js-sdk@workspace:sdk"
-  dependencies:
-    "@gopay-internal/core": "workspace:*"
-    "@semantic-release/changelog": "npm:^6.0.3"
-    "@semantic-release/git": "npm:^10.0.1"
-    "@semantic-release/npm": "npm:^12.0.2"
-    "@types/jsdom": "npm:^28.0.1"
-    "@types/node": "npm:^24.12.2"
-    "@vitest/coverage-v8": "npm:^4.1.5"
-    jsdom: "npm:^29.1.0"
-    madge: "npm:^8.0.0"
-    openapi-typescript: "npm:^7.13.0"
-    semantic-release: "npm:^25.0.3"
-    semantic-release-monorepo: "npm:^8.0.2"
-    ts-unused-exports: "npm:^11.0.1"
-    tsup: "npm:^8.5.1"
-    typescript: "npm:~6.0.3"
-    vitest: "npm:^4.1.5"
   languageName: unknown
   linkType: soft
 

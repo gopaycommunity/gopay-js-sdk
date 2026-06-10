@@ -1,7 +1,7 @@
 import {
     DARK_CARD_FORM_THEME,
     DEFAULT_CARD_FORM_THEME,
-} from 'gopay-js-sdk-browser';
+} from '@gopaycz/gopay-js-sdk-browser';
 import { getBrowserSDK } from './browser-sdk.js';
 import {
     formatError,
