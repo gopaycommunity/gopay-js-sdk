@@ -118,7 +118,7 @@ if (goid) {
 // SDK status badge
 // -----------------------------------------------------------------------
 document.getElementById('sdk-versions').textContent =
-    `gopay-js-sdk@${SERVER_SDK_VERSION} · gopay-js-sdk-browser@${BROWSER_SDK_VERSION}`;
+    `@gopaycz/gopay-js-sdk@${SERVER_SDK_VERSION} · @gopaycz/gopay-js-sdk-browser@${BROWSER_SDK_VERSION}`;
 
 const badge = document.getElementById('sdk-badge');
 const sdkInfo = document.getElementById('sdk-info');

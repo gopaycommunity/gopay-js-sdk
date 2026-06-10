@@ -51,12 +51,18 @@ export async function mountQRPayment() {
 
 async function pollQRPayment() {
     const paymentId = sessionStorage.getItem('checkout_payment_id');
+    if (!paymentId) {
+        console.error('[checkout] QR: missing checkout_payment_id');
+        _polling = false;
+        return;
+    }
     for (let i = 0; i < POLL_MAX_ATTEMPTS; i++) {
         try {
             const status = await sdk.getPaymentStatus(paymentId);
             console.debug('[checkout] QR payment status poll', status);
             if (status?.state === 'PAID') {
                 sessionStorage.removeItem('checkout_payment_id');
+                _polling = false;
                 showStatusSuccess();
                 return;
             }

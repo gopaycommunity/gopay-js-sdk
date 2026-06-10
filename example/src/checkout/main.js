@@ -8,7 +8,8 @@ import { mountQRPayment } from './pay-qr.js';
 import { resolveReturnStatus } from './status.js';
 
 // If returning from 3DS, resolve payment status and stop — don't bootstrap again.
-if (location.search.includes('return=1')) {
+const isReturnFlow = new URLSearchParams(location.search).get('return') === '1';
+if (isReturnFlow) {
     resolveReturnStatus();
 } else {
     init();
