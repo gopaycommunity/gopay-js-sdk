@@ -32,7 +32,7 @@ RUN if [ "$SDK_VERSION" != "dev" ]; then npm pkg set version="$SDK_VERSION" --pr
 RUN if [ "$BROWSER_SDK_VERSION" != "dev" ]; then npm pkg set version="$BROWSER_SDK_VERSION" --prefix browser-sdk; fi
 
 # Build SDK first (example workspace:* dep resolves via dist/)
-RUN yarn workspace gopay-js-sdk run build
+RUN yarn workspace @gopaycz/gopay-js-sdk run build
 
 ENV GP_BASE_PATH=/gp-gw-js-sdk/
 RUN yarn workspace gopay-js-sdk-example run build
