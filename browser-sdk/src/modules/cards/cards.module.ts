@@ -352,6 +352,7 @@ export function createCardsApi(
                 }
 
                 if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') {
+                    iframe.focus();
                     return;
                 }
 
