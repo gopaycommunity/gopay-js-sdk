@@ -1,3 +1,14 @@
+## [1.6.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.6.1...1.6.2) (2026-06-11)
+
+
+### Bug Fixes
+
+* address CodeRabbit README comments GPOMA-2322 ([3b26d9c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3b26d9ceeb3cfcfa4971c0a1959d628ffbabaa53))
+* disable npm push, token requires 2fa GPOMA-2322 ([4a45ccf](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4a45ccf3b515b9e0804bb33afed868144af88bcb))
+* reformat audit suppression entries to multi-line style GPOMA-2322 ([ad66e57](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ad66e57c8e30b27e15d49efd8a2c0c6c2b2df09b))
+* suppress age-gated audit advisories GPOMA-2322 ([4738442](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4738442ef914c9df8848a34b2d2beb41a21ef292))
+* update stale comment in release configs to reflect disabled npm publishing GPOMA-2322 ([506d0b5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/506d0b5924b74bbbd35c7ac9fe563ab47afbbda0))
+
 ## [1.6.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.6.0...1.6.1) (2026-06-11)
 
 
