@@ -35,6 +35,21 @@ export const DEFAULT_CARD_FORM_THEME: CardFormTheme = {
 };
 
 /**
+ * Red branding theme for the GoPay card form.
+ * Pass as `options.theme` to `mountCardForm()`.
+ */
+export const RED_CARD_FORM_THEME: CardFormTheme = {
+    ...DEFAULT_CARD_FORM_THEME,
+    labelColor: '#c8102e',
+    inputBorderColor: '#c8102e',
+    focusGradientStart: '#e8103e',
+    focusGradientEnd: '#c8102e',
+    submitBackgroundColor: '#c8102e',
+    submitHoverBackgroundColor: '#a50d26',
+    submitDisabledBackgroundColor: '#f0a0b0',
+};
+
+/**
  * Dark theme for the GoPay card form.
  * Pass as `options.theme` to `mountCardForm()`.
  */

@@ -1,6 +1,7 @@
 import {
     DARK_CARD_FORM_THEME,
     DEFAULT_CARD_FORM_THEME,
+    RED_CARD_FORM_THEME,
 } from '@gopaycz/gopay-js-sdk-browser';
 import { getBrowserSDK } from './browser-sdk.js';
 import {
@@ -37,10 +38,15 @@ export function cardPaySetTheme(theme) {
     document
         .getElementById('cardpay-theme-dark')
         .classList.toggle('js-btn-inactive', theme !== 'dark');
+    document
+        .getElementById('cardpay-theme-red')
+        .classList.toggle('js-btn-inactive', theme !== 'red');
 
-    cardFormController?.setTheme(
-        theme === 'dark' ? DARK_CARD_FORM_THEME : DEFAULT_CARD_FORM_THEME,
-    );
+    const themeMap = {
+        dark: DARK_CARD_FORM_THEME,
+        red: RED_CARD_FORM_THEME,
+    };
+    cardFormController?.setTheme(themeMap[theme] ?? DEFAULT_CARD_FORM_THEME);
 }
 
 export function cardPaySetSubmitMode(mode) {
@@ -103,10 +109,11 @@ export async function cardPayOpenIframe() {
 
     pre.textContent = 'Mounting card form…';
 
-    const theme =
-        currentTheme === 'dark'
-            ? DARK_CARD_FORM_THEME
-            : DEFAULT_CARD_FORM_THEME;
+    const themeMap = {
+        dark: DARK_CARD_FORM_THEME,
+        red: RED_CARD_FORM_THEME,
+    };
+    const theme = themeMap[currentTheme] ?? DEFAULT_CARD_FORM_THEME;
 
     const baseOptions = {
         theme,

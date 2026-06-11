@@ -8,6 +8,7 @@ export {
 export {
     DARK_CARD_FORM_THEME,
     DEFAULT_CARD_FORM_THEME,
+    RED_CARD_FORM_THEME,
 } from './modules/cards/card-form-themes.js';
 export type {
     CardFormController,

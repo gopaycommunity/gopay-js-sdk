@@ -1,4 +1,4 @@
-import { DEFAULT_CARD_FORM_THEME } from '@gopaycz/gopay-js-sdk-browser';
+import { RED_CARD_FORM_THEME } from '@gopaycz/gopay-js-sdk-browser';
 import { getBrowserSDK } from '../browser-sdk.js';
 import {
     setPayButtonEnabled,
@@ -34,7 +34,7 @@ export async function mountCheckoutCardForm() {
     try {
         _controller = await browserSdk.mountCardForm(container, {
             flow: 'direct-charge',
-            theme: DEFAULT_CARD_FORM_THEME,
+            theme: RED_CARD_FORM_THEME,
             locale: 'cs',
             submitMode: 'external',
             onValidityChange: (isValid) => {
