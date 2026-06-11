@@ -3,6 +3,7 @@ import { getBrowserSDK } from '../browser-sdk.js';
 import {
     setPayButtonEnabled,
     showStatusFailure,
+    showStatusOverlay,
     showStatusSuccess,
 } from './dom.js';
 
@@ -43,19 +44,12 @@ export async function mountCheckoutCardForm() {
         });
         _mounting = false;
 
-        // direct-charge resolves with the charge state once the SDK finishes
-        const chargeState = await _controller.result;
+        // Resolves on SUCCEEDED; rejects on FAILED (CHARGE_FAILED error).
+        // 3DS redirects are handled automatically by the SDK — if the user is
+        // sent to the ACS and returns via return_url, resolveReturnStatus() takes over.
+        await _controller.result;
         _controller = null;
-        console.debug('[checkout] card charge result', chargeState);
-
-        if (chargeState?.state === 'SUCCEEDED') {
-            showStatusSuccess();
-        } else if (chargeState?.action?.redirect_url) {
-            // 3DS required — redirect in the same window; return_url brings us back
-            window.location.href = chargeState.action.redirect_url;
-        } else {
-            showStatusFailure();
-        }
+        showStatusSuccess();
     } catch (err) {
         _mounting = false;
         _controller = null;
@@ -64,7 +58,11 @@ export async function mountCheckoutCardForm() {
     }
 }
 
-/** Called by the Zaplatit button. */
+/** Called by the Zaplatit button. Shows the loading overlay, then submits. */
 export function submitCardForm() {
-    _controller?.submit();
+    if (!_controller) {
+        return;
+    }
+    showStatusOverlay();
+    _controller.submit();
 }
