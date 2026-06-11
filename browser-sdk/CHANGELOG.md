@@ -1,3 +1,33 @@
+# [1.2.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.1.5...browser-sdk-1.2.0) (2026-06-11)
+
+
+### Bug Fixes
+
+* add red theme GPOMA-2322 ([699be57](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/699be57fbf2264d5c96c0988567822adb0e13b58))
+* address CodeRabbit / reviewer comments GPOMA-2322 ([0fc7a11](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0fc7a11a4a14148d365a1db596aa1b38e29cf259))
+* address CodeRabbit / reviewer comments GPOMA-2322 ([bcbc1e5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bcbc1e50cd13d9759ec6b8e1ad857e612f655a9f))
+* address CodeRabbit README comments GPOMA-2322 ([3b26d9c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3b26d9ceeb3cfcfa4971c0a1959d628ffbabaa53))
+* deduplicate lockfile and move sonar into parallel block GPOMA-2322 ([c67cfcc](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c67cfccbae0a0a4fee4f0aa80cf608227b680b8a))
+* disable npm push, token requires 2fa GPOMA-2322 ([4a45ccf](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4a45ccf3b515b9e0804bb33afed868144af88bcb))
+* focus iframe GPOMA-2322 ([af8000e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/af8000edfc790018aaba35a173450d777c9b96f6))
+* gopay branding on payment card GPOMA-2322 ([34eccd4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/34eccd413ef30abe6f1bcf8d371c8413e4839081))
+* pipeline steps optimize GPOMA-2322 ([04d727b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/04d727b926132662eaeccf787096d7f8fbbece8d))
+* pretend always success GPOMA-2322 ([c3ff991](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c3ff991d3a8f67d19802357fe30b79e18b0efab8))
+* readme detail on npm push  GPOMA-2322 ([0310bcb](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0310bcb02c8fa18a157412c549b84a330d35e083))
+* reformat audit suppression entries to multi-line style GPOMA-2322 ([ad66e57](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ad66e57c8e30b27e15d49efd8a2c0c6c2b2df09b))
+* release GPOMA-2322 ([e4941d5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e4941d5c7713684b5671e4c1c455ee2a397e2412))
+* release GPOMA-2322 ([adf6825](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/adf6825eeafa9dceb33bcf1e99c90d733d59ec52))
+* revert sonar to run after tests (needs coverage artifacts) GPOMA-2322 ([8aa4c5d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8aa4c5dcacde5bdb57228bdd354cd00a5e7cfd62))
+* suppress age-gated audit advisories GPOMA-2322 ([4738442](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4738442ef914c9df8848a34b2d2beb41a21ef292))
+* update Dockerfile workspace name to @gopaycz/gopay-js-sdk GPOMA-2322 ([f69640e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/f69640e41c9ce8a908f9c71b30a0572ee9eec044))
+* update stale comment in release configs to reflect disabled npm publishing GPOMA-2322 ([506d0b5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/506d0b5924b74bbbd35c7ac9fe563ab47afbbda0))
+
+
+### Features
+
+* add demo checkout page GPOMA-2322 ([2bfd9de](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2bfd9de62c4cfc888abac2e3e1aa9dd10a93800b))
+* set up npm publish GPOMA-2322 ([ce5d8f0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ce5d8f0765fb32efb244b24e945eb38561e02813))
+
 ## [1.1.5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.1.4...browser-sdk-1.1.5) (2026-06-09)
 
 
