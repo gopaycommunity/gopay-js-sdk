@@ -123,7 +123,7 @@ definitions:
           # sdk/ (@gopaycz/gopay-js-sdk) analyzes ALL commits and bumps on every releasable change — its
           # version drives the Docker deploy tag. browser-sdk/ (@gopaycz/gopay-js-sdk-browser) only bumps
           # when browser-sdk/ files changed (filtered by semantic-release-monorepo).
-          - export NPM_TOKEN=$NPM_PUSH_TOKEN
+          - export YARN_NPM_AUTH_TOKEN=$NPM_PUSH_TOKEN
           - (cd sdk && yarn dlx semantic-release)
           - (cd browser-sdk && yarn dlx semantic-release)
           - npm pkg get version --prefix sdk | tr -d '"' > version

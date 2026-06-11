@@ -34,7 +34,9 @@ export default {
         ],
 
         // Bump version in package.json and publish to npm.
-        ['@semantic-release/npm', { npmPublish: true }],
+        // semantic-release-yarn replaces @semantic-release/npm: uses `yarn version --immediate`
+        // instead of `npm version`, which understands workspace:* protocol natively.
+        ['semantic-release-yarn', { npmPublish: true }],
 
         // Commit version bump + CHANGELOG back to the repo
         [
