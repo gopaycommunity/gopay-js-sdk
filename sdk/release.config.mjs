@@ -34,7 +34,6 @@ export default {
         ],
 
         // Bump version in package.json and publish to npm.
-        // .npmrc sets workspaces=false so npm version doesn't choke on workspace:* devDeps.
         ['@semantic-release/npm', { npmPublish: true }],
 
         // Commit version bump + CHANGELOG back to the repo
