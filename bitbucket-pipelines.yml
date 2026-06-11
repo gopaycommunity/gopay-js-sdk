@@ -183,4 +183,4 @@ pipelines:
           - step: *release-preview
           - step: *test-playwright
           - step: *docker-build-dry-run
-      - step: *sonar
+          - step: *sonar
