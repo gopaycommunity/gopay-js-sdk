@@ -1,3 +1,11 @@
+## [1.2.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.2.0...browser-sdk-1.2.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* hardcode dev credentials  GPOMA-2322 ([a4a703a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a4a703a771891e719bed8a2bb5cccbf829a83c17))
+* improve browser readme GPOMA-2322 ([019c938](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/019c9382a1f2da05099ae66cac6358661971e679))
+
 # [1.2.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.1.5...browser-sdk-1.2.0) (2026-06-11)
 
 
