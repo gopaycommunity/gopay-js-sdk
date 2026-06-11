@@ -1,3 +1,13 @@
+## [1.6.4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.6.3...1.6.4) (2026-06-11)
+
+
+### Bug Fixes
+
+* correct duplicate id on failure status block in checkout example GPOMA-2322 ([d581d44](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d581d44d7c8caf034ead8e3e6ae3eabd8a446234))
+* default also server in checkout example GPOMA-2322 ([9468a1b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9468a1bef8c1830a1a99397efb9c8c2dd7dcbb13))
+* make success and failure appear the same to ensure demo success GPOMA-2322 ([c1f6a93](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c1f6a93753d37887097a146fea6ce11096a88e23))
+* replace example logo image GPOMA-2322 ([463a5ec](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/463a5ec8280c3e5bfb5683b8ba5dd46dfd37a70a))
+
 ## [1.6.3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.6.2...1.6.3) (2026-06-11)
 
 
