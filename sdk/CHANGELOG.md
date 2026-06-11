@@ -1,3 +1,23 @@
+# [1.6.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.5.5...1.6.0) (2026-06-11)
+
+
+### Bug Fixes
+
+* address CodeRabbit / reviewer comments GPOMA-2322 ([0fc7a11](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0fc7a11a4a14148d365a1db596aa1b38e29cf259))
+* address CodeRabbit / reviewer comments GPOMA-2322 ([bcbc1e5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bcbc1e50cd13d9759ec6b8e1ad857e612f655a9f))
+* deduplicate lockfile and move sonar into parallel block GPOMA-2322 ([c67cfcc](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c67cfccbae0a0a4fee4f0aa80cf608227b680b8a))
+* pipeline steps optimize GPOMA-2322 ([04d727b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/04d727b926132662eaeccf787096d7f8fbbece8d))
+* release GPOMA-2322 ([e4941d5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e4941d5c7713684b5671e4c1c455ee2a397e2412))
+* release GPOMA-2322 ([adf6825](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/adf6825eeafa9dceb33bcf1e99c90d733d59ec52))
+* revert sonar to run after tests (needs coverage artifacts) GPOMA-2322 ([8aa4c5d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8aa4c5dcacde5bdb57228bdd354cd00a5e7cfd62))
+* update Dockerfile workspace name to @gopaycz/gopay-js-sdk GPOMA-2322 ([f69640e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/f69640e41c9ce8a908f9c71b30a0572ee9eec044))
+
+
+### Features
+
+* add demo checkout page GPOMA-2322 ([2bfd9de](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2bfd9de62c4cfc888abac2e3e1aa9dd10a93800b))
+* set up npm publish GPOMA-2322 ([ce5d8f0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ce5d8f0765fb32efb244b24e945eb38561e02813))
+
 ## [1.5.5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.5.4...1.5.5) (2026-06-09)
 
 
