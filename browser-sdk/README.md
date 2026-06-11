@@ -24,7 +24,6 @@ CDN (IIFE — exposes `window.GoPayBrowserSDK`):
 |---|---|---|
 | **Required inputs** | `shareableKey`, `clientId` | + `paymentId`, `paymentSecret` |
 | **Browser methods** | `mountCardForm({ flow: 'return-payload' })` | + `chargePayment`, Apple Pay, Google Pay, `getStatus` |
-| **Iframe auth** | `X-API-Key: shareableKey` | same — iframe never sees JWT |
 | **Server handles** | tokenize + charge (or save token for later) | — (browser charges directly) |
 
 ---
@@ -179,18 +178,22 @@ const chargeResult = await googleCtrl.result;
 | Field | Type | Default | Notes |
 |---|---|---|---|
 | `threeDS` | `ThreeDSConfig` | `{ mode: 'redirect' }` | See 3DS table above |
+| `return_url` | `string` | — | Forwarded as `return_url` on the charge; the bank redirects here after 3DS |
 | `awaitOptions` | `Omit<AwaitChargeOptions, 'threeDS'>` | — | Extra polling / timeout options |
 | `onUnavailable` | `() => void` | — | Called (and `result` rejected) when the wallet is not usable on this device |
 | `onCancel` | `() => void` | — | Called when the user dismisses the payment sheet |
 
-**Apple Pay only** (`appleButtonOptions`):
+**Apple Pay only:**
+
+`origin` (`string`, default `location.origin`) — origin passed to Apple Pay merchant validation. Override only when initiating Apple Pay from a non-standard origin.
+
+Fields inside `appleButtonOptions`:
 
 | Field | Type | Default |
 |---|---|---|
 | `buttonstyle` | `'black' \| 'white' \| 'white-outline'` | `'black'` |
 | `type` | `string` | `'buy'` |
 | `locale` | `string` | `navigator.language` |
-| `origin` | `string` | `location.origin` |
 
 **Google Pay only** — `googleButtonOptions` is forwarded verbatim to `PaymentsClient.createButton()`. See [Google Pay ButtonOptions](https://developers.google.com/pay/api/web/reference/request-objects#ButtonOptions).
 
@@ -209,6 +212,8 @@ const chargeResult = await googleCtrl.result;
 
 | Method | Description |
 |---|---|
+| `chargePayment(params)` | `POST /payments/{id}/charge` — charge the payment; `browser_data` is collected and merged automatically for card instruments |
+| `awaitChargeState(options?)` | Poll charge state to a terminal outcome; handles the 3DS redirect per `ThreeDSConfig` (useful for `mode: 'manual'`) |
 | `getStatus()` | `GET /payments/{id}` — payment details |
 | `getChargeState()` | `GET /payments/{id}/charge` — current charge state |
 | `getGooglePayInfo()` | `GET /payments/{id}/google-pay/info` |
@@ -241,6 +246,7 @@ createGoPayBrowserSDK(config: {
     shareableKey: string;
     clientId: string;
     environment?: 'sandbox' | 'production'; // default: 'sandbox'
+    threeDS?: ThreeDSConfig;                 // default 3DS mode for all charges; overridable per-call
     baseUrl?: string;                        // override for mock servers
     requestTimeoutMs?: number;               // default: 10 000
     onError?: (err: GoPaySDKError | GoPayHTTPError) => void;
@@ -262,6 +268,17 @@ Exchanges `paymentSecret` for a payment-scoped JWT (`payment_credentials` grant,
 
 Throws `GoPaySDKError(PAYMENT_NOT_ATTACHED)` if these methods are called first.
 
+### `sdk.isAuthenticated()` / `sdk.logout()`
+
+```ts
+isAuthenticated(): boolean
+logout(): void
+```
+
+`isAuthenticated()` returns `true` if a payment-scoped token is currently stored (i.e. `attachPayment` has succeeded and the token has not been cleared).
+
+`logout()` clears all stored tokens. After calling it, payment-scoped methods will throw until `attachPayment` is called again.
+
 ### `sdk.mountCardForm(container, options)`
 
 ```ts
@@ -277,6 +294,7 @@ mountCardForm(
 |---|---|---|---|
 | `flow` | `'return-payload' \| 'direct-charge'` | required | `direct-charge` requires prior `attachPayment()` |
 | `threeDS` | `ThreeDSConfig` | `{ mode: 'redirect' }` | `direct-charge` only — controls 3DS handling (see below) |
+| `return_url` | `string` | — | `direct-charge` only — forwarded as `return_url` on the charge; the bank redirects here after 3DS |
 | `theme` | `CardFormTheme` | built-in | See type definition in [iframe-protocol.ts](src/modules/cards/iframe-protocol.ts) |
 | `locale` | `string` | `navigator.language` | BCP 47, e.g. `'cs-CZ'` |
 | `submitMode` | `'internal' \| 'external'` | `'internal'` | `'external'` hides the iframe button; use `controller.submit()` |
@@ -298,6 +316,7 @@ mountCardForm(
 | `setLocale(locale)` | Update locale at runtime |
 | `submit()` | Trigger submission (external submit mode only) |
 | `isValid` | Current validity (external submit mode only) |
+| `unmount()` | Tear down the iframe, abort any in-flight charge, reject `result` — call on component teardown |
 
 ### `sdk.mountApplePayButton(container, options)` / `sdk.mountGooglePayButton(container, options)`
 
@@ -318,7 +337,7 @@ See [Apple Pay & Google Pay buttons](#apple-pay--google-pay-buttons-flow-b) abov
 ### `collectBrowserData()`
 
 ```ts
-collectBrowserData(): Partial<BrowserData>
+collectBrowserData(): BrowserData
 ```
 
 Collects browser context required for 3D Secure and fraud detection. Call this in the browser and forward the result to your server as `browser_data` in the `chargePayment` call.
@@ -333,8 +352,6 @@ Collects browser context required for 3D Secure and fraud detection. Call this i
 
 Fields not collectable in JavaScript (`ip`, `accept_header`) are omitted — the GoPay backend fills them from the HTTP request.
 
-Returns an empty object when called outside a browser (Node.js / SSR).
-
 ---
 
 ### Error codes
@@ -343,6 +360,7 @@ Returns an empty object when called outside a browser (Node.js / SSR).
 |---|---|
 | `PAYMENT_NOT_ATTACHED` | Payment-action methods called before `attachPayment()` |
 | `CARD_FORM_ERROR` | Iframe error or untrusted card-form origin |
+| `CARD_FORM_ALREADY_MOUNTED` | `mountCardForm()` called while a session is already active — call `unmount()` on the existing controller first |
 | `WALLET_BUTTON_ERROR` | `mountApplePayButton` / `mountGooglePayButton` — unavailable, script load failure, or session error |
 | `AUTH_INVALID_RESPONSE` | `/oauth2/token` response missing required fields |
 | `CHARGE_TIMEOUT` | Charge polling exceeded initial timeout |
