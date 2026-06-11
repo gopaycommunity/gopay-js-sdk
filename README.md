@@ -149,6 +149,22 @@ npm token create --name "bitbucket-ci" --scopes @gopaycz --packages-and-scopes-p
 
 `--bypass-2fa` is required — without it the publish step will block waiting for interactive 2FA.
 
+### Manual publish (when CI token is unavailable)
+
+Yarn v4 does not read tokens set by `npm login`. Pass the token as an env var instead:
+
+```bash
+# Build
+cd sdk && yarn build && cd ..
+cd browser-sdk && yarn build && cd ..
+
+# Publish (replace YOUR_NPM_TOKEN with a token from npmjs.com → Access Tokens)
+YARN_NPM_AUTH_TOKEN=YOUR_NPM_TOKEN cd sdk && yarn npm publish --access public && cd ..
+YARN_NPM_AUTH_TOKEN=YOUR_NPM_TOKEN cd browser-sdk && yarn npm publish --access public && cd ..
+```
+
+Re-enable `npmPublish: true` in `sdk/release.config.mjs` and `browser-sdk/release.config.mjs` once `NPM_PUSH_TOKEN` is set in Bitbucket.
+
 ### Commit format
 
 Write commits following the [Conventional Commits](https://www.conventionalcommits.org/) spec:
