@@ -20,4 +20,24 @@
         <notes>GHSA-v2v4-37r5-5v8g | ip-address&lt;=10.1.0 | moderate | reason: fix (10.1.1) newer than 3 days (age-gate); recheck soon. Reeval 2026-06-23Z.</notes>
         <vulnerabilityName>GHSA-v2v4-37r5-5v8g</vulnerabilityName>
     </suppress>
-<suppress until="2026-06-25Z"><notes>1115543 | brace-expansion | MODERATE | reason: fix is newer than 3 days (age-gate); recheck soon. Reeval 2026-06-25Z.</notes><vulnerabilityName>1115543</vulnerabilityName></suppress><suppress until="2026-06-25Z"><notes>1120311 | brace-expansion | MODERATE | reason: fix is newer than 3 days (age-gate); recheck soon. Reeval 2026-06-25Z.</notes><vulnerabilityName>1120311</vulnerabilityName></suppress><suppress until="2026-06-25Z"><notes>1117870 | fast-uri | HIGH | reason: fix is newer than 3 days (age-gate); recheck soon. Reeval 2026-06-25Z.</notes><vulnerabilityName>1117870</vulnerabilityName></suppress><suppress until="2026-06-25Z"><notes>1117884 | fast-uri | HIGH | reason: fix is newer than 3 days (age-gate); recheck soon. Reeval 2026-06-25Z.</notes><vulnerabilityName>1117884</vulnerabilityName></suppress><suppress until="2026-06-25Z"><notes>1118827 | ip-address | MODERATE | reason: fix is newer than 3 days (age-gate); recheck soon. Reeval 2026-06-25Z.</notes><vulnerabilityName>1118827</vulnerabilityName></suppress></suppressions>
+    <suppress until="2026-06-25Z">
+        <notes>1115543 | brace-expansion | MODERATE | reason: fix is newer than 3 days (age-gate); recheck soon. Reeval 2026-06-25Z.</notes>
+        <vulnerabilityName>1115543</vulnerabilityName>
+    </suppress>
+    <suppress until="2026-06-25Z">
+        <notes>1120311 | brace-expansion | MODERATE | reason: fix is newer than 3 days (age-gate); recheck soon. Reeval 2026-06-25Z.</notes>
+        <vulnerabilityName>1120311</vulnerabilityName>
+    </suppress>
+    <suppress until="2026-06-25Z">
+        <notes>1117870 | fast-uri | HIGH | reason: fix is newer than 3 days (age-gate); recheck soon. Reeval 2026-06-25Z.</notes>
+        <vulnerabilityName>1117870</vulnerabilityName>
+    </suppress>
+    <suppress until="2026-06-25Z">
+        <notes>1117884 | fast-uri | HIGH | reason: fix is newer than 3 days (age-gate); recheck soon. Reeval 2026-06-25Z.</notes>
+        <vulnerabilityName>1117884</vulnerabilityName>
+    </suppress>
+    <suppress until="2026-06-25Z">
+        <notes>1118827 | ip-address | MODERATE | reason: fix is newer than 3 days (age-gate); recheck soon. Reeval 2026-06-25Z.</notes>
+        <vulnerabilityName>1118827</vulnerabilityName>
+    </suppress>
+</suppressions>
