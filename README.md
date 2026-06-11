@@ -131,6 +131,26 @@ Releases are fully automated via [semantic-release](https://semantic-release.git
 | `@gopaycz/gopay-js-sdk` | `1.3.5` | [npmjs.com/package/@gopaycz/gopay-js-sdk](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk) |
 | `@gopaycz/gopay-js-sdk-browser` | `browser-sdk-1.0.0` | [npmjs.com/package/@gopaycz/gopay-js-sdk-browser](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk-browser) |
 
+### Pipeline secrets
+
+The pipeline requires three Bitbucket repository secrets:
+
+| Secret | Purpose |
+|---|---|
+| `NPM_PUSH_TOKEN` | npm token for publishing to registry |
+| `BITBUCKET_BOT_PUSH_TOKEN` | Bitbucket token for pushing the release commit back to master |
+| `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub token for syncing to the GitHub mirror |
+
+To create or rotate `NPM_PUSH_TOKEN`, generate a Granular Access Token on the `janmuller` npm account:
+
+```bash
+npm token create --name "bitbucket-ci" --scopes @gopaycz --packages-and-scopes-permission read-write --bypass-2fa
+```
+
+`--bypass-2fa` is required — without it the publish step will block waiting for interactive 2FA.
+
+### Commit format
+
 Write commits following the [Conventional Commits](https://www.conventionalcommits.org/) spec:
 
 | Prefix             | Version bump | Example                          |
