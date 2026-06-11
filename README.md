@@ -154,13 +154,17 @@ npm token create --name "bitbucket-ci" --scopes @gopaycz --packages-and-scopes-p
 Yarn v4 does not read tokens set by `npm login`. Pass the token as an env var instead:
 
 ```bash
+# Bump version in each package before publishing (otherwise npm rejects a duplicate version)
+# Edit sdk/package.json and browser-sdk/package.json and increment the "version" field,
+# or run: cd sdk && npm version patch && cd .. && cd browser-sdk && npm version patch && cd ..
+
 # Build
 cd sdk && yarn build && cd ..
 cd browser-sdk && yarn build && cd ..
 
 # Publish (replace YOUR_NPM_TOKEN with a token from npmjs.com → Access Tokens)
-YARN_NPM_AUTH_TOKEN=YOUR_NPM_TOKEN cd sdk && yarn npm publish --access public && cd ..
-YARN_NPM_AUTH_TOKEN=YOUR_NPM_TOKEN cd browser-sdk && yarn npm publish --access public && cd ..
+cd sdk && YARN_NPM_AUTH_TOKEN=YOUR_NPM_TOKEN yarn npm publish --access public && cd ..
+cd browser-sdk && YARN_NPM_AUTH_TOKEN=YOUR_NPM_TOKEN yarn npm publish --access public && cd ..
 ```
 
 Re-enable `npmPublish: true` in `sdk/release.config.mjs` and `browser-sdk/release.config.mjs` once `NPM_PUSH_TOKEN` is set in Bitbucket.
