@@ -1,9 +1,9 @@
-import { clientId, clientSecret, sdk } from '../sdk.js';
 import {
     showStatusFailure,
     showStatusOverlay,
     showStatusSuccess,
 } from './dom.js';
+import { clientId, clientSecret, sdk } from './sdk.js';
 
 /**
  * Called on page load when ?return=1 is in the URL (post-3DS redirect).

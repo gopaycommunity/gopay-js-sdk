@@ -1,18 +1,6 @@
 import { attachPaymentToSDK, initBrowserSDK } from '../browser-sdk.js';
-import {
-    clientId as _clientId,
-    clientSecret as _clientSecret,
-    goid as _goid,
-    shareableKey as _shareableKey,
-    sdk,
-} from '../sdk.js';
-
-const clientId = _clientId ?? 'SDK';
-const clientSecret = _clientSecret ?? 'cs_rGs9t5mV';
-const goid = _goid ?? '8761908826';
-const shareableKey = _shareableKey ?? 'sk_TyN57UuHPdu9hKdR3fEu5HRLTMYr33Qv';
-
 import { setPayButtonEnabled, showCheckoutError } from './dom.js';
+import { clientId, clientSecret, goid, sdk, shareableKey } from './sdk.js';
 
 const ORDER_AMOUNT = 4900; // 49.00 CZK in haléře
 const ORDER_CURRENCY = 'CZK';

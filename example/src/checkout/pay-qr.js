@@ -1,6 +1,6 @@
 import { getBrowserSDK } from '../browser-sdk.js';
-import { sdk } from '../sdk.js';
 import { showStatusSuccess } from './dom.js';
+import { sdk } from './sdk.js';
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_MAX_ATTEMPTS = 40; // 2 minutes
