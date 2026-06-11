@@ -1,3 +1,14 @@
+## [1.6.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.6.0...1.6.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* add red theme GPOMA-2322 ([699be57](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/699be57fbf2264d5c96c0988567822adb0e13b58))
+* focus iframe GPOMA-2322 ([af8000e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/af8000edfc790018aaba35a173450d777c9b96f6))
+* gopay branding on payment card GPOMA-2322 ([34eccd4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/34eccd413ef30abe6f1bcf8d371c8413e4839081))
+* pretend always success GPOMA-2322 ([c3ff991](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c3ff991d3a8f67d19802357fe30b79e18b0efab8))
+* readme detail on npm push  GPOMA-2322 ([0310bcb](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0310bcb02c8fa18a157412c549b84a330d35e083))
+
 # [1.6.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.5.5...1.6.0) (2026-06-11)
 
 
