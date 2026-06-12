@@ -183,11 +183,7 @@ const chargeResult = await googleCtrl.result;
 | `onUnavailable` | `() => void` | — | Called (and `result` rejected) when the wallet is not usable on this device |
 | `onCancel` | `() => void` | — | Called when the user dismisses the payment sheet |
 
-**Apple Pay only:**
-
-`origin` (`string`, default `location.origin`) — origin passed to Apple Pay merchant validation. Override only when initiating Apple Pay from a non-standard origin.
-
-Fields inside `appleButtonOptions`:
+**Apple Pay only** — fields inside `appleButtonOptions`:
 
 | Field | Type | Default |
 |---|---|---|
@@ -219,7 +215,7 @@ Fields inside `appleButtonOptions`:
 | `getGooglePayInfo()` | `GET /payments/{id}/google-pay/info` |
 | `getApplePayInfo()` | `GET /payments/{id}/apple-pay/info` |
 | `getApplePayAppInfo()` | `GET /payments/{id}/apple-pay/app-info` — native app config for `PKPaymentRequest` |
-| `startApplePaySession(session, origin?)` | Wires merchant validation and begins an `ApplePaySession` (low-level; use `mountApplePayButton` for the full flow) |
+| `startApplePaySession(session)` | Wires merchant validation and begins an `ApplePaySession` (low-level; use `mountApplePayButton` for the full flow) |
 | `getQRPaymentInfo(format?)` | `GET /payments/{id}/qr-payment/info` |
 
 For the equivalent server-side methods and their request/response shapes, see the [server SDK README](../sdk/README.md).

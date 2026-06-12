@@ -1,5 +1,4 @@
 import {
-    assertHttpsOrigin,
     awaitCharge,
     type AwaitChargeOptions as CoreAwaitChargeOptions,
     GoPayErrorCodes,
@@ -223,19 +222,8 @@ export function createPaymentsApi(
                 abort(): void;
                 begin(): void;
             },
-            origin: string = globalThis.location?.origin ?? '',
             callbacks?: { oncancel?: (event: unknown) => void },
         ): void {
-            if (origin) {
-                try {
-                    assertHttpsOrigin(
-                        origin,
-                        '[GoPayBrowserSDK] startApplePaySession',
-                    );
-                } catch (e) {
-                    throw client.emitError(e as GoPaySDKError);
-                }
-            }
             session.onvalidatemerchant = (event: unknown) => {
                 const validationURL =
                     event != null &&

@@ -111,11 +111,6 @@ export type ApplePayButtonOptions = WalletButtonBaseOptions & {
         /** @default navigator.language */
         locale?: string;
     };
-    /**
-     * The origin passed to `startApplePaySession` for server-side merchant
-     * validation. Defaults to `window.location.origin`.
-     */
-    origin?: string;
 };
 
 export type GooglePayButtonOptions = WalletButtonBaseOptions & {
@@ -401,7 +396,7 @@ export function createWalletsApi(
                     void handlePaymentAuthorized(event);
                 };
 
-                paymentsApi.startApplePaySession(session, options.origin, {
+                paymentsApi.startApplePaySession(session, {
                     oncancel: () => {
                         options.onCancel?.();
                     },

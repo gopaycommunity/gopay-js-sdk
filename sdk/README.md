@@ -163,7 +163,7 @@ The one exception is `startApplePaySession`: it returns `void` instead of a Prom
 | `getChargeState(paymentId)` | Retrieve the current state of a payment charge (`GET /payments/{paymentId}/charge`). Returns charge state, instrument details, and any 3DS action. |
 | `getGooglePayInfo(paymentId)` | Retrieve Google Pay configuration for a payment. |
 | `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment. Returns `applepayVersion`, `merchantIdentifier`, and `applePayPaymentRequest` needed to construct an `ApplePaySession`. |
-| `startApplePaySession(paymentId, session, origin?, callbacks?)` | Wire merchant validation onto an `ApplePaySession` and call `begin()`. Handles `onvalidatemerchant` automatically; `origin` defaults to `window.location.origin`. Pass `{ oncancel }` in `callbacks` to be notified when the user dismisses the sheet. You must still wire `session.onpaymentauthorized` yourself. |
+| `startApplePaySession(paymentId, session, origin?, callbacks?)` | Wire merchant validation onto an `ApplePaySession` and call `begin()`. Handles `onvalidatemerchant` automatically; `origin` is the merchant HTTPS origin sent to Apple during validation — always pass it explicitly on Node.js (there is no `location.origin` to fall back to). Pass `{ oncancel }` in `callbacks` to be notified when the user dismisses the sheet. You must still wire `session.onpaymentauthorized` yourself. |
 | `getQRPaymentInfo(paymentId, format?)` | Retrieve QR code and recipient info (`GET /payments/{paymentId}/qr-payment/info`). |
 
 ### Google Pay
@@ -265,7 +265,8 @@ session.onpaymentauthorized = async (event) => {
 
 // Wire merchant validation, then open the Apple Pay sheet.
 // onvalidatemerchant and oncancel are handled automatically by the SDK.
-sdk.startApplePaySession(payment.id, session, undefined, {
+// Pass the merchant origin explicitly — required on Node.js (no location.origin).
+sdk.startApplePaySession(payment.id, session, 'https://yourshop.com', {
   oncancel: () => {
     // Update your UI to reflect the cancelled state.
   },
