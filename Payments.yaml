@@ -2067,12 +2067,6 @@ components:
         payment_instrument:
           $ref: '#/components/schemas/Payment-Charge-Data'
           description: Payment instrument data specifying how the payment should be charged
-        return_url:
-          type: string
-          description: URL where the customer will be redirected after completing the payment action (e.g. 3DS authentication or bank login)
-          examples:
-            - 'https://example.com/return'
-          format: uri
     Payment-Instrument:
       type: string
       enum:

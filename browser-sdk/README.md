@@ -178,7 +178,6 @@ const chargeResult = await googleCtrl.result;
 | Field | Type | Default | Notes |
 |---|---|---|---|
 | `threeDS` | `ThreeDSConfig` | `{ mode: 'redirect' }` | See 3DS table above |
-| `return_url` | `string` | — | Forwarded as `return_url` on the charge; the bank redirects here after 3DS |
 | `awaitOptions` | `Omit<AwaitChargeOptions, 'threeDS'>` | — | Extra polling / timeout options |
 | `onUnavailable` | `() => void` | — | Called (and `result` rejected) when the wallet is not usable on this device |
 | `onCancel` | `() => void` | — | Called when the user dismisses the payment sheet |
@@ -290,7 +289,6 @@ mountCardForm(
 |---|---|---|---|
 | `flow` | `'return-payload' \| 'direct-charge'` | required | `direct-charge` requires prior `attachPayment()` |
 | `threeDS` | `ThreeDSConfig` | `{ mode: 'redirect' }` | `direct-charge` only — controls 3DS handling (see below) |
-| `return_url` | `string` | — | `direct-charge` only — forwarded as `return_url` on the charge; the bank redirects here after 3DS |
 | `theme` | `CardFormTheme` | built-in | See type definition in [iframe-protocol.ts](src/modules/cards/iframe-protocol.ts) |
 | `locale` | `string` | `navigator.language` | BCP 47, e.g. `'cs-CZ'` |
 | `submitMode` | `'internal' \| 'external'` | `'internal'` | `'external'` hides the iframe button; use `controller.submit()` |

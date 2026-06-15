@@ -64,7 +64,6 @@ export interface CardFormController<R = EncryptedCardPayload> {
 
 type DirectChargeOptions = {
     flow: 'direct-charge';
-    return_url?: string;
     /** Controls how the SDK handles the 3DS redirect. Defaults to full-page redirect. */
     threeDS?: ThreeDSConfig;
     awaitOptions?: Omit<AwaitChargeOptions, 'threeDS'>;
@@ -299,10 +298,9 @@ export function createCardsApi(
                 container.replaceChildren(spinner);
 
                 try {
-                    const { threeDS, awaitOptions, return_url } = options;
+                    const { threeDS, awaitOptions } = options;
 
                     await paymentsApi.chargePayment({
-                        return_url,
                         payment_instrument: {
                             payment_instrument: 'PAYMENT_CARD',
                             input: {

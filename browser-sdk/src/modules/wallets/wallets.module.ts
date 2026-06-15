@@ -84,7 +84,6 @@ export interface WalletButtonController {
 // ---------------------------------------------------------------------------
 
 type WalletButtonBaseOptions = {
-    return_url?: string;
     /** Controls how the SDK handles a 3DS redirect. Defaults to full-page redirect. */
     threeDS?: ThreeDSConfig;
     /** Extra polling / timeout / callback options forwarded to `awaitChargeState`. */
@@ -177,7 +176,6 @@ async function runChargeFlow(
 
     try {
         await paymentsApi.chargePayment({
-            return_url: options.return_url,
             payment_instrument: instrument,
         });
 

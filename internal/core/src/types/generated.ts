@@ -856,12 +856,6 @@ export interface components {
         "Payment-Charge-Input": {
             /** @description Payment instrument data specifying how the payment should be charged */
             payment_instrument: components["schemas"]["Payment-Charge-Data"];
-            /**
-             * Format: uri
-             * @description URL where the customer will be redirected after completing the payment action (e.g. 3DS authentication or bank login)
-             * @example https://example.com/return
-             */
-            return_url?: string;
         };
         /**
          * Payment Instrument
