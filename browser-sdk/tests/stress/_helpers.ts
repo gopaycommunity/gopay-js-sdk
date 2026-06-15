@@ -87,6 +87,48 @@ export function makePaymentsApiMock(overrides?: Record<string, unknown>) {
     };
 }
 
+export function makeGoogleGlobal(
+    onClickCapture?: (fn: () => Promise<void>) => void,
+) {
+    return {
+        google: {
+            payments: {
+                api: {
+                    PaymentsClient: class MockPaymentsClient {
+                        isReadyToPay = vi
+                            .fn()
+                            .mockResolvedValue({ result: true });
+                        loadPaymentData = vi.fn().mockResolvedValue({
+                            paymentMethodData: {
+                                tokenizationData: {
+                                    token: JSON.stringify({
+                                        protocolVersion: 'ECv2',
+                                        signature: 'sig==',
+                                        signedMessage:
+                                            '{"encryptedMessage":"enc=="}',
+                                    }),
+                                },
+                            },
+                        });
+                        createButton = vi.fn(
+                            ({ onClick }: { onClick: () => Promise<void> }) => {
+                                onClickCapture?.(onClick);
+                                const btn = document.createElement('button');
+                                btn.setAttribute('data-testid', 'gpay-button');
+                                btn.addEventListener(
+                                    'click',
+                                    () => void onClick(),
+                                );
+                                return btn;
+                            },
+                        );
+                    },
+                },
+            },
+        },
+    };
+}
+
 /**
  * Spy on window.addEventListener / removeEventListener, capture a baseline,
  * then assert the net count (adds − removes) since the baseline is zero.

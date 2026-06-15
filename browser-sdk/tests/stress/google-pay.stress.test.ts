@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWalletsApi } from '../../src/modules/wallets/wallets.module.js';
-import { makeHttpClient, makePaymentsApiMock } from './_helpers.js';
+import {
+    makeGoogleGlobal,
+    makeHttpClient,
+    makePaymentsApiMock,
+} from './_helpers.js';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -21,49 +25,8 @@ vi.mock('../../src/modules/cards/loading-spinner.js', () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Google Pay client mock factory
+// Google Pay client mock factory — shared via _helpers.ts
 // ---------------------------------------------------------------------------
-
-const validGoogleTokenData = JSON.stringify({
-    protocolVersion: 'ECv2',
-    signature: 'sig==',
-    signedMessage: '{"encryptedMessage":"enc=="}',
-});
-
-function makeGoogleGlobal(onClickCapture?: (fn: () => Promise<void>) => void) {
-    return {
-        google: {
-            payments: {
-                api: {
-                    PaymentsClient: class MockPaymentsClient {
-                        isReadyToPay = vi
-                            .fn()
-                            .mockResolvedValue({ result: true });
-                        loadPaymentData = vi.fn().mockResolvedValue({
-                            paymentMethodData: {
-                                tokenizationData: {
-                                    token: validGoogleTokenData,
-                                },
-                            },
-                        });
-                        createButton = vi.fn(
-                            ({ onClick }: { onClick: () => Promise<void> }) => {
-                                onClickCapture?.(onClick);
-                                const btn = document.createElement('button');
-                                btn.setAttribute('data-testid', 'gpay-button');
-                                btn.addEventListener(
-                                    'click',
-                                    () => void onClick(),
-                                );
-                                return btn;
-                            },
-                        );
-                    },
-                },
-            },
-        },
-    };
-}
 
 const ITERATIONS = 200;
 

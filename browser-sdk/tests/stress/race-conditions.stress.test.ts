@@ -22,6 +22,7 @@ import { createWalletsApi } from '../../src/modules/wallets/wallets.module.js';
 import {
     CARD_FORM_ORIGIN,
     makeCardFormFetchMock,
+    makeGoogleGlobal,
     makeHttpClient,
     makePaymentsApiMock,
     simulateCardEncryptResult,
@@ -299,40 +300,7 @@ describe('race conditions — rapid / concurrent mount calls', () => {
 
     describe('mountGooglePayButton', () => {
         function stubGoogle() {
-            vi.stubGlobal('window', {
-                ...window,
-                google: {
-                    payments: {
-                        api: {
-                            PaymentsClient: class {
-                                isReadyToPay = vi
-                                    .fn()
-                                    .mockResolvedValue({ result: true });
-                                loadPaymentData = vi.fn().mockResolvedValue({
-                                    paymentMethodData: {
-                                        tokenizationData: {
-                                            token: JSON.stringify({
-                                                protocolVersion: 'ECv2',
-                                                signature: 's',
-                                                signedMessage:
-                                                    '{"encryptedMessage":"e"}',
-                                            }),
-                                        },
-                                    },
-                                });
-                                createButton = vi.fn(
-                                    ({ onClick }: { onClick: () => void }) => {
-                                        const btn =
-                                            document.createElement('button');
-                                        btn.addEventListener('click', onClick);
-                                        return btn;
-                                    },
-                                );
-                            },
-                        },
-                    },
-                },
-            });
+            vi.stubGlobal('window', { ...window, ...makeGoogleGlobal() });
         }
 
         it('second call while first is active returns WALLET_BUTTON_ERROR', async () => {
