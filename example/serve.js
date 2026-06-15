@@ -58,13 +58,7 @@ const server = createServer((req, res) => {
             res.end();
             return;
         }
-        // Route /checkout (or /checkout/) to the checkout page.
-        const stripped = url.pathname.replace(/\/$/, '');
-        if (stripped === '/checkout') {
-            file = join(dist, 'checkout.html');
-        } else {
-            file = join(dist, 'index.html');
-        }
+        file = join(dist, 'index.html');
     }
 
     const type = mime[extname(file)] ?? 'application/octet-stream';
