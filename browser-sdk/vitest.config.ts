@@ -32,6 +32,7 @@ export default defineConfig({
     test: {
         unstubGlobals: true,
         environment: 'jsdom',
+        exclude: ['tests/stress/**', 'node_modules/**'],
         reporters: ['verbose', 'junit'],
         outputFile: { junit: 'test-results/junit.xml' },
         coverage: {

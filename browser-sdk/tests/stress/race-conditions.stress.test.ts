@@ -170,15 +170,15 @@ describe('race conditions — rapid / concurrent mount calls', () => {
             // One of the two results will be an error no-op (ALREADY_MOUNTED)
             // because after the first resolves it sets activeCleanup.
             // If both succeed (race not guarded post-await), adds == 2.
-            // Document whichever we observe.
-            const bothHandled = adds >= 1 && removes <= adds;
-            expect(bothHandled).toBe(true);
+            expect([1, 2]).toContain(adds);
+            expect(removes).toBeLessThanOrEqual(adds);
 
             // Clean up whichever controllers are active
             ctrl1.result.catch(() => {});
             ctrl2.result.catch(() => {});
             ctrl1.unmount();
             ctrl2.unmount();
+            tracker.assertNetZero('concurrent-card-form cleanup');
         });
 
         it('encrypt-error on one mount allows clean subsequent mount', async () => {

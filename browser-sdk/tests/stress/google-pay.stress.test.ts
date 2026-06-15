@@ -154,31 +154,9 @@ describe('mountGooglePayButton — stress / leak detection', () => {
             const cancelError = Object.assign(new Error('User cancelled'), {
                 statusCode: 'CANCELED',
             });
+
+            let capturedOnClick: (() => Promise<void>) | undefined;
             vi.stubGlobal('window', {
-                ...window,
-                ...makeGoogleGlobal(),
-            });
-
-            const paymentsApi = makePaymentsApiMock({
-                // Override default mock to simulate cancel
-            });
-            // biome-ignore lint/suspicious/noExplicitAny: test-only override
-            (paymentsApi as any).getGooglePayInfo = vi.fn().mockResolvedValue({
-                environment: 'TEST',
-                paymentDataRequest: {},
-            });
-
-            const api = createWalletsApi(
-                makeHttpClient() as never,
-                () => paymentsApi as never,
-            );
-
-            // Mount succeeds; we need isReadyToPay = true
-            // Override loadPaymentData on the auto-created client to reject
-            const ctrl = await api.mountGooglePayButton(container);
-
-            // Re-create a client that cancels
-            const cancelGlobal = {
                 ...window,
                 google: {
                     payments: {
@@ -190,20 +168,40 @@ describe('mountGooglePayButton — stress / leak detection', () => {
                                 loadPaymentData = vi
                                     .fn()
                                     .mockRejectedValue(cancelError);
-                                createButton = vi
-                                    .fn()
-                                    .mockReturnValue(
-                                        document.createElement('button'),
-                                    );
+                                createButton = vi.fn(
+                                    ({
+                                        onClick,
+                                    }: {
+                                        onClick: () => Promise<void>;
+                                    }) => {
+                                        capturedOnClick = onClick;
+                                        const btn =
+                                            document.createElement('button');
+                                        btn.addEventListener(
+                                            'click',
+                                            () => void onClick(),
+                                        );
+                                        return btn;
+                                    },
+                                );
                             },
                         },
                     },
                 },
-            };
-            vi.stubGlobal('window', cancelGlobal);
+            });
 
-            // The ctrl from the successful mount: unmount it and try clean mount
-            ctrl.result.catch(() => {});
+            const paymentsApi = makePaymentsApiMock();
+            const api = createWalletsApi(
+                makeHttpClient() as never,
+                () => paymentsApi as never,
+            );
+
+            const ctrl = await api.mountGooglePayButton(container);
+
+            // Trigger the cancel path by simulating a button click
+            // biome-ignore lint/style/noNonNullAssertion: set by createButton during mountGooglePayButton
+            await capturedOnClick!().catch(() => {});
+            await ctrl.result.catch(() => {});
             ctrl.unmount();
 
             expect(container.children.length).toBe(containerChildrenBefore);
