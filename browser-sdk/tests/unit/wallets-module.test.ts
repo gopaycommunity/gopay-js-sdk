@@ -72,7 +72,6 @@ function makePaymentsApi(overrides?: Record<string, unknown>) {
                     oncancel: ((e: unknown) => void) | null;
                     begin: () => void;
                 },
-                _origin: string,
                 callbacks?: { oncancel?: (e: unknown) => void },
             ) => {
                 session.oncancel = (e: unknown) => callbacks?.oncancel?.(e);

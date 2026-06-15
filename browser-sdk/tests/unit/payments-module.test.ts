@@ -263,36 +263,8 @@ describe('createPaymentsApi() — browser SDK', () => {
 
         it('calls session.begin()', () => {
             const session = makeMockSession();
-            api.startApplePaySession(session, 'https://example.com');
+            api.startApplePaySession(session);
             expect(session.begin).toHaveBeenCalledOnce();
-        });
-
-        it('skips origin validation when origin is an empty string', () => {
-            const session = makeMockSession();
-            expect(() => api.startApplePaySession(session, '')).not.toThrow();
-            expect(session.begin).toHaveBeenCalledOnce();
-        });
-
-        it('uses empty string origin when globalThis.location is undefined', () => {
-            vi.stubGlobal('location', undefined);
-            const session = makeMockSession();
-            // No origin arg — default resolves to '' because location is undefined
-            expect(() => api.startApplePaySession(session)).not.toThrow();
-            expect(session.begin).toHaveBeenCalledOnce();
-        });
-
-        it('throws on an unparseable origin string', () => {
-            const session = makeMockSession();
-            expect(() =>
-                api.startApplePaySession(session, 'not-a-url'),
-            ).toThrow();
-        });
-
-        it('throws when origin uses http: instead of https:', () => {
-            const session = makeMockSession();
-            expect(() =>
-                api.startApplePaySession(session, 'http://example.com'),
-            ).toThrow('https:');
         });
 
         it('wires onvalidatemerchant to call completeMerchantValidation on success', async () => {
@@ -304,7 +276,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             });
 
             const session = makeMockSession();
-            api.startApplePaySession(session, 'https://example.com');
+            api.startApplePaySession(session);
 
             session.onvalidatemerchant?.({
                 validationURL: 'https://apple.com/validate',
@@ -326,7 +298,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             );
 
             const session = makeMockSession();
-            api.startApplePaySession(session, 'https://example.com');
+            api.startApplePaySession(session);
 
             session.onvalidatemerchant?.({});
             await new Promise((r) => setTimeout(r, 10));
@@ -337,7 +309,7 @@ describe('createPaymentsApi() — browser SDK', () => {
         it('fires the oncancel callback when the session is cancelled', () => {
             const session = makeMockSession();
             const oncancel = vi.fn();
-            api.startApplePaySession(session, 'https://example.com', {
+            api.startApplePaySession(session, {
                 oncancel,
             });
 
