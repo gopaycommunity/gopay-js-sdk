@@ -46,6 +46,18 @@ definitions:
           - browser-sdk/coverage/**
           - browser-sdk/test-results/**
 
+    - step: &test-stress
+        name: Stress tests (leak detection)
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          - corepack enable
+          - yarn install --immutable
+          - yarn workspace @gopaycz/gopay-js-sdk-browser run test:stress
+        artifacts:
+          - browser-sdk/test-results/stress-junit.xml
+
     - step: &sonar
         name: Analyze on SonarCloud
         size: 2x
@@ -169,6 +181,7 @@ pipelines:
     master:
       - parallel:
         - step: *test-vitest
+        - step: *test-stress
         - step: *build
         - step: *test-playwright
       - step: *release
@@ -180,6 +193,7 @@ pipelines:
       - parallel:
           - step: *code-quality
           - step: *test-vitest
+          - step: *test-stress
           - step: *release-preview
           - step: *test-playwright
           - step: *docker-build-dry-run
