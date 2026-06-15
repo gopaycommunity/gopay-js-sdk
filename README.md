@@ -19,7 +19,7 @@ gp-gw-js-sdk/
 │   └── dist/             # Build output — includes IIFE for CDN use (git-ignored)
 ├── internal/core/        # Private shared package — inlined into both SDKs at build time, not published
 ├── tests/browser/        # Playwright end-to-end tests
-├── example/              # Interactive developer page (private, not published)
+├── example/              # Interactive developer page — also deployed on k8s (see below)
 └── Payments.yaml         # OpenAPI 3.1 spec (source of truth)
 ```
 
@@ -63,6 +63,9 @@ yarn test:e2e
 # Start the example dev server
 yarn example
 ```
+
+The example page is also deployed on k8s cluster, for example:
+<https://api-int.alpha8.dev.gopay.com/gp-gw-js-sdk/>
 
 ## Local HTTPS (mkcert)
 
