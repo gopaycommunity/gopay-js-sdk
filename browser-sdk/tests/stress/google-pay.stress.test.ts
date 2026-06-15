@@ -198,10 +198,11 @@ describe('mountGooglePayButton — stress / leak detection', () => {
 
             const ctrl = await api.mountGooglePayButton(container);
 
-            // Trigger the cancel path by simulating a button click
+            // Trigger the cancel path — CANCELED keeps result pending (button
+            // stays active so user can retry), so unmount to clean up instead
             // biome-ignore lint/style/noNonNullAssertion: set by createButton during mountGooglePayButton
             await capturedOnClick!().catch(() => {});
-            await ctrl.result.catch(() => {});
+            ctrl.result.catch(() => {});
             ctrl.unmount();
 
             expect(container.children.length).toBe(containerChildrenBefore);
