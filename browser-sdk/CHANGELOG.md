@@ -1,3 +1,21 @@
+## [1.2.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.2.1...browser-sdk-1.2.2) (2026-06-16)
+
+
+### Bug Fixes
+
+* add k8s domain to readme  GPOMA-2322 ([beb0923](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/beb0923d7221c4c6492702d667d2570068ae8a63))
+* add stress test GPOMA-2322 ([9fa803f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9fa803f32eff2857e4234a79b624a4be4ff63189))
+* address CodeRabbit comments — stress test improvements and engines field GPOMA-2322 ([8e6e56b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8e6e56b410718f91bf7787b04f9b124472800305))
+* correct duplicate id on failure status block in checkout example GPOMA-2322 ([d581d44](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d581d44d7c8caf034ead8e3e6ae3eabd8a446234))
+* default also server in checkout example GPOMA-2322 ([9468a1b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9468a1bef8c1830a1a99397efb9c8c2dd7dcbb13))
+* disallow setting origin in applepay GPOMA-2322 ([cea3180](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/cea318090ce086453cfa466310f9d85eb2a72e09))
+* don't await ctrl.result after cancel — CANCELED keeps result pending for retry GPOMA-2322 ([ccaadac](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ccaadac22a49e378f7f0135efdb47659f84a2fb2))
+* make success and failure appear the same to ensure demo success GPOMA-2322 ([c1f6a93](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c1f6a93753d37887097a146fea6ce11096a88e23))
+* remove checkout example entry from Vite build and serve.js GPOMA-2322 ([88ae654](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/88ae6548fa36300cee9fa2643611f3afe63088aa))
+* remove return_url from charge GPOMA-2322 ([4715cb1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4715cb1f66066bb79cec26b66526377193f4d37c))
+* replace example logo image GPOMA-2322 ([463a5ec](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/463a5ec8280c3e5bfb5683b8ba5dd46dfd37a70a))
+* update tests to match new startApplePaySession signature (no origin param) GPOMA-2322 ([8d3717b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8d3717b4d12ad10ed84d45bd73b410f099103847))
+
 ## [1.2.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.2.0...browser-sdk-1.2.1) (2026-06-11)
 
 
