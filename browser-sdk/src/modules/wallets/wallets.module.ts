@@ -187,8 +187,15 @@ async function runChargeFlow(
     rejectResult: (e: unknown) => void,
 ): Promise<void> {
     const defaultColor = '#1899d6';
+    const emitLoadingState = (state: LoadingState) => {
+        try {
+            options.onLoadingStateChange?.(state);
+        } catch {
+            // consumer callback errors must not corrupt SDK flows
+        }
+    };
     container.replaceChildren();
-    options.onLoadingStateChange?.('charging');
+    emitLoadingState('charging');
     let clearSpinner = showSpinnerIn(container, {
         color: defaultColor,
         spinner: options.spinner,
@@ -199,7 +206,7 @@ async function runChargeFlow(
             payment_instrument: instrument,
         });
 
-        options.onLoadingStateChange?.('polling-charge-state');
+        emitLoadingState('polling-charge-state');
 
         const chargeState = await paymentsApi.awaitChargeState({
             ...options.awaitOptions,
@@ -212,18 +219,18 @@ async function runChargeFlow(
                 ) {
                     clearSpinner();
                     clearSpinner = () => {};
-                    options.onLoadingStateChange?.('idle');
+                    emitLoadingState('idle');
                 }
                 options.awaitOptions?.onStateChange?.(state);
             },
         });
 
         clearSpinner();
-        options.onLoadingStateChange?.('idle');
+        emitLoadingState('idle');
         resolveResult(chargeState);
     } catch (err) {
         clearSpinner();
-        options.onLoadingStateChange?.('idle');
+        emitLoadingState('idle');
         rejectResult(err);
     }
 }

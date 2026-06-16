@@ -71,7 +71,8 @@ export function showSpinnerIn(
         return () => {};
     }
     if (spinner?.render) {
-        return spinner.render(container);
+        const cleanup = spinner.render(container);
+        return typeof cleanup === 'function' ? cleanup : () => {};
     }
     const el = createLoadingSpinner(spinner?.color ?? color);
     container.appendChild(el);

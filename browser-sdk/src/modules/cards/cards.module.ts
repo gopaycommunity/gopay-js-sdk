@@ -211,9 +211,17 @@ export function createCardsApi(
                 spinnerCleanup = () => {};
             };
 
+            const emitLoadingState = (state: LoadingState) => {
+                try {
+                    options.onLoadingStateChange?.(state);
+                } catch {
+                    // consumer callback errors must not corrupt SDK flows
+                }
+            };
+
             // Show spinner during card-form-url fetch
             container.replaceChildren();
-            options.onLoadingStateChange?.('fetching-card-form-url');
+            emitLoadingState('fetching-card-form-url');
             spinnerCleanup = showSpinnerIn(container, {
                 color: spinnerColor,
                 spinner: options.spinner,
@@ -224,7 +232,7 @@ export function createCardsApi(
                 iframeSrc = await getCardFormUrl();
             } catch (err) {
                 clearSpinner();
-                options.onLoadingStateChange?.('idle');
+                emitLoadingState('idle');
                 throw err;
             }
 
@@ -239,7 +247,7 @@ export function createCardsApi(
                     )
                 ) {
                     clearSpinner();
-                    options.onLoadingStateChange?.('idle');
+                    emitLoadingState('idle');
                     throw new GoPaySDKError(
                         `[GoPayBrowserSDK] Card form URL origin is not trusted in production: "${expectedOrigin}". ` +
                             `Allowed: ${TRUSTED_CARD_FORM_ORIGINS.production.join(', ')}`,
@@ -268,7 +276,7 @@ export function createCardsApi(
             iframe.title = 'GoPay';
             container.appendChild(iframe);
 
-            options.onLoadingStateChange?.('iframe-loading');
+            emitLoadingState('iframe-loading');
             spinnerCleanup = showSpinnerIn(container, {
                 color: spinnerColor,
                 spinner: options.spinner,
@@ -304,7 +312,7 @@ export function createCardsApi(
             const cleanup = () => {
                 active = false;
                 clearSpinner();
-                options.onLoadingStateChange?.('idle');
+                emitLoadingState('idle');
                 if (onMessage) {
                     window.removeEventListener('message', onMessage);
                 }
@@ -317,7 +325,7 @@ export function createCardsApi(
             iframe.onload = () => {
                 clearSpinner();
                 iframe.style.display = '';
-                options.onLoadingStateChange?.('idle');
+                emitLoadingState('idle');
 
                 iframe.contentWindow?.postMessage(
                     {
@@ -354,7 +362,7 @@ export function createCardsApi(
                 }
 
                 container.replaceChildren();
-                options.onLoadingStateChange?.('charging');
+                emitLoadingState('charging');
                 spinnerCleanup = showSpinnerIn(container, {
                     color: spinnerColor,
                     spinner: options.spinner,
@@ -373,7 +381,7 @@ export function createCardsApi(
                         },
                     });
 
-                    options.onLoadingStateChange?.('polling-charge-state');
+                    emitLoadingState('polling-charge-state');
 
                     const chargeState = await paymentsApi.awaitChargeState({
                         ...awaitOptions,
@@ -385,18 +393,18 @@ export function createCardsApi(
                                 state.action?.redirect_url
                             ) {
                                 clearSpinner();
-                                options.onLoadingStateChange?.('idle');
+                                emitLoadingState('idle');
                             }
                             awaitOptions?.onStateChange?.(state);
                         },
                     });
 
                     clearSpinner();
-                    options.onLoadingStateChange?.('idle');
+                    emitLoadingState('idle');
                     resolveResult(chargeState);
                 } catch (err) {
                     clearSpinner();
-                    options.onLoadingStateChange?.('idle');
+                    emitLoadingState('idle');
                     rejectResult(err);
                 }
             };
