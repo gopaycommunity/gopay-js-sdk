@@ -14,6 +14,8 @@ export type {
     CardFormController,
     CardFormOptions,
     CardFormTheme,
+    LoadingState,
+    SpinnerConfig,
 } from './modules/cards/cards.module.js';
 export type { EncryptErrorCode } from './modules/cards/iframe-protocol.js';
 export { collectBrowserData } from './modules/payments/browser-data.js';

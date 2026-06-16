@@ -3,8 +3,12 @@ import {
     GoPaySDKError,
     type HttpClient,
 } from '@gopay-internal/core';
+import type {
+    LoadingState,
+    SpinnerConfig,
+} from '../../internal/loading-spinner.js';
+import { showSpinnerIn } from '../../internal/loading-spinner.js';
 import type { components } from '../../types/generated.js';
-import { createLoadingSpinner } from '../cards/loading-spinner.js';
 import type {
     AwaitChargeOptions,
     createPaymentsApi,
@@ -95,6 +99,17 @@ type WalletButtonBaseOptions = {
     onUnavailable?: () => void;
     /** Called when the user dismisses the wallet payment sheet without paying. */
     onCancel?: () => void;
+    /** Called on every loading state transition, regardless of the `spinner` setting. */
+    onLoadingStateChange?: (state: LoadingState) => void;
+    /**
+     * Control the built-in spinner shown during charging and polling.
+     * - omitted / `{}` — SDK shows the default GoPay-blue spinner.
+     * - `{ color }` — override the spinner color.
+     * - `{ render }` — replace the built-in spinner entirely; called with the container element,
+     *   must return a cleanup function.
+     * - `false` — SDK inserts no spinner DOM at all; use `onLoadingStateChange` for your own UI.
+     */
+    spinner?: SpinnerConfig;
 };
 
 export type ApplePayButtonOptions = WalletButtonBaseOptions & {
@@ -171,13 +186,20 @@ async function runChargeFlow(
     resolveResult: (v: PaymentChargeStatusResponse) => void,
     rejectResult: (e: unknown) => void,
 ): Promise<void> {
-    const spinner = createLoadingSpinner('#1899d6');
-    container.replaceChildren(spinner);
+    const defaultColor = '#1899d6';
+    container.replaceChildren();
+    options.onLoadingStateChange?.('charging');
+    let clearSpinner = showSpinnerIn(container, {
+        color: defaultColor,
+        spinner: options.spinner,
+    });
 
     try {
         await paymentsApi.chargePayment({
             payment_instrument: instrument,
         });
+
+        options.onLoadingStateChange?.('polling-charge-state');
 
         const chargeState = await paymentsApi.awaitChargeState({
             ...options.awaitOptions,
@@ -188,16 +210,20 @@ async function runChargeFlow(
                     state.state === 'ACTION_REQUIRED' &&
                     state.action?.redirect_url
                 ) {
-                    spinner.remove();
+                    clearSpinner();
+                    clearSpinner = () => {};
+                    options.onLoadingStateChange?.('idle');
                 }
                 options.awaitOptions?.onStateChange?.(state);
             },
         });
 
-        spinner.remove();
+        clearSpinner();
+        options.onLoadingStateChange?.('idle');
         resolveResult(chargeState);
     } catch (err) {
-        spinner.remove();
+        clearSpinner();
+        options.onLoadingStateChange?.('idle');
         rejectResult(err);
     }
 }

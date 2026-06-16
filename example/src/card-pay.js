@@ -126,6 +126,14 @@ export async function cardPayOpenIframe() {
                   extSubmitBtn.classList.toggle('js-btn-disabled', !isValid);
               }
             : undefined,
+        onLoadingStateChange: (state) => {
+            if (state !== 'idle') {
+                pre.textContent = `Loading… (${state})`;
+            }
+        },
+        spinner: theme.submitBackgroundColor
+            ? { color: theme.submitBackgroundColor }
+            : undefined,
     };
 
     const options = isDirectCharge

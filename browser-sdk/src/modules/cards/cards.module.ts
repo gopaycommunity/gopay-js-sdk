@@ -4,6 +4,11 @@ import {
     type HttpClient,
 } from '@gopay-internal/core';
 import { TRUSTED_CARD_FORM_ORIGINS } from '../../config.js';
+import type {
+    LoadingState,
+    SpinnerConfig,
+} from '../../internal/loading-spinner.js';
+import { showSpinnerIn } from '../../internal/loading-spinner.js';
 import type { components } from '../../types/generated.js';
 import type { EncryptedCardPayload } from '../../types/index.js';
 import type {
@@ -20,14 +25,13 @@ import type {
     CardSetTheme,
     OutboundMessage,
 } from './iframe-protocol.js';
-import { createLoadingSpinner } from './loading-spinner.js';
 
 type PaymentChargeStatusResponse =
     components['schemas']['Payment-Charge-Status-Response'];
 
 type PaymentsApi = ReturnType<typeof createPaymentsApi>;
 
-export type { CardFormTheme };
+export type { CardFormTheme, LoadingState, SpinnerConfig };
 
 export interface CardFormController<R = EncryptedCardPayload> {
     /**
@@ -78,6 +82,17 @@ type CardFormBaseOptions = {
     locale?: string;
     submitMode?: 'internal' | 'external';
     onValidityChange?: (isValid: boolean) => void;
+    /** Called on every loading state transition, regardless of the `spinner` setting. */
+    onLoadingStateChange?: (state: LoadingState) => void;
+    /**
+     * Control the built-in spinner.
+     * - omitted / `{}` — SDK shows the default spinner; color follows `theme.submitBackgroundColor`.
+     * - `{ color }` — override the spinner color.
+     * - `{ render }` — replace the built-in spinner entirely; called with the container element,
+     *   must return a cleanup function.
+     * - `false` — SDK inserts no spinner DOM at all; use `onLoadingStateChange` for your own UI.
+     */
+    spinner?: SpinnerConfig;
 };
 
 export type CardFormOptions = CardFormBaseOptions &
@@ -183,7 +198,36 @@ export function createCardsApi(
                 };
             }
 
-            const iframeSrc = await getCardFormUrl();
+            const spinnerColor =
+                options.theme?.submitBackgroundColor ??
+                DEFAULT_CARD_FORM_THEME.submitBackgroundColor ??
+                '#1899d6';
+
+            // Tracks the currently active spinner cleanup; reassigned on each state transition.
+            let spinnerCleanup: () => void = () => {};
+
+            const clearSpinner = () => {
+                spinnerCleanup();
+                spinnerCleanup = () => {};
+            };
+
+            // Show spinner during card-form-url fetch
+            container.replaceChildren();
+            options.onLoadingStateChange?.('fetching-card-form-url');
+            spinnerCleanup = showSpinnerIn(container, {
+                color: spinnerColor,
+                spinner: options.spinner,
+            });
+
+            let iframeSrc: string;
+            try {
+                iframeSrc = await getCardFormUrl();
+            } catch (err) {
+                clearSpinner();
+                options.onLoadingStateChange?.('idle');
+                throw err;
+            }
+
             const expectedOrigin = new URL(iframeSrc, globalThis.location?.href)
                 .origin;
 
@@ -194,6 +238,8 @@ export function createCardsApi(
                         expectedOrigin,
                     )
                 ) {
+                    clearSpinner();
+                    options.onLoadingStateChange?.('idle');
                     throw new GoPaySDKError(
                         `[GoPayBrowserSDK] Card form URL origin is not trusted in production: "${expectedOrigin}". ` +
                             `Allowed: ${TRUSTED_CARD_FORM_ORIGINS.production.join(', ')}`,
@@ -202,6 +248,8 @@ export function createCardsApi(
                 }
             }
 
+            // URL obtained — transition to iframe-loading state
+            clearSpinner();
             container.replaceChildren();
 
             const iframe = document.createElement('iframe');
@@ -215,9 +263,17 @@ export function createCardsApi(
                 'sandbox',
                 'allow-scripts allow-forms allow-same-origin',
             );
-            iframe.style.cssText = 'width:100%;height:100%;border:none;';
+            iframe.style.cssText =
+                'width:100%;height:100%;border:none;display:none;';
             iframe.title = 'GoPay';
             container.appendChild(iframe);
+
+            options.onLoadingStateChange?.('iframe-loading');
+            spinnerCleanup = showSpinnerIn(container, {
+                color: spinnerColor,
+                spinner: options.spinner,
+            });
+
             const shareableKey = client.getShareableKey() ?? '';
             const clientId = client.getClientId() ?? '';
             const theme = options.theme ?? DEFAULT_CARD_FORM_THEME;
@@ -247,6 +303,8 @@ export function createCardsApi(
 
             const cleanup = () => {
                 active = false;
+                clearSpinner();
+                options.onLoadingStateChange?.('idle');
                 if (onMessage) {
                     window.removeEventListener('message', onMessage);
                 }
@@ -257,6 +315,10 @@ export function createCardsApi(
             activeCleanup = cleanup;
 
             iframe.onload = () => {
+                clearSpinner();
+                iframe.style.display = '';
+                options.onLoadingStateChange?.('idle');
+
                 iframe.contentWindow?.postMessage(
                     {
                         type: 'GOPAY_CARD_FORM_INIT',
@@ -290,12 +352,13 @@ export function createCardsApi(
                     );
                     return;
                 }
-                const spinnerColor =
-                    theme.submitBackgroundColor ??
-                    DEFAULT_CARD_FORM_THEME.submitBackgroundColor ??
-                    '#1899d6';
-                const spinner = createLoadingSpinner(spinnerColor);
-                container.replaceChildren(spinner);
+
+                container.replaceChildren();
+                options.onLoadingStateChange?.('charging');
+                spinnerCleanup = showSpinnerIn(container, {
+                    color: spinnerColor,
+                    spinner: options.spinner,
+                });
 
                 try {
                     const { threeDS, awaitOptions } = options;
@@ -310,6 +373,8 @@ export function createCardsApi(
                         },
                     });
 
+                    options.onLoadingStateChange?.('polling-charge-state');
+
                     const chargeState = await paymentsApi.awaitChargeState({
                         ...awaitOptions,
                         threeDS,
@@ -319,16 +384,19 @@ export function createCardsApi(
                                 state.state === 'ACTION_REQUIRED' &&
                                 state.action?.redirect_url
                             ) {
-                                spinner.remove();
+                                clearSpinner();
+                                options.onLoadingStateChange?.('idle');
                             }
                             awaitOptions?.onStateChange?.(state);
                         },
                     });
 
-                    spinner.remove();
+                    clearSpinner();
+                    options.onLoadingStateChange?.('idle');
                     resolveResult(chargeState);
                 } catch (err) {
-                    spinner.remove();
+                    clearSpinner();
+                    options.onLoadingStateChange?.('idle');
                     rejectResult(err);
                 }
             };
