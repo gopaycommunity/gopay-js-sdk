@@ -1,6 +1,6 @@
 {
     "name": "@gopaycz/gopay-js-sdk",
-    "version": "1.6.4",
+    "version": "1.6.5",
     "description": "GoPay JavaScript SDK for server-side use (Node.js)",
     "keywords": [
         "gopay",

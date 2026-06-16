@@ -1,3 +1,17 @@
+## [1.6.5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.6.4...1.6.5) (2026-06-16)
+
+
+### Bug Fixes
+
+* add k8s domain to readme  GPOMA-2322 ([beb0923](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/beb0923d7221c4c6492702d667d2570068ae8a63))
+* add stress test GPOMA-2322 ([9fa803f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9fa803f32eff2857e4234a79b624a4be4ff63189))
+* address CodeRabbit comments — stress test improvements and engines field GPOMA-2322 ([8e6e56b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8e6e56b410718f91bf7787b04f9b124472800305))
+* disallow setting origin in applepay GPOMA-2322 ([cea3180](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/cea318090ce086453cfa466310f9d85eb2a72e09))
+* don't await ctrl.result after cancel — CANCELED keeps result pending for retry GPOMA-2322 ([ccaadac](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ccaadac22a49e378f7f0135efdb47659f84a2fb2))
+* remove checkout example entry from Vite build and serve.js GPOMA-2322 ([88ae654](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/88ae6548fa36300cee9fa2643611f3afe63088aa))
+* remove return_url from charge GPOMA-2322 ([4715cb1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4715cb1f66066bb79cec26b66526377193f4d37c))
+* update tests to match new startApplePaySession signature (no origin param) GPOMA-2322 ([8d3717b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8d3717b4d12ad10ed84d45bd73b410f099103847))
+
 ## [1.6.4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.6.3...1.6.4) (2026-06-11)
 
 
