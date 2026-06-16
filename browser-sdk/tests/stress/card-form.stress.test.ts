@@ -167,18 +167,23 @@ describe('mountCardForm — stress / leak detection', () => {
         // Instead just run many return-payload mounts (spinner not used).
 
         // Test the spinner singleton directly:
-        const { createLoadingSpinner } = await import(
-            '../../src/modules/cards/loading-spinner.js'
+        const { showSpinnerIn } = await import(
+            '../../src/internal/loading-spinner.js'
         );
+        const spinnerContainer = document.createElement('div');
         const stylesBefore = document.head.querySelectorAll('style').length;
 
         for (let i = 0; i < 50; i++) {
-            createLoadingSpinner('#1899d6').remove();
+            const cleanup = showSpinnerIn(spinnerContainer, {
+                color: '#1899d6',
+            });
+            cleanup();
         }
 
-        // stylesInjected flag ensures only one <style> is ever appended
-        expect(document.head.querySelectorAll('style').length).toBe(
-            stylesBefore + 1,
-        );
+        // stylesInjected flag ensures at most one <style> is ever appended
+        // (may already be 0 delta if a prior test in this file already triggered injection)
+        expect(
+            document.head.querySelectorAll('style').length,
+        ).toBeLessThanOrEqual(stylesBefore + 1);
     });
 });
