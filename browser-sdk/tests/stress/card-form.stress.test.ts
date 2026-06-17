@@ -171,7 +171,6 @@ describe('mountCardForm — stress / leak detection', () => {
             '../../src/internal/loading-spinner.js'
         );
         const spinnerContainer = document.createElement('div');
-        const stylesBefore = document.head.querySelectorAll('style').length;
 
         for (let i = 0; i < 50; i++) {
             const cleanup = showSpinnerIn(spinnerContainer, {
@@ -180,10 +179,9 @@ describe('mountCardForm — stress / leak detection', () => {
             cleanup();
         }
 
-        // stylesInjected flag ensures at most one <style> is ever appended
-        // (may already be 0 delta if a prior test in this file already triggered injection)
-        expect(
-            document.head.querySelectorAll('style').length,
-        ).toBeLessThanOrEqual(stylesBefore + 1);
+        const gpSpinStyleCount = Array.from(
+            document.head.querySelectorAll('style'),
+        ).filter((s) => s.textContent?.includes('gp-spin')).length;
+        expect(gpSpinStyleCount).toBe(1);
     });
 });

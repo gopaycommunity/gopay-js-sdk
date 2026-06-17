@@ -2,7 +2,6 @@ export type LoadingState =
     | 'idle'
     | 'fetching-card-form-url'
     | 'iframe-loading'
-    | 'encrypting'
     | 'charging'
     | 'polling-charge-state';
 

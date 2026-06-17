@@ -69,6 +69,15 @@ describe('showSpinnerIn()', () => {
         expect(innerCleanup).toHaveBeenCalledOnce();
     });
 
+    it('spinner: { render } falls back to no-op if render returns non-function', () => {
+        const render = vi.fn(() => undefined as unknown as () => void);
+        const cleanup = showSpinnerIn(container, {
+            color: '#1899d6',
+            spinner: { render },
+        });
+        expect(() => cleanup()).not.toThrow();
+    });
+
     it('cleanup removes the spinner element', () => {
         const cleanup = showSpinnerIn(container, { color: '#1899d6' });
         expect(container.children).toHaveLength(1);

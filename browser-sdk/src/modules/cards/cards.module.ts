@@ -4,6 +4,7 @@ import {
     type HttpClient,
 } from '@gopay-internal/core';
 import { TRUSTED_CARD_FORM_ORIGINS } from '../../config.js';
+import { makeLoadingEmitter } from '../../internal/loading-emitter.js';
 import type {
     LoadingState,
     SpinnerConfig,
@@ -211,13 +212,9 @@ export function createCardsApi(
                 spinnerCleanup = () => {};
             };
 
-            const emitLoadingState = (state: LoadingState) => {
-                try {
-                    options.onLoadingStateChange?.(state);
-                } catch {
-                    // consumer callback errors must not corrupt SDK flows
-                }
-            };
+            const emitLoadingState = makeLoadingEmitter(
+                options.onLoadingStateChange,
+            );
 
             // Show spinner during card-form-url fetch
             container.replaceChildren();
@@ -309,8 +306,11 @@ export function createCardsApi(
                 rejectResult = rej;
             });
 
+            let iframeLoadTimeout: ReturnType<typeof setTimeout> | undefined;
+
             const cleanup = () => {
                 active = false;
+                clearTimeout(iframeLoadTimeout);
                 clearSpinner();
                 emitLoadingState('idle');
                 if (onMessage) {
@@ -323,6 +323,7 @@ export function createCardsApi(
             activeCleanup = cleanup;
 
             iframe.onload = () => {
+                clearTimeout(iframeLoadTimeout);
                 clearSpinner();
                 iframe.style.display = '';
                 emitLoadingState('idle');
@@ -340,6 +341,26 @@ export function createCardsApi(
                     expectedOrigin,
                 );
             };
+
+            iframe.onerror = () => {
+                cleanup();
+                rejectResult(
+                    new GoPaySDKError(
+                        '[GoPayBrowserSDK] Card form iframe failed to load.',
+                        { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                    ),
+                );
+            };
+
+            iframeLoadTimeout = setTimeout(() => {
+                cleanup();
+                rejectResult(
+                    new GoPaySDKError(
+                        '[GoPayBrowserSDK] Card form iframe timed out.',
+                        { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                    ),
+                );
+            }, 30_000);
 
             const handleEncryptResult = async (
                 encryptedPayload: string,

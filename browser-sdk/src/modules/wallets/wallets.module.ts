@@ -3,6 +3,7 @@ import {
     GoPaySDKError,
     type HttpClient,
 } from '@gopay-internal/core';
+import { makeLoadingEmitter } from '../../internal/loading-emitter.js';
 import type {
     LoadingState,
     SpinnerConfig,
@@ -102,6 +103,11 @@ type WalletButtonBaseOptions = {
     /** Called on every loading state transition, regardless of the `spinner` setting. */
     onLoadingStateChange?: (state: LoadingState) => void;
     /**
+     * Spinner color is derived from `theme.submitBackgroundColor` when provided;
+     * use `spinner: { color }` to override independently.
+     */
+    theme?: { submitBackgroundColor?: string };
+    /**
      * Control the built-in spinner shown during charging and polling.
      * - omitted / `{}` — SDK shows the default GoPay-blue spinner.
      * - `{ color }` — override the spinner color.
@@ -186,18 +192,12 @@ async function runChargeFlow(
     resolveResult: (v: PaymentChargeStatusResponse) => void,
     rejectResult: (e: unknown) => void,
 ): Promise<void> {
-    const defaultColor = '#1899d6';
-    const emitLoadingState = (state: LoadingState) => {
-        try {
-            options.onLoadingStateChange?.(state);
-        } catch {
-            // consumer callback errors must not corrupt SDK flows
-        }
-    };
+    const spinnerColor = options.theme?.submitBackgroundColor ?? '#1899d6';
+    const emitLoadingState = makeLoadingEmitter(options.onLoadingStateChange);
     container.replaceChildren();
     emitLoadingState('charging');
     let clearSpinner = showSpinnerIn(container, {
-        color: defaultColor,
+        color: spinnerColor,
         spinner: options.spinner,
     });
 
