@@ -1,3 +1,17 @@
+## [1.6.6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.6.5...1.6.6) (2026-06-17)
+
+
+### Bug Fixes
+
+* address CodeRabbit review comments GPOMA-2349 ([be17af5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/be17af5dfb86743b9369028c9e493a406f0c0fc4))
+* address David Kolář reviewer comments GPOMA-2349 ([698a1c6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/698a1c624792013fe67f91c832665b9d7f9e9386))
+* guard awaitOptions.onStateChange in cards awaitChargeState GPOMA-2349 ([fa2b8a8](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fa2b8a802630d2786ec70a7783166d247ce27523))
+* guard awaitOptions.onStateChange in runChargeFlow GPOMA-2349 ([8f94a75](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8f94a753b497964aadc8bbee6f9a8783459ed7c8))
+* improve loading spinner GPOMA-2349 ([6be74be](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/6be74be5c66a003e0190e3491be8a0e38b3829e2))
+* suppress all dependency audit advisories (dev toolchain only) GPOMA-2349 ([b0c91ec](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b0c91ec2fc514965610462385f90d958b18b04c6))
+* suppress fast-uri HIGH advisories GPOMA-2349 ([af9aa16](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/af9aa1663aeccab2ca940f1468c21bfebee8f164))
+* update stress test to use new internal loading-spinner path GPOMA-2349 ([5ed3751](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5ed3751bc5dbe823b46a610b87d20df3e069e288))
+
 ## [1.6.5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.6.4...1.6.5) (2026-06-16)
 
 
