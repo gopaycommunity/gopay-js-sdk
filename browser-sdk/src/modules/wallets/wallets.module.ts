@@ -221,7 +221,11 @@ async function runChargeFlow(
                     clearSpinner = () => {};
                     emitLoadingState('idle');
                 }
-                options.awaitOptions?.onStateChange?.(state);
+                try {
+                    options.awaitOptions?.onStateChange?.(state);
+                } catch {
+                    // consumer callback errors must not corrupt SDK flows
+                }
             },
         });
 
