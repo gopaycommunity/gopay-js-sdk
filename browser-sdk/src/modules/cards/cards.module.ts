@@ -416,7 +416,11 @@ export function createCardsApi(
                                 clearSpinner();
                                 emitLoadingState('idle');
                             }
-                            awaitOptions?.onStateChange?.(state);
+                            try {
+                                awaitOptions?.onStateChange?.(state);
+                            } catch {
+                                // consumer callback errors must not corrupt SDK flows
+                            }
                         },
                     });
 
