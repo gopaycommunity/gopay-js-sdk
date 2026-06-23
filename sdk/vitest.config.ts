@@ -8,9 +8,9 @@ const pkg: { version: string } = JSON.parse(
 const version = pkg.version;
 
 const REQUIRED_E2E_ENV_KEYS = [
-    'GP_GW_JS_SDK_BASE_URL',
-    'GP_GW_JS_SDK_CLIENT_ID',
-    'GP_GW_JS_SDK_CLIENT_SECRET',
+    'GOPAY_PAYMENTS_V4_BASE_URL',
+    'GOPAY_PAYMENTS_V4_CLIENT_ID',
+    'GOPAY_PAYMENTS_V4_CLIENT_SECRET',
 ];
 
 function loadDotEnv(path: string): Record<string, string> {

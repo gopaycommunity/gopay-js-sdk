@@ -7,8 +7,8 @@ describe('auth.authenticate() — E2E', () => {
     let clientSecret: string;
 
     beforeAll(() => {
-        const baseUrl = process.env.GP_GW_JS_SDK_BASE_URL;
-        const rawEnvironment = process.env.GP_GW_JS_SDK_ENVIRONMENT;
+        const baseUrl = process.env.GOPAY_PAYMENTS_V4_BASE_URL;
+        const rawEnvironment = process.env.GOPAY_PAYMENTS_V4_ENVIRONMENT;
         const validEnvironments = ['sandbox', 'production'] as const;
         if (
             rawEnvironment !== undefined &&
@@ -17,24 +17,24 @@ describe('auth.authenticate() — E2E', () => {
             )
         ) {
             throw new Error(
-                `GP_GW_JS_SDK_ENVIRONMENT must be 'sandbox' or 'production', got: '${rawEnvironment}'`,
+                `GOPAY_PAYMENTS_V4_ENVIRONMENT must be 'sandbox' or 'production', got: '${rawEnvironment}'`,
             );
         }
         const environment = rawEnvironment as
             | 'sandbox'
             | 'production'
             | undefined;
-        clientId = process.env.GP_GW_JS_SDK_CLIENT_ID ?? '';
-        clientSecret = process.env.GP_GW_JS_SDK_CLIENT_SECRET ?? '';
+        clientId = process.env.GOPAY_PAYMENTS_V4_CLIENT_ID ?? '';
+        clientSecret = process.env.GOPAY_PAYMENTS_V4_CLIENT_SECRET ?? '';
 
         if (!baseUrl && !environment) {
             throw new Error(
-                'Missing required environment variables: set GP_GW_JS_SDK_ENVIRONMENT (sandbox|production) or GP_GW_JS_SDK_BASE_URL for a custom endpoint',
+                'Missing required environment variables: set GOPAY_PAYMENTS_V4_ENVIRONMENT (sandbox|production) or GOPAY_PAYMENTS_V4_BASE_URL for a custom endpoint',
             );
         }
         if (!clientId || !clientSecret) {
             throw new Error(
-                'Missing required environment variables: GP_GW_JS_SDK_CLIENT_ID, GP_GW_JS_SDK_CLIENT_SECRET',
+                'Missing required environment variables: GOPAY_PAYMENTS_V4_CLIENT_ID, GOPAY_PAYMENTS_V4_CLIENT_SECRET',
             );
         }
 

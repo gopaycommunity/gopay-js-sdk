@@ -26,7 +26,7 @@ export default defineConfig(() => {
         // Vite requires a trailing slash; serve.js strips it for prefix matching.
         base: process.env.GP_BASE_PATH ?? '/',
         envDir: resolve(repoRoot, 'sdk'),
-        envPrefix: 'GP_GW_JS_SDK_',
+        envPrefix: 'GOPAY_PAYMENTS_V4_',
         define: {
             __GOPAY_SDK_VERSION__: JSON.stringify(sdkVersion),
             __GOPAY_BROWSER_SDK_VERSION__: JSON.stringify(browserSdkVersion),
@@ -71,7 +71,7 @@ export default defineConfig(() => {
                     server.middlewares.use('/env.js', (_req, res) => {
                         res.setHeader('Content-Type', 'application/javascript');
                         res.end(
-                            `window._gpConfig = ${JSON.stringify({ baseUrl: process.env.GP_GW_JS_SDK_BASE_URL ?? null })};`,
+                            `window._gpConfig = ${JSON.stringify({ baseUrl: process.env.GOPAY_PAYMENTS_V4_BASE_URL ?? null })};`,
                         );
                     });
                 },

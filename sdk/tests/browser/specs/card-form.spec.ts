@@ -18,7 +18,7 @@ test('cards.mountCardForm() mounts iframe and the container becomes visible', as
     ).not.toMatch(/^── onError/);
 
     // Initialize the browser SDK before creating the payment.
-    // The shareable key field is pre-filled from GP_GW_JS_SDK_SHAREABLE_KEY when
+    // The shareable key field is pre-filled from GOPAY_PAYMENTS_V4_SHAREABLE_KEY when
     // that env var is set; fall back to a mock value so the test is self-contained.
     const pubKeyInput = page.locator('#cardpay-shareable-key');
     if (!(await pubKeyInput.inputValue())) {

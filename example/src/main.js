@@ -126,7 +126,8 @@ badge.textContent = 'LOADED';
 badge.className = 'badge ok';
 sdkInfo.textContent = JSON.stringify(
     {
-        baseUrl: import.meta.env.GP_GW_JS_SDK_BASE_URL ?? '(sandbox default)',
+        baseUrl:
+            import.meta.env.GOPAY_PAYMENTS_V4_BASE_URL ?? '(sandbox default)',
         methods: Object.keys(sdk).filter((k) => typeof sdk[k] === 'function'),
     },
     null,
