@@ -93,10 +93,10 @@ Build and start the container:
 yarn docker
 ```
 
-By default the SDK connects directly to the GoPay sandbox from the browser. To point at a different API environment, pass `GP_GW_JS_SDK_BASE_URL` at build time:
+By default the SDK connects directly to the GoPay sandbox from the browser. To point at a different API environment, pass `GOPAY_PAYMENTS_V4_BASE_URL` at build time:
 
 ```bash
-docker build --build-arg GP_GW_JS_SDK_BASE_URL=https://gw.alpha8.dev.gopay.com/api/merchant/payments/4.0 -t gopay-js-sdk-example:latest .
+docker build --build-arg GOPAY_PAYMENTS_V4_BASE_URL=https://gw.alpha8.dev.gopay.com/api/merchant/payments/4.0 -t gopay-js-sdk-example:latest .
 yarn docker:start
 ```
 
@@ -108,9 +108,9 @@ Playwright tests in `tests/browser/` run against the IIFE bundle served from `ex
 Credentials and base URL are read from `sdk/.env`:
 
 ```
-GP_GW_JS_SDK_BASE_URL=https://api.sandbox.gopay.com/api/merchant/payments/4.0
-GP_GW_JS_SDK_CLIENT_ID=your-client-id
-GP_GW_JS_SDK_CLIENT_SECRET=your-client-secret
+GOPAY_PAYMENTS_V4_BASE_URL=https://api.sandbox.gopay.com/api/merchant/payments/4.0
+GOPAY_PAYMENTS_V4_CLIENT_ID=your-client-id
+GOPAY_PAYMENTS_V4_CLIENT_SECRET=your-client-secret
 ```
 
 ## Code generation
