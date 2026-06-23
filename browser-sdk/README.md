@@ -289,7 +289,7 @@ mountCardForm(
 |---|---|---|---|
 | `flow` | `'return-payload' \| 'direct-charge'` | required | `direct-charge` requires prior `attachPayment()` |
 | `threeDS` | `ThreeDSConfig` | `{ mode: 'redirect' }` | `direct-charge` only — controls 3DS handling (see below) |
-| `theme` | `CardFormTheme` | built-in | See type definition in [iframe-protocol.ts](src/modules/cards/iframe-protocol.ts) |
+| `theme` | `CardFormTheme` | built-in | Exported from the package — `import type { CardFormTheme }` for full field reference |
 | `locale` | `string` | `navigator.language` | BCP 47, e.g. `'cs-CZ'` |
 | `submitMode` | `'internal' \| 'external'` | `'internal'` | `'external'` hides the iframe button; use `controller.submit()` |
 | `onValidityChange` | `(isValid: boolean) => void` | — | External submit mode only |
