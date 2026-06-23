@@ -105,7 +105,7 @@ The example page is served on [http://localhost:8080](http://localhost:8080).
 ## Browser tests
 
 Playwright tests in `tests/browser/` run against the IIFE bundle served from `example/index.html`.
-Credentials and base URL are read from `sdk/.env.e2e`:
+Credentials and base URL are read from `sdk/.env`:
 
 ```
 GP_GW_JS_SDK_BASE_URL=https://api.sandbox.gopay.com/api/merchant/payments/4.0

@@ -82,7 +82,7 @@ export default defineConfig({
         exclude: [...defaultExclude, 'tests/browser/**'],
         pool: 'forks',
         testTimeout: 15_000,
-        env: loadDotEnv(resolve(import.meta.dirname, '.env.e2e')),
+        env: loadDotEnv(resolve(import.meta.dirname, '.env')),
         reporters: ['verbose', 'junit'],
         outputFile: { junit: 'test-results/junit.xml' },
         coverage: {

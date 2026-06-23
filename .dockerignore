@@ -14,7 +14,7 @@ playwright-report
 
 # Local env files
 sdk/.env*
-!sdk/.env.e2e
+!sdk/.env
 
 # Dev certs
 example/certs

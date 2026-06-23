@@ -18,7 +18,7 @@
         "docker": "yarn docker:clean && yarn docker:build && yarn docker:start",
         "docker:build": "docker build -t gopay-js-sdk:latest .",
         "docker:clean": "docker ps -aq --filter ancestor=gopay-js-sdk:latest | grep . | xargs docker rm -f || true",
-        "docker:start": "docker run --name gopay-js-sdk -e GP_DEBUG=true --env-file sdk/.env.e2e -p 8080:8080 gopay-js-sdk:latest"
+        "docker:start": "docker run --name gopay-js-sdk -e GP_DEBUG=true --env-file sdk/.env -p 8080:8080 gopay-js-sdk:latest"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.13",

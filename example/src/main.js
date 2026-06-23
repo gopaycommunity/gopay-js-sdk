@@ -81,7 +81,7 @@ for (const id of [
 }
 
 // -----------------------------------------------------------------------
-// Pre-populate auth fields from Vite env (sdk/.env.e2e) — fall back to empty
+// Pre-populate auth fields from Vite env (sdk/.env) — fall back to empty
 // -----------------------------------------------------------------------
 if (clientId) {
     document.getElementById('auth-client-id').value = clientId;
