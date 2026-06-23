@@ -30,6 +30,8 @@ definitions:
     #   GOPAY_PAYMENTS_V4_GOID, GOPAY_PAYMENTS_V4_SHAREABLE_KEY
     - step: &test-vitest
         name: Tests & coverage
+        runs-on:
+          - cypress
         caches:
           - yarn-global
           - yarn-cache
@@ -106,6 +108,8 @@ definitions:
     - step: &test-playwright
         name: Browser smoke test (IIFE)
         image: mcr.microsoft.com/playwright:v1.59.1-noble
+        runs-on:
+          - cypress
         caches:
           - yarn-global
           - yarn-cache
