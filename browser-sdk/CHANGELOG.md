@@ -1,3 +1,15 @@
+## [1.2.4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.2.3...browser-sdk-1.2.4) (2026-06-24)
+
+
+### Bug Fixes
+
+* clarify theming link GPOMA-2364 ([dca521f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/dca521f92fce78714d5ae5ee0ae2052f75f160f4))
+* rename env filename GPOMA-2364 ([5eed047](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5eed047b701a3350370c6da2467bdcb2bbacf356))
+* rename remaining GP_GW_JS_SDK_* refs and make BASE_URL optional in e2e config GPOMA-2364 ([4e4774b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4e4774b1a8e4f5948f8674e3805568ba9aa4b445))
+* run tests on local node GPOMA-2364 ([a54e7fa](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a54e7facda750dcc423fdca0ae7142b93cc9344d))
+* update env example GPOMA-2364 ([fe2a3ea](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fe2a3eaa86ab5ef2c77ed3e2016f3069b5d5ff2e))
+* update README env var names to GOPAY_PAYMENTS_V4_ prefix GPOMA-2364 ([cb3a07a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/cb3a07a056a10fd3d90f0d20fa147e7ddfb4a34f))
+
 ## [1.2.3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.2.2...browser-sdk-1.2.3) (2026-06-17)
 
 
