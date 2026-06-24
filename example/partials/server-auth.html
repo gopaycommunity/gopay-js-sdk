@@ -16,7 +16,7 @@
     <p class="note">
         Run <code>yarn example</code> from the repo root.
         Credentials and base URL can be supplied for testing in <code>sdk/.env</code>
-        (<code>GP_GW_JS_SDK_CLIENT_ID</code>, <code>GP_GW_JS_SDK_CLIENT_SECRET</code>, <code>GP_GW_JS_SDK_BASE_URL</code>, <code>GP_GW_JS_SDK_SHAREABLE_KEY</code>).
+        (<code>GOPAY_PAYMENTS_V4_CLIENT_ID</code>, <code>GOPAY_PAYMENTS_V4_CLIENT_SECRET</code>, <code>GOPAY_PAYMENTS_V4_BASE_URL</code>, <code>GOPAY_PAYMENTS_V4_SHAREABLE_KEY</code>).
     </p>
 </section>
 
@@ -45,7 +45,7 @@
 <!-- getBrowserKeys -->
 <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
     <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getBrowserKeys()</h2>
-    <p class="desc">Returns <code>{ shareable_key, client_id }</code> for initializing the browser SDK. Requires <code>shareableKey</code> in the server SDK config (<code>GP_GW_JS_SDK_SHAREABLE_KEY</code>) and prior authentication. Auto-fills the browser SDK fields below.</p>
+    <p class="desc">Returns <code>{ shareable_key, client_id }</code> for initializing the browser SDK. Requires <code>shareableKey</code> in the server SDK config (<code>GOPAY_PAYMENTS_V4_SHAREABLE_KEY</code>) and prior authentication. Auto-fills the browser SDK fields below.</p>
     <button type="button" onclick="runGetBrowserKeys()">Run</button>
     <pre id="get-browser-keys-output">—</pre>
 </section>

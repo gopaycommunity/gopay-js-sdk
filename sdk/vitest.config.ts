@@ -8,7 +8,6 @@ const pkg: { version: string } = JSON.parse(
 const version = pkg.version;
 
 const REQUIRED_E2E_ENV_KEYS = [
-    'GOPAY_PAYMENTS_V4_BASE_URL',
     'GOPAY_PAYMENTS_V4_CLIENT_ID',
     'GOPAY_PAYMENTS_V4_CLIENT_SECRET',
 ];
