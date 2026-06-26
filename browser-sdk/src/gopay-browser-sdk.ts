@@ -65,6 +65,11 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
     let paymentsApi: PaymentsApi | null = null;
     const getPaymentsApi = () => paymentsApi;
 
+    const { isCardFormMounted, ...cardsApi } = createCardsApi(
+        client,
+        getPaymentsApi,
+    );
+
     return {
         version: SDK_VERSION,
         ...createAuthApi(client),
@@ -73,11 +78,20 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
          * Exchange a `payment_secret` for a payment-scoped JWT and unlock
          * payment methods (`chargePayment`, Apple Pay, Google Pay, `getStatus`).
          * Must be called before `mountCardForm({ flow: 'direct-charge' })`.
+         *
+         * Throws `INVALID_ARGUMENT` if a card form is currently mounted — call
+         * `unmount()` on the active controller first to avoid charging the wrong payment.
          */
         async attachPayment({
             paymentId,
             paymentSecret,
         }: AttachPaymentArgs): Promise<void> {
+            if (isCardFormMounted()) {
+                throw new GoPaySDKError(
+                    '[GoPayBrowserSDK] Cannot re-attach payment while a card form is mounted. Call unmount() on the active controller first.',
+                    { errorCode: GoPayErrorCodes.INVALID_ARGUMENT },
+                );
+            }
             const pid = requireNonEmptyString(paymentId, 'paymentId');
             const secret = requireNonEmptyString(
                 paymentSecret,
@@ -88,7 +102,7 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
             paymentsApi = createPaymentsApi(client, pid, threeDS);
         },
 
-        ...createCardsApi(client, getPaymentsApi),
+        ...cardsApi,
         ...createWalletsApi(client, getPaymentsApi),
 
         // Payment-scoped methods — only available after attachPayment()

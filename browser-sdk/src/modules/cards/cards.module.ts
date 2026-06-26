@@ -136,6 +136,8 @@ export function createCardsApi(
     }
 
     return {
+        isCardFormMounted: () => !!activeCleanup,
+
         /**
          * Fetch the GoPay-hosted card encryption iframe URL, mount it into
          * `container`, and return a {@link CardFormController}.
