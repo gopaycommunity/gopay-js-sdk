@@ -40,7 +40,9 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
     function emitError<E extends GoPaySDKError | GoPayHTTPError>(
         error: E,
     ): never {
-        config.onError?.(error);
+        try {
+            config.onError?.(error);
+        } catch {}
         throw error;
     }
 

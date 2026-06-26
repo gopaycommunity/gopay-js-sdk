@@ -57,7 +57,7 @@ const charge = await sdk.chargePayment(payment.id, {
     input: {
       input_type: 'CARD_TOKEN',
       card_token: cardToken.token,
-      challenge_preferrence: 'AUTO',
+      challenge_preference: 'AUTO',
     },
   },
 });
@@ -420,7 +420,7 @@ const charge = await sdk.chargePayment(payment.id, {
     input: {
       input_type: 'CARD_TOKEN',
       card_token: cardToken.token,
-      challenge_preferrence: 'AUTO',
+      challenge_preference: 'AUTO',
     },
   },
 });

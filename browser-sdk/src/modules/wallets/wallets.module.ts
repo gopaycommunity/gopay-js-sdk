@@ -285,25 +285,34 @@ export function createWalletsApi(
                 return { result, unmount: () => {} };
             }
 
-            // Inject Apple Pay JS SDK (needed for the <apple-pay-button> web component)
-            try {
-                await loadScriptOnce(APPLE_PAY_SCRIPT_SRC);
-            } catch {
-                const err = new GoPaySDKError(
-                    '[GoPayBrowserSDK] Failed to load Apple Pay SDK script.',
-                    { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
-                );
-                const result = Promise.reject<PaymentChargeStatusResponse>(err);
-                result.catch(() => {});
-                return { result, unmount: () => {} };
-            }
-
-            // Feature detection — ApplePaySession is a browser global not in the TS lib types
-            const ApplePaySession = (
+            // Inject Apple Pay JS SDK only when ApplePaySession is not already defined —
+            // if the host already loaded a different URL path, re-injection would double-evaluate.
+            let ApplePaySession = (
                 globalThis as unknown as {
                     ApplePaySession?: ApplePaySessionGlobal;
                 }
             ).ApplePaySession;
+            if (!ApplePaySession) {
+                try {
+                    await loadScriptOnce(APPLE_PAY_SCRIPT_SRC);
+                } catch {
+                    const err = new GoPaySDKError(
+                        '[GoPayBrowserSDK] Failed to load Apple Pay SDK script.',
+                        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
+                    );
+                    const result =
+                        Promise.reject<PaymentChargeStatusResponse>(err);
+                    result.catch(() => {});
+                    return { result, unmount: () => {} };
+                }
+                ApplePaySession = (
+                    globalThis as unknown as {
+                        ApplePaySession?: ApplePaySessionGlobal;
+                    }
+                ).ApplePaySession;
+            }
+
+            // Feature detection
             if (!ApplePaySession?.canMakePayments()) {
                 return makeUnavailableController(options.onUnavailable);
             }

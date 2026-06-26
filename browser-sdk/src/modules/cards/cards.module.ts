@@ -515,7 +515,7 @@ export function createCardsApi(
                     if (submitMode !== 'external') {
                         throw new GoPaySDKError(
                             '[GoPayBrowserSDK] submit() is only available in external submit mode (submitMode: "external").',
-                            { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                            { errorCode: GoPayErrorCodes.INVALID_ARGUMENT },
                         );
                     }
                     if (active) {

@@ -103,11 +103,11 @@ export function awaitCharge<
                     }
 
                     if (state.state === 'ACTION_REQUIRED') {
-                        clearTimeout(initialTimer);
                         if (
                             state.action?.redirect_url &&
                             state.action.redirect_url !== lastActionRequiredUrl
                         ) {
+                            clearTimeout(initialTimer);
                             lastActionRequiredUrl = state.action.redirect_url;
                             options?.onActionRequired?.(
                                 state.action.redirect_url,
