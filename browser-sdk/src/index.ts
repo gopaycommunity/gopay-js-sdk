@@ -1,3 +1,5 @@
+export type { GoPayScope } from '@gopay-internal/core';
+export { combineScopes, GoPayScopes } from '@gopay-internal/core';
 export type { GoPayBrowserConfig } from './config.js';
 export type { GoPayErrorCode } from './errors.js';
 export { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from './errors.js';

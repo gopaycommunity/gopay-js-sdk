@@ -10,5 +10,7 @@ export type { StoredTokenPair } from './http/token-store.js';
 export { createTokenStore } from './http/token-store.js';
 export type { AwaitPaymentStatusOptions } from './payment-status-polling.js';
 export { awaitPaymentStatus } from './payment-status-polling.js';
+export type { GoPayScope } from './scopes.js';
+export { combineScopes, GoPayScopes } from './scopes.js';
 export type { BrowserData } from './types/browser-data.js';
 export { assertHttpsOrigin, requireNonEmptyString } from './validate.js';
