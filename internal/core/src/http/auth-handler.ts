@@ -74,11 +74,16 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
     async function fetchAndHandle401(
         url: string,
         init: Omit<RequestInit, 'signal'> & { headers: Headers },
+        signal?: AbortSignal,
     ): Promise<Response> {
         const { getTimeoutMs, debugLogResponse, store, emitError } = deps;
         const timeoutMs = getTimeoutMs();
+        const timeoutSignal = AbortSignal.timeout(timeoutMs);
+        const combinedSignal = signal
+            ? AbortSignal.any([signal, timeoutSignal])
+            : timeoutSignal;
 
-        let response = await fetchWithRetry(url, init, timeoutMs);
+        let response = await fetchWithRetry(url, init, combinedSignal);
         debugLogResponse(response);
 
         if (response.status !== 401 || url.includes(AUTH_PATH)) {
@@ -98,7 +103,7 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
             new Request(url, {
                 ...init,
                 headers: retryHeaders,
-                signal: AbortSignal.timeout(timeoutMs),
+                signal: combinedSignal,
             }),
         );
         debugLogResponse(response);

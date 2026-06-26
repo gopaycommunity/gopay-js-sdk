@@ -8,7 +8,7 @@ const sleep = (ms: number) =>
 export async function fetchWithRetry(
     url: string,
     init: Omit<RequestInit, 'signal'>,
-    timeoutMs: number,
+    signal: AbortSignal,
 ): Promise<Response> {
     const method = (init?.method ?? 'GET').toUpperCase();
     const isIdempotent = IDEMPOTENT_METHODS.has(method);
@@ -22,7 +22,7 @@ export async function fetchWithRetry(
             const response = await fetch(
                 new Request(url, {
                     ...init,
-                    signal: AbortSignal.timeout(timeoutMs),
+                    signal,
                 }),
             );
             if (response.status < 500) {

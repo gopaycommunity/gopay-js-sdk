@@ -150,10 +150,11 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                 const headers = new Headers({ Accept: 'application/json' });
                 await auth.injectAuth(headers, url, options);
                 debugLogRequest('GET', url);
-                const response = await auth.fetchAndHandle401(url, {
-                    method: 'GET',
-                    headers,
-                });
+                const response = await auth.fetchAndHandle401(
+                    url,
+                    { method: 'GET', headers },
+                    options?.signal,
+                );
                 await throwIfNotOk(response);
                 return (await response.json()) as T;
             } catch (err) {
@@ -174,11 +175,11 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                 });
                 await auth.injectAuth(headers, url, options);
                 debugLogRequest('POST', url);
-                const response = await auth.fetchAndHandle401(url, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(body),
-                });
+                const response = await auth.fetchAndHandle401(
+                    url,
+                    { method: 'POST', headers, body: JSON.stringify(body) },
+                    options?.signal,
+                );
                 await throwIfNotOk(response);
                 return (await response.json()) as T;
             } catch (err) {
@@ -192,10 +193,11 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                 const headers = new Headers();
                 await auth.injectAuth(headers, url, options);
                 debugLogRequest('DELETE', url);
-                const response = await auth.fetchAndHandle401(url, {
-                    method: 'DELETE',
-                    headers,
-                });
+                const response = await auth.fetchAndHandle401(
+                    url,
+                    { method: 'DELETE', headers },
+                    options?.signal,
+                );
                 await throwIfNotOk(response);
             } catch (err) {
                 return handleError(err);
