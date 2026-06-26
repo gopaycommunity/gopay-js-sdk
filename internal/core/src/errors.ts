@@ -46,16 +46,23 @@ export type GoPayErrorCode =
 export class GoPaySDKError extends Error {
     readonly name = 'GoPaySDKError';
     readonly errorCode: GoPayErrorCode | undefined;
+    /** Final charge state attached when the error is CHARGE_FAILED — lets catch callers read decline codes without an onStateChange callback. */
+    readonly chargeState: unknown;
 
     constructor(
         message: string,
-        options?: { cause?: unknown; errorCode?: GoPayErrorCode },
+        options?: {
+            cause?: unknown;
+            errorCode?: GoPayErrorCode;
+            chargeState?: unknown;
+        },
     ) {
         super(message);
         if (options?.cause !== undefined) {
             (this as { cause?: unknown }).cause = options.cause;
         }
         this.errorCode = options?.errorCode;
+        this.chargeState = options?.chargeState;
     }
 }
 

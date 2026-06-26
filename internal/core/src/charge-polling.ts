@@ -96,6 +96,7 @@ export function awaitCharge<
                             reject(
                                 new GoPaySDKError('[GoPaySDK] Charge failed', {
                                     errorCode: GoPayErrorCodes.CHARGE_FAILED,
+                                    chargeState: state,
                                 }),
                             ),
                         );
