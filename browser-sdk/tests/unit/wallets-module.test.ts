@@ -185,6 +185,7 @@ describe('mountApplePayButton()', () => {
     });
 
     it('returns WALLET_BUTTON_ERROR when script fails to load', async () => {
+        vi.unstubAllGlobals(); // ApplePaySession absent → loadScriptOnce is reached
         mockLoadScriptOnce.mockRejectedValue(new Error('network'));
         const client = makeClient();
         const api = createWalletsApi(

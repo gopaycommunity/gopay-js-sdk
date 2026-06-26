@@ -204,13 +204,19 @@ describe('mountApplePayButton — stress / leak detection', () => {
     });
 
     // -------------------------------------------------------------------------
-    // loadScriptOnce: called on every mount (caching is inside load-script.ts,
-    // not visible here since it's mocked), but we verify the mock was reached
+    // loadScriptOnce: called only when ApplePaySession is absent; skipped once
+    // it is available. The first mount triggers the load; subsequent mounts
+    // (same globalThis) find the session already present and skip it.
     // -------------------------------------------------------------------------
 
-    it('loadScriptOnce is called every mount (caching responsibility is in load-script.ts)', async () => {
+    it('loadScriptOnce is called once when ApplePaySession is absent, skipped on subsequent mounts', async () => {
         const { MockApplePaySession } = makeApplePaySessionClass();
-        vi.stubGlobal('ApplePaySession', MockApplePaySession);
+
+        // ApplePaySession is absent before the first mount. mockLoadScriptOnce
+        // simulates the script load by stubbing the global when it resolves.
+        mockLoadScriptOnce.mockImplementation(async () => {
+            vi.stubGlobal('ApplePaySession', MockApplePaySession);
+        });
 
         const callsBefore = mockLoadScriptOnce.mock.calls.length;
         const MOUNTS = 10;
@@ -225,8 +231,25 @@ describe('mountApplePayButton — stress / leak detection', () => {
             ctrl.unmount();
         }
 
-        // wallets.module.ts calls loadScriptOnce on each mount —
-        // the real load-script.ts deduplicates, but the mock does not
-        expect(mockLoadScriptOnce.mock.calls.length - callsBefore).toBe(MOUNTS);
+        // First mount calls loadScriptOnce (ApplePaySession was absent).
+        // Remaining mounts skip it — ApplePaySession is now on globalThis.
+        expect(mockLoadScriptOnce.mock.calls.length - callsBefore).toBe(1);
+    });
+
+    it('loadScriptOnce is not called when ApplePaySession is already present', async () => {
+        const { MockApplePaySession } = makeApplePaySessionClass();
+        vi.stubGlobal('ApplePaySession', MockApplePaySession);
+
+        const callsBefore = mockLoadScriptOnce.mock.calls.length;
+
+        const api = createWalletsApi(
+            makeHttpClient() as never,
+            () => makePaymentsApiMock() as never,
+        );
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+        ctrl.unmount();
+
+        expect(mockLoadScriptOnce.mock.calls.length - callsBefore).toBe(0);
     });
 });
