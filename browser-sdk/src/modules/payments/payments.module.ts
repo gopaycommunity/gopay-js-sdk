@@ -1,6 +1,8 @@
 import {
     awaitCharge,
+    awaitPaymentStatus,
     type AwaitChargeOptions as CoreAwaitChargeOptions,
+    type AwaitPaymentStatusOptions as CoreAwaitPaymentStatusOptions,
     GoPayErrorCodes,
     GoPaySDKError,
     type HttpClient,
@@ -51,6 +53,10 @@ export type AwaitChargeOptions =
     CoreAwaitChargeOptions<PaymentChargeStatusResponse> & {
         threeDS?: ThreeDSConfig;
     };
+
+/** Options for {@link awaitPaymentStatus}. */
+export type AwaitPaymentStatusOptions =
+    CoreAwaitPaymentStatusOptions<PaymentDetails>;
 
 function assertHttpsUrl(url: string): void {
     if (new URL(url).protocol !== 'https:') {
@@ -257,6 +263,24 @@ export function createPaymentsApi(
                 ? `/payments/${paymentId}/qr-payment/info?format=${format}`
                 : `/payments/${paymentId}/qr-payment/info`;
             return client.get<QRPaymentDetails>(path);
+        },
+
+        /**
+         * Poll this payment's status until it reaches a terminal state.
+         *
+         * Use for QR and bank-transfer payments where completion is confirmed at
+         * the payment level (`state === 'PAID'`) rather than the charge level.
+         *
+         * No client-side timeout by default — the server cancels the payment on
+         * its own schedule. Pass `options.timeoutMs` for a client-side ceiling.
+         */
+        awaitPaymentStatus(
+            options?: AwaitPaymentStatusOptions,
+        ): Promise<PaymentDetails> {
+            return awaitPaymentStatus(
+                () => client.get<PaymentDetails>(`/payments/${paymentId}`),
+                options,
+            );
         },
     };
 }

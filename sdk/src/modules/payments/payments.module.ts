@@ -1,7 +1,9 @@
 import {
     assertHttpsOrigin,
     awaitCharge,
+    awaitPaymentStatus,
     type AwaitChargeOptions as CoreAwaitChargeOptions,
+    type AwaitPaymentStatusOptions as CoreAwaitPaymentStatusOptions,
     type GoPaySDKError,
     type HttpClient,
     requireNonEmptyString,
@@ -18,6 +20,10 @@ type PaymentChargeStatusResponse =
 /** Options for {@link awaitChargeState}. */
 export type AwaitChargeOptions =
     CoreAwaitChargeOptions<PaymentChargeStatusResponse>;
+
+/** Options for {@link awaitPaymentStatus}. */
+export type AwaitPaymentStatusOptions =
+    CoreAwaitPaymentStatusOptions<PaymentDetails>;
 type GooglePayInfoResponse =
     components['responses']['Google-Pay-Info-Response']['content']['application/json'];
 type ApplePayInfoResponse =
@@ -237,6 +243,30 @@ export function createPaymentsApi(client: HttpClient) {
                     client.get<PaymentChargeStatusResponse>(
                         `/payments/${pid}/charge`,
                     ),
+                options,
+            );
+        },
+
+        /**
+         * Poll the payment status until it reaches a terminal state.
+         *
+         * Resolves with the terminal `PaymentDetails` response.
+         * Use for QR and bank-transfer payments where completion is confirmed at
+         * the payment level (`state === 'PAID'`) rather than the charge level.
+         *
+         * No client-side timeout by default — the server cancels the payment on
+         * its own schedule. Pass `options.timeoutMs` for a client-side ceiling.
+         *
+         * @param paymentId - Payment session ID
+         * @param options   - Polling configuration and callbacks
+         */
+        awaitPaymentStatus(
+            paymentId: string,
+            options?: AwaitPaymentStatusOptions,
+        ): Promise<PaymentDetails> {
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            return awaitPaymentStatus(
+                () => client.get<PaymentDetails>(`/payments/${pid}`),
                 options,
             );
         },
