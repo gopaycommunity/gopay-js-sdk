@@ -213,7 +213,7 @@ const chargeResult = await googleCtrl.result;
 | `getChargeState()` | `GET /payments/{id}/charge` — current charge state |
 | `getGooglePayInfo()` | `GET /payments/{id}/google-pay/info` |
 | `getApplePayInfo()` | `GET /payments/{id}/apple-pay/info` |
-| `getApplePayAppInfo()` | `GET /payments/{id}/apple-pay/app-info` — native app config for `PKPaymentRequest` |
+| `getApplePayAppInfo()` | `GET /payments/{id}/apple-pay/app-info` — native app config for `PKPaymentRequest` (iOS/macOS apps only; web checkouts use `getApplePayInfo()` instead) |
 | `startApplePaySession(session)` | Wires merchant validation and begins an `ApplePaySession` (low-level; use `mountApplePayButton` for the full flow) |
 | `getQRPaymentInfo(format?)` | `GET /payments/{id}/qr-payment/info` |
 
@@ -300,6 +300,16 @@ mountCardForm(
 |---|---|
 | `{ mode: 'redirect' }` (default) | Navigates the top-level page to the ACS URL. The returned promise stays pending as the page unloads. After 3DS, the bank redirects to the `return_url` set at payment creation; call `getChargeState()` there to confirm the outcome. |
 | `{ mode: 'manual' }` | Does nothing automatically. Handle the ACS URL yourself via the `onActionRequired` callback in `awaitChargeState`. |
+
+> **`mode: 'redirect'` and `controller.result`**: When 3DS triggers a full-page navigation, `controller.result` never resolves or rejects — the page unloads while it is still pending. **Do not `await controller.result` to detect completion on this code path.** Instead, after the bank redirects the customer back to your `return_url`, use `getChargeState()` on your server (or `sdk.getChargeState()` in a fresh browser session after calling `attachPayment` again) to confirm the final outcome:
+>
+> ```ts
+> // On your return_url page — payment_id is typically a URL query param
+> const sdk = createGoPayBrowserSDK({ ... });
+> await sdk.attachPayment({ paymentId, paymentSecret });
+> const charge = await sdk.getChargeState();
+> if (charge.state === 'PAID') { /* success */ }
+> ```
 
 **`CardFormController`:**
 

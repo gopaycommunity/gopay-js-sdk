@@ -82,7 +82,7 @@ The SDK uses OAuth2. **Client credentials (`client_id` / `client_secret`) must n
 Your backend holds the credentials. Call `authenticate()` once on startup — the SDK stores the token and refreshes it transparently before expiry:
 
 ```ts
-import { createGoPaySDK } from '@gopaycz/gopay-js-sdk';
+import { createGoPaySDK, GoPayScopes } from '@gopaycz/gopay-js-sdk';
 
 const sdk = createGoPaySDK({ environment: 'production' });
 
@@ -90,12 +90,26 @@ await sdk.authenticate({
   grant_type: 'client_credentials',
   client_id: process.env.GOPAY_CLIENT_ID,
   client_secret: process.env.GOPAY_CLIENT_SECRET,
-  scope: 'payment:write payment:read',
+  scope: GoPayScopes.PAYMENT_WRITE + ' ' + GoPayScopes.PAYMENT_READ,
+  // or: scope: combineScopes(GoPayScopes.PAYMENT_WRITE, GoPayScopes.PAYMENT_READ)
+  // or just a plain string: scope: 'payment:write payment:read'
 });
 
 // All subsequent calls attach the Bearer token automatically.
 const payment = await sdk.createPayment(goid, params);
 ```
+
+### Scopes reference
+
+| Scope | Constant | Used by |
+|---|---|---|
+| `payment:write` | `GoPayScopes.PAYMENT_WRITE` | `createPayment`, `chargePayment`, `refundPayment`, recurrences, payment links |
+| `payment:read` | `GoPayScopes.PAYMENT_READ` | `getPaymentStatus`, `getChargeState`, `listRefunds`, `getRefund`, recurrence status |
+| `card:write` | `GoPayScopes.CARD_WRITE` | `getBrowserKeys()` — allows the browser SDK to present the card form |
+| `card:read` | `GoPayScopes.CARD_READ` | `getCardDetails`, `deleteCard` |
+| `payment:charge` | `GoPayScopes.PAYMENT_CHARGE` | Browser SDK only (`attachPayment` / `payment_credentials` grant) |
+
+For `getBrowserKeys()` to work, include both `payment:write` and `card:write` in your server-side `authenticate()` call. `shareableKey` must also be set in the SDK config (see [Browser keys](#browser-keys) below).
 
 ---
 
@@ -152,6 +166,28 @@ The one exception is `startApplePaySession`: it returns `void` instead of a Prom
 | `authenticate(params)` | Server-side: obtain an access/refresh token pair using `client_credentials`. Stores the token internally for automatic refresh. |
 | `isAuthenticated()` | Returns `true` if a token is currently stored. Does not check expiry — expired tokens are refreshed transparently on the next API call. |
 | `logout()` | Clear all stored tokens and credentials. All subsequent API calls will throw until the SDK is re-authenticated. |
+
+#### Browser keys
+
+`getBrowserKeys()` returns `{ shareable_key, client_id }` — pass both to the browser SDK via your own API endpoint.
+
+**Prerequisites:**
+- The `shareableKey` option must be set when creating the SDK:
+  ```ts
+  const sdk = createGoPaySDK({
+    environment: 'production',
+    shareableKey: process.env.GOPAY_SHAREABLE_KEY, // issued in GoPay admin alongside client_id
+  });
+  ```
+- The token scope must include `card:write` (obtain `shareableKey` from the GoPay admin portal):
+  ```ts
+  await sdk.authenticate({
+    ...,
+    scope: 'payment:write payment:read card:write',
+  });
+  ```
+
+Throws `AUTH_CREDENTIALS_MISSING` if either prerequisite is missing.
 
 ### Payments
 
@@ -313,127 +349,71 @@ document.body.appendChild(img);
 
 ### Cards
 
+> **SDK boundary:** card data encryption and the card form UI live in the **browser SDK** ([`@gopaycz/gopay-js-sdk-browser`](../browser-sdk/README.md)), not here. The browser encrypts the card inside a GoPay-hosted iframe and returns an `encryptedPayload`; your server calls `tokenizeEncryptedCard` to convert it to a card token, then charges the payment. Raw card data never touches your server or this SDK.
+
 | Method | Description |
 |---|---|
-| `mountCardForm(container, options?)` | Fetches the GoPay-hosted iframe URL from `GET /encryption/card-form-url`, mounts it into `container`, and returns `Promise<CardFormController>`. The controller exposes a `result` promise (resolves to the card token on submit), `setTheme()`, `setLocale()`, `submit()`, and `isValid` for runtime control. Handles iframe creation, internal communication, and `POST /cards/tokens` internally. Requires the `card:write` scope. |
-| `getCardDetails(cardId)` | Retrieve details of a stored permanent card token (`GET /cards/tokens/{cardId}`). Returns masked PAN, expiry, scheme, fingerprint, and the reusable token. Requires the `card:read` scope. |
-| `deleteCard(cardId)` | Delete a stored permanent card token (`DELETE /cards/tokens/{cardId}`). Returns `void`. |
+| `tokenizeEncryptedCard(encryptedPayload)` | Convert the encrypted payload returned by the browser SDK into a card token (`POST /cards/tokens`). Requires `card:write` scope. Returns `{ token, card_id? }`. |
+| `getCardDetails(cardId)` | Retrieve details of a stored permanent card token (`GET /cards/tokens/{cardId}`). Returns masked PAN, expiry, scheme, fingerprint, and the reusable token. Requires `card:read` scope. |
+| `deleteCard(cardId)` | Delete a stored permanent card token (`DELETE /cards/tokens/{cardId}`). Returns `void`. Requires `card:read` scope. |
 
-#### `mountCardForm` options
+### Flow A — server-side card charge
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `theme` | `CardFormTheme` | `DEFAULT_CARD_FORM_THEME` | Visual theme (colors, font sizes, spacing, button styles). All fields are optional — the iframe applies built-in defaults for any omitted field. |
-| `locale` | `string` | `navigator.language` | BCP 47 language tag for form labels and placeholders. The region subtag is ignored (`'cs-CZ'` → `'cs'`). Unknown locales fall back to English. Supported: `bg` `cs` `de` `en` `es` `et` `fr` `hr` `hu` `it` `lt` `lv` `nl` `pl` `pt` `ro` `ru` `sk` `sl` `uk`. |
-| `submitMode` | `'internal' \| 'external'` | `'internal'` | `'internal'` — the iframe renders its own submit button. `'external'` — the iframe hides the button; the parent controls submission via `cardForm.submit()` and receives validity changes via `onValidityChange`. |
-| `permanent` | `boolean` | `false` | When `true`, a permanent (reusable) card token is created that can be charged again for future payments. When `false` (default), a single-use token is created. |
-| `onValidityChange` | `(isValid: boolean) => void` | — | Called whenever the overall form validity changes in external submit mode. Use this to enable/disable your external submit button. |
-
-> **Send theme and locale at init time.** Both options are applied before the form is first painted, avoiding a flash of unstyled content. Use `cardForm.setTheme()` and `cardForm.setLocale()` on the returned controller if you need to update them after mounting.
-
-`CardFormTheme` is fully typed — hover in your editor to see every available field. Notable fields:
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `fontFamily` | `string` | `system-ui, sans-serif` | CSS font-family stack applied to all form text (labels, inputs, errors, submit button). Use system font stacks — e.g. `"Inter, system-ui, sans-serif"` — to match your page without loading external fonts. |
-
-> **Color format restriction.** All color fields in `CardFormTheme` must use one of the following CSS formats: `#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb(...)`, `rgba(...)`, `hsl(...)`, `hsla(...)`, or `transparent`. Values that do not match are silently replaced with `unset` (browser default). Named colors (e.g. `red`) and other CSS values are not accepted.
-
-Theme presets are exported from the package:
+The browser encrypts the card; your server tokenizes and charges. This is the recommended flow when your server handles the charge (e.g. to save the token for future use).
 
 ```ts
-import {
-  GoPaySDK,
-  DEFAULT_CARD_FORM_THEME,
-  DARK_CARD_FORM_THEME,
-} from '@gopaycz/gopay-js-sdk';
+// ── Browser (using @gopaycz/gopay-js-sdk-browser) ──────────────────────────
+import { createGoPayBrowserSDK, collectBrowserData } from '@gopaycz/gopay-js-sdk-browser';
 
-// Default theme, locale from navigator.language (options can be omitted entirely)
-const cardForm = await sdk.mountCardForm(container);
-const cardToken = await cardForm.result;
+const browserSdk = createGoPayBrowserSDK({ environment: 'production', shareableKey, clientId });
+const controller = await browserSdk.mountCardForm(container, { flow: 'return-payload' });
+const { encryptedPayload } = await controller.result;
 
-// Dark theme with Czech locale
-const cardForm = await sdk.mountCardForm(container, {
-  theme: DARK_CARD_FORM_THEME,
-  locale: 'cs',
-});
-const cardToken = await cardForm.result;
+// Collect browser data for 3DS — must be done in the browser
+const browserData = collectBrowserData();
 
-// Custom theme — override individual fields, keep the rest as defaults
-const cardForm = await sdk.mountCardForm(container, {
-  theme: { ...DEFAULT_CARD_FORM_THEME, submitBackgroundColor: '#your-brand-color' },
+// Forward both to your server endpoint
+await fetch('/api/charge', {
+  method: 'POST',
+  body: JSON.stringify({ paymentId, encryptedPayload, browserData }),
 });
 
-// Update theme or locale at runtime (e.g. user toggles dark mode or language)
-darkModeToggle.addEventListener('change', () => cardForm.setTheme(DARK_CARD_FORM_THEME));
-langSelect.addEventListener('change', e => cardForm.setLocale(e.target.value));
+// ── Server (using @gopaycz/gopay-js-sdk) ───────────────────────────────────
+import { createGoPaySDK } from '@gopaycz/gopay-js-sdk';
 
-const cardToken = await cardForm.result;
-```
+const sdk = createGoPaySDK({ environment: 'production' });
+await sdk.authenticate({ ..., scope: 'payment:write payment:read card:write' });
 
-#### External submit button
+// Handler for POST /api/charge
+const { encryptedPayload, paymentId, browserData } = req.body;
 
-Use `submitMode: 'external'` when you want the submit button to live outside the iframe — for example to match your own checkout UI. The iframe hides its built-in button, reports validity changes via `onValidityChange`, and waits for `cardForm.submit()` to trigger encryption.
+// 1. Convert encrypted payload to a card token
+const cardToken = await sdk.tokenizeEncryptedCard(encryptedPayload);
 
-```ts
-const payBtn = document.getElementById('pay-btn');
-
-const cardForm = await sdk.mountCardForm(container, {
-  submitMode: 'external',
-  onValidityChange(isValid) {
-    // Enable/disable your own submit button based on form validity.
-    payBtn.disabled = !isValid;
-  },
-});
-
-payBtn.addEventListener('click', () => {
-  cardForm.submit(); // triggers encryption inside the iframe
-});
-
-// Await the result exactly the same as in internal submit.
-const cardToken = await cardForm.result;
-```
-
-`cardForm.isValid` is also available as a synchronous getter in case you need to read the current validity state imperatively (e.g. inside a click handler before calling `submit()`).
-
-> Calling `submit()` in internal submit mode throws a `GoPaySDKError`. Calling it after the form completes or is unmounted is a no-op.
-
-### Card Pay
-
-Card number encryption must never run in publicly reachable JavaScript — doing so would expose the raw PAN to any script on the merchant's page. The SDK uses a GoPay-hosted iframe for this step so that raw card data never touches merchant code.
-
-```ts
-// 1. Create a payment session first (server-side).
-const payment = await sdk.createPayment(goid, params);
-
-// 2. Mount the iframe — the SDK fetches the hosted form URL from the API,
-//    mounts the iframe, then awaits the user submitting the card form,
-//    and calls POST /cards/tokens automatically.
-const container = document.getElementById('card-form-container');
-const cardForm = await sdk.mountCardForm(container);
-const cardToken = await cardForm.result;
-
-// 3. Charge the payment with the resulting card token.
-const charge = await sdk.chargePayment(payment.id, {
+// 2. Charge the payment — always forward browserData from the browser for 3DS
+const charge = await sdk.chargePayment(paymentId, {
   payment_instrument: {
     payment_instrument: 'PAYMENT_CARD',
     input: {
       input_type: 'CARD_TOKEN',
       card_token: cardToken.token,
       challenge_preference: 'AUTO',
+      browser_data: browserData, // required for 3DS — do not omit
     },
   },
 });
 
 if (charge.action?.redirect_url) {
-  // 3DS authentication required — redirect the customer.
-  window.location.href = charge.action.redirect_url;
+  // 3DS authentication required — redirect the customer
+  res.json({ redirectUrl: charge.action.redirect_url });
 }
 ```
 
+> **`browser_data` is required for 3DS.** The server SDK does not auto-collect it (only the browser SDK can). Always forward it from the browser via `collectBrowserData()`. Without it, 3DS context is absent and approval rates degrade.
+
 ### Saved cards
 
-When `mountCardForm` is called with `permanent: true`, the resulting `cardToken.token` is a permanent token tied to a card ID (`cardToken.card_id`). You can retrieve or delete it later:
+To save a card for future payments, pass `permanent: true` to `mountCardForm` in the browser SDK. The resulting `cardToken.card_id` can be stored and used to charge again without re-entering card details:
 
 ```ts
 // Retrieve details of a stored card (masked PAN, expiry, scheme, etc.)
@@ -451,8 +431,6 @@ const charge = await sdk.chargePayment(payment.id, {
 // Delete the card when the customer removes it from their account
 await sdk.deleteCard(card.card_id);
 ```
-
-`GET /encryption/public-key` and the JWE construction it enables are **intentionally not part of this SDK's API surface**.
 
 ---
 
@@ -599,6 +577,23 @@ try {
 |---|---|---|
 | `status` | `number` | HTTP status code (e.g. `401`, `422`). |
 | `body` | `unknown` | Parsed JSON response body, or raw text if JSON parsing failed. |
+
+A 422 error from `chargePayment` with an invalid amount looks like:
+
+```json
+{
+  "date_time": "2024-03-15T14:22:00.000+0100",
+  "error_code": 400,
+  "error_name": "PAYMENT_VALIDATION_ERROR",
+  "message": [
+    {
+      "field": "amount",
+      "message": "INVALID",
+      "description": "Value 0 is out of allowed range [1, 99999999]"
+    }
+  ]
+}
+```
 
 ### Centralised error handling with `onError`
 
