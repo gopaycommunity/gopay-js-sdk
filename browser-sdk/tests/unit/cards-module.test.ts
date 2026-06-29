@@ -919,6 +919,52 @@ describe('createCardsApi() — browser SDK', () => {
     });
 
     // -------------------------------------------------------------------------
+    // Concurrent mount guard (D1)
+    // -------------------------------------------------------------------------
+
+    describe('mountCardForm() while a form is being mounted', () => {
+        it('returns a controller whose result rejects with CARD_FORM_ALREADY_MOUNTED', async () => {
+            const cards = createCardsApi(client, () => null);
+
+            // Start (but don't await) the first mount so cardFormSessionActive is set
+            const promise1 = cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            promise1.then((c) => c.result.catch(() => {})).catch(() => {});
+
+            // Second call runs synchronously against the active flag
+            const ctrl2 = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+
+            const err = await ctrl2.result.catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CARD_FORM_ALREADY_MOUNTED,
+            );
+        });
+
+        it('the no-op controller from a concurrent mount has silent no-op methods', async () => {
+            const cards = createCardsApi(client, () => null);
+
+            const promise1 = cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            promise1.then((c) => c.result.catch(() => {})).catch(() => {});
+
+            const ctrl2 = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl2.result.catch(() => {});
+
+            expect(() => ctrl2.setTheme({} as never)).not.toThrow();
+            expect(() => ctrl2.setLocale('cs')).not.toThrow();
+            expect(() => ctrl2.submit()).not.toThrow();
+            expect(() => ctrl2.unmount()).not.toThrow();
+        });
+    });
+
+    // -------------------------------------------------------------------------
     // Previous iframe cleanup on re-mount
     // -------------------------------------------------------------------------
 

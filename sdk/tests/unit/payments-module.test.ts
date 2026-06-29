@@ -1300,6 +1300,197 @@ describe('PaymentsModule', () => {
                 GoPayErrorCodes.CHARGE_FAILED,
             );
         });
+
+        it('attaches chargeState to the CHARGE_FAILED error when state is FAILED', async () => {
+            const failedState = {
+                id: 'pay_300000001',
+                state: 'FAILED',
+                payment_instrument: { payment_instrument: 'PAYMENT_CARD' },
+                return_url: 'https://example.com/return',
+            };
+            fetchMock.mockResolvedValue(makeResponse(failedState));
+
+            const err = await payments
+                .awaitChargeState('pay_300000001', {
+                    intervalMs: 10,
+                    initialTimeoutMs: 5000,
+                })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CHARGE_FAILED,
+            );
+            expect((err as GoPaySDKError).chargeState).toEqual(failedState);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // awaitPaymentStatus()
+    // -------------------------------------------------------------------------
+
+    describe('awaitPaymentStatus()', () => {
+        it('throws synchronously when paymentId is empty', () => {
+            expect(() => payments.awaitPaymentStatus('')).toThrow(
+                'paymentId is required',
+            );
+        });
+
+        it('resolves with payment details when PAID on first poll', async () => {
+            const paidState = { ...mockPaymentResponse, state: 'PAID' };
+            fetchMock.mockResolvedValue(makeResponse(paidState));
+
+            const result = await payments.awaitPaymentStatus('pay_300000001', {
+                intervalMs: 10,
+            });
+
+            expect(result.state).toBe('PAID');
+            expect(result.id).toBe('pay_300000001');
+        });
+
+        it('polls until a terminal state is reached', async () => {
+            const pendingState = { ...mockPaymentResponse, state: 'CREATED' };
+            const paidState = { ...mockPaymentResponse, state: 'PAID' };
+
+            fetchMock
+                .mockResolvedValueOnce(makeResponse(pendingState))
+                .mockResolvedValueOnce(makeResponse(pendingState))
+                .mockResolvedValue(makeResponse(paidState));
+
+            const result = await payments.awaitPaymentStatus('pay_300000001', {
+                intervalMs: 10,
+            });
+
+            expect(result.state).toBe('PAID');
+            expect(fetchMock).toHaveBeenCalledTimes(3);
+        });
+
+        it('resolves on CANCELED terminal state', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ ...mockPaymentResponse, state: 'CANCELED' }),
+            );
+
+            const result = await payments.awaitPaymentStatus('pay_300000001', {
+                intervalMs: 10,
+            });
+
+            expect(result.state).toBe('CANCELED');
+        });
+
+        it('rejects with CHARGE_TIMEOUT when timeoutMs expires', async () => {
+            vi.useFakeTimers();
+
+            fetchMock.mockImplementation(async () =>
+                makeResponse({ ...mockPaymentResponse, state: 'CREATED' }),
+            );
+
+            const promise = payments.awaitPaymentStatus('pay_300000001', {
+                intervalMs: 100,
+                timeoutMs: 500,
+            });
+
+            const errPromise = promise.catch((e: unknown) => e);
+
+            await vi.advanceTimersByTimeAsync(600);
+            vi.clearAllTimers();
+            vi.useRealTimers();
+
+            const err = await errPromise;
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CHARGE_TIMEOUT,
+            );
+        });
+
+        it('rejects with CHARGE_FAILED when aborted via AbortSignal', async () => {
+            fetchMock.mockImplementation(async () =>
+                makeResponse({ ...mockPaymentResponse, state: 'CREATED' }),
+            );
+
+            const ac = new AbortController();
+            const promise = payments.awaitPaymentStatus('pay_300000001', {
+                intervalMs: 50,
+                signal: ac.signal,
+            });
+
+            ac.abort();
+
+            const err = await promise.catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CHARGE_FAILED,
+            );
+        });
+
+        it('rejects immediately with CHARGE_FAILED when signal is already aborted', async () => {
+            const ac = new AbortController();
+            ac.abort();
+
+            const err = await payments
+                .awaitPaymentStatus('pay_300000001', { signal: ac.signal })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CHARGE_FAILED,
+            );
+        });
+
+        it('fires onStateChange for each polled state including terminal', async () => {
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({ ...mockPaymentResponse, state: 'CREATED' }),
+                )
+                .mockResolvedValue(
+                    makeResponse({ ...mockPaymentResponse, state: 'PAID' }),
+                );
+
+            const onStateChange = vi.fn();
+            await payments.awaitPaymentStatus('pay_300000001', {
+                intervalMs: 10,
+                onStateChange,
+            });
+
+            expect(onStateChange).toHaveBeenCalledTimes(2);
+            expect(onStateChange).toHaveBeenCalledWith(
+                expect.objectContaining({ state: 'CREATED' }),
+            );
+            expect(onStateChange).toHaveBeenCalledWith(
+                expect.objectContaining({ state: 'PAID' }),
+            );
+        });
+
+        it('resolves with custom terminal states', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ ...mockPaymentResponse, state: 'PROCESSING' }),
+            );
+
+            const result = await payments.awaitPaymentStatus('pay_300000001', {
+                intervalMs: 10,
+                terminalStates: ['PROCESSING'],
+            });
+
+            expect(result.state).toBe('PROCESSING');
+        });
+
+        it('does not resolve on default terminal state when custom terminalStates excludes it', async () => {
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({ ...mockPaymentResponse, state: 'PAID' }),
+                )
+                .mockResolvedValue(
+                    makeResponse({ ...mockPaymentResponse, state: 'CANCELED' }),
+                );
+
+            const result = await payments.awaitPaymentStatus('pay_300000001', {
+                intervalMs: 10,
+                terminalStates: ['CANCELED'],
+            });
+
+            expect(result.state).toBe('CANCELED');
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
     });
 
     describe('getQRPaymentInfo()', () => {
