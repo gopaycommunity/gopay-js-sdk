@@ -1,5 +1,11 @@
 # gp-gw-js-sdk
 
+[![npm](https://img.shields.io/npm/v/@gopaycz/gopay-js-sdk)](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk)
+[![npm (browser)](https://img.shields.io/npm/v/@gopaycz/gopay-js-sdk-browser?label=npm%20%28browser%29)](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk-browser)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gp-gopay_gp-gw-js-sdk&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gp-gopay_gp-gw-js-sdk)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=gp-gopay_gp-gw-js-sdk&metric=coverage)](https://sonarcloud.io/summary/new_code?id=gp-gopay_gp-gw-js-sdk)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Monorepo for the GoPay JavaScript SDKs — two npm packages wrapping the GoPay Payments API v4.0.
 
 > **Integrating the server SDK?** See [sdk/README.md](sdk/README.md).\

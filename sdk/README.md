@@ -1,5 +1,8 @@
 # @gopaycz/gopay-js-sdk
 
+[![npm](https://img.shields.io/npm/v/@gopaycz/gopay-js-sdk)](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 GoPay JavaScript SDK for server-side use (Node.js) — wraps the new [GoPay Payments API v4](https://api-docs.gopay.com/).
 
 > **Building a browser integration?** Use [`@gopaycz/gopay-js-sdk-browser`](../browser-sdk/README.md) — it handles in-browser card encryption, direct-charge flows, and exposes an IIFE bundle for CDN use.

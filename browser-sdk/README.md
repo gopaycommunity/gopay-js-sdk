@@ -1,5 +1,8 @@
 # @gopaycz/gopay-js-sdk-browser
 
+[![npm](https://img.shields.io/npm/v/@gopaycz/gopay-js-sdk-browser)](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk-browser)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 GoPay browser SDK for card encryption and in-browser payments.
 
 ## Installation
