@@ -228,7 +228,12 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                         method: 'POST',
                         headers,
                         body: bodyStr,
-                        signal: AbortSignal.timeout(timeoutMs()),
+                        signal: options?.signal
+                            ? AbortSignal.any([
+                                  options.signal,
+                                  AbortSignal.timeout(timeoutMs()),
+                              ])
+                            : AbortSignal.timeout(timeoutMs()),
                     }),
                 );
                 debugLogResponse(response);

@@ -1,4 +1,5 @@
 import { GoPayErrorCodes, GoPaySDKError } from './errors.js';
+import { runPollLoop } from './polling.js';
 
 const DEFAULT_TERMINAL_STATES = new Set([
     'PAID',
@@ -21,7 +22,7 @@ export type AwaitPaymentStatusOptions<T extends { state: string }> = {
      * Omit (default) for indefinite polling — the server will cancel the payment on its own schedule.
      */
     timeoutMs?: number;
-    /** Abort signal to cancel polling. */
+    /** Abort signal to cancel polling. Rejects with `CHARGE_FAILED` when aborted. */
     signal?: AbortSignal;
     /** Called after every poll, including on terminal state (before resolve). */
     onStateChange?: (state: T) => void;
@@ -37,6 +38,7 @@ export type AwaitPaymentStatusOptions<T extends { state: string }> = {
  * Resolves with the terminal `PaymentDetails` response.
  * Rejects with `CHARGE_TIMEOUT` if `timeoutMs` is set and the payment does
  * not reach a terminal state in time.
+ * Rejects with `CHARGE_FAILED` if the abort signal fires.
  */
 export function awaitPaymentStatus<T extends { state: string }>(
     poll: () => Promise<T>,
@@ -50,40 +52,36 @@ export function awaitPaymentStatus<T extends { state: string }>(
     if (options?.signal?.aborted) {
         return Promise.reject(
             new GoPaySDKError('[GoPaySDK] Payment status polling aborted.', {
-                errorCode: GoPayErrorCodes.CHARGE_TIMEOUT,
+                errorCode: GoPayErrorCodes.CHARGE_FAILED,
             }),
         );
     }
 
     return new Promise<T>((resolve, reject) => {
-        let stopped = false;
         let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
 
-        const stop = (fn: () => void) => {
-            if (stopped) {
-                return;
-            }
-            stopped = true;
-            if (timeoutHandle !== undefined) {
-                clearTimeout(timeoutHandle);
-            }
-            options?.signal?.removeEventListener('abort', onAbort);
-            fn();
-        };
-
-        let onAbort: () => void;
-        onAbort = () => {
-            stop(() =>
-                reject(
-                    new GoPaySDKError(
-                        '[GoPaySDK] Payment status polling aborted.',
-                        { errorCode: GoPayErrorCodes.CHARGE_TIMEOUT },
+        const stop = runPollLoop(
+            poll,
+            intervalMs,
+            options?.signal,
+            reject,
+            (status, stop) => {
+                options?.onStateChange?.(status);
+                if (terminal.has(status.state)) {
+                    stop(() => resolve(status));
+                }
+            },
+            (stop) =>
+                stop(() =>
+                    reject(
+                        new GoPaySDKError(
+                            '[GoPaySDK] Payment status polling aborted.',
+                            { errorCode: GoPayErrorCodes.CHARGE_FAILED },
+                        ),
                     ),
                 ),
-            );
-        };
-
-        options?.signal?.addEventListener('abort', onAbort, { once: true });
+            () => clearTimeout(timeoutHandle),
+        );
 
         if (options?.timeoutMs !== undefined) {
             timeoutHandle = setTimeout(() => {
@@ -97,33 +95,5 @@ export function awaitPaymentStatus<T extends { state: string }>(
                 );
             }, options.timeoutMs);
         }
-
-        const doPoll = () => {
-            if (stopped) {
-                return;
-            }
-            poll()
-                .then((status) => {
-                    if (stopped) {
-                        return;
-                    }
-                    options?.onStateChange?.(status);
-
-                    if (terminal.has(status.state)) {
-                        stop(() => resolve(status));
-                        return;
-                    }
-
-                    setTimeout(doPoll, intervalMs);
-                })
-                .catch((err) => {
-                    if (stopped) {
-                        return;
-                    }
-                    stop(() => reject(err));
-                });
-        };
-
-        doPoll();
     });
 }

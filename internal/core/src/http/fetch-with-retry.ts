@@ -33,8 +33,11 @@ export async function fetchWithRetry(
             }
             lastResponse = response;
         } catch (err) {
-            // Timeouts are not retriable — bubble up immediately
-            if (err instanceof Error && err.name === 'TimeoutError') {
+            // Timeouts and caller aborts are not retriable — bubble up immediately
+            if (
+                err instanceof Error &&
+                (err.name === 'TimeoutError' || err.name === 'AbortError')
+            ) {
                 throw err;
             }
             if (!isIdempotent) {

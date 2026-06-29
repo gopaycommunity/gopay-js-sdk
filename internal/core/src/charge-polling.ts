@@ -1,4 +1,5 @@
 import { GoPayErrorCodes, GoPaySDKError } from './errors.js';
+import { runPollLoop } from './polling.js';
 
 export type AwaitChargeOptions<T extends { state: string }> = {
     intervalMs?: number;
@@ -38,33 +39,60 @@ export function awaitCharge<
     }
 
     return new Promise<T>((resolve, reject) => {
-        let stopped = false;
         let lastActionRequiredUrl: string | null = null;
+        let initialTimer: ReturnType<typeof setTimeout> | undefined;
 
-        const stop = (fn: () => void) => {
-            if (stopped) {
-                return;
-            }
-            stopped = true;
-            clearTimeout(initialTimer);
-            options?.signal?.removeEventListener('abort', onAbort);
-            fn();
-        };
+        const stop = runPollLoop(
+            poll,
+            intervalMs,
+            options?.signal,
+            reject,
+            (state, stop) => {
+                options?.onStateChange?.(state);
 
-        let onAbort: () => void;
-        onAbort = () => {
-            stop(() =>
-                reject(
-                    new GoPaySDKError('[GoPaySDK] Charge polling aborted.', {
-                        errorCode: GoPayErrorCodes.CHARGE_FAILED,
-                    }),
+                if (state.state === 'SUCCEEDED') {
+                    stop(() => resolve(state));
+                    return;
+                }
+
+                if (state.state === 'FAILED') {
+                    stop(() =>
+                        reject(
+                            new GoPaySDKError('[GoPaySDK] Charge failed', {
+                                errorCode: GoPayErrorCodes.CHARGE_FAILED,
+                                chargeState: state,
+                            }),
+                        ),
+                    );
+                    return;
+                }
+
+                if (state.state === 'ACTION_REQUIRED') {
+                    clearTimeout(initialTimer);
+                    if (
+                        state.action?.redirect_url &&
+                        state.action.redirect_url !== lastActionRequiredUrl
+                    ) {
+                        lastActionRequiredUrl = state.action.redirect_url;
+                        options?.onActionRequired?.(state.action.redirect_url);
+                    }
+                }
+            },
+            (stop) =>
+                stop(() =>
+                    reject(
+                        new GoPaySDKError(
+                            '[GoPaySDK] Charge polling aborted.',
+                            {
+                                errorCode: GoPayErrorCodes.CHARGE_FAILED,
+                            },
+                        ),
+                    ),
                 ),
-            );
-        };
+            () => clearTimeout(initialTimer),
+        );
 
-        options?.signal?.addEventListener('abort', onAbort, { once: true });
-
-        const initialTimer = setTimeout(() => {
+        initialTimer = setTimeout(() => {
             stop(() =>
                 reject(
                     new GoPaySDKError(
@@ -74,58 +102,5 @@ export function awaitCharge<
                 ),
             );
         }, initialTimeoutMs);
-
-        const doPoll = () => {
-            if (stopped) {
-                return;
-            }
-            poll()
-                .then((state) => {
-                    if (stopped) {
-                        return;
-                    }
-                    options?.onStateChange?.(state);
-
-                    if (state.state === 'SUCCEEDED') {
-                        stop(() => resolve(state));
-                        return;
-                    }
-
-                    if (state.state === 'FAILED') {
-                        stop(() =>
-                            reject(
-                                new GoPaySDKError('[GoPaySDK] Charge failed', {
-                                    errorCode: GoPayErrorCodes.CHARGE_FAILED,
-                                    chargeState: state,
-                                }),
-                            ),
-                        );
-                        return;
-                    }
-
-                    if (state.state === 'ACTION_REQUIRED') {
-                        if (
-                            state.action?.redirect_url &&
-                            state.action.redirect_url !== lastActionRequiredUrl
-                        ) {
-                            clearTimeout(initialTimer);
-                            lastActionRequiredUrl = state.action.redirect_url;
-                            options?.onActionRequired?.(
-                                state.action.redirect_url,
-                            );
-                        }
-                    }
-
-                    setTimeout(doPoll, intervalMs);
-                })
-                .catch((err) => {
-                    if (stopped) {
-                        return;
-                    }
-                    stop(() => reject(err));
-                });
-        };
-
-        doPoll();
     });
 }
