@@ -1,3 +1,25 @@
+# [1.3.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.2.4...browser-sdk-1.3.0) (2026-06-29)
+
+
+### Bug Fixes
+
+*  use api from production link GPOMA-2375 ([51e1574](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/51e157458f0f54a18a1460f4754df3c5103a560f))
+* **audit:** suppress git-raw-commits deprecation GPOMA-2375 ([35f2379](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/35f237916d8581427bb9b358ffa20e0c07e9fc82))
+* **browser-sdk:** guard attachPayment() against re-call while card form mounted D1 GPOMA-2375 ([41fa86d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/41fa86d19957c6e1b0c94c491f2dfb8db438330e))
+* **cards,polling,wallets,http:** code bugs B1 B2 B3 B6 D3 GPOMA-2375 ([55228e3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/55228e3c5e0de30fa0934fddb31ff53ef6f2b5a7))
+* **cards:** use cardFormSessionActive flag to close race in isCardFormMounted (D1) GPOMA-2375 ([b1d85c5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b1d85c5531b512c2d7160c693fe22c92e40d1cf9))
+* **polling:** forward abort signal to per-poll client.get() GPOMA-2375 ([5d36270](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5d36270589fe92e6b690276e47dd474bf99d58e8))
+* update push instructions GPOMA-2375 ([160ce7e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/160ce7e98c1143abe34e081153cc5bec7c418027))
+
+
+### Features
+
+* **api:** wire AbortSignal through public payment methods (D4) GPOMA-2375 ([a23bd08](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a23bd08e6b99fa89901a7813f581adfdfae91a2d))
+* **errors,polling:** attach chargeState to CHARGE_FAILED error for catch callers D2 GPOMA-2375 ([26f1f38](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/26f1f38470c47b008684de17eb742f0c820ba1a3))
+* **http:** add AbortSignal to RequestOptions and thread into all fetch calls D4 GPOMA-2375 ([81c2721](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/81c27211fabefc5de47b7211aad9b73403bc5755))
+* **payments:** add awaitPaymentStatus() polling helper for QR and bank-transfer flows M1 GPOMA-2375 ([10b447a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/10b447a8202607afc9b737aa44f4ae7ed8a1fce3))
+* **scopes:** export GoPayScopes constants and combineScopes helper M2 GPOMA-2375 ([74b94f8](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/74b94f84e2c815789c4842d088e7ddc43eba8e64))
+
 ## [1.2.4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.2.3...browser-sdk-1.2.4) (2026-06-24)
 
 
