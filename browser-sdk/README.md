@@ -304,11 +304,12 @@ mountCardForm(
 > **`mode: 'redirect'` and `controller.result`**: When 3DS triggers a full-page navigation, `controller.result` never resolves or rejects — the page unloads while it is still pending. **Do not `await controller.result` to detect completion on this code path.** Instead, after the bank redirects the customer back to your `return_url`, use `getChargeState()` on your server (or `sdk.getChargeState()` in a fresh browser session after calling `attachPayment` again) to confirm the final outcome:
 >
 > ```ts
-> // On your return_url page — payment_id is typically a URL query param
+> // On your return_url page — payment_id and payment_secret are URL query params
+> // (or fetched from your server if not exposed in the URL)
 > const sdk = createGoPayBrowserSDK({ ... });
 > await sdk.attachPayment({ paymentId, paymentSecret });
 > const charge = await sdk.getChargeState();
-> if (charge.state === 'PAID') { /* success */ }
+> if (charge.state === 'SUCCEEDED') { /* success */ }
 > ```
 
 **`CardFormController`:**

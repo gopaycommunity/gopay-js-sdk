@@ -50,7 +50,8 @@ const payment = await sdk.createPayment('YOUR_GOID', {
 Once the customer completes the payment flow and returns to your site, charge the payment using the instrument they provided:
 
 ```ts
-// Card token (obtained via sdk.mountCardForm() — returns an object, use .token)
+// Card token: obtained via the browser SDK card form (see @gopaycz/gopay-js-sdk-browser)
+// and forwarded to your server after tokenization via sdk.tokenizeEncryptedCard()
 const charge = await sdk.chargePayment(payment.id, {
   payment_instrument: {
     payment_instrument: 'PAYMENT_CARD',
@@ -109,7 +110,7 @@ const payment = await sdk.createPayment(goid, params);
 | `card:read` | `GoPayScopes.CARD_READ` | `getCardDetails`, `deleteCard` |
 | `payment:charge` | `GoPayScopes.PAYMENT_CHARGE` | Browser SDK only (`attachPayment` / `payment_credentials` grant) |
 
-For `getBrowserKeys()` to work, include both `payment:write` and `card:write` in your server-side `authenticate()` call. `shareableKey` must also be set in the SDK config (see [Browser keys](#browser-keys) below).
+For `getBrowserKeys()` to work, include `card:write` in your server-side `authenticate()` call. `shareableKey` must also be set in the SDK config (see [Browser keys](#browser-keys) below). Include `payment:write` (and any other scopes) as needed for the rest of your integration.
 
 ---
 
@@ -375,6 +376,7 @@ const browserData = collectBrowserData();
 // Forward both to your server endpoint
 await fetch('/api/charge', {
   method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ paymentId, encryptedPayload, browserData }),
 });
 
