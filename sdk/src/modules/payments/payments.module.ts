@@ -251,6 +251,7 @@ export function createPaymentsApi(client: HttpClient) {
                 () =>
                     client.get<PaymentChargeStatusResponse>(
                         `/payments/${pid}/charge`,
+                        { signal: options?.signal },
                     ),
                 options,
             );
@@ -275,7 +276,10 @@ export function createPaymentsApi(client: HttpClient) {
         ): Promise<PaymentDetails> {
             const pid = requireNonEmptyString(paymentId, 'paymentId');
             return awaitPaymentStatus(
-                () => client.get<PaymentDetails>(`/payments/${pid}`),
+                () =>
+                    client.get<PaymentDetails>(`/payments/${pid}`, {
+                        signal: options?.signal,
+                    }),
                 options,
             );
         },

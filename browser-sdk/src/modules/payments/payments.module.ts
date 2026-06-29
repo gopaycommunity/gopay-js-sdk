@@ -183,6 +183,7 @@ export function createPaymentsApi(
                 () =>
                     client.get<PaymentChargeStatusResponse>(
                         `/payments/${paymentId}/charge`,
+                        { signal: options?.signal },
                     ),
                 {
                     ...options,
@@ -289,7 +290,10 @@ export function createPaymentsApi(
             options?: AwaitPaymentStatusOptions,
         ): Promise<PaymentDetails> {
             return awaitPaymentStatus(
-                () => client.get<PaymentDetails>(`/payments/${paymentId}`),
+                () =>
+                    client.get<PaymentDetails>(`/payments/${paymentId}`, {
+                        signal: options?.signal,
+                    }),
                 options,
             );
         },
