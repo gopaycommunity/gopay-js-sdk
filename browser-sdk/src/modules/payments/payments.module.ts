@@ -101,8 +101,13 @@ export function createPaymentsApi(
          * Retrieve the current status of this payment.
          * GET /payments/{payment_id}
          */
-        async getStatus(): Promise<PaymentDetails> {
-            return client.get<PaymentDetails>(`/payments/${paymentId}`);
+        async getStatus(options?: {
+            signal?: AbortSignal;
+        }): Promise<PaymentDetails> {
+            return client.get<PaymentDetails>(
+                `/payments/${paymentId}`,
+                options,
+            );
         },
 
         /**
@@ -113,6 +118,7 @@ export function createPaymentsApi(
          */
         async chargePayment(
             params: PaymentChargeRequestInput,
+            options?: { signal?: AbortSignal },
         ): Promise<PaymentChargeResponse> {
             const pi = params.payment_instrument;
             if (pi?.payment_instrument === 'PAYMENT_CARD') {
@@ -129,11 +135,13 @@ export function createPaymentsApi(
                             },
                         },
                     },
+                    options,
                 );
             }
             return client.post<PaymentChargeResponse>(
                 `/payments/${paymentId}/charge`,
                 params,
+                options,
             );
         },
 
@@ -141,9 +149,12 @@ export function createPaymentsApi(
          * Retrieve the current state of this payment's charge.
          * GET /payments/{payment_id}/charge
          */
-        async getChargeState(): Promise<PaymentChargeStatusResponse> {
+        async getChargeState(options?: {
+            signal?: AbortSignal;
+        }): Promise<PaymentChargeStatusResponse> {
             return client.get<PaymentChargeStatusResponse>(
                 `/payments/${paymentId}/charge`,
+                options,
             );
         },
 

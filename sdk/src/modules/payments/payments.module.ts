@@ -41,9 +41,12 @@ export function createPaymentsApi(client: HttpClient) {
          *
          * @param paymentId - Payment session ID returned by {@link createPayment}
          */
-        async getPaymentStatus(paymentId: string): Promise<PaymentDetails> {
+        async getPaymentStatus(
+            paymentId: string,
+            options?: { signal?: AbortSignal },
+        ): Promise<PaymentDetails> {
             const pid = requireNonEmptyString(paymentId, 'paymentId');
-            return client.get<PaymentDetails>(`/payments/${pid}`);
+            return client.get<PaymentDetails>(`/payments/${pid}`, options);
         },
 
         /**
@@ -61,10 +64,12 @@ export function createPaymentsApi(client: HttpClient) {
         async createPayment(
             goid: string,
             params: PaymentCreateRequest,
+            options?: { signal?: AbortSignal },
         ): Promise<PaymentDetails> {
             return client.post<PaymentDetails>(
                 `/eshops/${goid}/payments`,
                 params,
+                options,
             );
         },
 
@@ -79,11 +84,13 @@ export function createPaymentsApi(client: HttpClient) {
         async chargePayment(
             paymentId: string,
             params: PaymentChargeRequest,
+            options?: { signal?: AbortSignal },
         ): Promise<PaymentChargeResponse> {
             const pid = requireNonEmptyString(paymentId, 'paymentId');
             return client.post<PaymentChargeResponse>(
                 `/payments/${pid}/charge`,
                 params,
+                options,
             );
         },
 
@@ -96,10 +103,12 @@ export function createPaymentsApi(client: HttpClient) {
          */
         async getChargeState(
             paymentId: string,
+            options?: { signal?: AbortSignal },
         ): Promise<PaymentChargeStatusResponse> {
             const pid = requireNonEmptyString(paymentId, 'paymentId');
             return client.get<PaymentChargeStatusResponse>(
                 `/payments/${pid}/charge`,
+                options,
             );
         },
 
