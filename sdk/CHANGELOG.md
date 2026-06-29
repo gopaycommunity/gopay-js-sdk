@@ -1,3 +1,10 @@
+## [1.7.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.7.0...1.7.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* add fancy npm badges GPOMA-2375 ([9a8f3a7](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9a8f3a76661d069a5b23791759062e3b39a8b21a))
+
 # [1.7.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.6.7...1.7.0) (2026-06-29)
 
 
