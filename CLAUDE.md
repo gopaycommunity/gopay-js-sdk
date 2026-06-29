@@ -1,15 +1,14 @@
 ## API Spec & Code Generation
 
-The SDK is generated from [Payments.yaml](Payments.yaml) — an OpenAPI 3.1.0 spec for the GoPay Payments API v4.0.
-
-TypeScript types are generated from the spec using `openapi-typescript`:
+TypeScript types are generated from the live GoPay API spec using `openapi-typescript`:
 
 ```bash
 cd sdk && yarn codegen
+# fetches https://api-docs.gopay.com/spec/en/payments.yaml
 # outputs: sdk/src/types/generated.ts
 ```
 
-Run this whenever `Payments.yaml` is updated to keep the types in sync.
+The local [Payments.yaml](Payments.yaml) is kept as a reference snapshot but codegen always pulls from the URL. Run codegen whenever you need the types in sync with the latest spec.
 
 ---
 

@@ -489,11 +489,6 @@ paths:
         name: payment_id
         in: path
         required: true
-      - schema:
-          type: string
-        name: payment_id
-        in: path
-        required: true
         description: Payment ID
     get:
       summary: List payment refunds
