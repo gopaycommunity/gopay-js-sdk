@@ -103,7 +103,7 @@ export function createCardsApi(
     client: HttpClient,
     getPaymentsApi: () => PaymentsApi | null,
 ) {
-    let activeCleanup: (() => void) | undefined;
+    let cardFormSessionActive = false;
     let cardFormUrlPromise: Promise<string> | undefined;
 
     function getCardFormUrl(): Promise<string> {
@@ -136,7 +136,7 @@ export function createCardsApi(
     }
 
     return {
-        isCardFormMounted: () => !!activeCleanup,
+        isCardFormMounted: () => cardFormSessionActive,
 
         /**
          * Fetch the GoPay-hosted card encryption iframe URL, mount it into
@@ -160,7 +160,7 @@ export function createCardsApi(
                 EncryptedCardPayload | PaymentChargeStatusResponse
             >
         > {
-            if (activeCleanup) {
+            if (cardFormSessionActive) {
                 const result = Promise.reject<
                     EncryptedCardPayload | PaymentChargeStatusResponse
                 >(
@@ -201,6 +201,8 @@ export function createCardsApi(
                 };
             }
 
+            cardFormSessionActive = true;
+
             const spinnerColor =
                 options.theme?.submitBackgroundColor ??
                 DEFAULT_CARD_FORM_THEME.submitBackgroundColor ??
@@ -230,6 +232,7 @@ export function createCardsApi(
             try {
                 iframeSrc = await getCardFormUrl();
             } catch (err) {
+                cardFormSessionActive = false;
                 clearSpinner();
                 emitLoadingState('idle');
                 throw err;
@@ -245,6 +248,7 @@ export function createCardsApi(
                         expectedOrigin,
                     )
                 ) {
+                    cardFormSessionActive = false;
                     clearSpinner();
                     emitLoadingState('idle');
                     throw new GoPaySDKError(
@@ -296,7 +300,7 @@ export function createCardsApi(
                 | undefined;
 
             // Create the result promise before defining cleanup so rejectResult
-            // is captured in the activeCleanup closure below.
+            // is captured in the cleanup closure below.
             let resolveResult!: (
                 value: EncryptedCardPayload | PaymentChargeStatusResponse,
             ) => void;
@@ -312,6 +316,7 @@ export function createCardsApi(
 
             const cleanup = () => {
                 active = false;
+                cardFormSessionActive = false;
                 clearTimeout(iframeLoadTimeout);
                 clearSpinner();
                 emitLoadingState('idle');
@@ -319,10 +324,7 @@ export function createCardsApi(
                     window.removeEventListener('message', onMessage);
                 }
                 iframe.remove();
-                activeCleanup = undefined;
             };
-
-            activeCleanup = cleanup;
 
             iframe.onload = () => {
                 clearTimeout(iframeLoadTimeout);
