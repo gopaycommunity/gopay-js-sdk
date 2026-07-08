@@ -1,6 +1,8 @@
 # @gopaycz/gopay-js-sdk-browser
 
 [![npm](https://img.shields.io/npm/v/@gopaycz/gopay-js-sdk-browser)](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk-browser)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gp-gopay_gp-gw-js-sdk&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gp-gopay_gp-gw-js-sdk)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=gp-gopay_gp-gw-js-sdk&metric=coverage)](https://sonarcloud.io/summary/new_code?id=gp-gopay_gp-gw-js-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 GoPay browser SDK for card encryption and in-browser payments.

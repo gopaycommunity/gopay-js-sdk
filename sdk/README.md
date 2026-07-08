@@ -1,6 +1,8 @@
 # @gopaycz/gopay-js-sdk
 
 [![npm](https://img.shields.io/npm/v/@gopaycz/gopay-js-sdk)](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gp-gopay_gp-gw-js-sdk&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gp-gopay_gp-gw-js-sdk)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=gp-gopay_gp-gw-js-sdk&metric=coverage)](https://sonarcloud.io/summary/new_code?id=gp-gopay_gp-gw-js-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 GoPay JavaScript SDK for server-side use (Node.js) — wraps the new [GoPay Payments API v4](https://api-docs.gopay.com/).

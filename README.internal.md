@@ -15,3 +15,90 @@ To point the Dockerized example at a different API environment (e.g. the interna
 docker build --build-arg GOPAY_PAYMENTS_V4_BASE_URL=https://gw.alpha8.dev.gopay.com/api/merchant/payments/4.0 -t gopay-js-sdk-example:latest .
 yarn docker:start
 ```
+
+## Releasing — breaking changes checklist
+
+Before merging to master, check whether any public API changes are breaking (require a major version bump). If yes, ensure the commit message includes a `BREAKING CHANGE:` footer so semantic-release bumps the major version correctly.
+
+Consumer-facing breaking changes (bump major):
+- Removed or renamed exported functions, classes, types, or constants
+- Changed method signatures (added required params, changed return types)
+- Changed `window.GoPayBrowserSDK` global shape — affects `@gopaycz/gopay-js-sdk-browser` IIFE consumers pinned via unpkg (`@1`)
+- Changed error codes in `GoPayErrorCodes`
+
+**postMessage protocol** (`sdk/src/modules/cards/iframe-protocol.ts`) changes are **not** consumer-facing — the wire protocol between the SDK and the GoPay-hosted iframe is invisible to e-shops. However, they require **coordinated deployment** with `gw-ui-cc-v4`: deploy the iframe side first, or make the change backward-compatible, to avoid a compatibility gap between the two.
+
+## Browser tests
+
+Playwright tests in `tests/browser/` run against the IIFE bundle served from `example/index.html`.
+Credentials and base URL are read from `sdk/.env`:
+
+```
+GOPAY_PAYMENTS_V4_BASE_URL=https://api.sandbox.gopay.com/api/merchant/payments/4.0
+GOPAY_PAYMENTS_V4_CLIENT_ID=your-client-id
+GOPAY_PAYMENTS_V4_CLIENT_SECRET=your-client-secret
+```
+
+## Code generation
+
+API types are generated from `Payments.yaml`:
+
+```bash
+cd sdk && yarn codegen
+```
+
+## Releasing
+
+Releases are fully automated via [semantic-release](https://semantic-release.gitbook.io/semantic-release/) on the `master` branch.
+
+`@gopaycz/gopay-js-sdk` (server SDK) analyzes **all** commits and bumps on every releasable change. Its version is used as the Docker image tag (`repo.gopay.com/gp-gw-js-sdk:<version>`) — the image bundles both SDKs, so the tag must advance whenever either one changes.
+
+`@gopaycz/gopay-js-sdk-browser` only releases when `browser-sdk/` files changed. A server-SDK bump without a browser bump is therefore normal.
+
+| Package | Tag format | npm |
+|---|---|---|
+| `@gopaycz/gopay-js-sdk` | `1.3.5` | [npmjs.com/package/@gopaycz/gopay-js-sdk](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk) |
+| `@gopaycz/gopay-js-sdk-browser` | `browser-sdk-1.0.0` | [npmjs.com/package/@gopaycz/gopay-js-sdk-browser](https://www.npmjs.com/package/@gopaycz/gopay-js-sdk-browser) |
+
+### Pipeline secrets
+
+The pipeline requires three Bitbucket repository secrets:
+
+| Secret | Purpose |
+|---|---|
+| `NPM_PUSH_TOKEN` | npm token for publishing to registry |
+| `BITBUCKET_BOT_PUSH_TOKEN` | Bitbucket token for pushing the release commit back to master |
+| `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub token for syncing to the GitHub mirror |
+
+To create or rotate `NPM_PUSH_TOKEN`, generate a Granular Access Token on the `janmuller` npm account:
+
+```bash
+npm token create --name "bitbucket-ci" --scopes @gopaycz --packages-and-scopes-permission read-write --bypass-2fa
+```
+
+`--bypass-2fa` is required — without it the publish step will block waiting for interactive 2FA.
+
+### Manual publish (when CI token is unavailable)
+Merge to master and fetch updated package.json and changelog from upstream.
+
+```bash
+# Build
+cd sdk && yarn build && cd ..
+cd browser-sdk && yarn build && cd ..
+
+# Publish (replace YOUR_NPM_TOKEN with a token from npmjs.com → Access Tokens)
+cd sdk && YARN_NPM_AUTH_TOKEN=YOUR_NPM_TOKEN yarn npm publish --access public && cd ..
+cd browser-sdk && YARN_NPM_AUTH_TOKEN=YOUR_NPM_TOKEN yarn npm publish --access public && cd ..
+```
+
+Re-enable `npmPublish: true` in `sdk/release.config.mjs` and `browser-sdk/release.config.mjs` once `NPM_PUSH_TOKEN` is set in Bitbucket.
+
+### Commit format
+
+Write commits following the [Conventional Commits](https://www.conventionalcommits.org/) spec:
+
+| Prefix             | Version bump | Example                          |
+|--------------------|--------------|----------------------------------|
+| `fix:`             | patch        | `fix: handle null card_id`       |
+| `feat:`            | minor        | `feat: add refund support`       |
+| `BREAKING CHANGE:` | major        | `feat!: rename GoPaySDK to ...`  |
