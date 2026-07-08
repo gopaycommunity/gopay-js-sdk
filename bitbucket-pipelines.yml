@@ -172,7 +172,7 @@ definitions:
 
             sanitize_and_push origin/master refs/heads/master
 
-            git ls-remote --tags github > github-tags.txt || true
+            git ls-remote --tags github > github-tags.txt
             for tag in $(git tag); do
               grep -q "refs/tags/${tag}\$" github-tags.txt 2>/dev/null && continue
               sanitize_and_push "refs/tags/${tag}" "refs/tags/${tag}"
