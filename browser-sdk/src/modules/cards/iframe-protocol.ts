@@ -63,6 +63,16 @@ export interface CardFormTheme {
     inputFontSize?: number;
 
     // ── Input border ─────────────────────────────────────────────────────────
+    /**
+     * Border style of inputs.
+     * 'underline' (default) — only a bottom border, with an animated focus
+     *   gradient underline.
+     * 'boxed' — a full border on all sides; the border color changes on focus
+     *   (using focusGradientStart) and in the error state (using
+     *   inputErrorBorderColor).
+     * Default: 'underline'
+     */
+    inputBorderStyle?: 'underline' | 'boxed';
     /** Bottom border color of unfocused, valid inputs. Default: #698492 */
     inputBorderColor?: string;
     /** Border width in px. Default: 1 (underline style) */
@@ -71,6 +81,8 @@ export interface CardFormTheme {
     inputBackgroundColor?: string;
     /** Vertical padding inside inputs in px. Default: 6 */
     inputPaddingVertical?: number;
+    /** Horizontal padding inside inputs in px. Default: 0 */
+    inputPaddingHorizontal?: number;
     /** Border radius of inputs in px. Default: 0 (underline style) */
     inputBorderRadius?: number;
 
