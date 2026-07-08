@@ -96,12 +96,7 @@ Build and start the container:
 yarn docker
 ```
 
-By default the SDK connects directly to the GoPay sandbox from the browser. To point at a different API environment, pass `GOPAY_PAYMENTS_V4_BASE_URL` at build time:
-
-```bash
-docker build --build-arg GOPAY_PAYMENTS_V4_BASE_URL=<your-api-base-url> -t gopay-js-sdk-example:latest .
-yarn docker:start
-```
+By default the SDK connects directly to the GoPay sandbox from the browser.
 
 The example page is served on [http://localhost:8080](http://localhost:8080).
 
