@@ -25,7 +25,7 @@ gp-gw-js-sdk/
 │   └── dist/             # Build output — includes IIFE for CDN use (git-ignored)
 ├── internal/core/        # Private shared package — inlined into both SDKs at build time, not published
 ├── tests/browser/        # Playwright end-to-end tests
-├── example/              # Interactive developer page — also deployed on k8s (see below)
+├── example/              # Interactive developer page
 └── Payments.yaml         # OpenAPI 3.1 spec (source of truth)
 ```
 
@@ -70,9 +70,6 @@ yarn test:e2e
 yarn example
 ```
 
-The example page is also deployed on k8s cluster, for example:
-<https://api-int.alpha8.dev.gopay.com/gp-gw-js-sdk/>
-
 ## Local HTTPS (mkcert)
 
 The example dev server runs on HTTPS. Without setup it falls back to a self-signed cert (untrusted by browsers). For a properly trusted cert, install [mkcert](https://github.com/FiloSottile/mkcert) and run once:
@@ -102,7 +99,7 @@ yarn docker
 By default the SDK connects directly to the GoPay sandbox from the browser. To point at a different API environment, pass `GOPAY_PAYMENTS_V4_BASE_URL` at build time:
 
 ```bash
-docker build --build-arg GOPAY_PAYMENTS_V4_BASE_URL=https://gw.alpha8.dev.gopay.com/api/merchant/payments/4.0 -t gopay-js-sdk-example:latest .
+docker build --build-arg GOPAY_PAYMENTS_V4_BASE_URL=<your-api-base-url> -t gopay-js-sdk-example:latest .
 yarn docker:start
 ```
 

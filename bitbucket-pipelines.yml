@@ -155,8 +155,29 @@ definitions:
         script:
           - git fetch origin master --tags
           - git remote add github https://${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/gopaycommunity/gopay-js-sdk.git
-          - git push github refs/remotes/origin/master:refs/heads/master --force
-          - git push github --tags
+          # README.internal.md is Bitbucket-only. Mirroring the raw ref would carry it (and its
+          # full history) to GitHub, so master and each new tag are pushed as sanitized, history-less
+          # snapshot commits instead of the real commit graph.
+          - |
+            set -e
+            sanitize_and_push() {
+              git checkout -q "$1"
+              git rm -q --ignore-unmatch README.internal.md
+              git checkout -q --orphan mirror-tmp
+              git -c user.name="GoPay Release Bot" -c user.email="release-bot@gopay.cz" commit -q -m "chore: public mirror snapshot"
+              git push github "HEAD:$2" --force
+              git checkout -q -
+              git branch -q -D mirror-tmp
+            }
+
+            sanitize_and_push origin/master refs/heads/master
+
+            git ls-remote --tags github > github-tags.txt || true
+            for tag in $(git tag); do
+              grep -q "refs/tags/${tag}\$" github-tags.txt 2>/dev/null && continue
+              sanitize_and_push "refs/tags/${tag}" "refs/tags/${tag}"
+            done
+            rm -f github-tags.txt
 
     - step: &docker-build-push
         name: Build & push example Docker image
