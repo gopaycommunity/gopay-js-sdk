@@ -33,7 +33,7 @@ Consumer-facing breaking changes (bump major):
 Playwright tests in `tests/browser/` run against the IIFE bundle served from `example/index.html`.
 Credentials and base URL are read from `sdk/.env`:
 
-```
+```dotenv
 GOPAY_PAYMENTS_V4_BASE_URL=https://api.sandbox.gopay.com/api/merchant/payments/4.0
 GOPAY_PAYMENTS_V4_CLIENT_ID=your-client-id
 GOPAY_PAYMENTS_V4_CLIENT_SECRET=your-client-secret
