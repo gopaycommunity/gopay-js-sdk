@@ -1,3 +1,11 @@
+## [1.8.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.8.0...1.8.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* address CodeRabbit / reviewer comments GPOMA-2398 ([459ebae](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/459ebae9247c9f4a81048660d92721c3f8d97a38))
+* update internal readme and add more badges GPOMA-2398 ([bb452a3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bb452a3aa672302e6b0443d05fcbb4c943e02bbd))
+
 # [1.8.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.7.1...1.8.0) (2026-07-08)
 
 
