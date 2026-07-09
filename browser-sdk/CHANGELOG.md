@@ -1,3 +1,17 @@
+## [1.3.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.3.1...browser-sdk-1.3.2) (2026-07-09)
+
+
+### Bug Fixes
+
+* address CodeRabbit / reviewer comments GPOMA-2398 ([459ebae](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/459ebae9247c9f4a81048660d92721c3f8d97a38))
+* suppress js-yaml CVE-1121860 pending age-gate (audit) GPOMA-2398 ([2cc80b6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2cc80b69082d3b851b17cc52da8a7a76a8e7eb41))
+* update internal readme and add more badges GPOMA-2398 ([bb452a3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bb452a3aa672302e6b0443d05fcbb4c943e02bbd))
+
+
+### Features
+
+* **ci:** introduce internal README and stop mirroring it to GitHub GPOMA-2398 ([11c0ff9](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/11c0ff99c1e56f867c37fd2c67b9e9328ac6ec08))
+
 ## [1.3.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.3.0...browser-sdk-1.3.1) (2026-06-29)
 
 
