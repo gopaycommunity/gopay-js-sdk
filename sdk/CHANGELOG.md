@@ -1,3 +1,10 @@
+# [1.9.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.8.1...1.9.0) (2026-07-09)
+
+
+### Features
+
+* sync CardFormTheme boxed input fields from gw-ui-cc-v4 GPOMA-2400 ([6f28e0b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/6f28e0bbb312e1dfb9d7b19da25d52247b3cc294))
+
 ## [1.8.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.8.0...1.8.1) (2026-07-09)
 
 
