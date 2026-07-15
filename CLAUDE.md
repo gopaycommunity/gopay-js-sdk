@@ -91,8 +91,16 @@ Consumer-facing breaking changes (bump major):
 
 ---
 
-## `gw_url` — do not use or recommend
+## `gw_url` — escape hatch, not a redirect target for this SDK's own flow
 
-`createPayment()` returns a `gw_url` field. **Do not use it, suggest it, or add it to examples.**
+`createPayment()` returns a `gw_url` field. **Do not redirect to it as part of this SDK's own
+flow** (create → charge: card token / Apple Pay / Google Pay), which fully covers card
+payments.
 
-It exists solely for backward compatibility with integrations that predate this SDK (old redirect-based flow). This SDK's flow is always: create → charge (card token / Apple Pay / Google Pay). The API spec will document this once updated.
+`gw_url` is a deliberate escape hatch into the previous (v3) hosted-gateway processing —
+reach for it when a payment needs a method or feature not yet implemented in the v4 charge
+flow. Redirecting there hands off real-time control of the payment to the hosted flow while
+the customer is on it, but the payment stays fully v4-observable throughout: `getPaymentStatus()`
+reports the final state once the customer completes it, exactly as it would for a payment
+charged directly through v4. Don't present it as unsafe or purely legacy in generated
+examples. The API spec doesn't document this nuance yet — see GPOMA-2418.
