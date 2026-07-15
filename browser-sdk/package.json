@@ -11,6 +11,12 @@
         "browser"
     ],
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/gopaycommunity/gopay-js-sdk.git",
+        "directory": "browser-sdk"
+    },
+    "homepage": "https://github.com/gopaycommunity/gopay-js-sdk/tree/master/browser-sdk#readme",
     "browser": "./dist/gopay-browser-sdk.min.js",
     "type": "module",
     "main": "./dist/index.cjs",
