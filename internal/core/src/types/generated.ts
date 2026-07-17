@@ -727,7 +727,14 @@ export interface components {
             customer: components["schemas"]["Customer"];
             /**
              * Format: uri
-             * @description URL of the hosted payment gateway
+             * @description Escape hatch into the previous (v3) hosted-gateway flow, for payment methods
+             *     not yet covered by the v4 charge endpoint. Redirecting the customer here hands
+             *     off real-time control of the payment to the hosted flow while they are on it,
+             *     but the payment stays fully v4-observable throughout — GET /payments/{payment_id}
+             *     still reports the final state once the customer completes it, exactly as it
+             *     would for a payment charged directly through v4. Not a redirect target for
+             *     payment methods the v4 charge flow already covers.
+             * @example https://gate.gopay.com/gw/123456789
              */
             gw_url: string;
             charge?: components["schemas"]["Payment-Charge-Status-Response"];
@@ -846,7 +853,7 @@ export interface components {
         "Charge-State": "REQUESTED" | "PROCESSING" | "ACTION_REQUIRED" | "SUCCEEDED" | "FAILED";
         /**
          * Payment Charge Data
-         * @description Discriminated union of the possible payment charges. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](./x3xyv4fy5blzy-payment-instrument) enum.
+         * @description Discriminated union of the possible payment charges. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](#/schemas/Payment-Instrument) enum.
          */
         "Payment-Charge-Data": components["schemas"]["Payment-Card-Charge-Data"];
         /**
@@ -859,13 +866,13 @@ export interface components {
         };
         /**
          * Payment Instrument
-         * @description Discriminator for the cases of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union
+         * @description Discriminator for the cases of the [Payment Charge Data](#/schemas/Payment-Charge-Data) union
          * @enum {string}
          */
         "Payment-Instrument": "PAYMENT_CARD";
         /**
          * Payment Card Charge Data
-         * @description The `PAYMENT_CARD` variant of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union. Holds the discriminator as well as the input for a card payment.
+         * @description The `PAYMENT_CARD` variant of the [Payment Charge Data](#/schemas/Payment-Charge-Data) union. Holds the discriminator as well as the input for a card payment.
          */
         "Payment-Card-Charge-Data": {
             /**
@@ -880,18 +887,18 @@ export interface components {
         };
         /**
          * Payment Card Input
-         * @description Discriminated union of the possible card payment inputs. The discriminator is the `input_type` field gaining values from the [Payment Card Input Type](./n7rgf81mgdw30-payment-card-input-type) enum.
+         * @description Discriminated union of the possible card payment inputs. The discriminator is the `input_type` field gaining values from the [Payment Card Input Type](#/schemas/Payment-Card-Input-Type) enum.
          */
         "Payment-Card-Input": components["schemas"]["Card-Token-Input"] | components["schemas"]["Google-Pay-Input"] | components["schemas"]["Apple-Pay-Input"] | components["schemas"]["Encrypted-Card-Input"];
         /**
          * Payment Card Input Type
-         * @description Discriminator for the cases of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union
+         * @description Discriminator for the cases of the [Payment Card Input](#/schemas/Payment-Card-Input) union
          * @enum {string}
          */
         "Payment-Card-Input-Type": "CARD_TOKEN" | "APPLE_PAY" | "GOOGLE_PAY" | "ENCRYPTED_CARD";
         /**
          * Card Token Input
-         * @description The `CARD_TOKEN` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the token input and 3DS challenge preference
+         * @description The `CARD_TOKEN` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the token input and 3DS challenge preference
          */
         "Card-Token-Input": {
             /**
@@ -900,7 +907,7 @@ export interface components {
              */
             input_type: "CARD_TOKEN";
             /**
-             * @description Permanent card token acquired using the [Create Card Token](z527w3pj6p22i-create-card-token) API call
+             * @description Permanent card token acquired using the [Create Card Token](#/operations/post-cards-tokens) API call
              * @example J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
              */
             card_token: string;
@@ -917,7 +924,7 @@ export interface components {
         "Payment-Card-Challenge-Preference": "CHALLENGE_PREFERRED" | "NO_CHALLENGE_PREFERRED" | "AUTO";
         /**
          * Google Pay Input
-         * @description The `GOOGLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Google Pay.
+         * @description The `GOOGLE_PAY` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the data acquired from Google Pay.
          *     See [Payment Data Cryptography](https://developers.google.com/pay/api/web/guides/resources/payment-data-cryptography) in Google Pay documentation for details
          */
         "Google-Pay-Input": {
@@ -954,7 +961,7 @@ export interface components {
         };
         /**
          * Apple Pay Input
-         * @description The `APPLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Apple Pay.
+         * @description The `APPLE_PAY` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the data acquired from Apple Pay.
          *     See [Payment Data Cryptography](https://developer.apple.com/documentation/passkit/payment-token-format-reference) in Apple Pay documentation for details
          * @example {
          *       "input_type": "APPLE_PAY",
@@ -1116,7 +1123,7 @@ export interface components {
         };
         /**
          * Payment Instrument Data
-         * @description Discriminated union of the possible payment instrument output data. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](./x3xyv4fy5blzy-payment-instrument) enum.
+         * @description Discriminated union of the possible payment instrument output data. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](#/schemas/Payment-Instrument) enum.
          * @example {
          *       "payment_instrument": "PAYMENT_CARD",
          *       "details": {
@@ -1606,8 +1613,8 @@ export interface components {
             payment: components["schemas"]["Payment-From-Link-Request"];
             /**
              * Format: date-time
-             * @description Time (seconds) after which the link will become inactive
-             * @example 2027-04-21T14:30:00
+             * @description Timestamp after which the link becomes inactive
+             * @example 2027-04-21T14:30:00Z
              */
             expires_at?: string;
             /**
@@ -1621,8 +1628,8 @@ export interface components {
         "Link-Details": {
             /**
              * Format: date-time
-             * @description Time (seconds) after which the link will become inactive
-             * @example 2026-04-21T14:30:00
+             * @description Timestamp after which the link becomes inactive
+             * @example 2026-04-21T14:30:00Z
              */
             expires_at?: string;
             /**
@@ -1887,12 +1894,6 @@ export interface components {
                     };
                 };
             };
-        };
-        "Validate-Merchant-Response": {
-            headers: {
-                [name: string]: unknown;
-            };
-            content?: never;
         };
     };
     parameters: never;

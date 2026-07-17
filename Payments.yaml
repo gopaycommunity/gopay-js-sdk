@@ -1,6 +1,4 @@
 openapi: 3.1.0
-x-stoplight:
-  id: 7ul4bnor42se4
 info:
   version: '4.0'
   title: Payments
@@ -10,9 +8,11 @@ info:
     name: GoPay technical support
     email: integration@gopay.com
 servers:
-  - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
+  - url: 'https://payments-api-mock.beta.gopay.com/'
+    description: Mock server
+  - url: 'https://gw.sandbox.gopay.com/gp-gw/api/4.0'
     description: Sandbox
-  - url: 'https://api.gopay.com/api/merchant/payments/4.0'
+  - url: 'https://gate.gopay.com/gp-gw/api/4.0'
     description: Production
 paths:
   /oauth2/token:
@@ -41,13 +41,6 @@ paths:
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       security:
         - basic: []
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: 9ef5dccko3r33
   '/eshops/{goid}/payments':
     post:
       tags:
@@ -73,13 +66,6 @@ paths:
           $ref: '#/components/responses/Conflict-409-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: v9ch48jk8g32z
       requestBody:
         content:
           application/json:
@@ -116,13 +102,6 @@ paths:
           $ref: '#/components/responses/Not-Found-404-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: bdnj7pr2fsf8h
       security:
         - merchant_credentials:
             - 'payment:read'
@@ -160,13 +139,6 @@ paths:
           $ref: '#/components/responses/Conflict-409-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: vynhf3rofgzt3
       requestBody:
         content:
           application/json:
@@ -197,13 +169,6 @@ paths:
           $ref: '#/components/responses/Not-Found-404-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: d3qt6runvz7qq
       security:
         - merchant_credentials:
             - 'payment:read'
@@ -251,13 +216,6 @@ paths:
           $ref: '#/components/responses/Conflict-409-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: tezlj31vsbthn
       security:
         - merchant_credentials:
             - 'payment:read'
@@ -289,13 +247,6 @@ paths:
           $ref: '#/components/responses/Conflict-409-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: 43hpmsojye84d
       security:
         - payment_credentials:
             - 'payment:read'
@@ -327,13 +278,6 @@ paths:
           $ref: '#/components/responses/Conflict-409-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: yqxnklshztoz9
       security:
         - payment_credentials:
             - 'payment:read'
@@ -365,13 +309,6 @@ paths:
           $ref: '#/components/responses/Conflict-409-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: fnrrrug3qbcc5
       security:
         - payment_credentials:
             - 'payment:read'
@@ -416,13 +353,6 @@ paths:
           $ref: '#/components/responses/Conflict-409-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: dg4vuah8nqutg
       security:
         - payment_credentials:
             - 'payment:read'
@@ -465,11 +395,6 @@ paths:
           $ref: '#/components/responses/Conflict-409-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
       security:
         - merchant_credentials:
             - 'payment:write'
@@ -479,8 +404,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Refund-Create-Request'
-      x-stoplight:
-        id: wxt4rpuely9v0
       tags:
         - Refunds
     parameters:
@@ -503,8 +426,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Refund-Details'
-                  x-stoplight:
-                    id: 519pfqzfd0eqw
         '401':
           $ref: '#/components/responses/Unauthorized-401-Response'
         '403':
@@ -514,8 +435,6 @@ paths:
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: get-payments-payment_id-refunds
-      x-stoplight:
-        id: rzl10ommi9twa
       security:
         - merchant_credentials:
             - 'payment:read'
@@ -548,8 +467,6 @@ paths:
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: get-refunds-refund_id
-      x-stoplight:
-        id: j7g8ylelmjkh4
       security:
         - merchant_credentials:
             - 'payment:read'
@@ -576,13 +493,6 @@ paths:
           $ref: '#/components/responses/Conflict-409-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: im4tdg0fno5ot
       requestBody:
         content:
           application/json:
@@ -618,13 +528,6 @@ paths:
           $ref: '#/components/responses/Not-Found-404-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: ypuvb3qwnr8oy
       security:
         - merchant_credentials:
             - 'card:read'
@@ -650,13 +553,6 @@ paths:
           $ref: '#/components/responses/Not-Found-404-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: ujgwi2dz8mggh
       security:
         - merchant_credentials:
             - 'card:write'
@@ -690,13 +586,6 @@ paths:
           $ref: '#/components/responses/Forbidden-403-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: 0odslmdm37fop
       security:
         - shareable_key: []
         - merchant_credentials:
@@ -721,13 +610,6 @@ paths:
           $ref: '#/components/responses/Forbidden-403-Response'
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
-      servers:
-        - url: 'https://api.sandbox.gopay.com/api/merchant/payments/4.0'
-          description: Sandbox
-        - url: 'https://api.gopay.com/api/merchant/payments/4.0'
-          description: Production
-      x-stoplight:
-        id: 3wvu6533dxyd5
       security:
         - shareable_key: []
         - merchant_credentials:
@@ -764,8 +646,6 @@ paths:
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: post-eshops-goid-recurrences
-      x-stoplight:
-        id: ni0nlxj47iy4n
       requestBody:
         content:
           application/json:
@@ -802,8 +682,6 @@ paths:
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: get-recurrences-rec_id
-      x-stoplight:
-        id: 9j2k26raoijf4
       security:
         - merchant_credentials:
             - 'payment:read'
@@ -825,8 +703,6 @@ paths:
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: delete-recurrences-rec_id
-      x-stoplight:
-        id: 9aev3cbu0r4ih
       security:
         - merchant_credentials:
             - 'payment:write'
@@ -862,8 +738,6 @@ paths:
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: post-recurrences-rec_id-start
-      x-stoplight:
-        id: 1ue2i69szvqhi
       requestBody:
         description: Shared Request
         content:
@@ -911,8 +785,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Payment-Instance-Override'
-      x-stoplight:
-        id: i3qwkxoh1wg1u
       security:
         - merchant_credentials:
             - 'payment:write'
@@ -944,8 +816,6 @@ paths:
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: post-eshops-goid-links
-      x-stoplight:
-        id: bv4jcqr0qg2ur
       tags:
         - Links
       requestBody:
@@ -984,8 +854,6 @@ paths:
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: get-links-link_id
-      x-stoplight:
-        id: rmagnyt7jlpxh
       security:
         - merchant_credentials:
             - 'payment:read'
@@ -1007,8 +875,6 @@ paths:
         '500':
           $ref: '#/components/responses/Internal-Server-Error-500-Response'
       operationId: delete-links-link_id
-      x-stoplight:
-        id: ygqjv181yd27e
       security:
         - merchant_credentials:
             - 'payment:write'
@@ -1021,11 +887,7 @@ components:
           schema:
             oneOf:
               - $ref: '#/components/schemas/Client-Credentials-Request'
-                x-stoplight:
-                  id: 97kf4o6yx8tqo
               - $ref: '#/components/schemas/Payment-Credentials-Request'
-                x-stoplight:
-                  id: 99p3icy3av6r7
           examples:
             Client Credentials:
               value:
@@ -1279,23 +1141,15 @@ components:
                     type: string
                   total:
                     type: object
-                    x-stoplight:
-                      id: 840fynavkl4qh
                     properties:
                       label:
                         type: string
-                        x-stoplight:
-                          id: ya0iwlsrqdia9
                         example: GoPay Czech Branch
                       amount:
                         type: string
-                        x-stoplight:
-                          id: eo7924dlaq8yp
                         example: '5.00'
                       type:
                         type: string
-                        x-stoplight:
-                          id: 50gfvcgfcscie
                         example: final
           examples: {}
     Bad-Request-400-Response:
@@ -1507,15 +1361,11 @@ components:
                         type:
                           type: string
                           example: final
-    Validate-Merchant-Response:
-      description: ''
   schemas:
     Client-Credentials-Request:
       type: object
       title: Client Credentials Request
       description: Request the token pair using the `client_credentials` grant type
-      x-stoplight:
-        id: f4tcbh9w6qhr6
       required:
         - grant_type
         - scope
@@ -1538,8 +1388,6 @@ components:
             - 'payment:write payment:read'
     Payment-Credentials-Request:
       type: object
-      x-stoplight:
-        id: jcwslq77j6vv9
       title: Payment Credentials Request
       description: Request the token pair using the `payment_credentials` grant type
       required:
@@ -1565,8 +1413,6 @@ components:
       type: object
       title: Access Token
       description: The access token and its meta information.
-      x-stoplight:
-        id: 7hygycrmoxxim
       properties:
         token_type:
           type: string
@@ -1604,8 +1450,6 @@ components:
         - `domain` -> `merchant` for server tokens issued for client credentials. `payment` for payment tokens issued for `payment_secret` using the `authorization_code` flow - used on calling the API from the browser.
       examples:
         - eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
-      x-stoplight:
-        id: ah55hvo15l0mo
     Payment-Create-Request:
       type: object
       title: Payment Create Request
@@ -1670,12 +1514,8 @@ components:
           callback:
             notification_url: 'https://example.com/notify'
             return_url: 'https://example.com/return'
-      x-stoplight:
-        id: o8g75vurzaw6q
     Payment-From-Link-Request:
       type: object
-      x-stoplight:
-        id: tdk4bzfegt371
       title: Payment From Link Request
       description: Representation of a payment that will be created from a link. Customer information is not mandatory as the link can be used by many customers.
       examples:
@@ -1739,8 +1579,6 @@ components:
           description: Callback urls
     Payment-Instance-Override:
       type: object
-      x-stoplight:
-        id: xgda6dcdxfju7
       title: Payment Instance Override
       description: Representation of a request for a new payment
       examples:
@@ -1807,8 +1645,6 @@ components:
       description: Supported payment currencies in ISO 4217 format
       examples:
         - CZK
-      x-stoplight:
-        id: a0z9kecfvh53z
     Additional-Param:
       type: object
       title: Additional Parameter
@@ -1830,14 +1666,10 @@ components:
       examples:
         - name: Custom param
           value: Custom value
-      x-stoplight:
-        id: fuh54ro7j3err
     Payment-Details:
       type: object
       title: Payment Details
       description: Representation of an existing payment
-      x-stoplight:
-        id: ul7e04nvq1ve2
       required:
         - id
         - order_number
@@ -1876,14 +1708,21 @@ components:
           description: Customer data
         gw_url:
           type: string
-          description: URL of the hosted payment gateway
+          description: |
+            Escape hatch into the previous (v3) hosted-gateway flow, for payment methods
+            not yet covered by the v4 charge endpoint. Redirecting the customer here hands
+            off real-time control of the payment to the hosted flow while they are on it,
+            but the payment stays fully v4-observable throughout — GET /payments/{payment_id}
+            still reports the final state once the customer completes it, exactly as it
+            would for a payment charged directly through v4. Not a redirect target for
+            payment methods the v4 charge flow already covers.
           format: uri
+          examples:
+            - 'https://gate.gopay.com/gw/123456789'
         charge:
           $ref: '#/components/schemas/Payment-Charge-Status-Response'
         payment_secret:
           type: string
-          x-stoplight:
-            id: v5h2t75je3qqu
           description: 'Payment secret that can be shared to the client side. Used to generate payment-specific JWTs. **Do not embed in URLs, log or store!**'
     Customer:
       type: object
@@ -1967,8 +1806,6 @@ components:
           postal_code: '10000'
           country_code: CZE
           customer_id: custom21321
-      x-stoplight:
-        id: k2uhlcx6o9x4j
       title: Customer
     Payment-Callback:
       type: object
@@ -1991,8 +1828,6 @@ components:
       examples:
         - notification_url: 'https://example.com/notify'
           return_url: 'https://example.com/return'
-      x-stoplight:
-        id: 02yug0ozg3dsm
     Payment-State:
       type: string
       enum:
@@ -2016,8 +1851,6 @@ components:
         - `PARTIALLY_REFUNDED` - The payment has been partially refunded
       examples:
         - CREATED
-      x-stoplight:
-        id: a324zz0m5cu24
       title: Payment State
     Charge-State:
       type: string
@@ -2037,25 +1870,19 @@ components:
         - `FAILED` - The charge failed
       examples:
         - REQUESTED
-      x-stoplight:
-        id: jkmx5uadqs8w4
     Payment-Charge-Data:
       title: Payment Charge Data
-      description: 'Discriminated union of the possible payment charges. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](./x3xyv4fy5blzy-payment-instrument) enum.'
+      description: 'Discriminated union of the possible payment charges. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](#/schemas/Payment-Instrument) enum.'
       oneOf:
         - $ref: '#/components/schemas/Payment-Card-Charge-Data'
       discriminator:
         propertyName: payment_instrument
         mapping:
           PAYMENT_CARD: '#/components/schemas/Payment-Card-Charge-Data'
-      x-stoplight:
-        id: 70kfkgcdqmoky
     Payment-Charge-Input:
       type: object
       title: Payment Charge Input
       description: Model holding all data necessary to perform a payment charge
-      x-stoplight:
-        id: q59oywckbo9iu
       required:
         - payment_instrument
       properties:
@@ -2067,15 +1894,11 @@ components:
       enum:
         - PAYMENT_CARD
       title: Payment Instrument
-      description: 'Discriminator for the cases of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union'
-      x-stoplight:
-        id: zz0m2gbxjsa1t
+      description: 'Discriminator for the cases of the [Payment Charge Data](#/schemas/Payment-Charge-Data) union'
     Payment-Card-Charge-Data:
       type: object
       title: Payment Card Charge Data
-      description: 'The `PAYMENT_CARD` variant of the [Payment Charge Data](./tpeorakie6tae-payment-charge-data) union. Holds the discriminator as well as the input for a card payment.'
-      x-stoplight:
-        id: 9euz3iuvvjvcm
+      description: 'The `PAYMENT_CARD` variant of the [Payment Charge Data](#/schemas/Payment-Charge-Data) union. Holds the discriminator as well as the input for a card payment.'
       required:
         - payment_instrument
         - input
@@ -2090,23 +1913,17 @@ components:
           description: One of the possible inputs for a card payment
         browser_data:
           $ref: '#/components/schemas/Browser-Data'
-          x-stoplight:
-            id: 9ytwjdb5p4aef
         challenge_preference:
           $ref: '#/components/schemas/Payment-Card-Challenge-Preference'
-          x-stoplight:
-            id: uh10sqr7ezuap
     Payment-Card-Input:
       title: Payment Card Input
-      description: 'Discriminated union of the possible card payment inputs. The discriminator is the `input_type` field gaining values from the [Payment Card Input Type](./n7rgf81mgdw30-payment-card-input-type) enum.'
+      description: 'Discriminated union of the possible card payment inputs. The discriminator is the `input_type` field gaining values from the [Payment Card Input Type](#/schemas/Payment-Card-Input-Type) enum.'
       examples: []
       oneOf:
         - $ref: '#/components/schemas/Card-Token-Input'
         - $ref: '#/components/schemas/Google-Pay-Input'
         - $ref: '#/components/schemas/Apple-Pay-Input'
         - $ref: '#/components/schemas/Encrypted-Card-Input'
-          x-stoplight:
-            id: 2n655ulm2htmr
       discriminator:
         propertyName: input_type
         mapping:
@@ -2114,8 +1931,6 @@ components:
           GOOGLE_PAY: '#/components/schemas/Google-Pay-Input'
           APPLE_PAY: '#/components/schemas/Apple-Pay-Input'
           ENCRYPTED_CARD: '#/components/schemas/Encrypted-Card-Input'
-      x-stoplight:
-        id: t5xhej1dd67rt
     Payment-Card-Input-Type:
       type: string
       enum:
@@ -2124,15 +1939,11 @@ components:
         - GOOGLE_PAY
         - ENCRYPTED_CARD
       title: Payment Card Input Type
-      description: 'Discriminator for the cases of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union'
-      x-stoplight:
-        id: zk40n6yy8pspb
+      description: 'Discriminator for the cases of the [Payment Card Input](#/schemas/Payment-Card-Input) union'
     Card-Token-Input:
       type: object
       title: Card Token Input
-      description: 'The `CARD_TOKEN` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the token input and 3DS challenge preference'
-      x-stoplight:
-        id: zo57eolpag636
+      description: 'The `CARD_TOKEN` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the token input and 3DS challenge preference'
       required:
         - input_type
         - card_token
@@ -2143,7 +1954,7 @@ components:
           description: Always `CARD_TOKEN`
         card_token:
           type: string
-          description: 'Permanent card token acquired using the [Create Card Token](z527w3pj6p22i-create-card-token) API call'
+          description: 'Permanent card token acquired using the [Create Card Token](#/operations/post-cards-tokens) API call'
           examples:
             - J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...
     Payment-Card-Challenge-Preference:
@@ -2160,13 +1971,11 @@ components:
         - `NO_CHALLENGE_PREFERRED` - try to skip 3DS authentication for a simpler checkout experience
       examples:
         - AUTO
-      x-stoplight:
-        id: 8tluur9s8ue6i
     Google-Pay-Input:
       type: object
       title: Google Pay Input
       description: |-
-        The `GOOGLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Google Pay.
+        The `GOOGLE_PAY` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the data acquired from Google Pay.
         See [Payment Data Cryptography](https://developers.google.com/pay/api/web/guides/resources/payment-data-cryptography) in Google Pay documentation for details
       properties:
         input_type:
@@ -2206,13 +2015,11 @@ components:
           description: JSON-encoded string containing the encrypted payment data
           examples:
             - '{\"tag\":\"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\\u003d\",\"ephemeralPublicKey\":\"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\\u003d\",\"encryptedMessage\":\"mKOoXwi8OavZ\"}'
-      x-stoplight:
-        id: pc8dab7d7gj22
     Apple-Pay-Input:
       type: object
       title: Apple Pay Input
       description: |-
-        The `APPLE_PAY` variant of the [Payment Card Input](./jq603a1vywo3a-payment-card-input) union. Holds the discriminator as well as the data acquired from Apple Pay.
+        The `APPLE_PAY` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the data acquired from Apple Pay.
         See [Payment Data Cryptography](https://developer.apple.com/documentation/passkit/payment-token-format-reference) in Apple Pay documentation for details
       properties:
         input_type:
@@ -2274,8 +2081,6 @@ components:
             ephemeralPublicKey: MFkwEwYHKoZIzj...
             publicKeyHash: L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=
             transactionId: 4f4fac7a1...a6a8ba2c0e8c5
-      x-stoplight:
-        id: yvgm36p72pt2d
     Bank-Swift:
       type: string
       enum:
@@ -2294,14 +2099,10 @@ components:
         - `OTHERS` - Any other supported bank
       examples:
         - GIBACZPX
-      x-stoplight:
-        id: 9aflikahwtvjj
     Browser-Data:
       type: object
       title: Browser Data
       description: Customer browser data collected for 3-D Secure authentication purposes. This data is forwarded to the card issuer during the authentication flow.
-      x-stoplight:
-        id: 9o47pymlz0t7i
       required:
         - language
         - timezone
@@ -2353,8 +2154,6 @@ components:
       type: object
       title: Payment Charge Response
       description: 'Response data returned after initiating or querying a payment charge. Contains the current charge state, instrument details, and any required follow-up action.'
-      x-stoplight:
-        id: 59ov9t13j8r4l
       required:
         - id
         - state
@@ -2383,8 +2182,6 @@ components:
           description: The follow-up action required to complete the charge (e.g. 3DS authentication or bank redirect)
     Payment-Charge-Status-Response:
       type: object
-      x-stoplight:
-        id: fefke7x4rszau
       title: Payment Charge Status Response
       description: 'Response data returned after initiating or querying a payment charge. Contains the current charge state, instrument details, and any required follow-up action.'
       required:
@@ -2414,12 +2211,10 @@ components:
           description: The follow-up action required to complete the charge (e.g. 3DS authentication or bank redirect)
         fail_reason:
           type: string
-          x-stoplight:
-            id: nyzc1uclwm768
           description: Reason for the charge's failure. Only present when state is `FAILED`
     Payment-Instrument-Data:
       title: Payment Instrument Data
-      description: 'Discriminated union of the possible payment instrument output data. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](./x3xyv4fy5blzy-payment-instrument) enum.'
+      description: 'Discriminated union of the possible payment instrument output data. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](#/schemas/Payment-Instrument) enum.'
       examples:
         - payment_instrument: PAYMENT_CARD
           details:
@@ -2435,8 +2230,6 @@ components:
         propertyName: payment_instrument
         mapping:
           PAYMENT_CARD: '#/components/schemas/Payment-Card-Instrument-Out'
-      x-stoplight:
-        id: 2tsyinoq34h15
     Payment-Card-Instrument-Out:
       type: object
       title: Payment Card Instrument Out
@@ -2450,8 +2243,6 @@ components:
             expiration_year: '30'
             scheme: VISA
             fingerprint: 73c8d0a48d91def89761...
-      x-stoplight:
-        id: 36k0ph7wpd70g
       required:
         - payment_instrument
       properties:
@@ -2472,8 +2263,6 @@ components:
           expiration_year: '30'
           scheme: VISA
           fingerprint: 73c8d0a48d91def89761...
-      x-stoplight:
-        id: siimdch148lwo
       required:
         - input_type
       properties:
@@ -2514,8 +2303,6 @@ components:
       description: The card network scheme (VISA or MASTERCARD)
       examples:
         - VISA
-      x-stoplight:
-        id: mq5lfekr63qzx
     Payment-Charge-Action:
       title: Payment Charge Action
       description: Discriminated union of actions that may be required to complete a payment charge. The discriminator is the `action_type` field. The action typically involves redirecting the customer to an external page (e.g. 3DS authentication or bank login).
@@ -2529,8 +2316,6 @@ components:
         propertyName: action_type
         mapping:
           EMV3DS: '#/components/schemas/Emv-3DS-Action'
-      x-stoplight:
-        id: l5ry7w4fad8bo
       type: object
     Payment-Charge-Action-Type:
       type: string
@@ -2542,8 +2327,6 @@ components:
         - `EMV3DS` - EMV 3-D Secure authentication for card payments
       examples:
         - EMV3DS
-      x-stoplight:
-        id: munhdjjn67aut
     Emv-3DS-Action:
       type: object
       title: Emv 3DS Action
@@ -2552,8 +2335,6 @@ components:
         - action_type: EMV3DS
           state: CREATED
           redirect_url: 'https://gate.gopay.com/redirect'
-      x-stoplight:
-        id: uqebzoj9j5xca
       required:
         - action_type
         - state
@@ -2590,8 +2371,6 @@ components:
         - `FAILED` - The 3DS authentication failed
       examples:
         - CREATED
-      x-stoplight:
-        id: q6qg3ju2stwme
     QR-Payment-Details:
       type: object
       title: QR Payment Details
@@ -2616,8 +2395,6 @@ components:
         - currency
         - recipient
         - qr_code
-      x-stoplight:
-        id: ds0drp74hqkdt
     Bank-Transfer-Recipient:
       type: object
       title: Bank Transfer Recipient
@@ -2634,8 +2411,6 @@ components:
         address:
           $ref: '#/components/schemas/Recipient-Address'
           description: Physical address of the recipient
-      x-stoplight:
-        id: x5y9wv1qidhmd
     Recipient-Bank-Account:
       type: object
       title: Recipient Bank Account
@@ -2647,8 +2422,6 @@ components:
         international:
           $ref: '#/components/schemas/Bank-Account-International-Details'
           description: Bank account details in the international IBAN/BIC format
-      x-stoplight:
-        id: ahetdr3kgbjuj
     Bank-Account-Local-Details:
       type: object
       title: Bank Account Local Details
@@ -2685,8 +2458,6 @@ components:
           account_number: '9878039'
           bank_code: '2010'
           variable_symbol: '3123456789'
-      x-stoplight:
-        id: 9gs5c1stac25m
     Bank-Account-International-Details:
       type: object
       title: Bank Account International Details
@@ -2696,8 +2467,6 @@ components:
           bic: FIOBCZPP
           iban: CZ5120100000000009878039
           reference: '3123456789'
-      x-stoplight:
-        id: 857d3ii1n211p
       properties:
         bic:
           $ref: '#/components/schemas/Bank-Swift'
@@ -2743,8 +2512,6 @@ components:
           city: Ceske Budejovice
           zip_code: '37001'
           country: Czech Republic
-      x-stoplight:
-        id: uvhvobjqhjsnv
     QR-Code-List:
       type: object
       title: QR Code List
@@ -2770,14 +2537,10 @@ components:
           description: 'QR code in the MNB (Magyar Nemzeti Bank) format, commonly used in Hungary. Encoded as a base64 image.'
           examples:
             - '{QR code in base64}'
-      x-stoplight:
-        id: g1tc3uhtyhu8o
     Token-Create-Request:
       type: object
       title: Token Create Request
       description: Request body for creating a card token. Contains the encrypted card data.
-      x-stoplight:
-        id: 5egeqig6cgapq
       required:
         - payload
       properties:
@@ -2874,8 +2637,6 @@ components:
           card_art_url: 'https://card.art/pic.png'
           brand: GOLD
           service_type: DEBIT
-      x-stoplight:
-        id: tfl7o8d2lunbi
     Card-Service-Type:
       type: string
       enum:
@@ -2888,8 +2649,6 @@ components:
         - `CREDIT` - Funds are drawn from the cardholder's credit line
       examples:
         - DEBIT
-      x-stoplight:
-        id: 56hkb2dr3d8u5
     Card-Token-Status:
       type: string
       enum:
@@ -2904,8 +2663,6 @@ components:
         - `DELETED` - The token has been permanently deleted
       examples:
         - ACTIVE
-      x-stoplight:
-        id: 3hcjl5ztyiivz
     JWK:
       type: object
       title: JWK
@@ -2957,8 +2714,6 @@ components:
           alg: RSA-OAEP-256
           'n': oR79tj1xAaqr1TfmkGS03EfEZjU_5DMomKJXGK8cnmtGivG5XnFodcbztzSOrlrKmhoxrKRR0LiRRjYJIgTP3dGK9KOv7JRH4adnDClckQkxupwoz1dcm6cLDzjuVS1a4et8lQlwYKm5r52fG9VShckwNZgvmK0uYcE7717wLkX3JM2vA_F_-2oRCjG3l2E4cjhQzzstTFPkW35ZjuKut4If8LOnKH0h9tdblUOSB_VtZBNY6PCXeUTDfbCb85-eGrwWXEajq4uegPDbV2oSnTLxOXR8ctWURZ8XjS1PgsoDD4go9BQchv-9Q2m0NbS5s71WVJ9LOW7Xt-Napsoftw
           e: AQAB
-      x-stoplight:
-        id: g2j3ypqf0h7ph
     JWE:
       type: string
       title: JWE
@@ -2968,8 +2723,6 @@ components:
         This is generated by client libraries managed by GoPay.
       examples:
         - eyJalgIjoiUlNBLU9BRVAtMjU2IiwiZW5jIjoiQTI1NkdDTSIsImtpZCI6ImtleV8yMDI1MDQwNl8wMDEifQ.aG93ZGlkYmFzZTY0.dGhpc2lzdGhlaXY.ZW5jcnlwdGVkY2FyZGhvbGRlcmRhdGE.YXV0aHRhZw
-      x-stoplight:
-        id: zk1lhhij8fcn2
     Card-Form-URL:
       type: object
       title: Card Form URL
@@ -2983,14 +2736,10 @@ components:
       x-examples:
         Example 1:
           card_form_url: 'https://secure.gopay.com/gp-card-comm/q/form'
-      x-stoplight:
-        id: i6zlunkfclth5
     Error-Response-Body:
       type: object
       title: Error Response Body
       description: 'Standard error response body returned for all API error responses. Contains the HTTP status code, error type, a human-readable message, and additional diagnostic details.'
-      x-stoplight:
-        id: 2vyzd6ap5g6vb
       required:
         - code
         - error
@@ -3032,35 +2781,25 @@ components:
             - '2025-12-10T10:30:00Z'
     Link-Create-Request:
       title: Link Create Request
-      x-stoplight:
-        id: 6zetojhazd6qi
       type: object
       required:
         - payment
       properties:
         payment:
           $ref: '#/components/schemas/Payment-From-Link-Request'
-          x-stoplight:
-            id: 52w729nmq8mah
           description: Payment data for the payments created by clicking on the link
         expires_at:
           type: string
-          x-stoplight:
-            id: i4q1u3d3xxn41
-          example: '2027-04-21T14:30:00'
-          description: Time (seconds) after which the link will become inactive
+          example: '2027-04-21T14:30:00Z'
+          description: Timestamp after which the link becomes inactive
           format: date-time
         reusable:
           type: boolean
-          x-stoplight:
-            id: t1fg2phb79q3d
           default: true
           example: true
           description: Indicates whether the link should only allow one successful payment or may be reused
     Link-Details:
       title: Link Details
-      x-stoplight:
-        id: ptx0o90wfjege
       type: object
       required:
         - reusable
@@ -3070,42 +2809,28 @@ components:
       properties:
         expires_at:
           type: string
-          x-stoplight:
-            id: i4q1u3d3xxn41
-          example: '2026-04-21T14:30:00'
-          description: Time (seconds) after which the link will become inactive
+          example: '2026-04-21T14:30:00Z'
+          description: Timestamp after which the link becomes inactive
           format: date-time
         reusable:
           type: boolean
-          x-stoplight:
-            id: t1fg2phb79q3d
           default: true
           example: true
           description: Indicates whether the link should only allow one successful payment or may be reused
         id:
           type: string
-          x-stoplight:
-            id: 42p4rtqq7420b
           description: Link identifier
           example: '123456'
         url:
           type: string
-          x-stoplight:
-            id: e6eimixubrvh0
           description: 'Link URL. When the link is open, a payment is created and the customer is redirected to the payment gateway'
           example: 'https://go.pay/xfv56td3y5'
         active:
           type: boolean
-          x-stoplight:
-            id: rxray36qdk1v1
           description: Whether the link is currently active
         payment:
           $ref: '#/components/schemas/Payment-From-Link-Request'
-          x-stoplight:
-            id: 17sivwa06s9kf
         stop_reason:
-          x-stoplight:
-            id: 6iudvifr1xrh0
           type: string
           enum:
             - FROM_API
@@ -3113,8 +2838,6 @@ components:
             - EXPIRED
     Recurrence-Schedule:
       title: Recurrence Schedule
-      x-stoplight:
-        id: 9fsqtvzbz2i7w
       type: object
       required:
         - period
@@ -3122,21 +2845,15 @@ components:
       properties:
         period:
           type: string
-          x-stoplight:
-            id: jjw54vy9r443p
           enum:
             - DAY
             - WEEK
             - MONTH
         cycle:
           type: integer
-          x-stoplight:
-            id: hsyaujzj5hkgs
           minimum: 1
     Recurrence-Create-Request:
       title: Recurrence Create Request
-      x-stoplight:
-        id: 07z3iw3yqwjn7
       type: object
       required:
         - type
@@ -3151,12 +2868,8 @@ components:
           $ref: '#/components/schemas/Recurrence-Schedule'
         payment:
           $ref: '#/components/schemas/Payment-Create-Request'
-          x-stoplight:
-            id: jvc1a12tqlet9
     Recurrence-Details:
       title: Recurrence Details
-      x-stoplight:
-        id: kkpv9wqb2s76u
       type: object
       required:
         - type
@@ -3164,23 +2877,15 @@ components:
         - payment
       properties:
         type:
-          x-stoplight:
-            id: nwr6w8unzxshc
           type: string
           enum:
             - AUTO
             - ON_DEMAND
         schedule:
           $ref: '#/components/schemas/Recurrence-Schedule'
-          x-stoplight:
-            id: 790r8zzk8glf0
         id:
           type: string
-          x-stoplight:
-            id: u1jbdt4ynf1ih
         state:
-          x-stoplight:
-            id: ea790ukok0qgp
           type: string
           enum:
             - NEW
@@ -3188,8 +2893,6 @@ components:
             - STARTED
             - STOPPED
         stop_reason:
-          x-stoplight:
-            id: jmbwtiowtl557
           type: string
           enum:
             - RECURRENCE_EXPIRED
@@ -3200,12 +2903,8 @@ components:
             - UNKNOWN
         payment:
           $ref: '#/components/schemas/Payment-Details'
-          x-stoplight:
-            id: 8owft64pvrr07
     Encrypted-Card-Input:
       title: Encrypted Card Input
-      x-stoplight:
-        id: umhn9jdohittv
       type: object
       required:
         - input_type
@@ -3214,43 +2913,29 @@ components:
         input_type:
           const: ENCRYPTED_CARD
           type: string
-          x-stoplight:
-            id: 3iriq5yebvcsx
           example: ENCRYPTED_CARD
         payload:
           $ref: '#/components/schemas/JWE'
-          x-stoplight:
-            id: vpkf96eo5ehgj
     Validate-Merchant-Request:
       title: Validate Merchant Request
-      x-stoplight:
-        id: xr9564j1u6ycd
       type: object
       required:
         - validationUrl
       properties:
         validationUrl:
           type: string
-          x-stoplight:
-            id: b3uhraevfzp3z
           format: uri
     Refund-Create-Request:
       title: Refund Create Request
-      x-stoplight:
-        id: dn6fiqygfefgr
       type: object
       required:
         - amount
       properties:
         amount:
           type: integer
-          x-stoplight:
-            id: 6auiwvwfobcnw
           description: 'Amount to be refunded in cents. For a full amount, set it equal to the payment amount'
     Refund-Details:
       title: Refund Details
-      x-stoplight:
-        id: 9zku6diin4l3f
       type: object
       required:
         - id
@@ -3261,43 +2946,27 @@ components:
       properties:
         id:
           type: string
-          x-stoplight:
-            id: r0g7sj5qkgowu
         state:
           $ref: '#/components/schemas/Refund-State'
-          x-stoplight:
-            id: azic648t86vun
         amount:
           type: integer
-          x-stoplight:
-            id: lcd5dxgk4i5le
         currency:
           $ref: '#/components/schemas/Currency'
-          x-stoplight:
-            id: pp9zxu95fdde9
         created_at:
           type: string
-          x-stoplight:
-            id: 9l3ipmv6tve29
           format: date-time
         updated_at:
           type: string
-          x-stoplight:
-            id: t5e33lbry8gr3
           format: date-time
     Refund-State:
       type: string
       title: Refund State
-      x-stoplight:
-        id: qbjnnnnoucium
       enum:
         - REQUESTED
         - SUCCESS
         - FAILED
     Validate-Merchant-Response:
       title: Validate-Merchant-Response
-      x-stoplight:
-        id: rstewt5aabdv2
       type: object
       additionalProperties: true
 x-internal: false
