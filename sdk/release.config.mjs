@@ -1,6 +1,16 @@
+import { execSync } from 'node:child_process';
+
 /** @type {import('semantic-release').GlobalConfig} */
 export default {
     branches: ['master'],
+    // Pin repositoryUrl to the actual git origin (Bitbucket) explicitly. semantic-release
+    // otherwise prefers package.json's `repository` field over the git remote, and since
+    // GPOMA-2423 added `repository.url` pointing at the public GitHub mirror (for npm display
+    // purposes only), it would otherwise fetch/push release tags against the mirror instead of
+    // the real Bitbucket repo.
+    repositoryUrl: execSync('git config --get remote.origin.url', {
+        encoding: 'utf8',
+    }).trim(),
     // biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release template, not JS
     tagFormat: '${version}',
 
