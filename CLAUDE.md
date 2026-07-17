@@ -3,9 +3,9 @@
 TypeScript types are generated from the **beta** GoPay API spec using `openapi-typescript`, so the SDK stays ahead of upcoming API changes:
 
 ```bash
-cd sdk && yarn codegen
+cd internal/core && yarn codegen
 # fetches https://payments-api.beta.gopay.com/spec/en/payments.yaml
-# outputs: sdk/src/types/generated.ts
+# outputs: internal/core/src/types/generated.ts
 ```
 
 Only the **public** spec (`https://api-docs.gopay.com/`) should be referenced in user-facing docs (e.g. `sdk/README.md`) — the beta URL is an internal codegen source, not something to point SDK users at.
