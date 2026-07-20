@@ -1,5 +1,6 @@
 import { requireAttachedSDK } from './browser-sdk.js';
 import { formatError } from './helpers.js';
+import { sanitizeBody } from './sanitize.js';
 
 let _ctrl = null;
 
@@ -39,7 +40,7 @@ export async function browserGooglePayLoadInfo() {
 
     _ctrl.result.then(
         (chargeState) => {
-            pre.textContent = `── onSuccess ──\n${JSON.stringify(chargeState, null, 2)}`;
+            pre.textContent = `── onSuccess ──\n${JSON.stringify(sanitizeBody(chargeState), null, 2)}`;
         },
         (err) => {
             pre.textContent = `── onError ──\n${formatError(err)}`;

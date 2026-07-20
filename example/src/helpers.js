@@ -182,7 +182,7 @@ export async function pollChargeState(awaitFn, pre) {
         await awaitFn({
             onStateChange: (state) => {
                 if (state.state === 'SUCCEEDED' || state.state === 'FAILED') {
-                    pre.textContent += `\n\n── ${state.state} ──\n${JSON.stringify(state, null, 2)}`;
+                    pre.textContent += `\n\n── ${state.state} ──\n${JSON.stringify(sanitizeBody(state), null, 2)}`;
                 } else {
                     pre.textContent += `\n${state.state}`;
                 }

@@ -20,6 +20,7 @@ import {
     loadGooglePayData,
 } from './google-pay-shared.js';
 import { formatError, prefillCharge } from './helpers.js';
+import { sanitizeBody } from './sanitize.js';
 import { sdk } from './sdk.js';
 
 // Holds the config fetched in step 1, consumed in step 2
@@ -44,7 +45,7 @@ export async function googlePayLoadInfo() {
     try {
         _googlePayInfo = await sdk.getGooglePayInfo(paymentId);
         _googlePaymentId = paymentId;
-        pre.textContent = `── onSuccess (getGooglePayInfo) ──\n${JSON.stringify(_googlePayInfo, null, 2)}\n\nClick the Google Pay button to proceed.`;
+        pre.textContent = `── onSuccess (getGooglePayInfo) ──\n${JSON.stringify(sanitizeBody(_googlePayInfo), null, 2)}\n\nClick the Google Pay button to proceed.`;
     } catch (err) {
         pre.textContent = `── onError (getGooglePayInfo) ──\n${formatError(err)}`;
         return;
