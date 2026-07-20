@@ -46,6 +46,7 @@
             "!**/coverage",
             "!**/playwright-report",
             "!**/test-results",
+            "!.claude/worktrees",
             "!sdk/src/types/generated.ts",
             "!browser-sdk/src/types/generated.ts",
             "!internal/core/src/types/generated.ts",
