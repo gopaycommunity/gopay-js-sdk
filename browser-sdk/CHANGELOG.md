@@ -1,3 +1,13 @@
+## [1.4.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.4.0...browser-sdk-1.4.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* add repository/homepage metadata so npm links to GitHub mirror GPOMA-2423 ([630aa16](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/630aa1644c5153212e54e0a0380d4be939cb62d5))
+* correct codegen doc location in CLAUDE.md GPOMA-2423 ([8d2dd22](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8d2dd22616617b36d499f190ba1547c8c64cbda4))
+* fetch beta API spec for codegen, keep only public spec in docs GPOMA-2423 ([ff2cd30](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ff2cd30ca5295cd7f192dbd4bfe71f62783dc8a3))
+* pin semantic-release repositoryUrl to git origin GPOMA-2423 ([dbfbab6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/dbfbab617b8f10ecd27dee6f0a88db33b3bdb085))
+
 # [1.4.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.3.2...browser-sdk-1.4.0) (2026-07-09)
 
 
