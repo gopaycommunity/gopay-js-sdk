@@ -1,3 +1,11 @@
+## [1.9.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.9.1...1.9.2) (2026-07-20)
+
+
+### Bug Fixes
+
+* sanitize remaining Apple Pay/Google Pay output panels GPOMA-2435 ([8d8f562](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8d8f56271e1fc9d9afceee3ce3f72c5d25463e86))
+* sanitize remaining example app output panels GPOMA-2435 ([5a7b5a7](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5a7b5a71723f78c70b426cfaf9d26db905740756))
+
 ## [1.9.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.9.0...1.9.1) (2026-07-20)
 
 
