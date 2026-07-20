@@ -1,6 +1,7 @@
 import { requireAttachedSDK } from './browser-sdk.js';
 import { formatError } from './helpers.js';
 import { renderQRImage } from './qr-render.js';
+import { sanitizeBody } from './sanitize.js';
 
 export async function browserGetStatus() {
     const pre = document.getElementById('bstatus-output');
@@ -11,7 +12,7 @@ export async function browserGetStatus() {
     pre.textContent = '── fetching payment status ──';
     try {
         const result = await browserSdk.getStatus();
-        pre.textContent = `── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
+        pre.textContent = `── onSuccess ──\n${JSON.stringify(sanitizeBody(result), null, 2)}`;
     } catch (err) {
         pre.textContent = `── onError ──\n${formatError(err)}`;
     }
@@ -26,7 +27,7 @@ export async function browserGetChargeState() {
     pre.textContent = '── fetching charge state ──';
     try {
         const result = await browserSdk.getChargeState();
-        pre.textContent = `── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
+        pre.textContent = `── onSuccess ──\n${JSON.stringify(sanitizeBody(result), null, 2)}`;
     } catch (err) {
         pre.textContent = `── onError ──\n${formatError(err)}`;
     }
@@ -44,7 +45,7 @@ export async function browserQRPaymentInfo() {
     pre.textContent = '── fetching QR info ──';
     try {
         const result = await browserSdk.getQRPaymentInfo(format);
-        pre.textContent = `── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
+        pre.textContent = `── onSuccess ──\n${JSON.stringify(sanitizeBody(result), null, 2)}`;
         renderQRImage(pre, result);
     } catch (err) {
         pre.textContent += `\n\n── onError ──\n${formatError(err)}`;

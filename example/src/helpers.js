@@ -59,7 +59,7 @@ export async function run(outputId, fn, onSuccess) {
     pre.textContent = 'Running…';
     try {
         const result = await fn();
-        pre.textContent = `── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
+        pre.textContent = `── onSuccess ──\n${JSON.stringify(sanitizeBody(result), null, 2)}`;
         if (onSuccess) {
             onSuccess(result);
         }

@@ -1,3 +1,4 @@
+import { collectBrowserData } from '@gopaycz/gopay-js-sdk-browser';
 import { prefillPaymentId, run, show3dsPrompt, state } from './helpers.js';
 import { sdk } from './sdk.js';
 
@@ -58,18 +59,9 @@ export function runGetChargeState() {
 // Example:
 //   const result = await sdk.chargePayment(paymentId, { payment_instrument: instrument });
 //   if (result.action?.redirect_url) window.location.href = result.action.redirect_url;
-function collectBrowserData() {
-    return {
-        language: navigator.language,
-        timezone: new Date().getTimezoneOffset(),
-        screen_width: screen.width,
-        screen_height: screen.height,
-        color_depth: screen.colorDepth,
-        user_agent: navigator.userAgent,
-        javascript_enabled: true,
-    };
-}
-
+// browser_data is collected via the browser SDK's own collectBrowserData() helper (forwarded
+// as-is, per the security checklist) rather than hand-rolled here — it deliberately omits
+// accept_header/ip, which GoPay's backend fills in itself for pure client-side flows.
 export function runChargeEncrypted() {
     const paymentId = document
         .getElementById('charge-enc-payment-id')

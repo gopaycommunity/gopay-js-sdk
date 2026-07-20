@@ -10,6 +10,7 @@ import {
     prefillServerChargeEncrypted,
     prefillTokenize,
 } from './helpers.js';
+import { sanitizeBody } from './sanitize.js';
 
 let currentLang = 'en';
 let currentTheme = 'default';
@@ -159,7 +160,7 @@ export async function cardPayOpenIframe() {
         }
         cardFormController = null;
         container.style.display = 'none';
-        pre.textContent += `\n\n── onSuccess ──\n${JSON.stringify(result, null, 2)}`;
+        pre.textContent += `\n\n── onSuccess ──\n${JSON.stringify(sanitizeBody(result), null, 2)}`;
         if (!isDirectCharge) {
             pre.textContent +=
                 '\n\nEncrypted payload auto-filled in the Server charge, Browser charge and Cards · tokenize sections.';

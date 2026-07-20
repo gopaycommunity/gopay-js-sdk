@@ -1,5 +1,6 @@
 import { getBrowserSDK, isSdkAttached } from './browser-sdk.js';
 import { formatError, pollChargeState, show3dsPrompt } from './helpers.js';
+import { sanitizeBody } from './sanitize.js';
 
 const TERMINAL_STATES = new Set(['SUCCEEDED', 'FAILED']);
 
@@ -39,7 +40,7 @@ export async function runBrowserCharge() {
             },
         });
 
-        pre.textContent += `\n${JSON.stringify(chargeResult, null, 2)}`;
+        pre.textContent += `\n${JSON.stringify(sanitizeBody(chargeResult), null, 2)}`;
 
         if (TERMINAL_STATES.has(chargeResult.state)) {
             return;
