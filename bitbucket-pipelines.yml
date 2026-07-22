@@ -88,27 +88,12 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          # --branches overrides the configured 'master' release branch so the dry-run analyzes
-          # THIS branch's own commits instead of always reporting "wrong branch, skipping".
           # sdk/ is the umbrella version (analyzes ALL commits repo-wide, see release.config.mjs),
           # so if IT finds nothing releasable, nothing in the whole PR is fix/feat/BREAKING CHANGE —
-          # fail so that doesn't silently merge and pile up unreleased. browser-sdk/ is filtered to
-          # browser-sdk/ files only, so its own "no release" is often expected and not gated here.
-          - |
-            set +e
-            SDK_DRY_RUN=$(cd sdk && yarn dlx semantic-release --dry-run --no-ci --branches "$BITBUCKET_BRANCH" 2>&1)
-            SDK_EXIT=$?
-            echo "$SDK_DRY_RUN"
-            if [ $SDK_EXIT -ne 0 ]; then
-              exit $SDK_EXIT
-            fi
-            if echo "$SDK_DRY_RUN" | grep -q "no relevant changes"; then
-              echo ""
-              echo "No release-worthy commit (fix/feat/BREAKING CHANGE) found — @gopaycz/gopay-js-sdk would not get a new version if this PR merges as-is."
-              echo "Add a fix:/feat: commit (or a BREAKING CHANGE: footer) if this PR is meant to ship a release."
-              exit 1
-            fi
-          - (cd browser-sdk && yarn dlx semantic-release --dry-run --no-ci --branches "$BITBUCKET_BRANCH")
+          # gate on it. browser-sdk/ is filtered to browser-sdk/ files only, so its own "no release"
+          # is often expected and is previewed but not gated.
+          - ./scripts/release-preview.sh @gopaycz/gopay-js-sdk --gate
+          - ./scripts/release-preview.sh @gopaycz/gopay-js-sdk-browser
 
     - step: &build
         name: Build SDK
