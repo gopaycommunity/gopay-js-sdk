@@ -23,7 +23,7 @@ if [ "$EXIT_CODE" -ne 0 ]; then
   exit "$EXIT_CODE"
 fi
 
-if [ "$GATE" = "--gate" ] && echo "$OUTPUT" | grep -q "no relevant changes"; then
+if [ "$GATE" = "--gate" ] && [[ "$OUTPUT" == *"no relevant changes"* ]]; then
   echo ""
   echo "No release-worthy commit (fix/feat/BREAKING CHANGE) found — $PKG would not get a new version if this PR merges as-is."
   echo "Add a fix:/feat: commit (or a BREAKING CHANGE: footer) if this PR is meant to ship a release."
