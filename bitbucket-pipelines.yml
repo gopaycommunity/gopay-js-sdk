@@ -88,8 +88,27 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          - (cd sdk && yarn dlx semantic-release --dry-run --no-ci)
-          - (cd browser-sdk && yarn dlx semantic-release --dry-run --no-ci)
+          # --branches overrides the configured 'master' release branch so the dry-run analyzes
+          # THIS branch's own commits instead of always reporting "wrong branch, skipping".
+          # sdk/ is the umbrella version (analyzes ALL commits repo-wide, see release.config.mjs),
+          # so if IT finds nothing releasable, nothing in the whole PR is fix/feat/BREAKING CHANGE —
+          # fail so that doesn't silently merge and pile up unreleased. browser-sdk/ is filtered to
+          # browser-sdk/ files only, so its own "no release" is often expected and not gated here.
+          - |
+            set +e
+            SDK_DRY_RUN=$(cd sdk && yarn dlx semantic-release --dry-run --no-ci --branches "$BITBUCKET_BRANCH" 2>&1)
+            SDK_EXIT=$?
+            echo "$SDK_DRY_RUN"
+            if [ $SDK_EXIT -ne 0 ]; then
+              exit $SDK_EXIT
+            fi
+            if echo "$SDK_DRY_RUN" | grep -q "no relevant changes"; then
+              echo ""
+              echo "No release-worthy commit (fix/feat/BREAKING CHANGE) found — @gopaycz/gopay-js-sdk would not get a new version if this PR merges as-is."
+              echo "Add a fix:/feat: commit (or a BREAKING CHANGE: footer) if this PR is meant to ship a release."
+              exit 1
+            fi
+          - (cd browser-sdk && yarn dlx semantic-release --dry-run --no-ci --branches "$BITBUCKET_BRANCH")
 
     - step: &build
         name: Build SDK
@@ -155,29 +174,8 @@ definitions:
         script:
           - git fetch origin master --tags
           - git remote add github https://${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/gopaycommunity/gopay-js-sdk.git
-          # README.internal.md is Bitbucket-only. Mirroring the raw ref would carry it (and its
-          # full history) to GitHub, so master and each new tag are pushed as sanitized, history-less
-          # snapshot commits instead of the real commit graph.
-          - |
-            set -e
-            sanitize_and_push() {
-              git checkout -q "$1"
-              git rm -q --ignore-unmatch README.internal.md
-              git checkout -q --orphan mirror-tmp
-              git -c user.name="GoPay Release Bot" -c user.email="release-bot@gopay.cz" commit -q -m "chore: public mirror snapshot"
-              git push github "HEAD:$2" --force
-              git checkout -q -
-              git branch -q -D mirror-tmp
-            }
-
-            sanitize_and_push origin/master refs/heads/master
-
-            git ls-remote --tags github > github-tags.txt
-            for tag in $(git tag); do
-              grep -q "refs/tags/${tag}\$" github-tags.txt 2>/dev/null && continue
-              sanitize_and_push "refs/tags/${tag}" "refs/tags/${tag}"
-            done
-            rm -f github-tags.txt
+          - git push github origin/master:refs/heads/master
+          - git push github --tags
 
     - step: &docker-build-push
         name: Build & push example Docker image
