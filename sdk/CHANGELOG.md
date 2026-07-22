@@ -1,3 +1,10 @@
+## [1.9.3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.9.2...1.9.3) (2026-07-22)
+
+
+### Bug Fixes
+
+* update SDK default base URLs to match new API domain GPOMA-2444 ([3159c73](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3159c7381e7b565f802eddef4d3b30581a8ee1f7))
+
 ## [1.9.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.9.1...1.9.2) (2026-07-20)
 
 
