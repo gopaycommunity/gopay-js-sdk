@@ -45,21 +45,16 @@ describe('buildUrl', () => {
     it('uses sandbox base URL by default', () => {
         expect(
             buildUrl(
-                'https://api.sandbox.gopay.com/api/merchant/payments/4.0',
+                'https://gw.sandbox.gopay.com/gp-gw/api/4.0',
                 'oauth2/token',
             ),
-        ).toBe(
-            'https://api.sandbox.gopay.com/api/merchant/payments/4.0/oauth2/token',
-        );
+        ).toBe('https://gw.sandbox.gopay.com/gp-gw/api/4.0/oauth2/token');
     });
 
     it('uses production base URL when environment is production', () => {
         expect(
-            buildUrl(
-                'https://api.gopay.com/api/merchant/payments/4.0',
-                'oauth2/token',
-            ),
-        ).toBe('https://api.gopay.com/api/merchant/payments/4.0/oauth2/token');
+            buildUrl('https://gate.gopay.com/gp-gw/api/4.0', 'oauth2/token'),
+        ).toBe('https://gate.gopay.com/gp-gw/api/4.0/oauth2/token');
     });
 });
 
@@ -165,7 +160,7 @@ describe('GoPaySDK', () => {
 
             expect(sdk.isAuthenticated()).toBe(true);
             expect(capturedReq.url).toBe(
-                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/oauth2/token',
+                'https://gw.sandbox.gopay.com/gp-gw/api/4.0/oauth2/token',
             );
             expect(capturedReq.method).toBe('POST');
             expect(capturedReq.headers.get('Content-Type')).toBe(
@@ -275,7 +270,7 @@ describe('GoPaySDK', () => {
 
             expect(capturedPaymentReq.method).toBe('POST');
             expect(capturedPaymentReq.url).toBe(
-                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/eshops/test-goid/payments',
+                'https://gw.sandbox.gopay.com/gp-gw/api/4.0/eshops/test-goid/payments',
             );
             expect(result).toEqual(mockPayment);
         });
@@ -345,7 +340,7 @@ describe('GoPaySDK', () => {
 
             expect(capturedChargeReq.method).toBe('POST');
             expect(capturedChargeReq.url).toBe(
-                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/payments/pay_300000001/charge',
+                'https://gw.sandbox.gopay.com/gp-gw/api/4.0/payments/pay_300000001/charge',
             );
             expect(result).toEqual(mockCharge);
         });
@@ -392,7 +387,7 @@ describe('GoPaySDK', () => {
 
             expect(capturedReq.method).toBe('GET');
             expect(capturedReq.url).toBe(
-                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/payments/payment-123/google-pay/info',
+                'https://gw.sandbox.gopay.com/gp-gw/api/4.0/payments/payment-123/google-pay/info',
             );
             expect(result).toEqual(mockGooglePay);
         });
@@ -450,7 +445,7 @@ describe('GoPaySDK', () => {
 
             expect(capturedReq.method).toBe('GET');
             expect(capturedReq.url).toBe(
-                'https://api.sandbox.gopay.com/api/merchant/payments/4.0/payments/payment-123/qr-payment/info?format=svg',
+                'https://gw.sandbox.gopay.com/gp-gw/api/4.0/payments/payment-123/qr-payment/info?format=svg',
             );
             expect(result).toEqual(mockQR);
         });

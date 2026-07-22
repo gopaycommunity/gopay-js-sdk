@@ -623,8 +623,8 @@ The callback fires synchronously before the error propagates to the caller.
 
 | Environment | Base URL |
 |---|---|
-| `sandbox` | `https://api.sandbox.gopay.com/api/merchant/payments/4.0` |
-| `production` | `https://api.gopay.com/api/merchant/payments/4.0` |
+| `sandbox` | `https://gw.sandbox.gopay.com/gp-gw/api/4.0` |
+| `production` | `https://gate.gopay.com/gp-gw/api/4.0` |
 
 ---
 
