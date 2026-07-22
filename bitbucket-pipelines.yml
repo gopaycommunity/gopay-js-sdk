@@ -174,8 +174,12 @@ definitions:
         script:
           - git fetch origin master --tags
           - git remote add github https://${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/gopaycommunity/gopay-js-sdk.git
-          - git push github origin/master:refs/heads/master
-          - git push github --tags
+          # --force: GitHub's existing master/tags are the old orphan snapshot commits (unrelated
+          # history to the real graph being pushed here for the first time). Without --force this
+          # push is rejected as a non-fast-forward. Safe here — this mirror is sync-only, nothing
+          # reads or builds from GitHub, so overwriting its history has no downstream effect.
+          - git push github origin/master:refs/heads/master --force
+          - git push github --tags --force
 
     - step: &docker-build-push
         name: Build & push example Docker image
