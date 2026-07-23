@@ -214,6 +214,7 @@ const chargeResult = await googleCtrl.result;
 |---|---|
 | `chargePayment(params)` | `POST /payments/{id}/charge` — charge the payment; `browser_data` is collected and merged automatically for card instruments |
 | `awaitChargeState(options?)` | Poll charge state to a terminal outcome; handles the 3DS redirect per `ThreeDSConfig` (useful for `mode: 'manual'`) |
+| `awaitPaymentStatus(options?)` | Poll payment status to a terminal outcome — for QR and bank-transfer payments, where completion is confirmed at the payment level (`state === 'PAID'`) rather than the charge level |
 | `getStatus()` | `GET /payments/{id}` — payment details |
 | `getChargeState()` | `GET /payments/{id}/charge` — current charge state |
 | `getGooglePayInfo()` | `GET /payments/{id}/google-pay/info` |
