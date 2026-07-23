@@ -1,0 +1,15 @@
+# git worktrees only check out tracked files, so gitignored secrets/certs need to be
+# symlinked in manually. Runs on every checkout (git worktree add triggers this hook
+# too); no-ops in the main worktree and skips paths that already exist.
+main_root="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
+current_root="$(git rev-parse --show-toplevel)"
+
+if [ -n "$main_root" ] && [ "$current_root" != "$main_root" ]; then
+    for path in sdk/.env example/certs; do
+        target="$current_root/$path"
+        source="$main_root/$path"
+        if [ ! -e "$target" ] && [ ! -L "$target" ] && [ -e "$source" ]; then
+            ln -s "$source" "$target"
+        fi
+    done
+fi
