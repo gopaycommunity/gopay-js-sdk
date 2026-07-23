@@ -86,20 +86,6 @@ describe('GoPaySDK', () => {
         expect(typeof sdk.startApplePaySession).toBe('function');
         expect(typeof sdk.getQRPaymentInfo).toBe('function');
         expect(typeof sdk.awaitChargeState).toBe('function');
-        // Links
-        expect(typeof sdk.createPaymentLink).toBe('function');
-        expect(typeof sdk.linkStatus).toBe('function');
-        expect(typeof sdk.disableLink).toBe('function');
-        // Recurrences
-        expect(typeof sdk.createRecurrence).toBe('function');
-        expect(typeof sdk.recurrenceStatus).toBe('function');
-        expect(typeof sdk.stopRecurrence).toBe('function');
-        expect(typeof sdk.startRecurrence).toBe('function');
-        expect(typeof sdk.recurrenceNext).toBe('function');
-        // Refunds
-        expect(typeof sdk.refundPayment).toBe('function');
-        expect(typeof sdk.listRefunds).toBe('function');
-        expect(typeof sdk.getRefund).toBe('function');
     });
 
     describe('AuthModule', () => {

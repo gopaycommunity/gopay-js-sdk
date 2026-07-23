@@ -27,11 +27,6 @@ import {
 } from './card-pay.js';
 import { updateBrowserBadge } from './helpers.js';
 import {
-    runCreatePaymentLink,
-    runDisableLink,
-    runLinkStatus,
-} from './links.js';
-import {
     clearCharge,
     runCharge,
     runChargeEncrypted,
@@ -42,14 +37,6 @@ import {
     runQRPaymentInfo,
 } from './payments.js';
 import {
-    runCreateRecurrence,
-    runRecurrenceNext,
-    runRecurrenceStatus,
-    runStartRecurrence,
-    runStopRecurrence,
-} from './recurrences.js';
-import { runGetRefund, runListRefunds, runRefundPayment } from './refunds.js';
-import {
     runDeleteCard,
     runGetCardDetails,
     runTokenizeEncryptedCard,
@@ -59,21 +46,13 @@ import { clientId, clientSecret, goid, sdk, shareableKey } from './sdk.js';
 // -----------------------------------------------------------------------
 // Pre-populate return/notification URL fields from the current href
 // -----------------------------------------------------------------------
-for (const id of [
-    'create-return-url',
-    'link-create-return-url',
-    'rec-create-return-url',
-]) {
+for (const id of ['create-return-url']) {
     const el = document.getElementById(id);
     if (el) {
         el.value = window.location.href;
     }
 }
-for (const id of [
-    'create-notification-url',
-    'link-create-notification-url',
-    'rec-create-notification-url',
-]) {
+for (const id of ['create-notification-url']) {
     const el = document.getElementById(id);
     if (el) {
         el.value = `${window.location.origin}/notify`;
@@ -102,11 +81,7 @@ if (shareableKey && clientId) {
     initBrowserSDK(shareableKey, clientId);
 }
 if (goid) {
-    for (const fieldId of [
-        'create-goid',
-        'rec-create-goid',
-        'link-create-goid',
-    ]) {
+    for (const fieldId of ['create-goid']) {
         const el = document.getElementById(fieldId);
         if (el) {
             el.value = goid;
@@ -201,14 +176,3 @@ window.runGetChargeState = runGetChargeState;
 window.runGetCardDetails = runGetCardDetails;
 window.runDeleteCard = runDeleteCard;
 window.runTokenizeEncryptedCard = runTokenizeEncryptedCard;
-window.runCreateRecurrence = runCreateRecurrence;
-window.runRecurrenceStatus = runRecurrenceStatus;
-window.runStartRecurrence = runStartRecurrence;
-window.runRecurrenceNext = runRecurrenceNext;
-window.runStopRecurrence = runStopRecurrence;
-window.runRefundPayment = runRefundPayment;
-window.runListRefunds = runListRefunds;
-window.runGetRefund = runGetRefund;
-window.runCreatePaymentLink = runCreatePaymentLink;
-window.runLinkStatus = runLinkStatus;
-window.runDisableLink = runDisableLink;

@@ -109,8 +109,8 @@ const payment = await sdk.createPayment(goid, params);
 
 | Scope | Constant | Used by |
 |---|---|---|
-| `payment:write` | `GoPayScopes.PAYMENT_WRITE` | `createPayment`, `chargePayment`, `refundPayment`, recurrences, payment links |
-| `payment:read` | `GoPayScopes.PAYMENT_READ` | `getPaymentStatus`, `getChargeState`, `listRefunds`, `getRefund`, recurrence status |
+| `payment:write` | `GoPayScopes.PAYMENT_WRITE` | `createPayment`, `chargePayment` |
+| `payment:read` | `GoPayScopes.PAYMENT_READ` | `getPaymentStatus`, `getChargeState` |
 | `card:write` | `GoPayScopes.CARD_WRITE` | `getBrowserKeys()` — allows the browser SDK to present the card form |
 | `card:read` | `GoPayScopes.CARD_READ` | `getCardDetails`, `deleteCard` |
 | `payment:charge` | `GoPayScopes.PAYMENT_CHARGE` | Browser SDK only (`attachPayment` / `payment_credentials` grant) |
@@ -437,89 +437,6 @@ const charge = await sdk.chargePayment(payment.id, {
 
 // Delete the card when the customer removes it from their account
 await sdk.deleteCard(card.card_id);
-```
-
----
-
-### Recurrences
-
-| Method | Description |
-|---|---|
-| `createRecurrence(goid, params)` | Create a recurring payment agreement (`POST /eshops/{goid}/recurrences`). Requires `payment:write` scope. |
-| `recurrenceStatus(recId)` | Retrieve the current state of a recurrence (`GET /recurrences/{rec_id}`). Requires `payment:read` scope. |
-| `stopRecurrence(recId)` | Stop a recurrence permanently (`DELETE /recurrences/{rec_id}`). Requires `payment:write` scope. |
-| `startRecurrence(recId, params?)` | Trigger the first charge of a recurrence in `NEW` state (`POST /recurrences/{rec_id}/start`). Requires `payment:write` scope. |
-| `recurrenceNext(recId, params?)` | Charge the next instalment of a `STARTED` recurrence (`POST /recurrences/{rec_id}/next`). Requires `payment:write` scope. |
-
-```ts
-// Create an ON_DEMAND recurrence (customer can be charged any time)
-const recurrence = await sdk.createRecurrence(goid, {
-  type: 'ON_DEMAND',
-  payment: {
-    amount: 1000,
-    currency: 'CZK',
-    order_number: 'SUB-001',
-    customer: { email: 'customer@example.com' },
-    callback: {
-      notification_url: 'https://yourshop.com/notify',
-      return_url: 'https://yourshop.com/return',
-    },
-  },
-});
-
-// Start the first charge (sets recurrence to STARTED)
-await sdk.startRecurrence(recurrence.id);
-
-// Charge subsequent instalments at will
-await sdk.recurrenceNext(recurrence.id, { amount: 1000, order_number: 'SUB-002' });
-
-// Stop the recurrence when the subscription ends
-await sdk.stopRecurrence(recurrence.id);
-```
-
----
-
-### Refunds
-
-| Method | Description |
-|---|---|
-| `refundPayment(paymentId, params)` | Refund a payment fully or partially (`POST /payments/{paymentId}/refunds`). Requires `payment:write` scope. |
-| `listRefunds(paymentId)` | List all refunds for a payment (`GET /payments/{paymentId}/refunds`). Requires `payment:read` scope. |
-| `getRefund(refundId)` | Retrieve details of a single refund (`GET /refunds/{refundId}`). Requires `payment:read` scope. |
-
----
-
-### Payment Links
-
-| Method | Description |
-|---|---|
-| `createPaymentLink(goid, params)` | Create a shareable payment link (`POST /eshops/{goid}/links`). Requires `payment:write` scope. |
-| `linkStatus(linkId)` | Retrieve the current state of a payment link (`GET /links/{link_id}`). Requires `payment:write` scope. |
-| `disableLink(linkId)` | Disable a link so it can no longer be used (`DELETE /links/{link_id}`). Requires `payment:write` scope. |
-
-```ts
-// Create a reusable link that expires at a set date
-const link = await sdk.createPaymentLink(goid, {
-  reusable: true,
-  expires_at: '2027-12-31T23:59:59',
-  payment: {
-    amount: 500,
-    currency: 'CZK',
-    order_number: 'LINK-001',
-    customer: { email: 'customer@example.com' },
-    callback: {
-      notification_url: 'https://yourshop.com/notify',
-      return_url: 'https://yourshop.com/return',
-    },
-  },
-});
-console.log(link.url); // share this URL with the customer
-
-// Check current state (active, stop_reason, etc.)
-const status = await sdk.linkStatus(link.id);
-
-// Disable the link when it should no longer accept payments
-await sdk.disableLink(link.id);
 ```
 
 ---
