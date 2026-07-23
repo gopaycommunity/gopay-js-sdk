@@ -1,3 +1,13 @@
+## [1.9.4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.9.3...1.9.4) (2026-07-23)
+
+
+### Bug Fixes
+
+* address CodeRabbit review comments GPOMA-2444 ([be2c2a5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/be2c2a5c0251adbfe526e73612256e561c38a948))
+* force-push GitHub mirror since prior history is unrelated (orphan) GPOMA-2444 ([3e66b75](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3e66b75122677e3fda612dfcc2e525e98923312f))
+* suppress 8 dev-dependency CVE advisories (fix versions quarantined) GPOMA-2444 ([049d9da](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/049d9da8ff796050f0b57bcccda10b0bf7429456))
+* use pinned semantic-release for release-preview, dedupe into a script GPOMA-2444 ([c1c4c49](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c1c4c49c5d3748afeddedc187175ffd4d73407b5))
+
 ## [1.9.3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.9.2...1.9.3) (2026-07-22)
 
 
