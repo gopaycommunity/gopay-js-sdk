@@ -1,3 +1,12 @@
+## [1.9.5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.9.4...1.9.5) (2026-07-24)
+
+
+### Bug Fixes
+
+* **browser-sdk:** document missing awaitPaymentStatus() in Flow B methods table GPOMA-2451 ([a324093](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a324093e83451c1560f3b4868d3c681762795fc4))
+* remove refunds/recurrences/payment-links (unfinished endpoints removed from schema) GPOMA-2451 ([e8bef04](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e8bef04babdd16feb2333fa3f7d9cab5bcdce9d2))
+* symlink gitignored secrets/certs into worktrees via post-checkout hook GPOMA-2451 ([035f974](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/035f9745b5f778b5373b907503c5cdfdb2febf34))
+
 ## [1.9.4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.9.3...1.9.4) (2026-07-23)
 
 
