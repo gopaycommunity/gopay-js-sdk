@@ -1,3 +1,19 @@
+## [1.4.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.4.1...browser-sdk-1.4.2) (2026-07-24)
+
+
+### Bug Fixes
+
+* address CodeRabbit review comments GPOMA-2444 ([be2c2a5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/be2c2a5c0251adbfe526e73612256e561c38a948))
+* **browser-sdk:** document missing awaitPaymentStatus() in Flow B methods table GPOMA-2451 ([a324093](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a324093e83451c1560f3b4868d3c681762795fc4))
+* force-push GitHub mirror since prior history is unrelated (orphan) GPOMA-2444 ([3e66b75](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3e66b75122677e3fda612dfcc2e525e98923312f))
+* remove refunds/recurrences/payment-links (unfinished endpoints removed from schema) GPOMA-2451 ([e8bef04](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e8bef04babdd16feb2333fa3f7d9cab5bcdce9d2))
+* sanitize remaining Apple Pay/Google Pay output panels GPOMA-2435 ([8d8f562](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8d8f56271e1fc9d9afceee3ce3f72c5d25463e86))
+* sanitize remaining example app output panels GPOMA-2435 ([5a7b5a7](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5a7b5a71723f78c70b426cfaf9d26db905740756))
+* suppress 8 dev-dependency CVE advisories (fix versions quarantined) GPOMA-2444 ([049d9da](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/049d9da8ff796050f0b57bcccda10b0bf7429456))
+* symlink gitignored secrets/certs into worktrees via post-checkout hook GPOMA-2451 ([035f974](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/035f9745b5f778b5373b907503c5cdfdb2febf34))
+* update SDK default base URLs to match new API domain GPOMA-2444 ([3159c73](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3159c7381e7b565f802eddef4d3b30581a8ee1f7))
+* use pinned semantic-release for release-preview, dedupe into a script GPOMA-2444 ([c1c4c49](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c1c4c49c5d3748afeddedc187175ffd4d73407b5))
+
 ## [1.4.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.4.0...browser-sdk-1.4.1) (2026-07-20)
 
 
