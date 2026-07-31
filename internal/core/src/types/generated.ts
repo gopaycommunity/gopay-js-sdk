@@ -792,9 +792,9 @@ export interface components {
             user_agent?: string;
             /**
              * @description JSON-encoded Accept headers from the customer's browser
-             * @example {\"accept-language\":\"cs;q\\u003d0.5\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"accept\":\"application/json, text/plain, *\/*\"}
+             * @example {"accept-language":"cs;q=0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, *\/*"}
              */
-            accept_header?: string;
+            accept_header: string;
             /**
              * @description Whether JavaScript is enabled in the customer's browser
              * @example true

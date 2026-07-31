@@ -1,4 +1,8 @@
-import { GoPayErrorCodes, GoPaySDKError } from '@gopay-internal/core';
+import {
+    GoPayErrorCodes,
+    GoPaySDKError,
+    SDK_ACCEPT_HEADER,
+} from '@gopay-internal/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { collectBrowserData } from '../../src/modules/payments/browser-data.js';
 
@@ -58,5 +62,57 @@ describe('collectBrowserData()', () => {
                 errorCode: GoPayErrorCodes.INVALID_CONFIG,
             }),
         );
+    });
+
+    describe('accept_header', () => {
+        it('is a JSON-encoded object with accept, accept-encoding and accept-language', () => {
+            const parsed = JSON.parse(collectBrowserData().accept_header);
+            expect(Object.keys(parsed).sort()).toEqual([
+                'accept',
+                'accept-encoding',
+                'accept-language',
+            ]);
+        });
+
+        it('reports the Accept header the SDK sends on its own requests', () => {
+            const parsed = JSON.parse(collectBrowserData().accept_header);
+            expect(parsed.accept).toBe('application/json');
+            expect(parsed.accept).toBe(SDK_ACCEPT_HEADER);
+        });
+
+        it('derives accept-language from navigator.languages with q-values', () => {
+            vi.stubGlobal('navigator', {
+                language: 'cs-CZ',
+                languages: ['cs-CZ', 'cs', 'en'],
+                userAgent: 'Agent',
+            });
+            const parsed = JSON.parse(collectBrowserData().accept_header);
+            expect(parsed['accept-language']).toBe('cs-CZ,cs;q=0.9,en;q=0.8');
+        });
+
+        it('falls back to navigator.language when navigator.languages is unavailable', () => {
+            vi.stubGlobal('navigator', {
+                language: 'cs-CZ',
+                userAgent: 'Agent',
+            });
+            const parsed = JSON.parse(collectBrowserData().accept_header);
+            expect(parsed['accept-language']).toBe('cs-CZ');
+        });
+
+        it('never emits a q-value below 0.1', () => {
+            const languages = Array.from({ length: 12 }, (_, i) => `l${i}`);
+            vi.stubGlobal('navigator', {
+                language: 'l0',
+                languages,
+                userAgent: 'Agent',
+            });
+            const parsed = JSON.parse(collectBrowserData().accept_header);
+            expect(parsed['accept-language'].endsWith('l11;q=0.1')).toBe(true);
+        });
+
+        it('reports the documented accept-encoding approximation', () => {
+            const parsed = JSON.parse(collectBrowserData().accept_header);
+            expect(parsed['accept-encoding']).toBe('gzip, deflate, br, zstd');
+        });
     });
 });

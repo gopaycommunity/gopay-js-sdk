@@ -61,7 +61,7 @@ export function runGetChargeState() {
 //   if (result.action?.redirect_url) window.location.href = result.action.redirect_url;
 // browser_data is collected via the browser SDK's own collectBrowserData() helper (forwarded
 // as-is, per the security checklist) rather than hand-rolled here — it deliberately omits
-// accept_header/ip, which GoPay's backend fills in itself for pure client-side flows.
+// ip, which GoPay's backend fills in itself for pure client-side flows.
 export function runChargeEncrypted() {
     const paymentId = document
         .getElementById('charge-enc-payment-id')

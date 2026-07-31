@@ -360,8 +360,9 @@ Collects browser context required for 3D Secure and fraud detection. Call this i
 | `timezone` | `new Date().getTimezoneOffset()` |
 | `javascript_enabled` | always `true` |
 | `screen_width` / `screen_height` / `color_depth` | `screen.*` |
+| `accept_header` | JSON-encoded: `accept` = the SDK's own request `Accept` header, `accept-language` derived from `navigator.languages` with q-values, `accept-encoding` a constant approximation (`gzip, deflate, br, zstd`) — the real value is a forbidden header JavaScript cannot read |
 
-Fields not collectable in JavaScript (`ip`, `accept_header`) are omitted — the GoPay backend fills them from the HTTP request.
+The `ip` field is not collectable in JavaScript and is omitted — the GoPay backend fills it from the HTTP request.
 
 ---
 

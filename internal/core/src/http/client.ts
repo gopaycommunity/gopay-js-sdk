@@ -6,6 +6,13 @@ import { parseBody } from './response.js';
 import { createTokenStore, type StoredTokenPair } from './token-store.js';
 import type { RequestOptions } from './types.js';
 
+/**
+ * The `Accept` header value the SDK sets on its own API requests.
+ * Also reported as the `accept` part of `browser_data.accept_header`
+ * on charge requests, so it must stay in sync with the headers below.
+ */
+export const SDK_ACCEPT_HEADER = 'application/json';
+
 export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
     const baseUrl = resolveBaseUrl(config);
     const tokenStore = createTokenStore();
@@ -147,7 +154,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
         async get<T>(path: string, options?: RequestOptions): Promise<T> {
             try {
                 const url = buildUrl(baseUrl, path);
-                const headers = new Headers({ Accept: 'application/json' });
+                const headers = new Headers({ Accept: SDK_ACCEPT_HEADER });
                 await auth.injectAuth(headers, url, options);
                 debugLogRequest('GET', url);
                 const response = await auth.fetchAndHandle401(
@@ -170,7 +177,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
-                    Accept: 'application/json',
+                    Accept: SDK_ACCEPT_HEADER,
                     'Content-Type': 'application/json',
                 });
                 await auth.injectAuth(headers, url, options);
@@ -213,7 +220,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    Accept: 'application/json',
+                    Accept: SDK_ACCEPT_HEADER,
                 });
                 if (options?.headers) {
                     for (const [k, v] of Object.entries(options.headers)) {

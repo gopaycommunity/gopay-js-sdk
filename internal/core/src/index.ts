@@ -5,7 +5,7 @@ export type { GoPayErrorCode } from './errors.js';
 export { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from './errors.js';
 export { buildUrl } from './http/build-url.js';
 export type { HttpClient } from './http/client.js';
-export { createHttpClient } from './http/client.js';
+export { createHttpClient, SDK_ACCEPT_HEADER } from './http/client.js';
 export type { StoredTokenPair } from './http/token-store.js';
 export { createTokenStore } from './http/token-store.js';
 export type { AwaitPaymentStatusOptions } from './payment-status-polling.js';

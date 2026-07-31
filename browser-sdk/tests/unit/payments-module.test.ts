@@ -101,6 +101,34 @@ describe('createPaymentsApi() — browser SDK', () => {
             ).toBe(true);
         });
 
+        it('sends the required accept_header in browser_data', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedBody = await req.text();
+                return makeResponse({});
+            });
+
+            await api.chargePayment({
+                payment_instrument: {
+                    payment_instrument: 'PAYMENT_CARD',
+                    input: {
+                        input_type: 'ENCRYPTED_CARD',
+                        payload: 'enc_payload',
+                    },
+                },
+            });
+
+            const body = JSON.parse(capturedBody);
+            const acceptHeader = body.payment_instrument.browser_data
+                .accept_header as string;
+            expect(acceptHeader).toBeTypeOf('string');
+            // accept must match the Accept header the SDK set on this request
+            const parsed = JSON.parse(acceptHeader);
+            expect(parsed.accept).toBe('application/json');
+            expect(parsed['accept-language']).toBeTypeOf('string');
+            expect(parsed['accept-encoding']).toBe('gzip, deflate, br, zstd');
+        });
+
         it('caller-supplied browser_data fields override collected values', async () => {
             let capturedBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
