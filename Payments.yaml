@@ -2109,6 +2109,7 @@ components:
         - screen_width
         - screen_height
         - color_depth
+        - accept_header
       properties:
         language:
           type: string

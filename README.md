@@ -25,7 +25,7 @@ gp-gw-js-sdk/
 ├── internal/core/        # Private shared package — inlined into both SDKs at build time, not published
 ├── tests/browser/        # Playwright end-to-end tests
 ├── example/              # Interactive developer page
-└── Payments.yaml         # OpenAPI 3.1 spec (source of truth)
+└── Payments.yaml         # OpenAPI 3.1 reference snapshot — codegen fetches the spec by URL, not this file
 ```
 
 ## Development

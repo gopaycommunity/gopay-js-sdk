@@ -1,5 +1,6 @@
 import { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from '../errors.js';
 import { buildUrl } from './build-url.js';
+import { SDK_ACCEPT_HEADER } from './constants.js';
 import { fetchWithRetry } from './fetch-with-retry.js';
 import { parseBody } from './response.js';
 import type { TokenStore } from './token-store.js';
@@ -157,7 +158,7 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
             const credentials = globalThis.btoa(`${clientId}:${clientSecret}`);
             const headers = new Headers({
                 'Content-Type': 'application/x-www-form-urlencoded',
-                Accept: 'application/json',
+                Accept: SDK_ACCEPT_HEADER,
                 Authorization: `Basic ${credentials}`,
             });
 

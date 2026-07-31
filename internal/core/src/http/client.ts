@@ -2,16 +2,10 @@ import type { CoreConfig } from '../config.js';
 import { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from '../errors.js';
 import { createAuthHandler } from './auth-handler.js';
 import { buildUrl, resolveBaseUrl } from './build-url.js';
+import { SDK_ACCEPT_HEADER } from './constants.js';
 import { parseBody } from './response.js';
 import { createTokenStore, type StoredTokenPair } from './token-store.js';
 import type { RequestOptions } from './types.js';
-
-/**
- * The `Accept` header value the SDK sets on its own API requests.
- * Also reported as the `accept` part of `browser_data.accept_header`
- * on charge requests, so it must stay in sync with the headers below.
- */
-export const SDK_ACCEPT_HEADER = 'application/json';
 
 export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
     const baseUrl = resolveBaseUrl(config);

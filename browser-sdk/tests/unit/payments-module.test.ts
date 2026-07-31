@@ -103,7 +103,9 @@ describe('createPaymentsApi() — browser SDK', () => {
 
         it('sends the required accept_header in browser_data', async () => {
             let capturedBody = '';
+            let capturedAccept = '';
             fetchMock.mockImplementation(async (req: Request) => {
+                capturedAccept = req.headers.get('accept') ?? '';
                 capturedBody = await req.text();
                 return makeResponse({});
             });
@@ -122,9 +124,12 @@ describe('createPaymentsApi() — browser SDK', () => {
             const acceptHeader = body.payment_instrument.browser_data
                 .accept_header as string;
             expect(acceptHeader).toBeTypeOf('string');
-            // accept must match the Accept header the SDK set on this request
+            // accept must match the Accept header the SDK actually set on this
+            // request — compare against the captured header, not a literal, so
+            // the two cannot drift apart without failing here.
+            expect(capturedAccept).not.toBe('');
             const parsed = JSON.parse(acceptHeader);
-            expect(parsed.accept).toBe('application/json');
+            expect(parsed.accept).toBe(capturedAccept);
             expect(parsed['accept-language']).toBeTypeOf('string');
             expect(parsed['accept-encoding']).toBe('gzip, deflate, br, zstd');
         });
