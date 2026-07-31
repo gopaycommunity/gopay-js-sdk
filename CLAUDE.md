@@ -79,11 +79,15 @@ Card data encryption must never be performed in publicly reachable JavaScript. T
 
 ---
 
-## Releasing — breaking changes checklist
+## Releasing — both packages are pinned to 1.x
 
-Before merging to master, check whether any public API changes are breaking (require a major version bump). If yes, ensure the commit message includes a `BREAKING CHANGE:` footer so semantic-release bumps the major version correctly.
+Both packages deliberately stay on the **1.x line**. `releaseRules: [{ breaking: true, release: 'minor' }]` in both `release.config.mjs` files maps a breaking commit to a **minor** bump instead of a major one, so no commit can push either package to 2.x. This keeps `@1` range-pins (notably the unpkg IIFE consumers) valid indefinitely.
 
-Consumer-facing breaking changes (bump major):
+Still add a `BREAKING CHANGE:` footer when a change genuinely breaks consumers — `release-notes-generator` reads the same parsed note, so the BREAKING CHANGES section still lands in `CHANGELOG.md` and the release notes. That section is how consumers find out; only the version arithmetic is capped.
+
+Be aware this is a deliberate departure from strict semver: a minor bump can carry a breaking change. Weigh that when a change would break consumers at runtime rather than only at compile time — prefer making it backward-compatible instead of relying on the note.
+
+Consumer-facing breaking changes (call these out in the footer):
 - Removed or renamed exported functions, classes, types, or constants
 - Changed method signatures (added required params, changed return types)
 - Changed `window.GoPayBrowserSDK` global shape — affects `@gopaycz/gopay-js-sdk-browser` IIFE consumers on unpkg (pin to `@1`)

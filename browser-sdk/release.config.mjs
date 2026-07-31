@@ -26,8 +26,19 @@ export default {
     analyzeCommits,
 
     plugins: [
-        // analyzeCommits above calls this at index 0 with path-filtered commits
-        '@semantic-release/commit-analyzer',
+        // analyzeCommits above calls this at index 0 with path-filtered commits.
+        //
+        // releaseRules pins this package to the 1.x line — same cap as sdk/release.config.mjs,
+        // see the longer note there. The config reaches the analyzer through the monorepo
+        // decorator: semantic-release-plugin-decorators' wrapStep destructures plugins[0]'s
+        // array form and calls the step with {...globalPluginConfig, ...pluginConfig}, so
+        // releaseRules is forwarded rather than dropped by the wrapper.
+        [
+            '@semantic-release/commit-analyzer',
+            {
+                releaseRules: [{ breaking: true, release: 'minor' }],
+            },
+        ],
 
         // Generate release notes (uses all commits since last tag — see note below)
         // Note: release notes may include commits from sdk/ or internal/core/,

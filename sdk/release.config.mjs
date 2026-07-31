@@ -30,7 +30,23 @@ export default {
 
     plugins: [
         // Analyze all commits since the last tag to decide the version bump.
-        '@semantic-release/commit-analyzer',
+        //
+        // releaseRules pins this package to the 1.x line: a commit carrying a BREAKING CHANGE
+        // footer (or a `!` subject) produces a MINOR bump instead of a MAJOR one. Custom
+        // releaseRules are matched before commit-analyzer's built-in rules (see its index.js:
+        // "If no custom releaseRules or none matched the commit, try with default releaseRules"),
+        // so this shadows the default {breaking: true, release: 'major'} rule. Non-breaking
+        // commits fall through to the defaults unchanged (feat → minor, fix → patch).
+        //
+        // Breaking changes are still surfaced to consumers: release-notes-generator reads the
+        // same parsed notes, so the BREAKING CHANGES section still appears in CHANGELOG.md —
+        // only the version arithmetic is capped.
+        [
+            '@semantic-release/commit-analyzer',
+            {
+                releaseRules: [{ breaking: true, release: 'minor' }],
+            },
+        ],
 
         // Generate release notes from all commits since the last tag.
         '@semantic-release/release-notes-generator',
