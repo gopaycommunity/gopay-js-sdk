@@ -1,3 +1,17 @@
+# [2.0.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.4.2...browser-sdk-2.0.0) (2026-07-31)
+
+
+### Features
+
+* **browser-sdk:** send required accept_header in browser_data GPOMA-2473 ([fde132e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fde132e0f8de712fdaf5d0da636ad0452f0a8914))
+
+
+### BREAKING CHANGES
+
+* **browser-sdk:** BrowserData['accept_header'] is now required. Consumers
+constructing browser_data by hand must supply it; consumers forwarding
+collectBrowserData() output are unaffected.
+
 ## [1.4.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.4.1...browser-sdk-1.4.2) (2026-07-24)
 
 
