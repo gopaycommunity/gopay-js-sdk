@@ -789,7 +789,7 @@ export interface components {
              * @description User-Agent string of the customer's browser
              * @example Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36
              */
-            user_agent?: string;
+            user_agent: string;
             /**
              * @description JSON-encoded Accept headers from the customer's browser
              * @example {"accept-language":"cs;q=0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, *\/*"}
@@ -799,7 +799,7 @@ export interface components {
              * @description Whether JavaScript is enabled in the customer's browser
              * @example true
              */
-            javascript_enabled?: boolean;
+            javascript_enabled: boolean;
         };
         /**
          * Payment Charge Response
