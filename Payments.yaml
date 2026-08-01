@@ -8,6 +8,8 @@ info:
     name: GoPay technical support
     email: integration@gopay.com
 servers:
+  - url: 'https://payments-api-mock.beta.gopay.com/'
+    description: Mock server
   - url: 'https://gw.sandbox.gopay.com/gp-gw/api/4.0'
     description: Sandbox
   - url: 'https://gate.gopay.com/gp-gw/api/4.0'
