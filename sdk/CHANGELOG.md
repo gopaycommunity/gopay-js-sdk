@@ -1,3 +1,23 @@
+# [1.11.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.10.0...1.11.0) (2026-08-03)
+
+
+### Bug Fixes
+
+* keep beta mock-server entry in Payments.yaml snapshot GPOMA-2477 ([3682ba6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3682ba67a37af16acbe2ad6db615dca153e16fb6))
+
+
+### Features
+
+* sync generated types with beta spec GPOMA-2477 ([bdff2be](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bdff2be9aa491439e02e18e5a4d203c1b0c652c1))
+
+
+### BREAKING CHANGES
+
+* `BrowserData.user_agent` and `BrowserData.javascript_enabled`
+are now required. Consumers of @gopaycz/gopay-js-sdk that hand-build
+`browser_data` instead of using the browser SDK's `collectBrowserData()` must
+supply both fields. The API rejects charge requests without them.
+
 # [1.10.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.9.5...1.10.0) (2026-08-01)
 
 
