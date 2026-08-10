@@ -183,6 +183,12 @@ describe('mountApplePayButton()', () => {
 
     afterEach(() => {
         container.remove();
+        // A leaked tag would make hasApplePayScriptTag() true for later tests.
+        for (const el of document.head.querySelectorAll(
+            'script[src*="applepay.cdn-apple.com"]',
+        )) {
+            el.remove();
+        }
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
         vi.useRealTimers();
@@ -296,6 +302,124 @@ describe('mountApplePayButton()', () => {
 
         expect(mockLoadScriptOnce).toHaveBeenCalledOnce();
         expect(container.querySelector('apple-pay-button')).not.toBeNull();
+    });
+
+    it('waits for whenDefined() when the button registers on a later tick', async () => {
+        // The registry stays empty, so get() cannot short-circuit — this is the
+        // only test that exercises the whenDefined() resolution path itself.
+        let registerButton!: () => void;
+        const registered = new Promise<void>((res) => {
+            registerButton = res;
+        });
+        vi.stubGlobal('customElements', {
+            get: () => undefined,
+            whenDefined: () => registered,
+            define: vi.fn(),
+        });
+
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        let settled = false;
+        const pending = api.mountApplePayButton(container).then((c) => {
+            settled = true;
+            return c;
+        });
+
+        await Promise.resolve();
+        expect(settled).toBe(false); // still waiting on whenDefined()
+
+        registerButton();
+        const ctrl = await pending;
+        ctrl.result.catch(() => {});
+
+        expect(container.querySelector('apple-pay-button')).not.toBeNull();
+    });
+
+    it('returns WALLET_BUTTON_ERROR when whenDefined() rejects', async () => {
+        vi.stubGlobal('customElements', {
+            get: () => undefined,
+            whenDefined: () => Promise.reject(new SyntaxError('bad tag name')),
+            define: vi.fn(),
+        });
+        const onUnavailable = vi.fn();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container, {
+            onUnavailable,
+        });
+        const err = await ctrl.result.catch((e: unknown) => e);
+
+        expect((err as GoPaySDKError).errorCode).toBe(
+            GoPayErrorCodes.WALLET_BUTTON_ERROR,
+        );
+        expect((err as GoPaySDKError).cause).toBeInstanceOf(SyntaxError);
+        expect(onUnavailable).toHaveBeenCalledOnce();
+    });
+
+    it('does not inject the script when the page already carries the same SDK tag', async () => {
+        // Element registered by the host tag, shim not installed yet — so the
+        // load is wanted, and only the DOM check suppresses it.
+        vi.stubGlobal('ApplePaySession', undefined);
+        const tag = document.createElement('script');
+        tag.src =
+            'https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js';
+        document.head.appendChild(tag);
+
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(mockLoadScriptOnce).not.toHaveBeenCalled();
+    });
+
+    it('calls onUnavailable when the script fails to load', async () => {
+        vi.stubGlobal('ApplePaySession', undefined);
+        appleButtonRegistered = false;
+        mockLoadScriptOnce.mockRejectedValue(new Error('blocked'));
+        const onUnavailable = vi.fn();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container, {
+            onUnavailable,
+        });
+        await ctrl.result.catch(() => {});
+
+        expect(onUnavailable).toHaveBeenCalledOnce();
+    });
+
+    it('calls onUnavailable when the button is never registered', async () => {
+        vi.useFakeTimers();
+        appleButtonRegistered = false;
+        const onUnavailable = vi.fn();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const pending = api.mountApplePayButton(container, { onUnavailable });
+        await vi.advanceTimersByTimeAsync(10_000);
+        const ctrl = await pending;
+        await ctrl.result.catch(() => {});
+
+        expect(onUnavailable).toHaveBeenCalledOnce();
     });
 
     it('returns WALLET_BUTTON_ERROR when the button is never registered after the script loads', async () => {

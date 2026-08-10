@@ -215,7 +215,13 @@ const chargeResult = await googleCtrl.result;
 >
 > The same script registers the `<apple-pay-button>` element, so no page-level
 > `<script src="https://applepay.cdn-apple.com/...">` tag is needed in any browser. If you
-> already ship one, you can drop it; keeping it is harmless.
+> already ship one you can drop it — and if you keep a tag for the same `1.latest` build, the
+> SDK detects it and skips injecting a second copy.
+>
+> Because the SDK is now the only thing fetching this script, anything that blocks
+> `applepay.cdn-apple.com` (ad-blocker, corporate proxy, or a `script-src` / `font-src` CSP that
+> omits it) makes Apple Pay unavailable. `onUnavailable` fires in that case, so the fallback UI
+> you render there covers it.
 
 ### Other Flow B methods (available after `attachPayment`)
 

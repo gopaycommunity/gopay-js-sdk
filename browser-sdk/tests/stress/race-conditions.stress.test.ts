@@ -71,7 +71,6 @@ describe('race conditions — rapid / concurrent mount calls', () => {
     beforeEach(() => {
         container = document.createElement('div');
         document.body.appendChild(container);
-        stubApplePayButtonRegistry();
         mockLoadScriptOnce.mockResolvedValue(undefined);
     });
 
@@ -255,6 +254,12 @@ describe('race conditions — rapid / concurrent mount calls', () => {
     // -------------------------------------------------------------------------
 
     describe('mountApplePayButton', () => {
+        // Scoped here rather than the file-level hook — the card-form tests above
+        // must keep jsdom's real customElements.
+        beforeEach(() => {
+            stubApplePayButtonRegistry();
+        });
+
         it('second call while first is active returns WALLET_BUTTON_ERROR', async () => {
             vi.stubGlobal('ApplePaySession', MockApplePaySession);
 

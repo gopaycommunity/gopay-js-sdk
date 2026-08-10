@@ -209,9 +209,10 @@ describe('mountApplePayButton — stress / leak detection', () => {
     });
 
     // -------------------------------------------------------------------------
-    // loadScriptOnce: called only when ApplePaySession is absent; skipped once
-    // it is available. The first mount triggers the load; subsequent mounts
-    // (same globalThis) find the session already present and skip it.
+    // loadScriptOnce: called when either the <apple-pay-button> element or
+    // ApplePaySession is missing, and skipped once both are present. These tests
+    // stub the element as always registered, so they cover the session operand;
+    // the element operand is covered in tests/unit/wallets-module.test.ts.
     // -------------------------------------------------------------------------
 
     it('loadScriptOnce is called once when ApplePaySession is absent, skipped on subsequent mounts', async () => {

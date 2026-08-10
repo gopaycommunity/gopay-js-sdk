@@ -182,6 +182,24 @@ function getApplePaySession(): ApplePaySessionGlobal | undefined {
 }
 
 /**
+ * True when the page already carries a tag for the same SDK build we inject.
+ *
+ * `loadScriptOnce` only tracks scripts it added itself, so without this a host
+ * page that ships its own tag — still in flight, therefore having registered
+ * nothing yet — gets a second copy of Apple's loader fetched and evaluated.
+ * Matched on the URL prefix so a `?components=` query still counts.
+ *
+ * A tag for a *different* build (the older `v1`) deliberately does not count:
+ * that one registers the element but installs no `ApplePaySession` shim, so
+ * `1.latest` still has to load on top of it.
+ */
+function hasApplePayScriptTag(): boolean {
+    return !!globalThis.document?.querySelector(
+        `script[src^="${APPLE_PAY_SCRIPT_SRC}"]`,
+    );
+}
+
+/**
  * Resolves once `<apple-pay-button>` is registered, rejecting if that has not
  * happened within `APPLE_PAY_BUTTON_DEFINE_TIMEOUT_MS`.
  */
@@ -360,15 +378,20 @@ export function createWalletsApi(
             // host that already pulled in the older `v1` build, which registers the
             // element but installs no shim. Stacking `1.latest` on top of `v1` is safe
             // — both guard their registration with `customElements.get()` first.
-            if (
+            const needsAppleSdk =
                 !globalThis.customElements?.get(APPLE_PAY_BUTTON_TAG) ||
-                !getApplePaySession()
-            ) {
+                !getApplePaySession();
+
+            if (needsAppleSdk && !hasApplePayScriptTag()) {
                 try {
                     await loadScriptOnce(APPLE_PAY_SCRIPT_SRC, {
                         crossOrigin: 'anonymous',
                     });
                 } catch {
+                    // The SDK is the only thing loading this script now, so a
+                    // blocked CDN (ad-blocker, CSP, proxy) has to reach the
+                    // merchant's fallback UI rather than leave an empty slot.
+                    options.onUnavailable?.();
                     const err = new GoPaySDKError(
                         '[GoPayBrowserSDK] Failed to load Apple Pay SDK script.',
                         { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
@@ -383,6 +406,7 @@ export function createWalletsApi(
             try {
                 await whenApplePayButtonDefined();
             } catch (cause) {
+                options.onUnavailable?.();
                 const err = new GoPaySDKError(
                     `[GoPayBrowserSDK] Apple Pay SDK loaded but <${APPLE_PAY_BUTTON_TAG}> was never registered.`,
                     { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR, cause },
