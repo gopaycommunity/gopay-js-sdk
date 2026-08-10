@@ -26,6 +26,7 @@ import {
     makeHttpClient,
     makePaymentsApiMock,
     simulateCardEncryptResult,
+    stubApplePayButtonRegistry,
     trackWindowListeners,
 } from './_helpers.js';
 
@@ -70,6 +71,7 @@ describe('race conditions — rapid / concurrent mount calls', () => {
     beforeEach(() => {
         container = document.createElement('div');
         document.body.appendChild(container);
+        stubApplePayButtonRegistry();
         mockLoadScriptOnce.mockResolvedValue(undefined);
     });
 

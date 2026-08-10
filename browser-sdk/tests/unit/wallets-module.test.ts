@@ -148,12 +148,36 @@ describe('mountApplePayButton()', () => {
         }
     }
 
+    // The real Apple Pay SDK registers <apple-pay-button>; here loadScriptOnce is
+    // mocked, so the registry is stubbed instead. jsdom's own registry is not usable
+    // for this — it is append-only, so a test could never go back to "not registered".
+    let appleButtonRegistered: boolean;
+
+    function stubCustomElements() {
+        vi.stubGlobal('customElements', {
+            get: (tag: string) =>
+                appleButtonRegistered && tag === 'apple-pay-button'
+                    ? class {}
+                    : undefined,
+            whenDefined: (tag: string) =>
+                appleButtonRegistered && tag === 'apple-pay-button'
+                    ? Promise.resolve()
+                    : // Never settles — mirrors a sub-module that failed to load.
+                      new Promise<void>(() => {}),
+            define: vi.fn(),
+        });
+    }
+
     beforeEach(() => {
         container = document.createElement('div');
         document.body.appendChild(container);
         applePayCtorArgs = [];
+        appleButtonRegistered = true;
         MockApplePaySession.canMakePayments.mockReturnValue(true);
         vi.stubGlobal('ApplePaySession', MockApplePaySession);
+        stubCustomElements();
+        // Reset call history — these tests assert whether the SDK loaded the script.
+        mockLoadScriptOnce.mockReset();
         mockLoadScriptOnce.mockResolvedValue(undefined);
     });
 
@@ -161,6 +185,7 @@ describe('mountApplePayButton()', () => {
         container.remove();
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
+        vi.useRealTimers();
     });
 
     it('returns PAYMENT_NOT_ATTACHED controller when getPaymentsApi returns null', async () => {
@@ -185,7 +210,8 @@ describe('mountApplePayButton()', () => {
     });
 
     it('returns WALLET_BUTTON_ERROR when script fails to load', async () => {
-        vi.unstubAllGlobals(); // ApplePaySession absent → loadScriptOnce is reached
+        // ApplePaySession absent → loadScriptOnce is reached
+        vi.stubGlobal('ApplePaySession', undefined);
         mockLoadScriptOnce.mockRejectedValue(new Error('network'));
         const client = makeClient();
         const api = createWalletsApi(
@@ -203,7 +229,7 @@ describe('mountApplePayButton()', () => {
     });
 
     it('returns WALLET_BUTTON_ERROR when ApplePaySession is not in globalThis', async () => {
-        vi.unstubAllGlobals();
+        vi.stubGlobal('ApplePaySession', undefined);
         const client = makeClient();
         const api = createWalletsApi(
             client as never,
@@ -216,6 +242,111 @@ describe('mountApplePayButton()', () => {
         expect((err as GoPaySDKError).errorCode).toBe(
             GoPayErrorCodes.WALLET_BUTTON_ERROR,
         );
+    });
+
+    it('loads the 1.latest Apple Pay SDK build with crossorigin when the button is not registered', async () => {
+        appleButtonRegistered = false;
+        // Registration lands while the SDK is waiting on whenDefined().
+        mockLoadScriptOnce.mockImplementation(() => {
+            appleButtonRegistered = true;
+            return Promise.resolve();
+        });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(mockLoadScriptOnce).toHaveBeenCalledWith(
+            'https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js',
+            { crossOrigin: 'anonymous' },
+        );
+    });
+
+    it('skips loading when the button is registered and ApplePaySession is present', async () => {
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(mockLoadScriptOnce).not.toHaveBeenCalled();
+    });
+
+    it('loads the SDK when the button is registered but ApplePaySession is missing (host loaded the v1 build)', async () => {
+        vi.stubGlobal('ApplePaySession', undefined);
+        mockLoadScriptOnce.mockImplementation(() => {
+            vi.stubGlobal('ApplePaySession', MockApplePaySession);
+            return Promise.resolve();
+        });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(mockLoadScriptOnce).toHaveBeenCalledOnce();
+        expect(container.querySelector('apple-pay-button')).not.toBeNull();
+    });
+
+    it('returns WALLET_BUTTON_ERROR when the button is never registered after the script loads', async () => {
+        vi.useFakeTimers();
+        appleButtonRegistered = false; // whenDefined() never settles
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const pending = api.mountApplePayButton(container);
+        await vi.advanceTimersByTimeAsync(10_000);
+        const ctrl = await pending;
+        const err = await ctrl.result.catch((e: unknown) => e);
+
+        expect(err).toBeInstanceOf(GoPaySDKError);
+        expect((err as GoPaySDKError).errorCode).toBe(
+            GoPayErrorCodes.WALLET_BUTTON_ERROR,
+        );
+    });
+
+    it('rejects with WALLET_BUTTON_ERROR when the ApplePaySession constructor throws', async () => {
+        // The non-Safari shim validates the payment request and throws TypeError.
+        class ThrowingApplePaySession {
+            static canMakePayments = () => true;
+            static STATUS_SUCCESS = 0;
+            static STATUS_FAILURE = 1;
+            constructor() {
+                throw new TypeError(
+                    'Member ApplePayPaymentRequest.merchantCapabilities is required',
+                );
+            }
+        }
+        vi.stubGlobal('ApplePaySession', ThrowingApplePaySession);
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
+        container.querySelector<HTMLElement>('apple-pay-button')!.click();
+
+        const err = await ctrl.result.catch((e: unknown) => e);
+        expect(err).toBeInstanceOf(GoPaySDKError);
+        expect((err as GoPaySDKError).errorCode).toBe(
+            GoPayErrorCodes.WALLET_BUTTON_ERROR,
+        );
+        expect((err as GoPaySDKError).cause).toBeInstanceOf(TypeError);
     });
 
     it('calls onUnavailable and returns WALLET_BUTTON_ERROR when canMakePayments is false', async () => {

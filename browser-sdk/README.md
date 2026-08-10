@@ -208,6 +208,15 @@ const chargeResult = await googleCtrl.result;
 > `mountGooglePayButton` calls `isReadyToPay()`. If either returns false, `onUnavailable` is
 > called and `result` rejects with `WALLET_BUTTON_ERROR`. Render a fallback UI in `onUnavailable`.
 
+> **Apple Pay outside Safari:** the SDK injects Apple's `1.latest` build, which installs an
+> `ApplePaySession` shim in Chrome, Edge and Opera on desktop. Apple Pay is therefore offered
+> there too — the customer completes it by scanning a code with their iPhone. Mobile browsers
+> other than Safari report unavailable, as they cannot run that flow.
+>
+> The same script registers the `<apple-pay-button>` element, so no page-level
+> `<script src="https://applepay.cdn-apple.com/...">` tag is needed in any browser. If you
+> already ship one, you can drop it; keeping it is harmless.
+
 ### Other Flow B methods (available after `attachPayment`)
 
 | Method | Description |

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWalletsApi } from '../../src/modules/wallets/wallets.module.js';
-import { makeHttpClient, makePaymentsApiMock } from './_helpers.js';
+import {
+    makeHttpClient,
+    makePaymentsApiMock,
+    stubApplePayButtonRegistry,
+} from './_helpers.js';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks — mirrors the wallets unit test pattern
@@ -79,6 +83,7 @@ describe('mountApplePayButton — stress / leak detection', () => {
     beforeEach(() => {
         container = document.createElement('div');
         document.body.appendChild(container);
+        stubApplePayButtonRegistry();
         mockLoadScriptOnce.mockResolvedValue(undefined);
     });
 

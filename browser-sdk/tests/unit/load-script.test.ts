@@ -57,6 +57,28 @@ describe('loadScriptOnce()', () => {
         await promise2;
     });
 
+    it('sets crossorigin only when the option is passed', async () => {
+        const plain = 'https://cdn.test.load-script/d.js';
+        const cors = 'https://cdn.test.load-script/e.js';
+
+        const p1 = loadScriptOnce(plain);
+        const p2 = loadScriptOnce(cors, { crossOrigin: 'anonymous' });
+
+        const plainScript = document.head.querySelector(
+            `script[src="${plain}"]`,
+        ) as HTMLScriptElement;
+        const corsScript = document.head.querySelector(
+            `script[src="${cors}"]`,
+        ) as HTMLScriptElement;
+
+        expect(plainScript.hasAttribute('crossorigin')).toBe(false);
+        expect(corsScript.getAttribute('crossorigin')).toBe('anonymous');
+
+        plainScript.dispatchEvent(new Event('load'));
+        corsScript.dispatchEvent(new Event('load'));
+        await Promise.all([p1, p2]);
+    });
+
     it('returns the same promise for the same URL (deduplication)', async () => {
         const url = 'https://cdn.test.load-script/c.js';
 

@@ -4,6 +4,22 @@ import { expect, vi } from 'vitest';
 export const CARD_FORM_URL = 'https://test.gopay.com/card-form';
 export const CARD_FORM_ORIGIN = 'https://test.gopay.com';
 
+/**
+ * Reports `<apple-pay-button>` as registered.
+ *
+ * Registering it is the real Apple Pay SDK's job, but `loadScriptOnce` is mocked
+ * in these tests — without this stub `mountApplePayButton` would sit waiting for
+ * a definition that never arrives.
+ */
+export function stubApplePayButtonRegistry(): void {
+    vi.stubGlobal('customElements', {
+        get: (tag: string) =>
+            tag === 'apple-pay-button' ? class {} : undefined,
+        whenDefined: () => Promise.resolve(),
+        define: vi.fn(),
+    });
+}
+
 export function makeHttpClient() {
     const c = createHttpClient({
         baseUrl: 'https://example.com',

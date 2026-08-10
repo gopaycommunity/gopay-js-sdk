@@ -144,8 +144,29 @@ export type GooglePayButtonOptions = WalletButtonBaseOptions & {
 // ---------------------------------------------------------------------------
 // Apple Pay script URL (JS API for `<apple-pay-button>` web component)
 // ---------------------------------------------------------------------------
+
+/**
+ * The `1.latest` build — not the older `v1` one, which ships only the
+ * `<apple-pay-button>` element.
+ *
+ * `1.latest` additionally installs an `ApplePaySession` shim in non-Safari
+ * browsers (Chrome/Edge/Opera), which is what powers the "scan the code with
+ * your iPhone" flow. Without it `ApplePaySession` is undefined off Safari and
+ * Apple Pay can never be offered there.
+ */
 const APPLE_PAY_SCRIPT_SRC =
-    'https://applepay.cdn-apple.com/jsapi/v1/apple-pay-sdk.js';
+    'https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js';
+
+const APPLE_PAY_BUTTON_TAG = 'apple-pay-button';
+
+/**
+ * `1.latest` registers `<apple-pay-button>` from a sub-module it pulls in with
+ * a dynamic `import()`, so the element is still undefined when the loader
+ * script's `load` event fires — and that import swallows its own failures.
+ * Everything therefore waits on `customElements.whenDefined()`, bounded so a
+ * silently failed sub-module surfaces as an error instead of hanging.
+ */
+const APPLE_PAY_BUTTON_DEFINE_TIMEOUT_MS = 10_000;
 
 /** Google Pay JS library. */
 const GOOGLE_PAY_SCRIPT_SRC = 'https://pay.google.com/gp/p/js/pay.js';
@@ -153,6 +174,48 @@ const GOOGLE_PAY_SCRIPT_SRC = 'https://pay.google.com/gp/p/js/pay.js';
 // ---------------------------------------------------------------------------
 // Shared helpers (module-level — no closure over factory state)
 // ---------------------------------------------------------------------------
+
+function getApplePaySession(): ApplePaySessionGlobal | undefined {
+    return (
+        globalThis as unknown as { ApplePaySession?: ApplePaySessionGlobal }
+    ).ApplePaySession;
+}
+
+/**
+ * Resolves once `<apple-pay-button>` is registered, rejecting if that has not
+ * happened within `APPLE_PAY_BUTTON_DEFINE_TIMEOUT_MS`.
+ */
+function whenApplePayButtonDefined(): Promise<void> {
+    const registry = globalThis.customElements;
+    if (!registry) {
+        // No custom element registry (non-DOM host) — nothing to wait for.
+        return Promise.resolve();
+    }
+    if (registry.get(APPLE_PAY_BUTTON_TAG)) {
+        return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+            reject(
+                new Error(
+                    `[GoPayBrowserSDK] <${APPLE_PAY_BUTTON_TAG}> was not registered within ${APPLE_PAY_BUTTON_DEFINE_TIMEOUT_MS}ms.`,
+                ),
+            );
+        }, APPLE_PAY_BUTTON_DEFINE_TIMEOUT_MS);
+
+        registry.whenDefined(APPLE_PAY_BUTTON_TAG).then(
+            () => {
+                clearTimeout(timer);
+                resolve();
+            },
+            (err: unknown) => {
+                clearTimeout(timer);
+                reject(err);
+            },
+        );
+    });
+}
 
 function makeNotAttachedController(): WalletButtonController {
     const result = Promise.reject<PaymentChargeStatusResponse>(
@@ -285,16 +348,26 @@ export function createWalletsApi(
                 return { result, unmount: () => {} };
             }
 
-            // Inject Apple Pay JS SDK only when ApplePaySession is not already defined —
-            // if the host already loaded a different URL path, re-injection would double-evaluate.
-            let ApplePaySession = (
-                globalThis as unknown as {
-                    ApplePaySession?: ApplePaySessionGlobal;
-                }
-            ).ApplePaySession;
-            if (!ApplePaySession) {
+            // Inject the Apple Pay JS SDK unless both things it provides are already
+            // there: the <apple-pay-button> element and an ApplePaySession global.
+            //
+            // Loading on a missing button (rather than only on a missing
+            // ApplePaySession) is what lets Safari pages work without the host adding
+            // its own script tag — Safari has ApplePaySession built in, so the old
+            // condition never fired and the element stayed unregistered.
+            //
+            // Still loading when ApplePaySession is missing covers the reverse case: a
+            // host that already pulled in the older `v1` build, which registers the
+            // element but installs no shim. Stacking `1.latest` on top of `v1` is safe
+            // — both guard their registration with `customElements.get()` first.
+            if (
+                !globalThis.customElements?.get(APPLE_PAY_BUTTON_TAG) ||
+                !getApplePaySession()
+            ) {
                 try {
-                    await loadScriptOnce(APPLE_PAY_SCRIPT_SRC);
+                    await loadScriptOnce(APPLE_PAY_SCRIPT_SRC, {
+                        crossOrigin: 'anonymous',
+                    });
                 } catch {
                     const err = new GoPaySDKError(
                         '[GoPayBrowserSDK] Failed to load Apple Pay SDK script.',
@@ -305,14 +378,29 @@ export function createWalletsApi(
                     result.catch(() => {});
                     return { result, unmount: () => {} };
                 }
-                ApplePaySession = (
-                    globalThis as unknown as {
-                        ApplePaySession?: ApplePaySessionGlobal;
-                    }
-                ).ApplePaySession;
             }
 
-            // Feature detection
+            try {
+                await whenApplePayButtonDefined();
+            } catch (cause) {
+                const err = new GoPaySDKError(
+                    `[GoPayBrowserSDK] Apple Pay SDK loaded but <${APPLE_PAY_BUTTON_TAG}> was never registered.`,
+                    { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR, cause },
+                );
+                const result = Promise.reject<PaymentChargeStatusResponse>(err);
+                result.catch(() => {});
+                return { result, unmount: () => {} };
+            }
+
+            const ApplePaySession = getApplePaySession();
+
+            // Feature detection. `canMakePayments()` is the right gate on both paths:
+            // Safari answers natively, and the non-Safari shim returns true on desktop
+            // browsers that can run the code-scan flow and false on mobile ones that
+            // cannot. `applePayCapabilities()` is deliberately not used — it needs a
+            // merchant identifier and a network round-trip, and on Safari it resolves
+            // through the deprecated `canMakePaymentsWithActiveCard()`, which would
+            // newly hide the button from users with no provisioned card.
             if (!ApplePaySession?.canMakePayments()) {
                 return makeUnavailableController(options.onUnavailable);
             }
@@ -375,10 +463,28 @@ export function createWalletsApi(
                     return;
                 }
 
-                const session = new ApplePaySession(
-                    info.applepayVersion ?? 3,
-                    info.applePayPaymentRequest ?? {},
-                );
+                // The non-Safari shim validates the payment request in the
+                // constructor and throws TypeError when a required member is
+                // missing. Uncaught, that would leave `result` pending forever.
+                let session: ApplePaySessionInstance;
+                try {
+                    session = new ApplePaySession(
+                        info.applepayVersion ?? 3,
+                        info.applePayPaymentRequest ?? {},
+                    );
+                } catch (cause) {
+                    rejectResult(
+                        new GoPaySDKError(
+                            '[GoPayBrowserSDK] Apple Pay: the payment request returned by apple-pay/info was rejected by ApplePaySession.',
+                            {
+                                errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                                cause,
+                            },
+                        ),
+                    );
+                    cleanup();
+                    return;
+                }
 
                 const handlePaymentAuthorized = async (
                     event: unknown,
