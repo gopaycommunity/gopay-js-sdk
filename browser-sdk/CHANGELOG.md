@@ -1,3 +1,26 @@
+# [1.6.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.5.0...browser-sdk-1.6.0) (2026-08-11)
+
+
+### Bug Fixes
+
+* keep beta mock-server entry in Payments.yaml snapshot GPOMA-2477 ([3682ba6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3682ba67a37af16acbe2ad6db615dca153e16fb6))
+* **wallets:** address code review on Apple Pay SDK loading GPOMA-2488 ([3ed82ec](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3ed82ec3157fcd0c407a593c5dc7735089734571))
+* **wallets:** address review comments on PR 49 GPOMA-2488 ([0db3858](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0db385853725dceda1cb5cc84b25b1e656a88bcf))
+
+
+### Features
+
+* sync generated types with beta spec GPOMA-2477 ([bdff2be](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bdff2be9aa491439e02e18e5a4d203c1b0c652c1))
+* **wallets:** load the 1.latest apple-pay-sdk build GPOMA-2488 ([579beb5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/579beb50b5d7d8b977446f9146c0d4850debecf4))
+
+
+### BREAKING CHANGES
+
+* `BrowserData.user_agent` and `BrowserData.javascript_enabled`
+are now required. Consumers of @gopaycz/gopay-js-sdk that hand-build
+`browser_data` instead of using the browser SDK's `collectBrowserData()` must
+supply both fields. The API rejects charge requests without them.
+
 # [1.5.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.4.2...browser-sdk-1.5.0) (2026-08-01)
 
 
