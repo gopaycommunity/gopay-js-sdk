@@ -1,3 +1,16 @@
+# [1.12.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.11.0...1.12.0) (2026-08-11)
+
+
+### Bug Fixes
+
+* **wallets:** address code review on Apple Pay SDK loading GPOMA-2488 ([3ed82ec](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3ed82ec3157fcd0c407a593c5dc7735089734571))
+* **wallets:** address review comments on PR 49 GPOMA-2488 ([0db3858](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0db385853725dceda1cb5cc84b25b1e656a88bcf))
+
+
+### Features
+
+* **wallets:** load the 1.latest apple-pay-sdk build GPOMA-2488 ([579beb5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/579beb50b5d7d8b977446f9146c0d4850debecf4))
+
 # [1.11.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.10.0...1.11.0) (2026-08-03)
 
 
