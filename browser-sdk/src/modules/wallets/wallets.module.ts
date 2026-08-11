@@ -638,6 +638,10 @@ export function createWalletsApi(
             try {
                 await loadScriptOnce(GOOGLE_PAY_SCRIPT_SRC);
             } catch {
+                // Same contract as the Apple Pay path and the availability
+                // checks below: a blocked CDN has to reach the merchant's
+                // fallback UI rather than leave an empty slot.
+                options.onUnavailable?.();
                 const err = new GoPaySDKError(
                     '[GoPayBrowserSDK] Failed to load Google Pay script.',
                     { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },

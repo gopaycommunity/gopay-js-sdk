@@ -8,9 +8,10 @@
     <link rel="icon" href="https://www.gopay.cz/favicon.ico" />
     <script src="/env.js"></script>
     <script async src="https://pay.google.com/gp/p/js/pay.js"></script>
-    <!-- Needed by the raw (non-SDK) Apple Pay demo in src/apple-pay-shared.js.
-         mountApplePayButton() injects this itself and skips it when already present;
-         crossorigin matches what the SDK sends so both share one cache entry. -->
+    <!-- Only the raw (non-SDK) Apple Pay demo in src/apple-pay-shared.js needs this tag;
+         mountApplePayButton() loads the script itself and, seeing this one, skips injecting
+         a second copy. crossorigin mirrors what the SDK sends, as Apple's third-party
+         browser flow expects it. -->
     <script async crossorigin src="https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js"></script>
 </head>
 

@@ -364,13 +364,23 @@ describe('mountApplePayButton()', () => {
         expect(onUnavailable).toHaveBeenCalledOnce();
     });
 
-    it('does not inject the script when the page already carries the same SDK tag', async () => {
+    // The `?components=` case is the reason the DOM check matches on prefix rather
+    // than equality — an exact match would miss it and inject a second copy.
+    it.each([
+        [
+            'no query',
+            'https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js',
+        ],
+        [
+            'with ?components=',
+            'https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js?components=apple-pay-button',
+        ],
+    ])('does not inject the script when the page already carries the same SDK tag (%s)', async (_label, src) => {
         // Element registered by the host tag, shim not installed yet — so the
         // load is wanted, and only the DOM check suppresses it.
         vi.stubGlobal('ApplePaySession', undefined);
         const tag = document.createElement('script');
-        tag.src =
-            'https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js';
+        tag.src = src;
         document.head.appendChild(tag);
 
         const client = makeClient();
@@ -383,6 +393,29 @@ describe('mountApplePayButton()', () => {
         ctrl.result.catch(() => {});
 
         expect(mockLoadScriptOnce).not.toHaveBeenCalled();
+    });
+
+    it('injects the script when the page carries only the older v1 tag', async () => {
+        // v1 registers the element but installs no shim, so 1.latest must still load.
+        vi.stubGlobal('ApplePaySession', undefined);
+        const tag = document.createElement('script');
+        tag.src = 'https://applepay.cdn-apple.com/jsapi/v1/apple-pay-sdk.js';
+        document.head.appendChild(tag);
+        mockLoadScriptOnce.mockImplementation(() => {
+            vi.stubGlobal('ApplePaySession', MockApplePaySession);
+            return Promise.resolve();
+        });
+
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(mockLoadScriptOnce).toHaveBeenCalledOnce();
     });
 
     it('calls onUnavailable when the script fails to load', async () => {
@@ -955,6 +988,23 @@ describe('mountGooglePayButton()', () => {
         expect((err as GoPaySDKError).errorCode).toBe(
             GoPayErrorCodes.WALLET_BUTTON_ERROR,
         );
+    });
+
+    it('calls onUnavailable when the script fails to load', async () => {
+        mockLoadScriptOnce.mockRejectedValue(new Error('blocked'));
+        const onUnavailable = vi.fn();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container, {
+            onUnavailable,
+        });
+        await ctrl.result.catch(() => {});
+
+        expect(onUnavailable).toHaveBeenCalledOnce();
     });
 
     it('returns WALLET_BUTTON_ERROR when google global is absent', async () => {

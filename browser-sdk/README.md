@@ -208,20 +208,17 @@ const chargeResult = await googleCtrl.result;
 > `mountGooglePayButton` calls `isReadyToPay()`. If either returns false, `onUnavailable` is
 > called and `result` rejects with `WALLET_BUTTON_ERROR`. Render a fallback UI in `onUnavailable`.
 
-> **Apple Pay outside Safari:** the SDK injects Apple's `1.latest` build, which installs an
-> `ApplePaySession` shim in Chrome, Edge and Opera on desktop. Apple Pay is therefore offered
-> there too — the customer completes it by scanning a code with their iPhone. Mobile browsers
-> other than Safari report unavailable, as they cannot run that flow.
+> **Apple Pay outside Safari:** Apple Pay is offered on desktop Chrome, Edge and Opera as well,
+> where the customer completes it by scanning a code with their iPhone. Mobile browsers other
+> than Safari report unavailable, so `onUnavailable` fires there.
 >
-> The same script registers the `<apple-pay-button>` element, so no page-level
-> `<script src="https://applepay.cdn-apple.com/...">` tag is needed in any browser. If you
-> already ship one you can drop it — and if you keep a tag for the same `1.latest` build, the
-> SDK detects it and skips injecting a second copy.
+> The SDK loads and manages Apple's script itself — you never need a page-level
+> `<script src="https://applepay.cdn-apple.com/...">` tag. If you already ship one you can
+> drop it.
 >
-> Because the SDK is now the only thing fetching this script, anything that blocks
-> `applepay.cdn-apple.com` (ad-blocker, corporate proxy, or a `script-src` / `font-src` CSP that
-> omits it) makes Apple Pay unavailable. `onUnavailable` fires in that case, so the fallback UI
-> you render there covers it.
+> One thing to check: if you run a strict Content-Security-Policy, allow
+> `https://applepay.cdn-apple.com` in `script-src`. Without it Apple Pay is simply reported
+> unavailable and `onUnavailable` fires, so your fallback UI still covers the customer.
 
 ### Other Flow B methods (available after `attachPayment`)
 
