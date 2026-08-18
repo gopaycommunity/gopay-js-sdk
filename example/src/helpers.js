@@ -145,6 +145,8 @@ export function prefillPaymentId(result) {
         'charge-state-payment-id',
         'googlepay-payment-id',
         'qr-payment-id',
+        'refund-payment-id',
+        'refund-list-payment-id',
     ]) {
         const el = document.getElementById(fieldId);
         if (el) {

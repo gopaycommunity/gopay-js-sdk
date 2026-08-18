@@ -109,8 +109,8 @@ const payment = await sdk.createPayment(goid, params);
 
 | Scope | Constant | Used by |
 |---|---|---|
-| `payment:write` | `GoPayScopes.PAYMENT_WRITE` | `createPayment`, `chargePayment` |
-| `payment:read` | `GoPayScopes.PAYMENT_READ` | `getPaymentStatus`, `getChargeState` |
+| `payment:write` | `GoPayScopes.PAYMENT_WRITE` | `createPayment`, `chargePayment`, `refundPayment` |
+| `payment:read` | `GoPayScopes.PAYMENT_READ` | `getPaymentStatus`, `getChargeState`, `listRefunds`, `getRefund` |
 | `card:write` | `GoPayScopes.CARD_WRITE` | `getBrowserKeys()` — allows the browser SDK to present the card form |
 | `card:read` | `GoPayScopes.CARD_READ` | `getCardDetails`, `deleteCard` |
 | `payment:charge` | `GoPayScopes.PAYMENT_CHARGE` | Browser SDK only (`attachPayment` / `payment_credentials` grant) |
@@ -350,6 +350,33 @@ img.src = `data:image/png;base64,${qrInfo.qr_code?.spayd}`;        // CZK — Cz
 // img.src = `data:image/png;base64,${qrInfo.qr_code?.mnb_qr}`;      // HUF — Hungarian MNB
 document.body.appendChild(img);
 ```
+
+---
+
+### Refunds
+
+Refunds are server-side only — `refundPayment` needs the `payment:write` scope, which a payment-scoped browser token never carries.
+
+| Method | Description |
+|---|---|
+| `refundPayment(paymentId, params)` | Refund a payment fully or partially (`POST /payments/{paymentId}/refunds`). Requires `payment:write` scope. |
+| `listRefunds(paymentId)` | List all refunds for a payment (`GET /payments/{paymentId}/refunds`). Requires `payment:read` scope. |
+| `getRefund(refundId)` | Retrieve details of a single refund (`GET /refunds/{refundId}`). Requires `payment:read` scope. |
+
+```ts
+// Refund the whole payment; pass a smaller amount for a partial refund
+const refund = await sdk.refundPayment(payment.id, { amount: 10000 });
+// refund.state: 'REQUESTED' — refunds are asynchronous
+
+// Poll until the refund reaches a terminal state
+const current = await sdk.getRefund(refund.id);
+// current.state: 'REQUESTED' | 'SUCCESS' | 'FAILED'
+
+// Every refund issued against the payment
+const refunds = await sdk.listRefunds(payment.id);
+```
+
+`amount` is in cents and must be positive — the API rejects `0` and negative values with `400`. A card payment can only be refunded in full until its transaction has been processed by the acquirer; a partial refund attempted before that is rejected with `409`. A `FAILED` refund does not consume the refundable amount, so it can be retried.
 
 ---
 

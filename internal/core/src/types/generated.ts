@@ -182,6 +182,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/payments/{payment_id}/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * List payment refunds
+         * @description Returns every refund issued against the payment.
+         */
+        get: operations["get-payments-payment_id-refunds"];
+        put?: never;
+        /**
+         * Refund a payment
+         * @description Refunds a paid payment in full or in part. Set `amount` to the payment amount for a
+         *     full refund, or to a lower value for a partial refund. A payment can be refunded
+         *     repeatedly until the sum of its refunds reaches the original amount.
+         */
+        post: operations["post-payments-payment_id-refunds"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/refunds/{refund_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Refund ID */
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Refund details
+         * @description Returns the current state and amount of a single refund.
+         */
+        get: operations["get-refunds-refund_id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cards/tokens": {
         parameters: {
             query?: never;
@@ -279,8 +331,8 @@ export interface components {
             grant_type: "client_credentials";
             /**
              * @description List of required token scopes, separated with a space.
-             *     - `payment:read` reads information about payments, recurrences and links
-             *     - `payment:write` allow creation and modification of payments, recurrences and links
+             *     - `payment:read` reads information about payments, charges and refunds
+             *     - `payment:write` allows creation, charging, modification and refunding of payments
              *     - `card:read` and `card:write` allow reading information about and deleting or modifying cards respectively
              *     - `shared:read` allows reading public global information
              * @example payment:write payment:read
@@ -1344,6 +1396,53 @@ export interface components {
             input_type: "ENCRYPTED_CARD";
             payload: components["schemas"]["JWE"];
         };
+        /** Refund Create Request */
+        "Refund-Create-Request": {
+            /**
+             * @description Amount to be refunded in cents. For a full amount, set it equal to the payment amount
+             * @example 100
+             */
+            amount: number;
+        };
+        /** Refund Details */
+        "Refund-Details": {
+            /**
+             * @description Refund ID
+             * @example 3050123456
+             */
+            id: string;
+            /** @description Refund state */
+            state: components["schemas"]["Refund-State"];
+            /**
+             * @description Refunded amount in cents
+             * @example 100
+             */
+            amount: number;
+            /** @description Refund currency */
+            currency: components["schemas"]["Currency"];
+            /**
+             * Format: date-time
+             * @description When the refund was requested
+             * @example 2025-12-10T10:30:00Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description When the refund state last changed
+             * @example 2025-12-10T10:35:00Z
+             */
+            updated_at?: string;
+        };
+        /**
+         * Refund State
+         * @description Refund lifecycle state:
+         *     - `REQUESTED` - The refund was accepted and is being processed
+         *     - `SUCCESS` - The refund was settled
+         *     - `FAILED` - The refund could not be processed
+         * @example SUCCESS
+         * @enum {string}
+         */
+        "Refund-State": "REQUESTED" | "SUCCESS" | "FAILED";
         /** Validate Merchant Request */
         "Validate-Merchant-Request": {
             /** Format: uri */
@@ -1812,6 +1911,93 @@ export interface operations {
             403: components["responses"]["Forbidden-403-Response"];
             404: components["responses"]["Not-Found-404-Response"];
             409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-payments-payment_id-refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund-Details"][];
+                };
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-payments-payment_id-refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Refund-Create-Request"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund-Details"];
+                };
+            };
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-refunds-refund_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Refund ID */
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund-Details"];
+                };
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
             500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };

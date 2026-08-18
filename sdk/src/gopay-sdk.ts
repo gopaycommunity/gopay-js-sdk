@@ -3,6 +3,7 @@ import type { GoPayConfig } from './config.js';
 import { createAuthApi } from './modules/auth/auth.module.js';
 import { createCardsApi } from './modules/cards/cards.module.js';
 import { createPaymentsApi } from './modules/payments/payments.module.js';
+import { createRefundsApi } from './modules/refunds/refunds.module.js';
 import { SDK_VERSION } from './version.js';
 
 /**
@@ -22,6 +23,7 @@ export function createGoPaySDK(config: GoPayConfig = {}) {
         ...createAuthApi(client),
         ...createPaymentsApi(client),
         ...createCardsApi(client),
+        ...createRefundsApi(client),
     };
 }
 
