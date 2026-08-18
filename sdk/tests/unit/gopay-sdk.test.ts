@@ -86,6 +86,10 @@ describe('GoPaySDK', () => {
         expect(typeof sdk.startApplePaySession).toBe('function');
         expect(typeof sdk.getQRPaymentInfo).toBe('function');
         expect(typeof sdk.awaitChargeState).toBe('function');
+        // Refunds
+        expect(typeof sdk.refundPayment).toBe('function');
+        expect(typeof sdk.listRefunds).toBe('function');
+        expect(typeof sdk.getRefund).toBe('function');
     });
 
     describe('AuthModule', () => {
