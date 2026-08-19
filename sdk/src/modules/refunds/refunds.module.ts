@@ -18,11 +18,13 @@ export function createRefundsApi(client: HttpClient) {
         async refundPayment(
             paymentId: string,
             params: RefundCreateRequest,
+            options?: { signal?: AbortSignal },
         ): Promise<RefundDetails> {
             const pid = requireNonEmptyString(paymentId, 'paymentId');
             return client.post<RefundDetails>(
                 `/payments/${pid}/refunds`,
                 params,
+                options,
             );
         },
 
@@ -34,9 +36,15 @@ export function createRefundsApi(client: HttpClient) {
          *
          * @param paymentId - Payment session ID returned by {@link createPayment}
          */
-        async listRefunds(paymentId: string): Promise<RefundDetails[]> {
+        async listRefunds(
+            paymentId: string,
+            options?: { signal?: AbortSignal },
+        ): Promise<RefundDetails[]> {
             const pid = requireNonEmptyString(paymentId, 'paymentId');
-            return client.get<RefundDetails[]>(`/payments/${pid}/refunds`);
+            return client.get<RefundDetails[]>(
+                `/payments/${pid}/refunds`,
+                options,
+            );
         },
 
         /**
@@ -47,9 +55,12 @@ export function createRefundsApi(client: HttpClient) {
          *
          * @param refundId - Refund ID returned by {@link refundPayment}
          */
-        async getRefund(refundId: string): Promise<RefundDetails> {
+        async getRefund(
+            refundId: string,
+            options?: { signal?: AbortSignal },
+        ): Promise<RefundDetails> {
             const rid = requireNonEmptyString(refundId, 'refundId');
-            return client.get<RefundDetails>(`/refunds/${rid}`);
+            return client.get<RefundDetails>(`/refunds/${rid}`, options);
         },
     };
 }
