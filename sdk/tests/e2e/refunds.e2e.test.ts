@@ -23,28 +23,30 @@ describe('refunds — E2E', () => {
     beforeAll(async () => {
         const baseUrl = process.env.GOPAY_PAYMENTS_V4_BASE_URL;
         const rawEnvironment = process.env.GOPAY_PAYMENTS_V4_ENVIRONMENT;
-        const validEnvironments = ['sandbox', 'production'] as const;
-        if (
-            rawEnvironment !== undefined &&
-            !validEnvironments.includes(
-                rawEnvironment as (typeof validEnvironments)[number],
-            )
-        ) {
+
+        // Unlike the auth suite, these specs WRITE: they create payment sessions and
+        // issue refunds. Pointing them at production would put test records on a real
+        // merchant account, so production is refused outright rather than validated.
+        if (rawEnvironment !== undefined && rawEnvironment !== 'sandbox') {
             throw new Error(
-                `GOPAY_PAYMENTS_V4_ENVIRONMENT must be 'sandbox' or 'production', got: '${rawEnvironment}'`,
+                `Refund E2E tests only run against sandbox — they create payments and issue refunds. GOPAY_PAYMENTS_V4_ENVIRONMENT was: '${rawEnvironment}'`,
             );
         }
-        const environment = rawEnvironment as
-            | 'sandbox'
-            | 'production'
-            | undefined;
+        const environment = rawEnvironment as 'sandbox' | undefined;
         const clientId = process.env.GOPAY_PAYMENTS_V4_CLIENT_ID ?? '';
         const clientSecret = process.env.GOPAY_PAYMENTS_V4_CLIENT_SECRET ?? '';
         goid = process.env.GOPAY_PAYMENTS_V4_GOID ?? '';
 
         if (!baseUrl && !environment) {
             throw new Error(
-                'Missing required environment variables: set GOPAY_PAYMENTS_V4_ENVIRONMENT (sandbox|production) or GOPAY_PAYMENTS_V4_BASE_URL for a custom endpoint',
+                'Missing required environment variables: set GOPAY_PAYMENTS_V4_ENVIRONMENT=sandbox or GOPAY_PAYMENTS_V4_BASE_URL for a mock/alpha endpoint',
+            );
+        }
+        // A custom base URL is meant for mocks and alpha envs; catch the obvious
+        // production host so the override cannot smuggle these writes into prod.
+        if (baseUrl?.includes('gate.gopay.com')) {
+            throw new Error(
+                `Refund E2E tests must not target production. GOPAY_PAYMENTS_V4_BASE_URL was: '${baseUrl}'`,
             );
         }
         if (!clientId || !clientSecret) {
