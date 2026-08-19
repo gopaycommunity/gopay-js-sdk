@@ -20,7 +20,14 @@ export function runRefundPayment() {
             'Amount is required.';
         return;
     }
-    const amount = parseInt(rawAmount, 10);
+    // parseInt would quietly accept "10.5" as 10 and "1e3" as 1, refunding a
+    // different amount than was typed. The API requires a positive integer.
+    const amount = Number(rawAmount);
+    if (!Number.isInteger(amount) || amount < 1) {
+        document.getElementById('refund-create-output').textContent =
+            'Amount must be a positive whole number of cents.';
+        return;
+    }
     run(
         'refund-create-output',
         () => sdk.refundPayment(paymentId, { amount }),

@@ -16,7 +16,7 @@
             <p class="desc">POST /payments/{id}/refunds — refund a payment fully or partially. The returned refund <code>id</code> is auto-filled below.</p>
             <div class="fields">
                 <label>Payment ID<input id="refund-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
-                <label>Amount (cents)<input id="refund-amount" type="number" value="1000" /></label>
+                <label>Amount (cents)<input id="refund-amount" type="number" min="1" step="1" value="1000" /></label>
             </div>
             <button type="button" onclick="runRefundPayment()">Run</button>
             <pre id="refund-create-output">—</pre>
