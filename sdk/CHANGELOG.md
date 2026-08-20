@@ -1,3 +1,10 @@
+# [1.14.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.13.0...1.14.0) (2026-08-20)
+
+
+### Features
+
+* **refunds:** add awaitRefundState GPOMA-2520 ([fa9db96](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fa9db96d7d04c5425f81bf4c4e87b546a58b906e))
+
 # [1.13.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.12.0...1.13.0) (2026-08-20)
 
 
