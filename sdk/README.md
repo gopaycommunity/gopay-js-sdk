@@ -362,13 +362,22 @@ Refunds are server-side only — `refundPayment` needs the `payment:write` scope
 | `refundPayment(paymentId, params)` | Refund a payment fully or partially (`POST /payments/{paymentId}/refunds`). Requires `payment:write` scope. |
 | `listRefunds(paymentId)` | List all refunds for a payment (`GET /payments/{paymentId}/refunds`). Requires `payment:read` scope. |
 | `getRefund(refundId)` | Retrieve details of a single refund (`GET /refunds/{refundId}`). Requires `payment:read` scope. |
+| `awaitRefundState(refundId, options?)` | Poll a refund until it reaches `SUCCESS` or `FAILED`. Requires `payment:read` scope. |
 
 ```ts
 // Refund the whole payment; pass a smaller amount for a partial refund
 const refund = await sdk.refundPayment(payment.id, { amount: 10000 });
 // refund.state: 'REQUESTED' — refunds are asynchronous
 
-// Poll until the refund reaches a terminal state
+// Poll until the refund settles — awaitRefundState does the loop for you
+const settled = await sdk.awaitRefundState(refund.id);
+// settled.state: 'SUCCESS' | 'FAILED'
+// FAILED resolves rather than throwing; it is an outcome, not an error
+if (settled.state === 'FAILED') {
+  // the refundable amount is untouched, so a retry is valid
+}
+
+// Or read it once, without polling
 const current = await sdk.getRefund(refund.id);
 // current.state: 'REQUESTED' | 'SUCCESS' | 'FAILED'
 

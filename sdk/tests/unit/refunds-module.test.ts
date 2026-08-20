@@ -189,4 +189,125 @@ describe('RefundsModule', () => {
             );
         });
     });
+
+    // -------------------------------------------------------------------------
+    // awaitRefundState()
+    // -------------------------------------------------------------------------
+    describe('awaitRefundState()', () => {
+        it('throws synchronously when refundId is empty', () => {
+            // Consistent with awaitChargeState/awaitPaymentStatus, which are not
+            // async and so surface an invalid argument before any polling starts.
+            expect(() => refunds.awaitRefundState('')).toThrow(
+                'refundId is required',
+            );
+        });
+
+        it('resolves when the refund is already SUCCESS on the first poll', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ ...mockRefundDetails, state: 'SUCCESS' }),
+            );
+
+            const result = await refunds.awaitRefundState('ref_100000001', {
+                intervalMs: 10,
+            });
+
+            expect(result.state).toBe('SUCCESS');
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('keeps polling while the refund is REQUESTED', async () => {
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({ ...mockRefundDetails, state: 'REQUESTED' }),
+                )
+                .mockResolvedValueOnce(
+                    makeResponse({ ...mockRefundDetails, state: 'REQUESTED' }),
+                )
+                .mockResolvedValueOnce(
+                    makeResponse({ ...mockRefundDetails, state: 'SUCCESS' }),
+                );
+
+            const result = await refunds.awaitRefundState('ref_100000001', {
+                intervalMs: 10,
+            });
+
+            expect(result.state).toBe('SUCCESS');
+            expect(fetchMock).toHaveBeenCalledTimes(3);
+        });
+
+        it('resolves rather than rejects on FAILED, since it is a real outcome', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ ...mockRefundDetails, state: 'FAILED' }),
+            );
+
+            const result = await refunds.awaitRefundState('ref_100000001', {
+                intervalMs: 10,
+            });
+
+            expect(result.state).toBe('FAILED');
+        });
+
+        it('does not treat payment states as terminal for a refund', async () => {
+            // The shared poller defaults to payment states (PAID, REFUNDED, …);
+            // a refund must only settle on SUCCESS or FAILED.
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({ ...mockRefundDetails, state: 'REFUNDED' }),
+                )
+                .mockResolvedValueOnce(
+                    makeResponse({ ...mockRefundDetails, state: 'SUCCESS' }),
+                );
+
+            const result = await refunds.awaitRefundState('ref_100000001', {
+                intervalMs: 10,
+            });
+
+            expect(result.state).toBe('SUCCESS');
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        it('reports every poll through onStateChange', async () => {
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({ ...mockRefundDetails, state: 'REQUESTED' }),
+                )
+                .mockResolvedValueOnce(
+                    makeResponse({ ...mockRefundDetails, state: 'SUCCESS' }),
+                );
+            const seen: string[] = [];
+
+            await refunds.awaitRefundState('ref_100000001', {
+                intervalMs: 10,
+                onStateChange: (refund) => seen.push(refund.state as string),
+            });
+
+            expect(seen).toEqual(['REQUESTED', 'SUCCESS']);
+        });
+
+        it('rejects when the abort signal is already aborted', async () => {
+            const controller = new AbortController();
+            controller.abort();
+
+            await expect(
+                refunds.awaitRefundState('ref_100000001', {
+                    intervalMs: 10,
+                    signal: controller.signal,
+                }),
+            ).rejects.toBeInstanceOf(GoPaySDKError);
+        });
+
+        it('honours a caller-supplied terminalStates override', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ ...mockRefundDetails, state: 'REQUESTED' }),
+            );
+
+            const result = await refunds.awaitRefundState('ref_100000001', {
+                intervalMs: 10,
+                terminalStates: ['REQUESTED'],
+            });
+
+            expect(result.state).toBe('REQUESTED');
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+    });
 });

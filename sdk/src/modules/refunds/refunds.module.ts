@@ -1,8 +1,20 @@
-import { type HttpClient, requireNonEmptyString } from '@gopay-internal/core';
+import {
+    awaitPaymentStatus,
+    type AwaitPaymentStatusOptions as CoreAwaitPaymentStatusOptions,
+    type HttpClient,
+    requireNonEmptyString,
+} from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type RefundCreateRequest = components['schemas']['Refund-Create-Request'];
 type RefundDetails = components['schemas']['Refund-Details'];
+
+/** Options for {@link awaitRefundState}. */
+export type AwaitRefundStateOptions =
+    CoreAwaitPaymentStatusOptions<RefundDetails>;
+
+/** A refund is done when it reaches one of these; `REQUESTED` means still processing. */
+const REFUND_TERMINAL_STATES = ['SUCCESS', 'FAILED'];
 
 export function createRefundsApi(client: HttpClient) {
     return {
@@ -61,6 +73,39 @@ export function createRefundsApi(client: HttpClient) {
         ): Promise<RefundDetails> {
             const rid = requireNonEmptyString(refundId, 'refundId');
             return client.get<RefundDetails>(`/refunds/${rid}`, options);
+        },
+
+        /**
+         * Poll a refund until it settles.
+         *
+         * `refundPayment` only returns `REQUESTED` — the refund is accepted, not
+         * settled — so callers otherwise have to write this loop themselves.
+         * Resolves with the refund once it reaches `SUCCESS` or `FAILED`; note
+         * that `FAILED` resolves rather than rejects, since it is a legitimate
+         * outcome the caller has to inspect.
+         *
+         * No client-side timeout by default. Pass `options.timeoutMs` for a
+         * ceiling, or `options.signal` to abort.
+         *
+         * @param refundId - Refund ID returned by {@link refundPayment}
+         * @param options  - Polling configuration and callbacks
+         */
+        awaitRefundState(
+            refundId: string,
+            options?: AwaitRefundStateOptions,
+        ): Promise<RefundDetails> {
+            const rid = requireNonEmptyString(refundId, 'refundId');
+            return awaitPaymentStatus(
+                () =>
+                    client.get<RefundDetails>(`/refunds/${rid}`, {
+                        signal: options?.signal,
+                    }),
+                {
+                    ...options,
+                    terminalStates:
+                        options?.terminalStates ?? REFUND_TERMINAL_STATES,
+                },
+            );
         },
     };
 }
