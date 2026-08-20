@@ -194,7 +194,7 @@ describe('refunds — E2E', () => {
             ).rejects.toMatchObject({ name: 'GoPayHTTPError', status: 404 });
         });
 
-        it('returns an already-terminal refund on the first poll', async () => {
+        it('returns an already-terminal refund on the first poll', async (ctx) => {
             // A refund rejected with 409 is still persisted (see above), which gives
             // us a refund to poll without having to settle a payment first.
             const paymentId = await createUnpaidPayment();
@@ -208,8 +208,14 @@ describe('refunds — E2E', () => {
             // persisting rejected attempts entirely. Neither is this spec's subject,
             // and polling a REQUESTED refund that never settles would hang until
             // vitest kills the test, so only proceed once it is already terminal.
+            //
+            // ctx.skip() rather than a bare return: returning early would record a
+            // passing test that asserted nothing, hiding the fact that
+            // awaitRefundState was never exercised.
             if (!refund?.id || !TERMINAL_STATES.includes(refund.state)) {
-                return;
+                ctx.skip(
+                    `no terminal refund to poll (state: ${refund?.state ?? 'none persisted'})`,
+                );
             }
 
             const polls: string[] = [];
