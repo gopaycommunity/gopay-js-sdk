@@ -1,4 +1,4 @@
-import { run } from './helpers.js';
+import { formatError, run } from './helpers.js';
 import { sdk } from './sdk.js';
 
 function prefillRefundId(result) {
@@ -6,9 +6,11 @@ function prefillRefundId(result) {
     if (!id) {
         return;
     }
-    const el = document.getElementById('refund-get-id');
-    if (el) {
-        el.value = id;
+    for (const fieldId of ['refund-get-id', 'refund-await-id']) {
+        const el = document.getElementById(fieldId);
+        if (el) {
+            el.value = id;
+        }
     }
 }
 
@@ -45,4 +47,31 @@ export function runListRefunds() {
 export function runGetRefund() {
     const refundId = document.getElementById('refund-get-id').value.trim();
     run('refund-get-output', () => sdk.getRefund(refundId));
+}
+
+export async function runAwaitRefundState() {
+    const refundId = document.getElementById('refund-await-id').value.trim();
+    const pre = document.getElementById('refund-await-output');
+    pre.textContent = '\u2500\u2500 polling refund state \u2500\u2500';
+    try {
+        // Refunds are asynchronous: refundPayment only ever returns REQUESTED, so
+        // this polls until the refund settles instead of making the caller loop.
+        // timeoutMs is not optional in practice — without it the SDK keeps issuing
+        // GET /refunds/{id} indefinitely and this panel would sit on "polling"
+        // with no way to stop it.
+        const settled = await sdk.awaitRefundState(refundId, {
+            timeoutMs: 60_000,
+            onStateChange: (state) => {
+                pre.textContent += `\n${state.state}`;
+            },
+        });
+        pre.textContent += `\n\n\u2500\u2500 ${settled.state} \u2500\u2500\n${JSON.stringify(settled, null, 2)}`;
+    } catch (err) {
+        if (err?.errorCode === 'CHARGE_TIMEOUT') {
+            pre.textContent +=
+                '\n\nPolling timed out — the refund is still processing, check it manually.';
+        } else {
+            pre.textContent += `\n\n\u2500\u2500 onError \u2500\u2500\n${formatError(err)}`;
+        }
+    }
 }

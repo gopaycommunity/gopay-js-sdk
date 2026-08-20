@@ -36,7 +36,12 @@ import {
     runGetPaymentStatus,
     runQRPaymentInfo,
 } from './payments.js';
-import { runGetRefund, runListRefunds, runRefundPayment } from './refunds.js';
+import {
+    runAwaitRefundState,
+    runGetRefund,
+    runListRefunds,
+    runRefundPayment,
+} from './refunds.js';
 import {
     runDeleteCard,
     runGetCardDetails,
@@ -180,3 +185,4 @@ window.runTokenizeEncryptedCard = runTokenizeEncryptedCard;
 window.runRefundPayment = runRefundPayment;
 window.runListRefunds = runListRefunds;
 window.runGetRefund = runGetRefund;
+window.runAwaitRefundState = runAwaitRefundState;

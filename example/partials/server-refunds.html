@@ -44,5 +44,16 @@
             <pre id="refund-get-output">—</pre>
         </section>
 
+        <!-- Await refund settlement -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.awaitRefundState(refundId)</h2>
+            <p class="desc">Polls GET /refunds/{refund_id} until the refund reaches SUCCESS or FAILED, streaming each intermediate state below. FAILED resolves rather than throwing — it is an outcome, and the refundable amount is untouched, so a retry is valid. Bounded with <code>timeoutMs: 60000</code>; without a timeout the SDK would poll indefinitely.</p>
+            <div class="fields">
+                <label>Refund ID<input id="refund-await-id" type="text" placeholder="auto-filled by sdk.refundPayment()" /></label>
+            </div>
+            <button type="button" onclick="runAwaitRefundState()">Run</button>
+            <pre id="refund-await-output">—</pre>
+        </section>
+
     </div>
 </details>

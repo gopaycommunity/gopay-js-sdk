@@ -16,6 +16,8 @@ import {
  * happy path (`SUCCESS`, `REFUNDED`, `PARTIALLY_REFUNDED`) is covered manually
  * and recorded on GPOMA-2517.
  */
+const TERMINAL_STATES = ['SUCCESS', 'FAILED'];
+
 describe('refunds — E2E', () => {
     let sdk: GoPaySDK;
     let goid: string;
@@ -171,6 +173,60 @@ describe('refunds — E2E', () => {
                 expect(['REQUESTED', 'FAILED']).toContain(refunds[0]?.state);
                 expect(refunds[0]?.amount).toBe(100);
             }
+        });
+    });
+
+    describe('awaitRefundState', () => {
+        // The empty-refundId throw is deliberately not retested here: it needs no
+        // gateway at all, and tests/unit/refunds-module.test.ts already covers it.
+        // Repeating it would only couple an argument check to live credentials.
+
+        it('surfaces a 404 for an unknown refund rather than polling forever', async () => {
+            await expect(
+                sdk.awaitRefundState('9999999999', {
+                    intervalMs: 500,
+                    // The poll loop rejects on the first failed poll, so this ceiling
+                    // should never be reached. It is here so that if error handling
+                    // ever became retry-on-error, this spec fails fast instead of
+                    // hanging until vitest's testTimeout.
+                    timeoutMs: 5_000,
+                }),
+            ).rejects.toMatchObject({ name: 'GoPayHTTPError', status: 404 });
+        });
+
+        it('returns an already-terminal refund on the first poll', async () => {
+            // A refund rejected with 409 is still persisted (see above), which gives
+            // us a refund to poll without having to settle a payment first.
+            const paymentId = await createUnpaidPayment();
+            await sdk
+                .refundPayment(paymentId, { amount: 100 })
+                .catch(() => undefined);
+
+            const [refund] = await sdk.listRefunds(paymentId);
+            // Two observed behaviours make this conditional, not an assertion: the
+            // gateway may report REQUESTED before settling to FAILED, and it may stop
+            // persisting rejected attempts entirely. Neither is this spec's subject,
+            // and polling a REQUESTED refund that never settles would hang until
+            // vitest kills the test, so only proceed once it is already terminal.
+            if (!refund?.id || !TERMINAL_STATES.includes(refund.state)) {
+                return;
+            }
+
+            const polls: string[] = [];
+            const settled = await sdk.awaitRefundState(refund.id, {
+                intervalMs: 5_000,
+                timeoutMs: 10_000,
+                onStateChange: (state) => {
+                    polls.push(state.state);
+                },
+            });
+
+            // onStateChange fires once per poll, so a single call proves the interval
+            // was never waited out. Asserting the poll count rather than elapsed time
+            // keeps this immune to a slow sandbox: one legitimate request can take up
+            // to the 10s HTTP timeout plus retries.
+            expect(polls).toHaveLength(1);
+            expect(TERMINAL_STATES).toContain(settled.state);
         });
     });
 });
