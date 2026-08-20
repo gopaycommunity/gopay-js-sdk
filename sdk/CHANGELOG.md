@@ -1,3 +1,16 @@
+# [1.13.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.12.0...1.13.0) (2026-08-20)
+
+
+### Bug Fixes
+
+* **example:** reject non-integer refund amounts GPOMA-2520 ([4c60804](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4c60804584af0a8b58f151b7491b49a63a13175a))
+* **refunds:** accept request options on the refund methods GPOMA-2520 ([dd4853d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/dd4853d59c1c59c26d8eb84b254a6a2ef42ef921))
+
+
+### Features
+
+* **refunds:** restore refunds module and regenerate types GPOMA-2520 ([1fb368c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1fb368ceb1aae1b83be1cbe918a0053eab2ec9be))
+
 # [1.12.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.11.0...1.12.0) (2026-08-11)
 
 
