@@ -1,3 +1,12 @@
+## [1.14.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.14.0...1.14.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **test:** bound the terminal-refund spec and address review GPOMA-2542 ([e5c91d0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e5c91d013a4e3a13b7814e627f17473c94e0d5cb)), closes [#52](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issue/52)
+* **test:** cover awaitRefundState in e2e and the example app GPOMA-2542 ([92233c9](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/92233c979da3a5673c979e01afa723477597268b))
+* **test:** report the terminal-refund spec as skipped, not passed GPOMA-2542 ([1d2b2a6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1d2b2a6982a3d1c883d5e0a2584410fcd39cf9cf))
+
 # [1.14.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.13.0...1.14.0) (2026-08-20)
 
 
