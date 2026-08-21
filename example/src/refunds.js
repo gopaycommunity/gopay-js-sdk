@@ -1,4 +1,5 @@
 import { formatError, run } from './helpers.js';
+import { sanitizeBody } from './sanitize.js';
 import { sdk } from './sdk.js';
 
 function prefillRefundId(result) {
@@ -65,7 +66,7 @@ export async function runAwaitRefundState() {
                 pre.textContent += `\n${state.state}`;
             },
         });
-        pre.textContent += `\n\n\u2500\u2500 ${settled.state} \u2500\u2500\n${JSON.stringify(settled, null, 2)}`;
+        pre.textContent += `\n\n\u2500\u2500 ${settled.state} \u2500\u2500\n${JSON.stringify(sanitizeBody(settled), null, 2)}`;
     } catch (err) {
         if (err?.errorCode === 'CHARGE_TIMEOUT') {
             pre.textContent +=

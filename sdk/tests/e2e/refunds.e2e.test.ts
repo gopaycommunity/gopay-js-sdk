@@ -87,6 +87,19 @@ describe('refunds — E2E', () => {
         return payment.id;
     }
 
+    /**
+     * Attempt a refund the gateway must reject with 409 and return whatever it
+     * persisted for that payment. Shared by the two specs that need a rejected
+     * refund as a fixture.
+     */
+    async function createRejectedRefund() {
+        const paymentId = await createUnpaidPayment();
+        await sdk
+            .refundPayment(paymentId, { amount: 100 })
+            .catch(() => undefined);
+        return sdk.listRefunds(paymentId);
+    }
+
     // These reject before any request is made, but beforeAll still authenticates,
     // so they are not runnable without the gateway.
     describe('argument validation', () => {
@@ -157,17 +170,12 @@ describe('refunds — E2E', () => {
         });
 
         it('may still record the rejected attempt as a refund', async () => {
-            const paymentId = await createUnpaidPayment();
-            await sdk
-                .refundPayment(paymentId, { amount: 100 })
-                .catch(() => undefined);
-
             // The gateway answers 409 to the caller yet still persists the attempt,
             // so listRefunds reports a refund the merchant never successfully made.
             // Asserted loosely on purpose: this is observed behaviour, not a
             // documented contract, so the backend dropping it — or reporting
             // REQUESTED before FAILED — must not fail the release pipeline.
-            const refunds = await sdk.listRefunds(paymentId);
+            const refunds = await createRejectedRefund();
             expect(refunds.length).toBeLessThanOrEqual(1);
             if (refunds.length === 1) {
                 expect(['REQUESTED', 'FAILED']).toContain(refunds[0]?.state);
@@ -194,15 +202,15 @@ describe('refunds — E2E', () => {
             ).rejects.toMatchObject({ name: 'GoPayHTTPError', status: 404 });
         });
 
+        // Explicit timeout: the poll below is bounded at 10s, and three setup
+        // requests precede it, each able to take the client's 10s HTTP timeout plus
+        // retries. Under the 15s testTimeout from vitest.config.ts, vitest could kill
+        // this spec before its own timeoutMs ever fired — the non-deterministic red
+        // build this suite exists to avoid. 30s leaves timeoutMs as the binding limit.
         it('returns an already-terminal refund on the first poll', async (ctx) => {
             // A refund rejected with 409 is still persisted (see above), which gives
             // us a refund to poll without having to settle a payment first.
-            const paymentId = await createUnpaidPayment();
-            await sdk
-                .refundPayment(paymentId, { amount: 100 })
-                .catch(() => undefined);
-
-            const [refund] = await sdk.listRefunds(paymentId);
+            const [refund] = await createRejectedRefund();
             // Two observed behaviours make this conditional, not an assertion: the
             // gateway may report REQUESTED before settling to FAILED, and it may stop
             // persisting rejected attempts entirely. Neither is this spec's subject,
@@ -233,6 +241,11 @@ describe('refunds — E2E', () => {
             // to the 10s HTTP timeout plus retries.
             expect(polls).toHaveLength(1);
             expect(TERMINAL_STATES).toContain(settled.state);
-        });
+            // 30s, not the 15s default: timeoutMs above is 10s and three setup
+            // requests precede it, each able to take the client's 10s HTTP timeout
+            // plus retries. Under the default, vitest could kill this spec before its
+            // own timeoutMs fired — the non-deterministic red build this suite exists
+            // to avoid. This leaves timeoutMs as the binding limit.
+        }, 30_000);
     });
 });
