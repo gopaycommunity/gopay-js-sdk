@@ -138,8 +138,16 @@ definitions:
           - yarn workspace @gopaycz/gopay-js-sdk-browser run build
           - REPO_URL=https://gopay-release-bot:$BITBUCKET_BOT_PUSH_TOKEN@bitbucket.org/$BITBUCKET_REPO_FULL_NAME.git
           - git remote set-url origin $REPO_URL
-          # semantic-release: bumps version, tags commit, updates CHANGELOG, publishes to npm
-          # Requires NPM_PUSH_TOKEN set as a Secured repository variable in Bitbucket settings
+          # semantic-release: bumps version, tags commit, updates CHANGELOG. It does NOT publish to
+          # npm — both release.config.mjs files set npmPublish: false, and Bitbucket cannot publish
+          # at all now that npm has revoked classic tokens and supports OIDC trusted publishing
+          # only for GitHub Actions, GitLab and CircleCI. See .github/workflows/npm-publish.yml,
+          # which triggers off the tags the `Sync master to GitHub` step below pushes.
+          #
+          # NPM_PUSH_TOKEN is one of those revoked classic tokens. The export below still reads it,
+          # but nothing consumes it (npmPublish: false, and the registry reads need no auth), so it
+          # hands Yarn a credential it never uses. Delete the line and the Bitbucket variable
+          # together as a follow-up — kept here to keep this PR out of a working release step.
           # sdk/ (@gopaycz/gopay-js-sdk) analyzes ALL commits and bumps on every releasable change — its
           # version drives the Docker deploy tag. browser-sdk/ (@gopaycz/gopay-js-sdk-browser) only bumps
           # when browser-sdk/ files changed (filtered by semantic-release-monorepo).

@@ -1,0 +1,270 @@
+# Publishes the two public JS SDKs to npm from an existing release tag, and nothing else.
+#
+# Bitbucket stays primary and keeps everything else — PR checks, tests, Sonar, semantic-release
+# (version bump + CHANGELOG + tag) and the internal Docker deploy. Only `npm publish` moves here,
+# because Bitbucket can no longer do it: npm revoked all classic tokens on 2025-12-09, capped
+# granular write tokens at 90 days, and supports its token-free replacement (OIDC trusted
+# publishing) for GitHub Actions, GitLab and CircleCI only — not Bitbucket Pipelines.
+#
+# Triggered by the tags the Bitbucket `Sync master to GitHub` step already mirrors. semantic-release
+# tags the release commit, so a tag here is a complete, buildable release:
+#
+#   1.14.1             -> @gopaycz/gopay-js-sdk           (tagFormat '${version}')
+#   browser-sdk-1.6.0  -> @gopaycz/gopay-js-sdk-browser   (tagFormat 'browser-sdk-${version}')
+#
+# Tag-triggered runs use the workflow file from the tagged commit, so tags cut before this file
+# existed — and any release where the mirror step failed — need the workflow_dispatch button.
+#
+# SETUP
+#   1. BEFORE MERGE: add the `workflow` scope to Bitbucket's GITHUB_PERSONAL_ACCESS_TOKEN
+#      (fine-grained: Workflows: write). GitHub rejects PAT pushes that touch .github/workflows/,
+#      and this is the repo's first such file — without it the mirror step dies before its
+#      `--tags` push, so no tag ever reaches GitHub and this never runs.
+#   2. On npmjs.com, per package (Settings -> Trusted publishing): GitHub Actions,
+#      owner `gopaycommunity`, repo `gopay-js-sdk`, workflow `npm-publish.yml` (filename only),
+#      environment empty, allowed action `npm publish`. Needed for BOTH packages — npm exchanges
+#      the OIDC token per package.
+#   3. Set repository variable GOPAY_NPM_PUBLISH=true to arm publishing. Until then runs still
+#      install, build and verify the tagged release, then report that they did not publish.
+#
+# NO SECRET, and none may be added: Yarn checks `npmAuthToken` before OIDC, so an NPM_TOKEN in the
+# environment silently disables trusted publishing and restores a long-lived credential.
+#
+# Optional hardening, needs a decision: anyone who can push a tag to this mirror can publish as
+# @gopaycz. Bitbucket gates its release on `deployment: production`; there is no equivalent here.
+# To close it, create a GitHub environment with required reviewers, add `environment:` to the job,
+# and set the same name in the npm trusted-publisher config — it must match in both places or the
+# publish is rejected, which is why it is off by default. Cost: a human click per publish.
+
+name: Publish to npm
+
+on:
+    push:
+        tags:
+            # GitHub filter globs, not regex: `+` is "one or more of the preceding character".
+            - '[0-9]+.[0-9]+.[0-9]+'
+            - 'browser-sdk-[0-9]+.[0-9]+.[0-9]+'
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: 'Release tag to publish, e.g. 1.14.1 or browser-sdk-1.6.0'
+                required: true
+                type: string
+            dry-run:
+                description: 'Pack and report only — do not publish to npm'
+                required: false
+                default: true
+                type: boolean
+            dist-tag:
+                description: 'npm dist-tag. Keep `latest` for normal releases; set something else to backfill an old version without moving `latest`.'
+                required: false
+                default: 'latest'
+                type: string
+
+# Never cancel: a half-finished publish is worse than a queued one.
+concurrency:
+    group: npm-publish-${{ inputs.tag || github.ref_name }}
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    publish:
+        name: Publish ${{ inputs.tag || github.ref_name }}
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            # The whole credential story: the runner mints an OIDC token, npm exchanges it for a
+            # short-lived token scoped to one package. npm does not support trusted publishing
+            # from self-hosted runners, so this must stay on a GitHub-hosted one.
+            id-token: write
+        env:
+            TAG: ${{ inputs.tag || github.ref_name }}
+            DRY_RUN: ${{ inputs.dry-run || false }}
+            DIST_TAG: ${{ inputs.dist-tag || 'latest' }}
+            # Gates the publish step, not the job, so every release exercises build + verify for
+            # free while still disarmed.
+            ARMED: ${{ vars.GOPAY_NPM_PUBLISH == 'true' }}
+        steps:
+            # Before checkout, so a malformed dispatch input is rejected before being used as a
+            # git ref. Later steps use the re-assembled outputs.tag, never the raw input.
+            - name: Resolve tag to workspace
+              id: target
+              run: |
+                  set -euo pipefail
+
+                  case "$TAG" in
+                      browser-sdk-*)
+                          dir=browser-sdk
+                          workspace='@gopaycz/gopay-js-sdk-browser'
+                          version=${TAG#browser-sdk-}
+                          ;;
+                      *)
+                          dir=sdk
+                          workspace='@gopaycz/gopay-js-sdk'
+                          version=$TAG
+                          ;;
+                  esac
+
+                  if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+                      echo "::error::'$TAG' is not a release tag (expected <x.y.z> or browser-sdk-<x.y.z>)."
+                      exit 1
+                  fi
+
+                  if [ "$dir" = browser-sdk ]; then tag="browser-sdk-$version"; else tag="$version"; fi
+
+                  {
+                      echo "dir=$dir"
+                      echo "workspace=$workspace"
+                      echo "version=$version"
+                      echo "tag=$tag"
+                  } >> "$GITHUB_OUTPUT"
+
+                  echo "$workspace $version (from tag $tag)"
+
+            - uses: actions/checkout@v5
+              with:
+                  # Shallow: the tag already decided the version, nothing reads history.
+                  ref: refs/tags/${{ steps.target.outputs.tag }}
+                  persist-credentials: false
+
+            # Corepack must come AFTER setup-node: it only shims the Node active when it runs, and
+            # the runner's preinstalled Yarn 1.x understands neither this lockfile nor OIDC.
+            # `cache: yarn` is skipped for the same reason — setup-node probes for the cache dir
+            # before Corepack exists, and this workflow runs twice a release at most.
+            - uses: actions/setup-node@v5
+              with:
+                  node-version: 24
+
+            - name: Enable Corepack
+              run: corepack enable
+
+            # Version bumps never touch yarn.lock (workspaces resolve as 0.0.0-use.local).
+            - name: Install dependencies
+              run: yarn install --immutable
+
+            # Catches a moved or hand-cut tag, which would otherwise ship the wrong code under the
+            # wrong version — unfixable once on npm.
+            - name: Verify tag matches package.json
+              working-directory: ${{ steps.target.outputs.dir }}
+              env:
+                  EXPECTED: ${{ steps.target.outputs.version }}
+              run: |
+                  set -euo pipefail
+                  actual=$(node -p "require('./package.json').version")
+                  if [ "$actual" != "$EXPECTED" ]; then
+                      echo "::error::Tag $TAG expects version $EXPECTED but package.json says $actual."
+                      exit 1
+                  fi
+                  echo "package.json version $actual matches tag."
+
+            # dist/ is gitignored. This also builds the bundled-in @gopay-internal/core (tsup
+            # noExternal), which is why the published package has no runtime dependencies.
+            - name: Build
+              run: yarn workspace ${{ steps.target.outputs.workspace }} run build
+
+            # Every path the manifest promises must exist, so a broken build cannot reach npm.
+            - name: Verify build output
+              working-directory: ${{ steps.target.outputs.dir }}
+              run: |
+                  set -euo pipefail
+                  # Concatenation, not template literals: `${...}` here trips shellcheck SC2016.
+                  node -e '
+                      const fs = require("node:fs");
+                      const pkg = require("./package.json");
+                      const paths = new Set(
+                          [
+                              pkg.main,
+                              pkg.module,
+                              pkg.types,
+                              pkg.browser,
+                              ...Object.values(pkg.exports?.["."] ?? {}),
+                          ].filter(Boolean),
+                      );
+                      const missing = [...paths].filter((p) => !fs.existsSync(p));
+                      if (missing.length) {
+                          console.log("::error::Build output missing: " + missing.join(", "));
+                          process.exit(1);
+                      }
+                      console.log("Verified " + paths.size + " published entry point(s).");
+                  '
+
+            # Validates tag, build and file list only. It skips the registry call, so it never
+            # attempts the OIDC exchange and cannot prove the npm-side config — the first armed
+            # run is that test, and --tolerate-republish makes it safe to retry. Annotated rather
+            # than only logged, so a green dry run is not mistaken for a publish.
+            - name: Publish (dry run)
+              if: env.DRY_RUN == 'true'
+              working-directory: ${{ steps.target.outputs.dir }}
+              run: |
+                  yarn npm publish --dry-run
+                  echo "::warning::DRY RUN — ${{ steps.target.outputs.workspace }} ${{ steps.target.outputs.version }} was NOT published. Re-run with 'Pack and report only' unchecked to publish for real."
+
+            # Every publish moves `latest`, so backfilling newest-first-then-gaps — the natural
+            # move — would silently repoint it at the oldest version. Fail instead; use the
+            # dist-tag input to backfill out of order on purpose.
+            - name: Guard the latest dist-tag
+              if: env.DRY_RUN != 'true' && env.ARMED == 'true' && env.DIST_TAG == 'latest'
+              env:
+                  WORKSPACE: ${{ steps.target.outputs.workspace }}
+                  VERSION: ${{ steps.target.outputs.version }}
+              run: |
+                  set -euo pipefail
+                  current=$(npm view "$WORKSPACE" version 2>/dev/null || true)
+                  if [ -z "$current" ]; then
+                      echo "Nothing published yet — no dist-tag to move backwards."
+                      exit 0
+                  fi
+                  highest=$(printf '%s\n%s\n' "$current" "$VERSION" | sort -V | tail -1)
+                  if [ "$VERSION" != "$highest" ]; then
+                      echo "::error::Publishing $VERSION as 'latest' would move it backwards from the currently published $current. Either publish the missing versions in ascending order, or re-run with the dist-tag input set to something other than 'latest'."
+                      exit 1
+                  fi
+                  echo "$VERSION is at or above the published latest ($current) — safe."
+
+            # No token: Yarn 4 runs the OIDC exchange when CI and GITHUB_ACTIONS are both set.
+            # `access: public` comes from publishConfig. yarn rather than npm, so the packed
+            # manifest keeps rewriting the `workspace:*` core devDependency to a real version.
+            #
+            # --tolerate-republish makes a re-delivered tag a no-op instead of a failure (the
+            # mirror force-pushes tags, and a tag may be re-dispatched after a partial run).
+            # Accepted trade-off: it also no-ops if a version were re-cut at a different commit,
+            # which nothing here can detect — but semantic-release never reuses a version.
+            - name: Publish to npm
+              id: publish
+              if: env.DRY_RUN != 'true' && env.ARMED == 'true'
+              working-directory: ${{ steps.target.outputs.dir }}
+              run: yarn npm publish --tolerate-republish --tag "$DIST_TAG"
+
+            # Otherwise the run goes green having published nothing, and looks like it had.
+            - name: Not armed
+              if: env.DRY_RUN != 'true' && env.ARMED != 'true'
+              run: |
+                  echo "::warning::Repository variable GOPAY_NPM_PUBLISH is not 'true' — built and verified ${{ steps.target.outputs.workspace }} ${{ steps.target.outputs.version }} but did not publish. Register the trusted publishers on npmjs.com and set the variable to arm this workflow."
+
+            # Outcome comes from the publish step's real result: this also runs on failure, and
+            # reporting "published" on a red job would point the reader away from the problem.
+            - name: Summary
+              if: always()
+              env:
+                  PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+              run: |
+                  if [ "$DRY_RUN" = 'true' ]; then
+                      outcome='dry run — not published'
+                  elif [ "$ARMED" != 'true' ]; then
+                      outcome='not armed — not published'
+                  elif [ "$PUBLISH_OUTCOME" = 'success' ]; then
+                      outcome="published to npm under \`$DIST_TAG\`"
+                  else
+                      outcome="publish $PUBLISH_OUTCOME — NOT published"
+                  fi
+                  {
+                      echo "| | |"
+                      echo "|---|---|"
+                      echo "| Package | \`${{ steps.target.outputs.workspace }}\` |"
+                      echo "| Version | \`${{ steps.target.outputs.version }}\` |"
+                      echo "| Tag | \`${{ steps.target.outputs.tag }}\` |"
+                      echo "| Auth | trusted publishing (OIDC), no token |"
+                      echo "| Outcome | $outcome |"
+                  } >> "$GITHUB_STEP_SUMMARY"
