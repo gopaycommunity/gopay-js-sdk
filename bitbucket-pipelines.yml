@@ -150,7 +150,8 @@ definitions:
           - version
           - browser-sdk-version
     # Required secret: GITHUB_PERSONAL_ACCESS_TOKEN — needs the `workflow` scope (fine-grained:
-    # Workflows: write), or GitHub rejects any push that touches .github/workflows/.
+    # Workflows: write) to push .github/workflows/, plus `repo` (fine-grained: Actions: write)
+    # for the workflow dispatch below.
     - step: &github-sync
         name: Sync master to GitHub
         clone:
@@ -165,6 +166,24 @@ definitions:
           # publish. That is why npm-publish.yml uses --tolerate-republish and guards `latest`.
           - git push github origin/master:refs/heads/master --force
           - git push github --tags --force
+          # A pushed tag cannot start the publish on its own: semantic-release tags the release
+          # commit, whose message carries [skip ci], and GitHub Actions honours that on push
+          # events. So trigger npm-publish.yml explicitly — workflow_dispatch is a different
+          # event and is not suppressed.
+          #
+          # `git tag --points-at` on the mirrored head yields exactly the tags this run created
+          # (semantic-release tags the release commit), so no release means no dispatch. The
+          # workflow definition is read from master and checks out the tag itself, which is also
+          # why this works for tags cut before the workflow existed.
+          - |
+            for tag in $(git tag --points-at origin/master | grep -E '^([0-9]+\.[0-9]+\.[0-9]+|browser-sdk-[0-9]+\.[0-9]+\.[0-9]+)$'); do
+              echo "Dispatching npm publish for $tag"
+              curl -sS --fail-with-body -X POST \
+                -H "Authorization: Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/gopaycommunity/gopay-js-sdk/actions/workflows/npm-publish.yml/dispatches" \
+                -d "{\"ref\":\"master\",\"inputs\":{\"tag\":\"${tag}\",\"dry-run\":\"false\"}}"
+            done
 
     - step: &docker-build-push
         name: Build & push example Docker image
