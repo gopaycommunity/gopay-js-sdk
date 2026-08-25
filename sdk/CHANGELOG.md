@@ -1,3 +1,13 @@
+## [1.14.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.14.1...1.14.2) (2026-08-25)
+
+
+### Bug Fixes
+
+* **release:** drop the dead NPM_PUSH_TOKEN export from the release step GPOMA-2417 ([843ff7e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/843ff7e13cde9c25ec329784d37610430d3e9d4a))
+* **release:** fail closed on registry errors and pin publish actions GPOMA-2417 ([bce1dfa](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bce1dfa8b07f183c888482a4e06d78a636fa105e))
+* **release:** publish both JS SDKs to npm via trusted publishing GPOMA-2417 ([ed59273](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ed59273a0b87c4c2725d002bc21232925bfa552c))
+* **release:** serialize publishes per package and pin the npm registry GPOMA-2417 ([ec7df32](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ec7df32ce13736438532bac106a9e5d1d69385e9))
+
 ## [1.14.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.14.0...1.14.1) (2026-08-21)
 
 
