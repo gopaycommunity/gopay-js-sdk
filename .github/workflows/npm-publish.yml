@@ -95,15 +95,20 @@ jobs:
                   ref: refs/tags/${{ steps.target.outputs.tag }}
                   persist-credentials: false
 
-            # Corepack must run BEFORE setup-node: setup-node v5 caches by default when
-            # package.json has `packageManager`, and probes `yarn cache dir` inside its own step —
-            # hitting the runner's Yarn 1.x unless the Corepack shim is already in place.
-            - name: Enable Corepack
+            # Twice, deliberately, and it is idempotent. Before: setup-node v5 caches by default
+            # when package.json has `packageManager`, and probes `yarn cache dir` inside its own
+            # step, hitting the runner's Yarn 1.x without a shim. After: setup-node prepends the
+            # Node 24 toolcache bin, which ships no `yarn`, so the shim has to be re-established
+            # for that Node rather than left behind on the runner's default one.
+            - name: Enable Corepack (for setup-node's cache probe)
               run: corepack enable
 
             - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
               with:
                   node-version: 24
+
+            - name: Enable Corepack (for the installed Node)
+              run: corepack enable
 
             # Holds at a release tag because workspaces resolve as 0.0.0-use.local in yarn.lock.
             - name: Install dependencies

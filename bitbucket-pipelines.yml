@@ -166,17 +166,27 @@ definitions:
           # publish. That is why npm-publish.yml uses --tolerate-republish and guards `latest`.
           - git push github origin/master:refs/heads/master --force
           - git push github --tags --force
-          # A pushed tag cannot start the publish on its own: semantic-release tags the release
+          # A pushed tag cannot start the publish on its own: semantic-release tags its release
           # commit, whose message carries [skip ci], and GitHub Actions honours that on push
           # events. So trigger npm-publish.yml explicitly — workflow_dispatch is a different
-          # event and is not suppressed.
+          # event and is not suppressed. ref=master reads the workflow definition from master
+          # while the job checks out the tag itself.
           #
-          # `git tag --points-at` on the mirrored head yields exactly the tags this run created
-          # (semantic-release tags the release commit), so no release means no dispatch. The
-          # workflow definition is read from master and checks out the tag itself, which is also
-          # why this works for tags cut before the workflow existed.
+          # Each package writes its OWN release commit, so on a joint release the sdk tag lands on
+          # HEAD~1 and browser-sdk's on HEAD — inspecting only the head would silently skip the
+          # sdk publish. Enumerate the commits this run actually added. An empty range means
+          # nothing was released, so nothing is dispatched. Tags cut before this existed are not
+          # in the range and still need a manual workflow_dispatch.
           - |
-            for tag in $(git tag --points-at origin/master | grep -E '^([0-9]+\.[0-9]+\.[0-9]+|browser-sdk-[0-9]+\.[0-9]+\.[0-9]+)$'); do
+            set -euo pipefail
+            new_commits=$(git rev-list "${BITBUCKET_COMMIT}..origin/master")
+            tags=$(for sha in $new_commits; do git tag --points-at "$sha"; done \
+              | grep -E '^([0-9]+\.[0-9]+\.[0-9]+|browser-sdk-[0-9]+\.[0-9]+\.[0-9]+)$' || true)
+            if [ -n "$new_commits" ] && [ -z "$tags" ]; then
+              echo "Release commits present but no release tag found — refusing to skip a publish silently." >&2
+              exit 1
+            fi
+            for tag in $tags; do
               echo "Dispatching npm publish for $tag"
               curl -sS --fail-with-body -X POST \
                 -H "Authorization: Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}" \
