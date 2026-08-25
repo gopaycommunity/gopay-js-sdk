@@ -149,7 +149,8 @@ definitions:
         artifacts:
           - version
           - browser-sdk-version
-    # Required secret: GITHUB_PERSONAL_ACCESS_TOKEN
+    # Required secret: GITHUB_PERSONAL_ACCESS_TOKEN — needs the `workflow` scope (fine-grained:
+    # Workflows: write), or GitHub rejects any push that touches .github/workflows/.
     - step: &github-sync
         name: Sync master to GitHub
         clone:
@@ -159,8 +160,9 @@ definitions:
           - git remote add github https://${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/gopaycommunity/gopay-js-sdk.git
           # --force: GitHub's existing master/tags are the old orphan snapshot commits (unrelated
           # history to the real graph being pushed here for the first time). Without --force this
-          # push is rejected as a non-fast-forward. Safe here — this mirror is sync-only, nothing
-          # reads or builds from GitHub, so overwriting its history has no downstream effect.
+          # push is rejected as a non-fast-forward. NOTE: the mirror is no longer inert — GitHub
+          # builds and publishes to npm from these tags, so a re-delivered tag can retrigger a
+          # publish. That is why npm-publish.yml uses --tolerate-republish and guards `latest`.
           - git push github origin/master:refs/heads/master --force
           - git push github --tags --force
 

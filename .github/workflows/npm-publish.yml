@@ -1,5 +1,6 @@
 # Publishes @gopaycz/gopay-js-sdk and -browser to npm from a release tag.
 # Tags come from the Bitbucket `Sync master to GitHub` mirror: <x.y.z> -> sdk, browser-sdk-<x.y.z> -> browser-sdk.
+# Never add an NPM_TOKEN secret: Yarn resolves npmAuthToken before OIDC, silently disabling trusted publishing.
 
 name: Publish to npm
 
@@ -88,13 +89,14 @@ jobs:
 
                   echo "$workspace $version (from tag $tag)"
 
-            - uses: actions/checkout@v5
+            # Pinned to SHA, not tag: this job mints an OIDC token and a tag can be moved.
+            - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
               with:
                   ref: refs/tags/${{ steps.target.outputs.tag }}
                   persist-credentials: false
 
             # Corepack must run AFTER setup-node, or `yarn` resolves to the runner's Yarn 1.x.
-            - uses: actions/setup-node@v5
+            - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
               with:
                   node-version: 24
 
@@ -162,10 +164,18 @@ jobs:
                   VERSION: ${{ steps.target.outputs.version }}
               run: |
                   set -euo pipefail
-                  current=$(npm view "$WORKSPACE" version 2>/dev/null || true)
-                  if [ -z "$current" ]; then
-                      echo "Nothing published yet — no dist-tag to move backwards."
+                  # Fails closed: only E404 means "not published yet". Swallowing every error would
+                  # turn a registry outage into a pass, which is what the guard exists to prevent.
+                  # stderr is kept out of stdout so npm's warnings cannot end up inside $current.
+                  err="$RUNNER_TEMP/npm-view.err"
+                  if current=$(npm view "$WORKSPACE" version --registry "$YARN_NPM_PUBLISH_REGISTRY" 2>"$err"); then
+                      current=$(printf '%s' "$current" | tr -d '"[:space:]')
+                  elif grep -q 'E404' "$err"; then
+                      echo "Not published yet — no dist-tag to move backwards."
                       exit 0
+                  else
+                      echo "::error::Could not read the published version, refusing to publish: $(cat "$err")"
+                      exit 1
                   fi
                   highest=$(printf '%s\n%s\n' "$current" "$VERSION" | sort -V | tail -1)
                   if [ "$VERSION" != "$highest" ]; then
