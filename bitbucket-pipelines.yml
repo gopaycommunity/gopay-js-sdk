@@ -146,9 +146,13 @@ definitions:
           - (cd browser-sdk && yarn dlx semantic-release)
           - npm pkg get version --prefix sdk | tr -d '"' > version
           - npm pkg get version --prefix browser-sdk | tr -d '"' > browser-sdk-version
+          # Immutable upper bound for the tag range the sync step dispatches. Recorded here
+          # because master can move on while the docker step runs.
+          - git rev-parse HEAD > release-head
         artifacts:
           - version
           - browser-sdk-version
+          - release-head
     # Required secret: GITHUB_PERSONAL_ACCESS_TOKEN — needs the `workflow` scope (fine-grained:
     # Workflows: write) to push .github/workflows/, plus `repo` (fine-grained: Actions: write)
     # for the workflow dispatch below.
@@ -174,14 +178,19 @@ definitions:
           #
           # Each package writes its OWN release commit, so on a joint release the sdk tag lands on
           # HEAD~1 and browser-sdk's on HEAD — inspecting only the head would silently skip the
-          # sdk publish. Enumerate the commits this run actually added. An empty range means
-          # nothing was released, so nothing is dispatched. Tags cut before this existed are not
-          # in the range and still need a manual workflow_dispatch.
+          # sdk publish. Enumerate the commits this run actually added, bounded by the release-head
+          # artifact rather than origin/master: master can gain an unrelated merge while the docker
+          # step runs, which would otherwise pull foreign commits into the range and trip the
+          # assertion below. An empty range means nothing was released, so nothing is dispatched.
+          # Tags cut before this existed are not in the range and still need a manual dispatch.
+          # sort -V so a range that somehow holds two versions of one package publishes ascending;
+          # the workflow refuses to move `latest` backwards.
           - |
             set -euo pipefail
-            new_commits=$(git rev-list "${BITBUCKET_COMMIT}..origin/master")
+            new_commits=$(git rev-list "${BITBUCKET_COMMIT}..$(cat release-head)")
             tags=$(for sha in $new_commits; do git tag --points-at "$sha"; done \
-              | grep -E '^([0-9]+\.[0-9]+\.[0-9]+|browser-sdk-[0-9]+\.[0-9]+\.[0-9]+)$' || true)
+              | grep -E '^([0-9]+\.[0-9]+\.[0-9]+|browser-sdk-[0-9]+\.[0-9]+\.[0-9]+)$' \
+              | sort -V || true)
             if [ -n "$new_commits" ] && [ -z "$tags" ]; then
               echo "Release commits present but no release tag found — refusing to skip a publish silently." >&2
               exit 1
