@@ -4,6 +4,9 @@
 
 name: Publish to npm
 
+# Identifies the run by tag, which is how the Bitbucket dispatch finds it again to wait on.
+run-name: Publish ${{ inputs.tag || github.ref_name }}
+
 on:
     push:
         tags:

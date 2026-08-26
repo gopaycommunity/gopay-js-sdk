@@ -153,16 +153,18 @@ definitions:
           - version
           - browser-sdk-version
           - release-head
-    # Required secret: GITHUB_PERSONAL_ACCESS_TOKEN — needs the `workflow` scope (fine-grained:
-    # Workflows: write) to push .github/workflows/, plus `repo` (fine-grained: Actions: write)
-    # for the workflow dispatch below.
+    # Required secret: GITHUB_PERSONAL_ACCESS_TOKEN. Prefer a fine-grained token scoped to this one
+    # repo with Contents: write (push), Workflows: write (push .github/workflows/) and
+    # Actions: write (dispatch the publish). A classic token needs `workflow` + `repo`, where
+    # `repo` grants far more than the dispatch requires.
     - step: &github-sync
         name: Sync master to GitHub
         clone:
           depth: full
         script:
+          - export GITHUB_REPO=gopaycommunity/gopay-js-sdk
           - git fetch origin master --tags
-          - git remote add github https://${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/gopaycommunity/gopay-js-sdk.git
+          - git remote add github https://${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/${GITHUB_REPO}.git
           # --force: GitHub's existing master/tags are the old orphan snapshot commits (unrelated
           # history to the real graph being pushed here for the first time). Without --force this
           # push is rejected as a non-fast-forward. NOTE: the mirror is no longer inert — GitHub
@@ -170,39 +172,11 @@ definitions:
           # publish. That is why npm-publish.yml uses --tolerate-republish and guards `latest`.
           - git push github origin/master:refs/heads/master --force
           - git push github --tags --force
-          # A pushed tag cannot start the publish on its own: semantic-release tags its release
-          # commit, whose message carries [skip ci], and GitHub Actions honours that on push
-          # events. So trigger npm-publish.yml explicitly — workflow_dispatch is a different
-          # event and is not suppressed. ref=master reads the workflow definition from master
-          # while the job checks out the tag itself.
-          #
-          # Each package writes its OWN release commit, so on a joint release the sdk tag lands on
-          # HEAD~1 and browser-sdk's on HEAD — inspecting only the head would silently skip the
-          # sdk publish. Enumerate the commits this run actually added, bounded by the release-head
-          # artifact rather than origin/master: master can gain an unrelated merge while the docker
-          # step runs, which would otherwise pull foreign commits into the range and trip the
-          # assertion below. An empty range means nothing was released, so nothing is dispatched.
-          # Tags cut before this existed are not in the range and still need a manual dispatch.
-          # sort -V so a range that somehow holds two versions of one package publishes ascending;
-          # the workflow refuses to move `latest` backwards.
-          - |
-            set -euo pipefail
-            new_commits=$(git rev-list "${BITBUCKET_COMMIT}..$(cat release-head)")
-            tags=$(for sha in $new_commits; do git tag --points-at "$sha"; done \
-              | grep -E '^([0-9]+\.[0-9]+\.[0-9]+|browser-sdk-[0-9]+\.[0-9]+\.[0-9]+)$' \
-              | sort -V || true)
-            if [ -n "$new_commits" ] && [ -z "$tags" ]; then
-              echo "Release commits present but no release tag found — refusing to skip a publish silently." >&2
-              exit 1
-            fi
-            for tag in $tags; do
-              echo "Dispatching npm publish for $tag"
-              curl -sS --fail-with-body -X POST \
-                -H "Authorization: Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/gopaycommunity/gopay-js-sdk/actions/workflows/npm-publish.yml/dispatches" \
-                -d "{\"ref\":\"master\",\"inputs\":{\"tag\":\"${tag}\",\"dry-run\":\"false\"}}"
-            done
+          # A pushed tag cannot start the publish: semantic-release tags its release commit, whose
+          # message carries [skip ci], which GitHub Actions honours on push events. The script
+          # dispatches the workflow instead and waits for the run, so a failed publish fails this
+          # step rather than leaving the pipeline green and the release unpublished.
+          - ./scripts/publish-dispatch.sh
 
     - step: &docker-build-push
         name: Build & push example Docker image
