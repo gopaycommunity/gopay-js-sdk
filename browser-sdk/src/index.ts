@@ -36,6 +36,8 @@ export type {
 } from './modules/wallets/wallets.module.js';
 export type {
     BrowserData,
+    BrowserDataDetected,
+    BrowserDeviceData,
     EncryptedCardPayload,
     GoPayEnvironment,
 } from './types/index.js';

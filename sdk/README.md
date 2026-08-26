@@ -405,14 +405,14 @@ The browser encrypts the card; your server tokenizes and charges. This is the re
 
 ```ts
 // ── Browser (using @gopaycz/gopay-js-sdk-browser) ──────────────────────────
-import { createGoPayBrowserSDK, collectBrowserData } from '@gopaycz/gopay-js-sdk-browser';
+import { createGoPayBrowserSDK } from '@gopaycz/gopay-js-sdk-browser';
 
 const browserSdk = createGoPayBrowserSDK({ environment: 'production', shareableKey, clientId });
 const controller = await browserSdk.mountCardForm(container, { flow: 'return-payload' });
 const { encryptedPayload } = await controller.result;
 
 // Collect browser data for 3DS — must be done in the browser
-const browserData = collectBrowserData();
+const browserData = await sdk.getBrowserData(); // ip/user_agent/accept_header from the API
 
 // Forward both to your server endpoint
 await fetch('/api/charge', {
@@ -452,7 +452,19 @@ if (charge.action?.redirect_url) {
 }
 ```
 
-> **`browser_data` is required for 3DS.** The server SDK does not auto-collect it (only the browser SDK can). Always forward it from the browser via `collectBrowserData()`. Without it, 3DS context is absent and approval rates degrade.
+> **`browser_data` is required for 3DS, and this server must not invent it.** The server SDK
+> deliberately does not collect it. Its `ip`, `user_agent` and `accept_header` describe the
+> connection the 3DS challenge will run on, so the browser fetches them from
+> `GET /cards/browser-data` — `await browserSdk.getBrowserData()` returns a complete
+> `browser_data` object — and forwards them to your endpoint, which passes them through
+> unchanged.
+>
+> Do not fill them in from the request your server received. The address would be the one your
+> proxy or CDN reports, `accept_header` is a composite of three headers rather than a single one,
+> and a charge issued from a queue or a retry has no customer request to read at all. A server
+> that substitutes its own values produces a payload that looks valid and then fails
+> authentication; a charge that runs later carries the values captured in the browser when the
+> customer submitted, stored alongside the pending charge.
 
 ### Saved cards
 

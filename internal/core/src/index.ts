@@ -13,5 +13,9 @@ export type { AwaitPaymentStatusOptions } from './payment-status-polling.js';
 export { awaitPaymentStatus } from './payment-status-polling.js';
 export type { GoPayScope } from './scopes.js';
 export { combineScopes, GoPayScopes } from './scopes.js';
-export type { BrowserData } from './types/browser-data.js';
+export type {
+    BrowserData,
+    BrowserDataDetected,
+    BrowserDeviceData,
+} from './types/browser-data.js';
 export { assertHttpsOrigin, requireNonEmptyString } from './validate.js';

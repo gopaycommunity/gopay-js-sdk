@@ -101,6 +101,171 @@ describe('createPaymentsApi() — browser SDK', () => {
             ).toBe(true);
         });
 
+        it('takes ip, user_agent and accept_header from /cards/browser-data', async () => {
+            const detected = {
+                ip: '192.0.2.42',
+                user_agent: 'Real/1.0 (as seen by the API)',
+                accept_header: '{"accept":"application/json"}',
+            };
+            const calls: string[] = [];
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                calls.push(`${req.method} ${new URL(req.url).pathname}`);
+                if (new URL(req.url).pathname === '/cards/browser-data') {
+                    return makeResponse(detected);
+                }
+                capturedBody = await req.text();
+                return makeResponse({});
+            });
+
+            await api.chargePayment({
+                payment_instrument: {
+                    payment_instrument: 'PAYMENT_CARD',
+                    input: {
+                        input_type: 'ENCRYPTED_CARD',
+                        payload: 'enc_payload',
+                    },
+                },
+            });
+
+            // fetched immediately before the charge, never cached
+            expect(calls).toEqual([
+                'GET /cards/browser-data',
+                `POST /payments/${PAYMENT_ID}/charge`,
+            ]);
+            const browserData =
+                JSON.parse(capturedBody).payment_instrument.browser_data;
+            expect(browserData.ip).toBe(detected.ip);
+            expect(browserData.user_agent).toBe(detected.user_agent);
+            expect(browserData.accept_header).toBe(detected.accept_header);
+        });
+
+        it('lets the caller override fields the endpoint returned', async () => {
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                if (new URL(req.url).pathname === '/cards/browser-data') {
+                    return makeResponse({
+                        ip: '192.0.2.42',
+                        user_agent: 'Real/1.0',
+                        accept_header: '{}',
+                    });
+                }
+                capturedBody = await req.text();
+                return makeResponse({});
+            });
+
+            await api.chargePayment({
+                payment_instrument: {
+                    payment_instrument: 'PAYMENT_CARD',
+                    input: {
+                        input_type: 'ENCRYPTED_CARD',
+                        payload: 'enc_payload',
+                    },
+                    browser_data: { ip: '203.0.113.9', language: 'en-US' },
+                },
+            });
+
+            const browserData =
+                JSON.parse(capturedBody).payment_instrument.browser_data;
+            expect(browserData.ip).toBe('203.0.113.9');
+            expect(browserData.language).toBe('en-US');
+            expect(browserData.user_agent).toBe('Real/1.0');
+        });
+
+        it('does not call the browser data endpoint without a card instrument', async () => {
+            await api.chargePayment({});
+            expect(fetchMock).toHaveBeenCalledOnce();
+        });
+
+        it('still charges when the browser data endpoint is unavailable', async () => {
+            // The endpoint is not deployed on every environment yet — a 404
+            // must not take the whole charge down with it.
+            let capturedBody = '';
+            fetchMock.mockImplementation(async (req: Request) => {
+                if (new URL(req.url).pathname === '/cards/browser-data') {
+                    return makeResponse({ error: 'not found' }, 404);
+                }
+                capturedBody = await req.text();
+                return makeResponse({});
+            });
+
+            await api.chargePayment({
+                payment_instrument: {
+                    payment_instrument: 'PAYMENT_CARD',
+                    input: {
+                        input_type: 'ENCRYPTED_CARD',
+                        payload: 'enc_payload',
+                    },
+                },
+            });
+
+            const browserData =
+                JSON.parse(capturedBody).payment_instrument.browser_data;
+            expect(browserData.javascript_enabled).toBe(true);
+            // ip is simply absent, as it was before the endpoint existed
+            expect(browserData.ip).toBeUndefined();
+        });
+
+        it('does not charge when the browser data fetch is aborted', async () => {
+            const controller = new AbortController();
+            controller.abort();
+            const paths: string[] = [];
+            fetchMock.mockImplementation(async (req: Request) => {
+                paths.push(new URL(req.url).pathname);
+                if (new URL(req.url).pathname === '/cards/browser-data') {
+                    throw new DOMException('Aborted', 'AbortError');
+                }
+                return makeResponse({});
+            });
+
+            const err = await api
+                .chargePayment(
+                    {
+                        payment_instrument: {
+                            payment_instrument: 'PAYMENT_CARD',
+                            input: {
+                                input_type: 'ENCRYPTED_CARD',
+                                payload: 'enc_payload',
+                            },
+                        },
+                    },
+                    { signal: controller.signal },
+                )
+                .catch((e: unknown) => e);
+
+            expect(err).toBeDefined();
+            // the charge POST must never be sent after a teardown
+            expect(paths).not.toContain(`/payments/${PAYMENT_ID}/charge`);
+        });
+
+        it('covers the browser data fetch with the caller signal', async () => {
+            // GPOMA-2512: unmount() aborts the whole sequence, so the fetch that
+            // precedes the charge has to observe the same signal.
+            const controller = new AbortController();
+            const signals: AbortSignal[] = [];
+            fetchMock.mockImplementation(async (req: Request) => {
+                signals.push(req.signal);
+                return makeResponse({});
+            });
+
+            await api.chargePayment(
+                {
+                    payment_instrument: {
+                        payment_instrument: 'PAYMENT_CARD',
+                        input: {
+                            input_type: 'ENCRYPTED_CARD',
+                            payload: 'enc_payload',
+                        },
+                    },
+                },
+                { signal: controller.signal },
+            );
+
+            expect(signals).toHaveLength(2);
+            controller.abort();
+            expect(signals.every((s) => s.aborted)).toBe(true);
+        });
+
         it('sends the required accept_header in browser_data', async () => {
             let capturedBody = '';
             let capturedAccept = '';

@@ -78,6 +78,16 @@ export function createPaymentsApi(client: HttpClient) {
          *
          * POST /payments/{payment_id}/charge
          *
+         * A card charge requires `browser_data`, and its `ip`, `user_agent` and
+         * `accept_header` must originate in the customer's browser — fetch them
+         * there with the browser SDK's `getBrowserData()`, forward them to this
+         * server, and pass them through unchanged. Never fill them in from the
+         * request this server received: the address would be the one its own
+         * proxy or CDN reports, `accept_header` is a composite of three headers
+         * rather than one, and a charge run from a queue or a retry has no
+         * customer request to read at all. Substituted values look valid and
+         * then fail 3-D Secure authentication.
+         *
          * @param paymentId - Payment session ID returned by {@link createPayment}
          * @param params    - Charge parameters including payment instrument details
          */

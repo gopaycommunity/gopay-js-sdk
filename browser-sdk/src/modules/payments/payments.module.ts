@@ -8,7 +8,7 @@ import {
     type HttpClient,
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
-import { collectBrowserData } from './browser-data.js';
+import { collectBrowserData, fetchBrowserData } from './browser-data.js';
 
 type PaymentDetails = components['schemas']['Payment-Details'];
 type PaymentChargeRequest = components['schemas']['Payment-Charge-Input'];
@@ -16,6 +16,7 @@ type PaymentChargeResponse = components['schemas']['Payment-Charge-Response'];
 type PaymentChargeStatusResponse =
     components['schemas']['Payment-Charge-Status-Response'];
 type BrowserDataSchema = components['schemas']['Browser-Data'];
+type BrowserDeviceData = Omit<BrowserDataSchema, 'ip'>;
 type PaymentCardChargeData = components['schemas']['Payment-Card-Charge-Data'];
 type GooglePayInfoResponse =
     components['responses']['Google-Pay-Info-Response']['content']['application/json'];
@@ -112,7 +113,11 @@ export function createPaymentsApi(
 
         /**
          * Charge this payment using a payment instrument.
-         * Browser context data is collected automatically and merged into the request.
+         *
+         * For a card charge the SDK assembles `browser_data` itself: `ip`,
+         * `user_agent` and `accept_header` come from `GET /cards/browser-data`
+         * (fetched per charge, never cached), the rest is read from the page.
+         * Anything the caller passes in `browser_data` wins over both.
          *
          * POST /payments/{payment_id}/charge
          */
@@ -122,7 +127,28 @@ export function createPaymentsApi(
         ): Promise<PaymentChargeResponse> {
             const pi = params.payment_instrument;
             if (pi?.payment_instrument === 'PAYMENT_CARD') {
-                const collected = collectBrowserData();
+                // Fetched per charge, never cached: the values describe the
+                // connection this charge is authenticated from. The caller's
+                // signal covers the fetch as well as the charge itself.
+                let collected: BrowserDeviceData;
+                try {
+                    collected = await fetchBrowserData(client, {
+                        signal: options?.signal,
+                    });
+                } catch (err) {
+                    // An aborted request means the caller tore the flow down
+                    // (see CardFormController.unmount) — never charge after it.
+                    if (options?.signal?.aborted) {
+                        throw err;
+                    }
+                    // The endpoint is not deployed on every environment yet.
+                    // Charging with the locally readable fields keeps the flow
+                    // working exactly as it did before the endpoint existed;
+                    // `ip` is then absent and 3-D Secure sees one field less.
+                    // The failed GET is already visible in the client's debug
+                    // log when debugLoggingEnabled is on.
+                    collected = collectBrowserData();
+                }
                 return client.post<PaymentChargeResponse>(
                     `/payments/${paymentId}/charge`,
                     {

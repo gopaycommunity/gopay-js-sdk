@@ -13,7 +13,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Authenticate */
+        /**
+         * Authenticate
+         * @description Exchanges credentials for an access token.
+         *
+         *     The merchant's server presents `client_id:client_secret` with the `client_credentials` grant; the merchant's client presents `payment_id:payment_secret` with the `payment_credentials` grant to obtain a payment-scoped token. Credentials are sent as HTTP Basic and at least one scope must be requested. The returned `access_token` is a JWT valid for fifteen minutes and is presented as a Bearer token on the calls that authenticate with it; the `shareable_key` endpoints use HTTP Basic instead and involve no token exchange.
+         */
         post: operations["post-oauth2-token"];
         delete?: never;
         options?: never;
@@ -33,7 +38,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create a payment */
+        /**
+         * Create a payment
+         * @description Creates a payment for the given eshop.
+         *
+         *     The response carries the payment `id`, the per-payment client credential `payment_secret`, and `gw_url` — the escape hatch into the previous (v3) hosted flow, for payment methods the v4 charge endpoint does not yet cover, not a redirect target for those it does. The new payment is in the `CREATED` state and awaits a charge attempt; if none is made before the initial timeout expires, it transitions to `TIMEOUTED`.
+         */
         post: operations["post-eshops-goid-payments"];
         delete?: never;
         options?: never;
@@ -51,7 +61,12 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Payment Status */
+        /**
+         * Payment Status
+         * @description Returns the current state of a payment.
+         *
+         *     Called after a webhook notification or a return-URL redirect to learn the outcome, since both carry only the payment `id`. The `state` field follows the payment lifecycle from `CREATED` to a terminal outcome.
+         */
         get: operations["get-payments-payment_id"];
         put?: never;
         post?: never;
@@ -71,10 +86,20 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Payment charge state */
+        /**
+         * Payment charge state
+         * @description Returns the current state of the payment's charge.
+         *
+         *     Polled while a charge is in flight, at a recommended cadence of one second, until the state reaches `SUCCEEDED`, `FAILED` or `ACTION_REQUIRED`. On `ACTION_REQUIRED` the response carries an `action` describing the step the customer must complete; once they have, polling resumes until the charge reaches `SUCCEEDED` or `FAILED`. When a charge fails, the reason is carried in `fail_reason`.
+         */
         get: operations["get-payments-payment_id-charge"];
         put?: never;
-        /** Charge a payment */
+        /**
+         * Charge a payment
+         * @description Attempts to settle a payment with a payment instrument.
+         *
+         *     Only card payments are charged through this endpoint — `payment_instrument` is always `PAYMENT_CARD`, and the card input type nested under it is one of `ENCRYPTED_CARD`, `CARD_TOKEN`, `APPLE_PAY` or `GOOGLE_PAY`. Other payment methods are reachable only through the hosted gateway. The charge is asynchronous; a state of `ACTION_REQUIRED` means the customer must complete an external step before the charge can terminate.
+         */
         post: operations["post-payments-payment_id-charge"];
         delete?: never;
         options?: never;
@@ -92,7 +117,12 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** QR Payment Info */
+        /**
+         * QR Payment Info
+         * @description Returns the data needed to display a QR code for settling the payment by bank transfer.
+         *
+         *     The response carries the amount, the recipient bank account, and the generated image as a base64 string under the regional format applicable to the payment's currency and recipient country. Requesting a QR code extends the payment's initial timeout to four days and does not change the payment state.
+         */
         get: operations["get-payments-payment_id-qr-payment-info"];
         put?: never;
         post?: never;
@@ -112,7 +142,12 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Google Pay Payment Info */
+        /**
+         * Google Pay Payment Info
+         * @description Returns the Google Pay payment request configuration for the payment.
+         *
+         *     Intended for the GoPay client SDK; the merchant's code does not normally call it. The same endpoint serves both the web and the in-app case — the configured environment is carried in `environment`.
+         */
         get: operations["get-payments-payment_id-info-google-pay"];
         put?: never;
         post?: never;
@@ -132,7 +167,12 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Apple Pay Payment Info */
+        /**
+         * Apple Pay Payment Info
+         * @description Returns the Apple Pay payment request configuration for the payment on the web.
+         *
+         *     Intended for the GoPay client SDK; the merchant's code does not normally call it.
+         */
         get: operations["get-payments-payment_id-info-apple-pay"];
         put?: never;
         post?: never;
@@ -152,7 +192,12 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Apple Pay Payment Info For Apps */
+        /**
+         * Apple Pay Payment Info For Apps
+         * @description Returns the Apple Pay payment request configuration for the payment in a native application. It carries `paymentSummaryItems` where the web variant carries a single `total`.
+         *
+         *     Intended for the GoPay client SDK; the merchant's code does not normally call it.
+         */
         get: operations["get-payments-payment_id-apple-pay-app-info"];
         put?: never;
         post?: never;
@@ -174,7 +219,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Validate Merchant */
+        /**
+         * Validate Merchant
+         * @description Completes the Apple Pay merchant validation handshake for the payment session.
+         *
+         *     The `validationUrl` issued by Apple is forwarded to GoPay, which returns the merchant session that the Apple Pay sheet expects. Intended for the GoPay client SDK; the merchant's code does not normally call it.
+         */
         post: operations["post-payments-payment_id-apple-pay-validate"];
         delete?: never;
         options?: never;
@@ -243,7 +293,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create card token */
+        /**
+         * Create card token
+         * @description Exchanges an encrypted card payload for a permanent card token.
+         *
+         *     The JWE produced by the GoPay client SDK is submitted in `payload` and exchanged for a `Permanent Card Token Details` object. Its `token` is what a later charge carries as `card_token` in the `CARD_TOKEN` input; its `card_id` addresses the saved card in the read and delete operations. The JWE is single-use. Tokenisation is disabled by default and must be enabled for the merchant; the operation is server-side only.
+         */
         post: operations["post-cards-tokens"];
         delete?: never;
         options?: never;
@@ -261,11 +316,21 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Card details */
+        /**
+         * Card details
+         * @description Returns the current details of a saved card.
+         *
+         *     Called after the saved-card webhook to read fields the issuer has updated in place — a reissued PAN or a new expiration date — while the `card_id` stays the same. The API does not list saved cards; the merchant persists the association between `card_id` and customer. Server-side only.
+         */
         get: operations["get-cards-tokens-card_id"];
         put?: never;
         post?: never;
-        /** Delete a card */
+        /**
+         * Delete a card
+         * @description Permanently deletes a saved card.
+         *
+         *     A deleted token is not recoverable; saving the same card again requires re-tokenisation through the standalone flow. Server-side only.
+         */
         delete: operations["delete-cards-tokens-card_id"];
         options?: never;
         head?: never;
@@ -306,6 +371,28 @@ export interface paths {
          * @description Returns the URL of the hosted card input form
          */
         get: operations["get-card-form-url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cards/browser-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch browser data
+         * @description Returns the `Browser Data` fields that the customer's browser cannot determine on its own — the source IP address, the `User-Agent` header, and the `Accept` headers — derived from the request that fetched them.
+         *
+         *     Call it from the customer's browser, immediately before charging the payment. A call made from the merchant's server returns the server's own values, which the card issuer rejects during 3-D Secure authentication.
+         */
+        get: operations["get-browser-data"];
         put?: never;
         post?: never;
         delete?: never;
@@ -393,7 +480,7 @@ export interface components {
          *     - `scope` -> the scopes of the token
          *     - `iat` -> timestamp of token issuing
          *     - `exp` -> timestamp of token expiration
-         *     - `domain` -> `merchant` for server tokens issued for client credentials. `payment` for payment tokens issued for `payment_secret` using the `authorization_code` flow - used on calling the API from the browser.
+         *     - `domain` -> `merchant` for server tokens issued for client credentials. `payment` for payment tokens issued for `payment_secret` using the `payment_credentials` grant - used on calling the API from the browser.
          * @example eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
          */
         JWT: string;
@@ -738,6 +825,8 @@ export interface components {
              * @example {\"tag\":\"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\\u003d\",\"ephemeralPublicKey\":\"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\\u003d\",\"encryptedMessage\":\"mKOoXwi8OavZ\"}
              */
             signedMessage?: string;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * Apple Pay Input
@@ -749,6 +838,7 @@ export interface components {
          *       "signature": "MIAGCSqGSIb3DQEHAqCAM...",
          *       "version": "EC_v1",
          *       "header": {
+         *         "applicationData": "94ee059335e587e5...c47d0d13c58f7ea4",
          *         "ephemeralPublicKey": "MFkwEwYHKoZIzj...",
          *         "publicKeyHash": "L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=",
          *         "transactionId": "4f4fac7a1...a6a8ba2c0e8c5"
@@ -779,6 +869,11 @@ export interface components {
             /** @description Header containing additional data for decrypting and verifying the payment token */
             header: {
                 /**
+                 * @description Hash of the `applicationData` carried on the Apple Pay payment request. Apple includes it only for sessions created with that value, so the field is optional; forward it unchanged when the Apple Pay session returns it
+                 * @example 94ee059335e587e5...c47d0d13c58f7ea4
+                 */
+                applicationData?: string;
+                /**
                  * @description Ephemeral public key used for deriving the shared secret
                  * @example MFkwEwYHKoZIzj...
                  */
@@ -793,7 +888,11 @@ export interface components {
                  * @example 4f4fac7a1...a6a8ba2c0e8c5
                  */
                 transactionId: string;
+            } & {
+                [key: string]: unknown;
             };
+        } & {
+            [key: string]: unknown;
         };
         /**
          * Bank Swift
@@ -838,12 +937,12 @@ export interface components {
              */
             color_depth: number;
             /**
-             * @description User-Agent string of the customer's browser
+             * @description User-Agent string of the customer's browser, as returned by the browser data endpoint. Take it from the same source as `ip` — a pair that disagrees fails 3-D Secure authentication
              * @example Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36
              */
             user_agent: string;
             /**
-             * @description JSON-encoded Accept headers from the customer's browser
+             * @description JSON-encoded Accept headers from the customer's browser, as returned by the browser data endpoint. Take it from the same source as `ip`
              * @example {"accept-language":"cs;q=0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, *\/*"}
              */
             accept_header: string;
@@ -852,6 +951,33 @@ export interface components {
              * @example true
              */
             javascript_enabled: boolean;
+            /**
+             * @description IP address of the customer's browser, as returned by the browser data endpoint. A merchant server charging on the customer's behalf must forward the value collected in the browser, never its own address
+             * @example 192.0.2.42
+             */
+            ip: string;
+        };
+        /**
+         * Browser Data Detected
+         * @description The `Browser Data` fields the customer's browser cannot determine on its own, derived from the request that fetched them.
+         *     Merge them into `Browser Data` when charging the payment.
+         */
+        "Browser-Data-Detected": {
+            /**
+             * @description IP address the request originated from
+             * @example 192.0.2.42
+             */
+            ip: string;
+            /**
+             * @description User-Agent header sent with the request
+             * @example Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36
+             */
+            user_agent: string;
+            /**
+             * @description JSON-encoded Accept headers sent with the request
+             * @example {"accept-language":"cs;q=0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, *\/*"}
+             */
+            accept_header: string;
         };
         /**
          * Payment Charge Response
@@ -1428,10 +1554,10 @@ export interface components {
             created_at: string;
             /**
              * Format: date-time
-             * @description When the refund state last changed
+             * @description When the refund state last changed. Null until the state changes for the first time
              * @example 2025-12-10T10:35:00Z
              */
-            updated_at?: string;
+            updated_at?: string | null;
         };
         /**
          * Refund State
@@ -2119,6 +2245,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Card-Form-URL"];
+                };
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-browser-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shared Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Browser-Data-Detected"];
                 };
             };
             401: components["responses"]["Unauthorized-401-Response"];

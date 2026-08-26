@@ -10,6 +10,7 @@ import {
     exchangePaymentCredentials,
 } from './modules/auth/auth.module.js';
 import { createCardsApi } from './modules/cards/cards.module.js';
+import { fetchBrowserData } from './modules/payments/browser-data.js';
 import { createPaymentsApi } from './modules/payments/payments.module.js';
 import { createWalletsApi } from './modules/wallets/wallets.module.js';
 import { SDK_VERSION } from './version.js';
@@ -104,6 +105,21 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
 
         ...cardsApi,
         ...createWalletsApi(client, getPaymentsApi),
+
+        /**
+         * Fetch `ip`, `user_agent` and `accept_header` from
+         * `GET /cards/browser-data` and merge them with the locally readable
+         * fields, yielding a complete `browser_data` object.
+         *
+         * Needs only `shareableKey`, so it works before `attachPayment()`. The
+         * SDK calls it internally for `chargePayment` and for
+         * `mountCardForm({ flow: 'direct-charge' })`; call it directly when the
+         * merchant's server performs the charge and needs the values collected
+         * in the customer's browser.
+         */
+        async getBrowserData(options?: { signal?: AbortSignal }) {
+            return fetchBrowserData(client, options);
+        },
 
         // Payment-scoped methods — only available after attachPayment()
         async getStatus() {

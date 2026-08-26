@@ -1,6 +1,21 @@
-import { collectBrowserData } from '@gopaycz/gopay-js-sdk-browser';
+import { getBrowserSDK } from './browser-sdk.js';
 import { prefillPaymentId, run, show3dsPrompt, state } from './helpers.js';
 import { sdk } from './sdk.js';
+
+// ip, user_agent and accept_header describe the connection the 3DS challenge
+// runs on, so they have to come from GET /cards/browser-data called in the
+// customer's browser. This page charges through the *server* SDK, which is
+// exactly the flow where the values must be collected here and forwarded —
+// a server that fills them in from its own request fails authentication.
+async function browserDataForCharge() {
+    const browserSdk = getBrowserSDK();
+    if (!browserSdk) {
+        throw new Error(
+            'Initialise the Browser SDK first — browser_data must come from GET /cards/browser-data, not from this page.',
+        );
+    }
+    return browserSdk.getBrowserData();
+}
 
 export function runCreatePayment() {
     const goid = document.getElementById('create-goid').value.trim();
@@ -59,9 +74,8 @@ export function runGetChargeState() {
 // Example:
 //   const result = await sdk.chargePayment(paymentId, { payment_instrument: instrument });
 //   if (result.action?.redirect_url) window.location.href = result.action.redirect_url;
-// browser_data is collected via the browser SDK's own collectBrowserData() helper (forwarded
-// as-is, per the security checklist) rather than hand-rolled here — it deliberately omits
-// ip, which GoPay's backend fills in itself for pure client-side flows.
+// browser_data comes from the browser SDK (see browserDataForCharge above) and is forwarded
+// as-is, per the security checklist, rather than hand-rolled here.
 export function runChargeEncrypted() {
     const paymentId = document
         .getElementById('charge-enc-payment-id')
@@ -70,7 +84,7 @@ export function runChargeEncrypted() {
 
     run(
         'charge-enc-output',
-        () =>
+        async () =>
             sdk.chargePayment(paymentId, {
                 payment_instrument: {
                     payment_instrument: 'PAYMENT_CARD',
@@ -78,7 +92,7 @@ export function runChargeEncrypted() {
                         input_type: 'ENCRYPTED_CARD',
                         payload,
                     },
-                    browser_data: collectBrowserData(),
+                    browser_data: await browserDataForCharge(),
                 },
             }),
         (result) =>
@@ -101,16 +115,17 @@ export function runCharge() {
         },
     };
 
-    const chargeInstrument =
-        instrument?.payment_instrument === 'PAYMENT_CARD'
-            ? { ...instrument, browser_data: collectBrowserData() }
-            : instrument;
-
     run(
         'payment-charge-output',
-        () =>
+        async () =>
             sdk.chargePayment(paymentId, {
-                payment_instrument: chargeInstrument,
+                payment_instrument:
+                    instrument?.payment_instrument === 'PAYMENT_CARD'
+                        ? {
+                              ...instrument,
+                              browser_data: await browserDataForCharge(),
+                          }
+                        : instrument,
             }),
         (result) =>
             show3dsPrompt(

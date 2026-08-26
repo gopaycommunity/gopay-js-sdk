@@ -1,10 +1,14 @@
 import {
+    createHttpClient,
     GoPayErrorCodes,
     GoPaySDKError,
     SDK_ACCEPT_HEADER,
 } from '@gopay-internal/core';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { collectBrowserData } from '../../src/modules/payments/browser-data.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+    collectBrowserData,
+    fetchBrowserData,
+} from '../../src/modules/payments/browser-data.js';
 
 describe('collectBrowserData()', () => {
     afterEach(() => {
@@ -114,5 +118,101 @@ describe('collectBrowserData()', () => {
             const parsed = JSON.parse(collectBrowserData().accept_header);
             expect(parsed['accept-encoding']).toBe('gzip, deflate, br, zstd');
         });
+    });
+});
+
+describe('fetchBrowserData()', () => {
+    const makeResponse = (data: unknown, status = 200) =>
+        new Response(JSON.stringify(data), {
+            status,
+            headers: { 'content-type': 'application/json' },
+        });
+
+    const DETECTED = {
+        ip: '192.0.2.42',
+        user_agent: 'Real/1.0 (as seen by the API)',
+        accept_header: '{"accept":"application/json"}',
+    };
+
+    let fetchMock: ReturnType<typeof vi.fn>;
+    let client: ReturnType<typeof createHttpClient>;
+
+    beforeEach(() => {
+        fetchMock = vi.fn().mockResolvedValue(makeResponse(DETECTED));
+        vi.stubGlobal('fetch', fetchMock);
+        client = createHttpClient({
+            baseUrl: 'https://example.com',
+            shareableKey: 'pk_test',
+        });
+        client.setClientId('cid_test');
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    it('GETs /cards/browser-data and merges the response over the local fields', async () => {
+        vi.stubGlobal('navigator', {
+            language: 'cs-CZ',
+            userAgent: 'LocalGuess/9.9',
+        });
+
+        let capturedReq!: Request;
+        fetchMock.mockImplementation(async (req: Request) => {
+            capturedReq = req;
+            return makeResponse(DETECTED);
+        });
+
+        const data = await fetchBrowserData(client);
+
+        expect(capturedReq.method).toBe('GET');
+        expect(capturedReq.url).toBe('https://example.com/cards/browser-data');
+        // the endpoint is authoritative for all three connection fields
+        expect(data.ip).toBe(DETECTED.ip);
+        expect(data.user_agent).toBe(DETECTED.user_agent);
+        expect(data.accept_header).toBe(DETECTED.accept_header);
+        // locally readable fields survive
+        expect(data.language).toBe('cs-CZ');
+        expect(data.javascript_enabled).toBe(true);
+    });
+
+    it('authenticates with the shareable key, not a stored payment token', async () => {
+        // The endpoint is secured by shareable_key alone — a Bearer token from
+        // attachPayment() would be rejected.
+        client.setToken({
+            access_token: 'payment-scoped-jwt',
+            expires_in: 900,
+            token_type: 'bearer',
+        });
+
+        let capturedReq!: Request;
+        fetchMock.mockImplementation(async (req: Request) => {
+            capturedReq = req;
+            return makeResponse(DETECTED);
+        });
+
+        await fetchBrowserData(client);
+
+        expect(capturedReq.headers.get('Authorization')).toBe(
+            `Basic ${globalThis.btoa('cid_test:pk_test')}`,
+        );
+    });
+
+    it('forwards the abort signal to the request', async () => {
+        const controller = new AbortController();
+        let capturedReq!: Request;
+        fetchMock.mockImplementation(async (req: Request) => {
+            capturedReq = req;
+            return makeResponse(DETECTED);
+        });
+
+        await fetchBrowserData(client, { signal: controller.signal });
+
+        expect(capturedReq.signal.aborted).toBe(false);
+        // aborting the caller's controller must reach the in-flight request,
+        // which is how unmount() cancels the fetch that precedes a charge
+        controller.abort();
+        expect(capturedReq.signal.aborted).toBe(true);
     });
 });

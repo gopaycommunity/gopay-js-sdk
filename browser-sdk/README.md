@@ -73,7 +73,7 @@ Flow A covers two server-side use cases with the same browser code:
 - **Save card for future payments** — tokenize the payload and store the returned card token; skip the charge or charge later. Use the saved token in future `chargePayment` calls without asking the customer to re-enter their card.
 
 ```ts
-import { createGoPayBrowserSDK, collectBrowserData } from '@gopaycz/gopay-js-sdk-browser';
+import { createGoPayBrowserSDK } from '@gopaycz/gopay-js-sdk-browser';
 
 // 1. Create the browser SDK (synchronous).
 //    shareableKey + clientId come from your server via getBrowserKeys().
@@ -95,7 +95,7 @@ const { encryptedPayload } = await controller.result;
 
 // 4. Forward to your server — include browserData for charging on the server.
 const paymentId = 'PAY-123'; // from your server-side payment creation step
-const browserData = collectBrowserData();
+const browserData = await sdk.getBrowserData(); // ip/user_agent/accept_header from the API
 const response = await fetch('/api/charge', {
     method: 'POST',
     body: JSON.stringify({ encryptedPayload, paymentId, browserData }),
@@ -423,24 +423,61 @@ mountGooglePayButton(
 
 See [Apple Pay & Google Pay buttons](#apple-pay--google-pay-buttons-flow-b) above for the full options and controller reference.
 
-### `collectBrowserData()`
+### `sdk.getBrowserData()`
 
 ```ts
-collectBrowserData(): BrowserData
+getBrowserData(options?: { signal?: AbortSignal }): Promise<BrowserData>
 ```
 
-Collects browser context required for 3D Secure and fraud detection. Call this in the browser and forward the result to your server as `browser_data` in the `chargePayment` call.
+Returns a complete `browser_data` object for a card charge. Needs only `shareableKey`, so it
+works before `attachPayment()`.
+
+`ip`, `user_agent` and `accept_header` describe the connection rather than the page, and the
+browser cannot determine them on its own, so they come from `GET /cards/browser-data`, which
+derives them from the request that fetched them. The remaining fields are read locally:
 
 | Field | Source |
 |---|---|
+| `ip` | `GET /cards/browser-data` — the address the request originated from |
+| `user_agent` | `GET /cards/browser-data` — the `User-Agent` the API actually observed |
+| `accept_header` | `GET /cards/browser-data` — the JSON-encoded `Accept` headers the API observed |
 | `language` | `navigator.language` |
-| `user_agent` | `navigator.userAgent` |
 | `timezone` | `new Date().getTimezoneOffset()` |
 | `javascript_enabled` | always `true` |
 | `screen_width` / `screen_height` / `color_depth` | `screen.*` |
-| `accept_header` | JSON-encoded: `accept` = the SDK's own request `Accept` header, `accept-language` derived from `navigator.languages` with q-values, `accept-encoding` a constant approximation (`gzip, deflate, br, zstd`) — the real value is a forbidden header JavaScript cannot read |
 
-The `ip` field is not collectable in JavaScript and is omitted — the GoPay backend fills it from the HTTP request.
+**Call it in the customer's browser, immediately before the charge, and do not cache the
+result.** A call made from your server reports your server's connection, which the card issuer
+rejects during 3-D Secure; a cached result goes stale the moment the customer changes network.
+
+`chargePayment` and `mountCardForm({ flow: 'direct-charge' })` call it for you. If the endpoint
+is unavailable — it is not deployed on every environment yet — they fall back to the locally
+readable fields and charge without `ip`, exactly as the SDK did before the endpoint existed. An
+abort is never swallowed: if you tear the flow down via `unmount()`, the charge is not sent.
+Calling `getBrowserData()` yourself surfaces the failure instead, so you can decide.
+
+Reach for it directly when your **server** performs the charge:
+
+```ts
+const browserData = await sdk.getBrowserData();
+await fetch('/api/charge', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ encryptedPayload, browserData }),
+});
+// Your server passes browserData into browser_data unchanged — never its own request values.
+```
+
+### `collectBrowserData()`
+
+```ts
+collectBrowserData(): BrowserDeviceData
+```
+
+The locally readable subset only: `language`, `timezone`, `javascript_enabled`, the `screen.*`
+metrics, plus best-effort `user_agent` and `accept_header` approximations. It has no `ip` and is
+**not** chargeable on its own — the backend does not fill `ip` in. Use it only to inspect or
+pre-seed values; use `sdk.getBrowserData()` for an actual charge.
 
 ---
 

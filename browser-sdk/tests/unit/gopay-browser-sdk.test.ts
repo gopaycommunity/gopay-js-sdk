@@ -84,6 +84,32 @@ describe('createGoPayBrowserSDK()', () => {
     // isAuthenticated() / logout()
     // -------------------------------------------------------------------------
 
+    describe('getBrowserData()', () => {
+        it('works before attachPayment, using only the shareable key', async () => {
+            const detected = {
+                ip: '192.0.2.42',
+                user_agent: 'Real/1.0',
+                accept_header: '{"accept":"application/json"}',
+            };
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeResponse(detected);
+            });
+
+            const data = await sdk.getBrowserData();
+
+            expect(capturedReq.url).toBe(
+                'https://example.com/cards/browser-data',
+            );
+            expect(capturedReq.headers.get('Authorization')).toBe(
+                `Basic ${globalThis.btoa('cid_test:pk_test')}`,
+            );
+            expect(data.ip).toBe(detected.ip);
+            expect(data.javascript_enabled).toBe(true);
+        });
+    });
+
     describe('isAuthenticated()', () => {
         it('returns false before attachPayment', () => {
             expect(sdk.isAuthenticated()).toBe(false);
