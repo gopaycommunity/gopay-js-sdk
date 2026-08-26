@@ -70,9 +70,14 @@ export interface CardFormController<R = EncryptedCardPayload> {
     /** Current validity state reported by the iframe (external submit mode only). */
     readonly isValid: boolean;
     /**
-     * Tear down the mounted iframe, remove the message listener, and reject
-     * `result`. Call this when the parent component unmounts or navigates away.
-     * No-op if the controller is no longer active.
+     * Tear down the mounted iframe, remove the message listener, abort an
+     * in-flight charge together with its state polling, and reject `result`.
+     * Call this when the parent component unmounts or navigates away.
+     *
+     * Valid at every point of the flow, including after the card has been
+     * encrypted and the direct-charge is already running — the iframe is gone
+     * by then, but the charge is not. Idempotent, and a no-op once `result`
+     * has settled.
      */
     unmount: () => void;
 }
@@ -312,7 +317,18 @@ export function createCardsApi(
             const submitMode = options.submitMode ?? 'internal';
 
             const chargeAbortController = new AbortController();
-            let active = true;
+            /**
+             * Whether the iframe and its message listener are still mounted.
+             * The direct-charge flow tears them down as soon as the card is
+             * encrypted and keeps running, so this must never gate `unmount()`.
+             */
+            let iframeMounted = true;
+            /**
+             * Whether `result` has settled. This is what makes `unmount()` a
+             * no-op: the flow is over, rather than merely detached from the
+             * iframe.
+             */
+            let settled = false;
             let isValid = false;
             let onMessage:
                 | ((e: MessageEvent<OutboundMessage>) => Promise<void>)
@@ -327,14 +343,28 @@ export function createCardsApi(
             const result = new Promise<
                 EncryptedCardPayload | PaymentChargeStatusResponse
             >((res, rej) => {
-                resolveResult = res;
-                rejectResult = rej;
+                // Settling twice is a no-op, so an aborted charge rejecting
+                // late cannot overwrite the unmount error, and vice versa.
+                resolveResult = (value) => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    res(value);
+                };
+                rejectResult = (reason) => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    rej(reason);
+                };
             });
 
             let iframeLoadTimeout: ReturnType<typeof setTimeout> | undefined;
 
             const cleanup = () => {
-                active = false;
+                iframeMounted = false;
                 cardFormSessionActive = false;
                 clearTimeout(iframeLoadTimeout);
                 clearSpinner();
@@ -415,15 +445,18 @@ export function createCardsApi(
                 try {
                     const { threeDS, awaitOptions } = options;
 
-                    await paymentsApi.chargePayment({
-                        payment_instrument: {
-                            payment_instrument: 'PAYMENT_CARD',
-                            input: {
-                                input_type: 'ENCRYPTED_CARD',
-                                payload: encryptedPayload,
+                    await paymentsApi.chargePayment(
+                        {
+                            payment_instrument: {
+                                payment_instrument: 'PAYMENT_CARD',
+                                input: {
+                                    input_type: 'ENCRYPTED_CARD',
+                                    payload: encryptedPayload,
+                                },
                             },
                         },
-                    });
+                        { signal: chargeAbortController.signal },
+                    );
 
                     emitLoadingState('polling-charge-state');
 
@@ -525,7 +558,7 @@ export function createCardsApi(
             return {
                 result,
                 setTheme: (t: CardFormTheme) => {
-                    if (active) {
+                    if (iframeMounted) {
                         iframe.contentWindow?.postMessage(
                             {
                                 type: 'GOPAY_CARD_SET_THEME',
@@ -536,7 +569,7 @@ export function createCardsApi(
                     }
                 },
                 setLocale: (l: string) => {
-                    if (active) {
+                    if (iframeMounted) {
                         iframe.contentWindow?.postMessage(
                             {
                                 type: 'GOPAY_CARD_SET_LOCALE',
@@ -553,7 +586,7 @@ export function createCardsApi(
                             { errorCode: GoPayErrorCodes.INVALID_ARGUMENT },
                         );
                     }
-                    if (active) {
+                    if (iframeMounted) {
                         iframe.contentWindow?.postMessage(
                             {
                                 type: 'GOPAY_CARD_REQUEST_SUBMIT',
@@ -566,7 +599,7 @@ export function createCardsApi(
                     return isValid;
                 },
                 unmount: () => {
-                    if (!active) {
+                    if (settled) {
                         return;
                     }
                     chargeAbortController.abort();

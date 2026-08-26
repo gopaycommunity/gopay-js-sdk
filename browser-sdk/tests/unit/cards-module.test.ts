@@ -951,6 +951,130 @@ describe('createCardsApi() — browser SDK', () => {
             expect(() => ctrl.setLocale('cs')).not.toThrow();
         });
 
+        it('aborts the charge and rejects result when unmounted during direct-charge polling', async () => {
+            // GPOMA-2512: cleanup() runs as soon as the card is encrypted, so
+            // unmount() used to early-return and leave polling running with an
+            // unsettled result.
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            let pollingSignal: AbortSignal | undefined;
+            let chargeSignal: AbortSignal | undefined;
+            const paymentsApi = {
+                chargePayment: vi.fn(
+                    (_params: unknown, options?: { signal?: AbortSignal }) => {
+                        chargeSignal = options?.signal;
+                        return Promise.resolve({});
+                    },
+                ),
+                // never settles — the flow stays in polling until unmount()
+                awaitChargeState: vi.fn(
+                    (options?: { signal?: AbortSignal }) => {
+                        pollingSignal = options?.signal;
+                        return new Promise(() => {});
+                    },
+                ),
+                getStatus: vi.fn(),
+                getChargeState: vi.fn(),
+                getGooglePayInfo: vi.fn(),
+                getApplePayInfo: vi.fn(),
+                getApplePayAppInfo: vi.fn(),
+                startApplePaySession: vi.fn(),
+                getQRPaymentInfo: vi.fn(),
+            };
+
+            const cards = createCardsApi(
+                client,
+                () =>
+                    paymentsApi as unknown as ReturnType<
+                        typeof createPaymentsApi
+                    >,
+            );
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+                threeDS: { mode: 'manual' },
+            });
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+
+            await new Promise((r) => setTimeout(r, 10));
+            expect(pollingSignal?.aborted).toBe(false);
+
+            ctrl.unmount();
+
+            expect(pollingSignal?.aborted).toBe(true);
+            expect(chargeSignal?.aborted).toBe(true);
+            const err = await ctrl.result.catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CARD_FORM_ERROR,
+            );
+            // idempotent in the charge phase too
+            expect(() => ctrl.unmount()).not.toThrow();
+        });
+
+        it('is a no-op once the direct-charge flow has resolved', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            let pollingSignal: AbortSignal | undefined;
+            const paymentsApi = {
+                chargePayment: vi.fn().mockResolvedValue({}),
+                awaitChargeState: vi.fn(
+                    (options?: { signal?: AbortSignal }) => {
+                        pollingSignal = options?.signal;
+                        return Promise.resolve({
+                            state: 'SUCCEEDED',
+                            id: 'pay_1',
+                        });
+                    },
+                ),
+                getStatus: vi.fn(),
+                getChargeState: vi.fn(),
+                getGooglePayInfo: vi.fn(),
+                getApplePayInfo: vi.fn(),
+                getApplePayAppInfo: vi.fn(),
+                startApplePaySession: vi.fn(),
+                getQRPaymentInfo: vi.fn(),
+            };
+
+            const cards = createCardsApi(
+                client,
+                () =>
+                    paymentsApi as unknown as ReturnType<
+                        typeof createPaymentsApi
+                    >,
+            );
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+                threeDS: { mode: 'manual' },
+            });
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+
+            await expect(ctrl.result).resolves.toMatchObject({
+                state: 'SUCCEEDED',
+            });
+
+            ctrl.unmount();
+            // a completed flow must not be aborted retroactively
+            expect(pollingSignal?.aborted).toBe(false);
+        });
+
         it('fires the onError callback with the unmount error', async () => {
             const onError = vi.fn();
             const c = createHttpClient({
