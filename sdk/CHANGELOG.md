@@ -1,3 +1,16 @@
+## [1.14.3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.14.2...1.14.3) (2026-08-26)
+
+
+### Bug Fixes
+
+* **release:** bound the dispatch range to the run that produced it GPOMA-2417 ([ae0cce8](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ae0cce85612d72845c65d8a5afb14dc48a7869da))
+* **release:** dispatch every tag a release created, not just the head one GPOMA-2417 ([9a85417](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9a85417ca4c4f12d2dbb040508ea1ae8335829f2))
+* **release:** dispatch the npm publish from the GitHub sync step GPOMA-2417 ([9031762](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9031762ab265d1aff0e3195fde17eddb5004697b))
+* **release:** enable Corepack before setup-node GPOMA-2417 ([fbfdbc0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fbfdbc08ea696f7056f94740bfd6f7cf1d3778e8))
+* **release:** identify the dispatched run by a unique dispatch id GPOMA-2417 ([bec2314](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bec2314b61f303c65933093f95c24419adec3a21))
+* **release:** only accept the publish run this dispatch created GPOMA-2417 ([dafd647](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/dafd647a264a0c2dd7d15616eae2d40b46484958))
+* **release:** wait for the dispatched publish and fail if it did not happen GPOMA-2417 ([c763e4d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c763e4dc32ab608365fdc127a6e501e1ee396236))
+
 ## [1.14.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.14.1...1.14.2) (2026-08-25)
 
 
