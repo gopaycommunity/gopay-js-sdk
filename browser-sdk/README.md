@@ -317,19 +317,29 @@ mountCardForm(
 
 | Value | Behaviour |
 |---|---|
-| `{ mode: 'redirect' }` (default) | Navigates the top-level page to the ACS URL. The returned promise stays pending as the page unloads. After 3DS, the bank redirects to the `return_url` set at payment creation; call `getChargeState()` there to confirm the outcome. |
+| `{ mode: 'redirect' }` (default) | Navigates the top-level page to the ACS URL. The returned promise stays pending as the page unloads. After 3DS, the bank redirects to the `return_url` set at payment creation; confirm the outcome with a server-side `getChargeState()` (see the note below). |
 | `{ mode: 'manual' }` | Does nothing automatically. Handle the ACS URL yourself via the `onActionRequired` callback in `awaitChargeState`. |
 
-> **`mode: 'redirect'` and `controller.result`**: When 3DS triggers a full-page navigation, `controller.result` never resolves or rejects — the page unloads while it is still pending. **Do not `await controller.result` to detect completion on this code path.** Instead, after the bank redirects the customer back to your `return_url`, use `getChargeState()` on your server (or `sdk.getChargeState()` in a fresh browser session after calling `attachPayment` again) to confirm the final outcome:
+> **`mode: 'redirect'` and `controller.result`**: When 3DS triggers a full-page navigation, `controller.result` never resolves or rejects — the page unloads while it is still pending. **Do not `await controller.result` to detect completion on this code path.** Confirm the outcome on your server after the customer comes back.
+>
+> **Put nothing confidential in `return_url`.** It is a plain browser navigation, so whatever it
+> carries ends up in browser history, access logs, analytics, and any `Referer` the return page
+> sends onward — `payment_secret` must never travel that way. Carry a non-sensitive correlation
+> value you can resolve server-side (an order reference, or a single-use lookup id), or rely on
+> the customer's own session and carry nothing at all.
 >
 > ```ts
-> // On your return_url page — payment_id and payment_secret are URL query params
-> // (or fetched from your server if not exposed in the URL)
-> const sdk = createGoPayBrowserSDK({ ... });
-> await sdk.attachPayment({ paymentId, paymentSecret });
-> const charge = await sdk.getChargeState();
-> if (charge.state === 'SUCCEEDED') { /* success */ }
+> // return_url = https://merchant.example.com/return?order=A-1042
+> // On your server: resolve the order, then read the charge with your own credentials.
+> const paymentId = await orders.paymentIdFor('A-1042');
+> const charge = await serverSdk.getChargeState(paymentId);
+> if (charge.state === 'SUCCEEDED') { /* fulfil the order */ }
 > ```
+>
+> Treat the payment as paid only after that server-side check. If the return page also has to
+> show the result in the browser, hand the browser a fresh `paymentSecret` from your own
+> authenticated endpoint and call `attachPayment()` again — the same server-to-browser handoff as
+> the initial mount, never a URL parameter.
 
 #### Theme options
 
