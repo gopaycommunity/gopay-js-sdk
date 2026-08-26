@@ -18,23 +18,48 @@ set -euo pipefail
 GITHUB_REPO="${GITHUB_REPO:-gopaycommunity/gopay-js-sdk}"
 WORKFLOW_FILE="${WORKFLOW_FILE:-npm-publish.yml}"
 API="https://api.github.com/repos/${GITHUB_REPO}"
-POLL_ATTEMPTS="${POLL_ATTEMPTS:-60}"   # x5s = 5 min ceiling per tag
+# 15 min per tag: the run installs, builds and publishes, and may also queue behind another
+# publish of the same package (npm-publish.yml serialises per package). Too low and a successful
+# publish reports as a timeout and reddens the release pipeline.
+POLL_ATTEMPTS="${POLL_ATTEMPTS:-180}"  # x5s = 15 min ceiling per tag
 POLL_SLEEP="${POLL_SLEEP:-5}"
+
+# Workflow-scoped, not repository-wide: /actions/runs lists dispatch runs for every workflow, so
+# on a busy repo ours can fall off the first page and look like it never started.
+RUNS_URL="${API}/actions/workflows/${WORKFLOW_FILE}/runs?event=workflow_dispatch&per_page=30"
 
 gh_get() { curl -sS --fail-with-body -H "Authorization: Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}" \
     -H "Accept: application/vnd.github+json" "$1"; }
 
-# Pull one field out of a JSON payload without depending on jq or python being present.
+# Pull one run out of a JSON payload without depending on jq or python being present.
 # node is guaranteed — this runs in the node:* image.
+#
+# Matching on run-name alone is not enough: dry runs and manual backfills of the same tag share
+# it, so before GitHub has created our run the newest match is an OLDER one — and an old
+# completed/success would end the wait immediately and report someone else's run as our publish.
+# Hence the floor: only consider runs newer than the highest id that existed before dispatching.
 json_pick() { node -e '
     let s = "";
     process.stdin.on("data", (d) => (s += d)).on("end", () => {
         const runs = JSON.parse(s).workflow_runs || [];
-        const hit = runs.find((r) => r.display_title === process.argv[1]);
+        const title = process.argv[1];
+        const floor = Number(process.argv[2] || 0);
+        const hit = runs.find((r) => r.display_title === title && Number(r.id) > floor);
         // Concatenation, not template literals, which would trip shellcheck SC2016 here.
         console.log(hit ? hit.id + " " + hit.status + " " + (hit.conclusion || "") : "");
     });
-' "$1"; }
+' "$1" "$2"; }
+
+# Highest run id currently visible, used as the floor above.
+# String(), not the bare number: console.log inspects a numeric argument and colourises it on a
+# TTY, and those escape codes turn the floor into NaN when it is compared back.
+max_run_id() { gh_get "${RUNS_URL}" | node -e '
+    let s = "";
+    process.stdin.on("data", (d) => (s += d)).on("end", () => {
+        const runs = JSON.parse(s).workflow_runs || [];
+        console.log(String(runs.reduce((m, r) => (Number(r.id) > m ? Number(r.id) : m), 0)));
+    });
+'; }
 
 # --- which tags did THIS run create? -------------------------------------------------------
 # Each package writes its own release commit, so on a joint release the sdk tag lands on HEAD~1
@@ -62,21 +87,28 @@ fi
 # --- dispatch and wait ---------------------------------------------------------------------
 # Ascending order: the workflow refuses to move `latest` backwards.
 for tag in ${tags}; do
+    # Floor captured BEFORE dispatching, so the wait below cannot latch onto a pre-existing run.
+    id_floor=$(max_run_id)
+
     echo "==> Dispatching npm publish for ${tag}"
+    # ref=master, not the tag: workflow_dispatch reads the workflow definition from the ref it is
+    # given, and only master is guaranteed to have it — the job then checks out the tag itself.
+    # This is also what lets an old tag be published by hand.
+    # Content-Type is explicit because curl -d would otherwise send form encoding.
     curl -sS --fail-with-body -X POST \
         -H "Authorization: Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}" \
         -H "Accept: application/vnd.github+json" \
+        -H "Content-Type: application/json" \
         "${API}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
         -d "{\"ref\":\"master\",\"inputs\":{\"tag\":\"${tag}\",\"dry-run\":\"false\"}}"
 
-    # The dispatch response carries no run id, so the run is located by its run-name,
-    # which npm-publish.yml sets to "Publish <tag>".
+    # The dispatch response carries no run id, so the run is located by its run-name — which
+    # npm-publish.yml sets to "Publish <tag>" — and by being newer than id_floor.
     run_id=""; status=""; conclusion=""
     for _ in $(seq 1 "${POLL_ATTEMPTS}"); do
         sleep "${POLL_SLEEP}"
-        read -r run_id status conclusion <<<"$(gh_get \
-            "${API}/actions/runs?event=workflow_dispatch&per_page=30" \
-            | json_pick "Publish ${tag}")" || true
+        read -r run_id status conclusion <<<"$(gh_get "${RUNS_URL}" \
+            | json_pick "Publish ${tag}" "${id_floor}")" || true
         [ -n "${run_id:-}" ] && [ "${status}" = "completed" ] && break
         [ -n "${run_id:-}" ] && echo "    run ${run_id} ${status}..."
     done
