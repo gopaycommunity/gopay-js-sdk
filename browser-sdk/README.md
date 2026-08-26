@@ -307,10 +307,11 @@ mountCardForm(
 |---|---|---|---|
 | `flow` | `'return-payload' \| 'direct-charge'` | required | `direct-charge` requires prior `attachPayment()` |
 | `threeDS` | `ThreeDSConfig` | `{ mode: 'redirect' }` | `direct-charge` only — controls 3DS handling (see below) |
-| `theme` | `CardFormTheme` | built-in | Exported from the package — `import type { CardFormTheme }` for full field reference |
+| `theme` | `CardFormTheme` | built-in | Exported from the package — see [Theme options](#theme-options) |
 | `locale` | `string` | `navigator.language` | BCP 47, e.g. `'cs-CZ'` |
 | `submitMode` | `'internal' \| 'external'` | `'internal'` | `'external'` hides the iframe button; use `controller.submit()` |
 | `onValidityChange` | `(isValid: boolean) => void` | — | External submit mode only |
+| `onFieldErrors` | `(errors: CardFormFieldError[]) => void` | — | Fires on every validation run; empty array means the form is clean |
 
 **`ThreeDSConfig`** (used in `mountCardForm` and `awaitChargeState`):
 
@@ -329,6 +330,61 @@ mountCardForm(
 > const charge = await sdk.getChargeState();
 > if (charge.state === 'SUCCEEDED') { /* success */ }
 > ```
+
+#### Theme options
+
+`CardFormTheme` is exported from the package, so `import type { CardFormTheme }` gives you the
+full field list with inline docs. The groups below cover what most integrations reach for.
+
+**Typography.** `fontFamily` takes font *names* only, so the usable typefaces are the ones
+already installed on the cardholder's system. The form deliberately accepts neither a font file
+nor a URL: a URL would require the form's CSP to allow arbitrary hosts and makes `@font-face`
+`unicode-range` a channel that reports which characters were rendered in the card fields, and a
+file would feed attacker-controlled binary to the browser's font parser inside the
+cardholder-data environment. `labelFontSize`, `labelFontWeight`, `labelUppercase` and
+`labelLetterSpacing` style the labels; `labelHidden` drops them visually while keeping them in
+the accessibility tree, so screen readers still announce each field.
+
+**Input metrics.** `inputHeight` fixes the field height outright, so changing `inputFontSize` no
+longer means recomputing the padding. Setting `inputLineHeight` together with it makes the
+rendered height deterministic — left unset, each browser derives it from the font metrics and
+the height varies between engines. `inputLetterSpacing` and `placeholderColor` cover the
+remaining text details.
+
+**Borders and focus.** With `inputBorderStyle: 'boxed'`, `inputBorderCollapse` merges the
+borders of adjacent inputs into one shared line. It pulls whole fields together, and a field is
+label + input + error, so a single merged block needs the rest of that vertical space gone too:
+
+```ts
+const theme: CardFormTheme = {
+    inputBorderStyle: 'boxed',
+    inputBorderCollapse: true,
+    groupSpacing: 0,
+    fieldSpacing: 0,
+    labelHidden: true,
+    errorHidden: true,
+    errorMinHeight: 0,
+};
+```
+
+`inputBorderRadius` then rounds only the outer corners of the block. `focusRingWidth` plus
+`focusRingColor` draw a ring outside the input border; both are needed for the ring to appear.
+
+**Error text.** `errorMinHeight` reserves vertical space for the error line so the layout does
+not shift when a message appears — set it to `0` to remove the reservation. `errorHidden` keeps
+error text in the accessibility tree but out of the layout; the cardholder then gets no visible
+feedback, so pair it with `onFieldErrors` and render your own messages:
+
+```ts
+const controller = await sdk.mountCardForm(container, {
+    flow: 'direct-charge',
+    theme: { errorHidden: true, errorMinHeight: 0 },
+    onFieldErrors: (errors) => {
+        // errors: [{ field: 'pan', code: 'pattern' }] — codes only, never values
+        setFieldErrors(errors);
+    },
+});
+```
 
 **`CardFormController`:**
 

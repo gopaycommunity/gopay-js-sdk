@@ -443,6 +443,67 @@ describe('createCardsApi() — browser SDK', () => {
             expect(ctrl.isValid).toBe(true);
         });
 
+        it('forwards GOPAY_CARD_FORM_ERRORS to onFieldErrors', async () => {
+            const onFieldErrors = vi.fn();
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+                onFieldErrors,
+            });
+            ctrl.result.catch(() => {});
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_FORM_ERRORS',
+                errors: [{ field: 'pan', code: 'pattern' }],
+            });
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_FORM_ERRORS',
+                errors: [],
+            });
+
+            await new Promise((r) => setTimeout(r, 0));
+            expect(onFieldErrors).toHaveBeenNthCalledWith(1, [
+                { field: 'pan', code: 'pattern' },
+            ]);
+            expect(onFieldErrors).toHaveBeenNthCalledWith(2, []);
+        });
+
+        it('keeps the form usable when onFieldErrors throws', async () => {
+            const onFieldErrors = vi.fn(() => {
+                throw new Error('consumer callback exploded');
+            });
+            const onValidityChange = vi.fn();
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+                submitMode: 'external',
+                onFieldErrors,
+                onValidityChange,
+            });
+            ctrl.result.catch(() => {});
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_FORM_ERRORS',
+                errors: [{ field: 'cvv', code: 'required' }],
+            });
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_FORM_VALIDITY',
+                isValid: true,
+            });
+
+            await new Promise((r) => setTimeout(r, 0));
+            expect(onFieldErrors).toHaveBeenCalledOnce();
+            // the throwing consumer must not stop later protocol messages
+            expect(onValidityChange).toHaveBeenCalledWith(true);
+            expect(ctrl.isValid).toBe(true);
+        });
+
         it('ignores GOPAY_CARD_ENCRYPT_READY messages without settling result', async () => {
             const cards = createCardsApi(client, () => null);
             const ctrl = await cards.mountCardForm(container, {

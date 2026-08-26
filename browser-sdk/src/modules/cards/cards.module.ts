@@ -20,6 +20,9 @@ import type {
 import { DEFAULT_CARD_FORM_THEME } from './card-form-themes.js';
 import type {
     CardFormConfig,
+    CardFormErrorCode,
+    CardFormField,
+    CardFormFieldError,
     CardFormTheme,
     CardRequestSubmit,
     CardSetLocale,
@@ -32,7 +35,14 @@ type PaymentChargeStatusResponse =
 
 type PaymentsApi = ReturnType<typeof createPaymentsApi>;
 
-export type { CardFormTheme, LoadingState, SpinnerConfig };
+export type {
+    CardFormErrorCode,
+    CardFormField,
+    CardFormFieldError,
+    CardFormTheme,
+    LoadingState,
+    SpinnerConfig,
+};
 
 export interface CardFormController<R = EncryptedCardPayload> {
     /**
@@ -83,6 +93,15 @@ type CardFormBaseOptions = {
     locale?: string;
     submitMode?: 'internal' | 'external';
     onValidityChange?: (isValid: boolean) => void;
+    /**
+     * Called on every validation run the iframe performs, with one entry per
+     * invalid field; an empty array means the form validated cleanly.
+     *
+     * Only field names and codes are reported — the entered value never leaves
+     * the iframe. Use this to render your own messages when the built-in error
+     * text is hidden via `theme.errorHidden`.
+     */
+    onFieldErrors?: (errors: CardFormFieldError[]) => void;
     /** Called on every loading state transition, regardless of the `spinner` setting. */
     onLoadingStateChange?: (state: LoadingState) => void;
     /**
@@ -466,6 +485,18 @@ export function createCardsApi(
                     ) {
                         isValid = event.data.isValid;
                         options.onValidityChange?.(isValid);
+                    }
+                    return;
+                }
+
+                if (event.data?.type === 'GOPAY_CARD_FORM_ERRORS') {
+                    const { errors } = event.data;
+                    if (Array.isArray(errors)) {
+                        try {
+                            options.onFieldErrors?.(errors);
+                        } catch {
+                            // consumer callback errors must not corrupt SDK flows
+                        }
                     }
                     return;
                 }

@@ -14,6 +14,9 @@ export {
 } from './modules/cards/card-form-themes.js';
 export type {
     CardFormController,
+    CardFormErrorCode,
+    CardFormField,
+    CardFormFieldError,
     CardFormOptions,
     CardFormTheme,
     LoadingState,

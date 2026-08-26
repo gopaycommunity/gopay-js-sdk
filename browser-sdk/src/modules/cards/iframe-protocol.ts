@@ -7,7 +7,7 @@
 // imports, re-exports, or logic here — types and type aliases only.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Environment = 'sandbox' | 'production';
+export type Environment = 'sandbox' | 'production';
 
 export interface CardFormConfig {
     type: 'GOPAY_CARD_FORM_INIT';
@@ -40,7 +40,16 @@ export interface CardFormTheme {
     // ── Typography ───────────────────────────────────────────────────────────
     /**
      * CSS font-family stack applied to all form text (labels, inputs, errors,
-     * submit button). Use system font stacks to avoid loading external fonts.
+     * submit button).
+     *
+     * Only names are accepted, so the usable fonts are the ones already present
+     * on the cardholder's system. The card form deliberately provides no way to
+     * supply a font file or a URL: a URL would need the form's CSP to permit
+     * arbitrary hosts and makes `@font-face` `unicode-range` a channel that
+     * reports which characters were rendered in the card fields, and a file
+     * would feed attacker-controlled binary to the browser's font parser inside
+     * the cardholder-data environment. Neither is worth a typeface.
+     *
      * Example: "Inter, system-ui, sans-serif"
      * Default: system-ui, sans-serif
      */
@@ -55,12 +64,41 @@ export interface CardFormTheme {
     labelFontWeight?: number | string;
     /** Whether field labels are uppercased. Default: true */
     labelUppercase?: boolean;
+    /**
+     * Letter spacing of field labels, in px. Left unset, the historical
+     * `0.06em` is kept — an em value, so it tracks the label font size; supply a
+     * number only if a fixed px spacing is wanted instead.
+     */
+    labelLetterSpacing?: number;
+    /**
+     * Hides labels visually while keeping them in the DOM and in the
+     * accessibility tree, so screen readers still announce each field. They
+     * occupy no vertical space. Default: false
+     */
+    labelHidden?: boolean;
 
     // ── Input text ───────────────────────────────────────────────────────────
     /** Color of input text. Default: #4b5e68 */
     inputTextColor?: string;
     /** Font size of input text in px. Default: 14 */
     inputFontSize?: number;
+    /**
+     * Line height of input text in px. Setting it together with `inputHeight`
+     * makes the field height deterministic; left unset, each browser derives it
+     * from the font metrics and the rendered height varies between engines.
+     * Default: unset
+     */
+    inputLineHeight?: number;
+    /** Letter spacing of input text in px. Default: unset */
+    inputLetterSpacing?: number;
+    /**
+     * Fixed height of the input in px. Takes precedence over the height implied
+     * by padding, font size and border, so changing the font size no longer
+     * requires recomputing the padding. Default: unset
+     */
+    inputHeight?: number;
+    /** Color of input placeholder text. Default: the browser's own. */
+    placeholderColor?: string;
 
     // ── Input border ─────────────────────────────────────────────────────────
     /**
@@ -85,6 +123,37 @@ export interface CardFormTheme {
     inputPaddingHorizontal?: number;
     /** Border radius of inputs in px. Default: 0 (underline style) */
     inputBorderRadius?: number;
+    /**
+     * Collapses the borders of adjacent inputs into a single shared line, so
+     * the fields read as one block instead of stacking two borders where they
+     * meet. Only applies to `inputBorderStyle: 'boxed'`.
+     *
+     * It pulls whole fields together, and a field is label + input + error, so
+     * a single merged block needs the rest of that vertical space gone too:
+     *
+     * ```
+     * inputBorderStyle: 'boxed',
+     * inputBorderCollapse: true,
+     * groupSpacing: 0,
+     * fieldSpacing: 0,
+     * labelHidden: true,
+     * errorHidden: true,
+     * errorMinHeight: 0,
+     * ```
+     *
+     * `inputBorderRadius` then rounds only the outer corners of the block.
+     * Default: false
+     */
+    inputBorderCollapse?: boolean;
+
+    // ── Focus ring ───────────────────────────────────────────────────────────
+    /**
+     * Width in px of a focus ring drawn outside the input border, as a
+     * `box-shadow`. Requires `focusRingColor`. Default: unset (no ring)
+     */
+    focusRingWidth?: number;
+    /** Color of the focus ring. Default: unset (no ring) */
+    focusRingColor?: string;
 
     // ── Focus underline gradient ──────────────────────────────────────────────
     /** Start color (left) of the animated focus underline gradient. Default: #19C7D6 */
@@ -99,6 +168,20 @@ export interface CardFormTheme {
     errorTextColor?: string;
     /** Font size of error text in px. Default: 11 */
     errorFontSize?: number;
+    /**
+     * Reserved vertical space for the error line in px, which keeps the layout
+     * from shifting when a message appears. Set to 0 to remove it. Default: 14
+     */
+    errorMinHeight?: number;
+    /**
+     * Hides error messages visually while keeping them in the DOM and in the
+     * accessibility tree, so screen readers still announce them. They occupy no
+     * vertical space.
+     *
+     * The cardholder then gets no visible feedback, so the parent page should
+     * render its own messages from `GOPAY_CARD_FORM_ERRORS`. Default: false
+     */
+    errorHidden?: boolean;
 
     // ── Layout ───────────────────────────────────────────────────────────────
     /** Gap between field groups (e.g. card row vs expiry+cvv row) in px. Default: 16 */
@@ -149,6 +232,20 @@ export type EncryptErrorCode =
     | 'ENCRYPTION_FAILED'
     | 'INIT_FAILED';
 
+/** Fields that can carry a validation error, as reported to the parent. */
+export type CardFormField = 'pan' | 'expiry' | 'cvv';
+
+/**
+ * Why a field failed validation. Codes only — the iframe never sends the
+ * entered value, or any part of it, to the parent.
+ */
+export type CardFormErrorCode = 'required' | 'pattern';
+
+export interface CardFormFieldError {
+    field: CardFormField;
+    code: CardFormErrorCode;
+}
+
 export type OutboundMessage =
     | { type: 'GOPAY_CARD_ENCRYPT_READY' }
     | { type: 'GOPAY_CARD_ENCRYPT_RESULT'; card_token: string }
@@ -159,4 +256,10 @@ export type OutboundMessage =
       }
     | { type: 'GOPAY_CARD_FORM_HEIGHT'; height: number }
     /** Sent in external submit mode whenever the form's overall validity changes. */
-    | { type: 'GOPAY_CARD_FORM_VALIDITY'; isValid: boolean };
+    | { type: 'GOPAY_CARD_FORM_VALIDITY'; isValid: boolean }
+    /**
+     * Sent on every validation run, so a parent that hides the built-in error
+     * text (`errorHidden`) can render its own. An empty array means the form
+     * validated cleanly.
+     */
+    | { type: 'GOPAY_CARD_FORM_ERRORS'; errors: CardFormFieldError[] };
