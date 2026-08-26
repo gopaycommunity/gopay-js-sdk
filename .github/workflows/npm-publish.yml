@@ -4,8 +4,10 @@
 
 name: Publish to npm
 
-# Identifies the run by tag, which is how the Bitbucket dispatch finds it again to wait on.
-run-name: Publish ${{ inputs.tag || github.ref_name }}
+# How the Bitbucket dispatch finds this run again to wait on. The tag alone is ambiguous — dry
+# runs and manual backfills of the same tag share it — so an automated dispatch appends its own
+# token. Manual runs pass none and keep the plain name.
+run-name: Publish ${{ inputs.tag || github.ref_name }}${{ inputs.dispatch-id && format(' [{0}]', inputs.dispatch-id) || '' }}
 
 on:
     push:
@@ -28,6 +30,11 @@ on:
                 description: 'npm dist-tag. Keep `latest` for normal releases; set something else to backfill an old version without moving `latest`.'
                 required: false
                 default: 'latest'
+                type: string
+            dispatch-id:
+                description: 'Leave empty. Set only by the Bitbucket sync step, so it can identify the run it started.'
+                required: false
+                default: ''
                 type: string
 
 # Per package, not per tag: same-package publishes must serialize or they race the dist-tag guard

@@ -34,32 +34,19 @@ gh_get() { curl -sS --fail-with-body -H "Authorization: Bearer ${GITHUB_PERSONAL
 # Pull one run out of a JSON payload without depending on jq or python being present.
 # node is guaranteed — this runs in the node:* image.
 #
-# Matching on run-name alone is not enough: dry runs and manual backfills of the same tag share
-# it, so before GitHub has created our run the newest match is an OLDER one — and an old
-# completed/success would end the wait immediately and report someone else's run as our publish.
-# Hence the floor: only consider runs newer than the highest id that existed before dispatching.
+# The match is exact on run-name, which is why the dispatch below passes a unique dispatch-id and
+# npm-publish.yml appends it: the tag alone is shared by dry runs, manual backfills, and any
+# concurrent dispatch of the same tag, so matching on it could report another run's outcome as
+# this publish. A timestamped id makes the title unique to this one dispatch.
 json_pick() { node -e '
     let s = "";
     process.stdin.on("data", (d) => (s += d)).on("end", () => {
         const runs = JSON.parse(s).workflow_runs || [];
-        const title = process.argv[1];
-        const floor = Number(process.argv[2] || 0);
-        const hit = runs.find((r) => r.display_title === title && Number(r.id) > floor);
+        const hit = runs.find((r) => r.display_title === process.argv[1]);
         // Concatenation, not template literals, which would trip shellcheck SC2016 here.
         console.log(hit ? hit.id + " " + hit.status + " " + (hit.conclusion || "") : "");
     });
-' "$1" "$2"; }
-
-# Highest run id currently visible, used as the floor above.
-# String(), not the bare number: console.log inspects a numeric argument and colourises it on a
-# TTY, and those escape codes turn the floor into NaN when it is compared back.
-max_run_id() { gh_get "${RUNS_URL}" | node -e '
-    let s = "";
-    process.stdin.on("data", (d) => (s += d)).on("end", () => {
-        const runs = JSON.parse(s).workflow_runs || [];
-        console.log(String(runs.reduce((m, r) => (Number(r.id) > m ? Number(r.id) : m), 0)));
-    });
-'; }
+' "$1"; }
 
 # --- which tags did THIS run create? -------------------------------------------------------
 # Each package writes its own release commit, so on a joint release the sdk tag lands on HEAD~1
@@ -87,10 +74,12 @@ fi
 # --- dispatch and wait ---------------------------------------------------------------------
 # Ascending order: the workflow refuses to move `latest` backwards.
 for tag in ${tags}; do
-    # Floor captured BEFORE dispatching, so the wait below cannot latch onto a pre-existing run.
-    id_floor=$(max_run_id)
+    # Unique per dispatch, so the wait below identifies exactly the run started here and cannot
+    # pick up a dry run, a manual backfill, or a concurrent dispatch of the same tag.
+    dispatch_id="bb${BITBUCKET_BUILD_NUMBER:-0}.$(date +%s)"
+    run_title="Publish ${tag} [${dispatch_id}]"
 
-    echo "==> Dispatching npm publish for ${tag}"
+    echo "==> Dispatching npm publish for ${tag} (${dispatch_id})"
     # ref=master, not the tag: workflow_dispatch reads the workflow definition from the ref it is
     # given, and only master is guaranteed to have it — the job then checks out the tag itself.
     # This is also what lets an old tag be published by hand.
@@ -100,15 +89,15 @@ for tag in ${tags}; do
         -H "Accept: application/vnd.github+json" \
         -H "Content-Type: application/json" \
         "${API}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
-        -d "{\"ref\":\"master\",\"inputs\":{\"tag\":\"${tag}\",\"dry-run\":\"false\"}}"
+        -d "{\"ref\":\"master\",\"inputs\":{\"tag\":\"${tag}\",\"dry-run\":\"false\",\"dispatch-id\":\"${dispatch_id}\"}}"
 
-    # The dispatch response carries no run id, so the run is located by its run-name — which
-    # npm-publish.yml sets to "Publish <tag>" — and by being newer than id_floor.
+    # The dispatch response carries no run id, so the run is located by its run-name, which
+    # npm-publish.yml composes as "Publish <tag> [<dispatch-id>]" — unique to this dispatch.
     run_id=""; status=""; conclusion=""
     for _ in $(seq 1 "${POLL_ATTEMPTS}"); do
         sleep "${POLL_SLEEP}"
         read -r run_id status conclusion <<<"$(gh_get "${RUNS_URL}" \
-            | json_pick "Publish ${tag}" "${id_floor}")" || true
+            | json_pick "${run_title}")" || true
         [ -n "${run_id:-}" ] && [ "${status}" = "completed" ] && break
         [ -n "${run_id:-}" ] && echo "    run ${run_id} ${status}..."
     done
