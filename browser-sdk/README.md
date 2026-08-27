@@ -478,28 +478,22 @@ await fetch('/api/charge', {
 ### `collectBrowserData()`
 
 ```ts
-collectBrowserData(): BrowserDeviceData
+collectBrowserData(): BrowserData
 ```
 
-The locally readable subset only: `language`, `timezone`, `javascript_enabled`, the `screen.*`
-metrics, plus best-effort `user_agent` and `accept_header` approximations. It has no `ip` and is
-**not** chargeable on its own — the backend does not fill `ip` in. Use it only to inspect or
-pre-seed values; use `sdk.getBrowserData()` for an actual charge.
+The locally readable fields only: `language`, `timezone`, `javascript_enabled`, the `screen.*`
+metrics, plus best-effort `user_agent` and `accept_header` approximations. `ip` is left unset —
+the backend does not fill it in — so the SDK adds it from the endpoint when it charges. Use this
+to inspect or pre-seed values; use `sdk.getBrowserData()` when you need `ip` in hand.
 
-#### Upgrading from 1.14 and earlier
+#### Nothing to change when upgrading
 
-The API now requires `browser_data.ip`, so the generated `BrowserData` type requires it too.
-TypeScript consumers may need two changes:
-
-- `collectBrowserData()` now returns `BrowserDeviceData` (`Omit<BrowserData, 'ip'>`), so assigning
-  its result to `BrowserData` no longer compiles. Use `await sdk.getBrowserData()` wherever you
-  need a chargeable object.
-- A hand-built `browser_data` needs `ip`, and only `GET /cards/browser-data` can supply it.
-
-Runtime behaviour is unchanged: `chargePayment` assembles `browser_data` itself, and falls back to
-the locally readable fields when the endpoint is unavailable.
-
----
+The API now requires `browser_data.ip`, but the SDK absorbs that: `chargePayment` and
+`mountCardForm({ flow: 'direct-charge' })` fetch it themselves, and `ip` stays optional on the
+exported `BrowserData` type. Existing code keeps compiling and behaving as it did —
+`collectBrowserData()` has the same signature and the same shape as before. Reach for
+`sdk.getBrowserData()` only where **your server** performs the charge and needs the values
+collected in the browser.
 
 ### Error codes
 

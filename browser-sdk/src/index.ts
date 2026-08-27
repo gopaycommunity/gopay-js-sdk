@@ -37,7 +37,6 @@ export type {
 export type {
     BrowserData,
     BrowserDataDetected,
-    BrowserDeviceData,
     EncryptedCardPayload,
     GoPayEnvironment,
 } from './types/index.js';

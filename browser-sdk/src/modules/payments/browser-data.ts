@@ -6,11 +6,7 @@ import {
     type HttpClient,
     SDK_ACCEPT_HEADER,
 } from '@gopay-internal/core';
-import type {
-    BrowserData,
-    BrowserDataDetected,
-    BrowserDeviceData,
-} from '../../types/index.js';
+import type { BrowserData, BrowserDataDetected } from '../../types/index.js';
 
 // Accept-Encoding is a forbidden request header per the Fetch spec — JavaScript
 // cannot read the value the browser actually sends, so we report the set all
@@ -64,16 +60,16 @@ function buildAcceptHeader(): string {
  *
  * Reads `navigator`, `screen`, and `Date` globals.
  *
- * `ip` is absent: JavaScript cannot see the address the request originates
- * from, and the backend does **not** fill it in. Use
- * {@link fetchBrowserData} to obtain it — that also replaces `user_agent`
- * and `accept_header` with the values the API actually observed, which is
- * what 3-D Secure authenticates against.
+ * `ip` is left unset: JavaScript cannot see the address the request originates
+ * from, and the backend does **not** fill it in. The SDK adds it from
+ * `GET /cards/browser-data` when it charges, so the signature and shape here
+ * are unchanged — call `getBrowserData()` if you need the value yourself, which
+ * also replaces `user_agent` and `accept_header` with what the API observed.
  *
  * @example
- * const device = collectBrowserData();   // no `ip` — not chargeable on its own
+ * const device = collectBrowserData();   // `ip` unset; the SDK fills it in
  */
-export function collectBrowserData(): BrowserDeviceData {
+export function collectBrowserData(): BrowserData {
     if (typeof navigator === 'undefined' || typeof screen === 'undefined') {
         throw new GoPaySDKError(
             '[GoPaySDK] collectBrowserData() must be called in a browser environment.',
@@ -150,6 +146,8 @@ function timeoutSignal(callerSignal?: AbortSignal): {
  * the merchant's **server** performs the charge: fetch here, hand the values to
  * your backend along with the card input, and have the backend place them in
  * `browser_data` unchanged.
+ *
+ * Unlike {@link collectBrowserData}, the resolved object always carries `ip`.
  *
  * @example
  * const browserData = await sdk.getBrowserData();

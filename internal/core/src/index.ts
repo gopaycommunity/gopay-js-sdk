@@ -16,6 +16,5 @@ export { combineScopes, GoPayScopes } from './scopes.js';
 export type {
     BrowserData,
     BrowserDataDetected,
-    BrowserDeviceData,
 } from './types/browser-data.js';
 export { assertHttpsOrigin, requireNonEmptyString } from './validate.js';

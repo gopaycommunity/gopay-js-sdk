@@ -1,7 +1,6 @@
 export type {
     BrowserData,
     BrowserDataDetected,
-    BrowserDeviceData,
     GoPayEnvironment,
 } from '@gopay-internal/core';
 

@@ -17,7 +17,6 @@ type PaymentChargeResponse = components['schemas']['Payment-Charge-Response'];
 type PaymentChargeStatusResponse =
     components['schemas']['Payment-Charge-Status-Response'];
 type BrowserDataSchema = components['schemas']['Browser-Data'];
-type BrowserDeviceData = Omit<BrowserDataSchema, 'ip'>;
 type PaymentCardChargeData = components['schemas']['Payment-Card-Charge-Data'];
 type GooglePayInfoResponse =
     components['responses']['Google-Pay-Info-Response']['content']['application/json'];
@@ -131,7 +130,7 @@ export function createPaymentsApi(
                 // Fetched per charge, never cached: the values describe the
                 // connection this charge is authenticated from. The caller's
                 // signal covers the fetch as well as the charge itself.
-                let collected: BrowserDeviceData;
+                let collected: Partial<BrowserDataSchema>;
                 try {
                     collected = await fetchBrowserData(client, {
                         signal: options?.signal,
