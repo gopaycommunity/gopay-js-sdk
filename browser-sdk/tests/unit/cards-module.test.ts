@@ -520,6 +520,10 @@ describe('createCardsApi() — browser SDK', () => {
                     null,
                     'nonsense',
                     { field: 'cvv' },
+                    // right shape, values outside the protocol enums
+                    { field: 'unknown', code: 'invalid' },
+                    // prototype keys must not pass as protocol values either
+                    { field: 'toString', code: 'constructor' },
                     { field: 'pan', code: 'required' },
                 ],
             });

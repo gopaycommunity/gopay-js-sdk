@@ -35,6 +35,39 @@ type PaymentChargeStatusResponse =
 
 type PaymentsApi = ReturnType<typeof createPaymentsApi>;
 
+/**
+ * The protocol values `GOPAY_CARD_FORM_ERRORS` may carry. Declared as records
+ * keyed by the union so that adding a field or a code to the synced
+ * `iframe-protocol.ts` fails the build here instead of silently dropping those
+ * errors on the floor — the iframe deploys ahead of the SDK. Lookup goes
+ * through sets built from their keys: `in` would also match prototype keys
+ * (`{ field: 'toString' }`), and `Object.hasOwn` needs ES2022.
+ */
+const CARD_FORM_FIELDS: Record<CardFormField, true> = {
+    pan: true,
+    expiry: true,
+    cvv: true,
+};
+const CARD_FORM_ERROR_CODES: Record<CardFormErrorCode, true> = {
+    required: true,
+    pattern: true,
+};
+const FIELD_NAMES = new Set<string>(Object.keys(CARD_FORM_FIELDS));
+const ERROR_CODES = new Set<string>(Object.keys(CARD_FORM_ERROR_CODES));
+
+function isCardFormFieldError(entry: unknown): entry is CardFormFieldError {
+    if (typeof entry !== 'object' || entry === null) {
+        return false;
+    }
+    const { field, code } = entry as Record<string, unknown>;
+    return (
+        typeof field === 'string' &&
+        typeof code === 'string' &&
+        FIELD_NAMES.has(field) &&
+        ERROR_CODES.has(code)
+    );
+}
+
 export type {
     CardFormErrorCode,
     CardFormField,
@@ -516,24 +549,15 @@ export function createCardsApi(
                 }
                 // Projected rather than forwarded: the card form is deployed
                 // independently of this SDK, so the "codes only, never values"
-                // guarantee is enforced on this side of the boundary too. A
-                // cast would not survive a malformed payload — destructuring a
-                // null entry throws inside the message listener — so each entry
-                // is checked at runtime.
+                // guarantee is enforced on this side of the boundary too. Each
+                // entry is validated against the protocol values, which also
+                // keeps the callback's declared union honest — a consumer's
+                // exhaustive switch can rely on it. Entries outside the
+                // protocol are dropped; a value added on the iframe side needs
+                // the synced protocol file (and this map) updated with it.
                 const projected: CardFormFieldError[] = errors
-                    .filter(
-                        (entry): entry is CardFormFieldError =>
-                            typeof entry === 'object' &&
-                            entry !== null &&
-                            typeof (entry as CardFormFieldError).field ===
-                                'string' &&
-                            typeof (entry as CardFormFieldError).code ===
-                                'string',
-                    )
-                    .map(({ field, code }) => ({
-                        field: field as CardFormField,
-                        code: code as CardFormErrorCode,
-                    }));
+                    .filter(isCardFormFieldError)
+                    .map(({ field, code }) => ({ field, code }));
                 try {
                     options.onFieldErrors?.(projected);
                 } catch {
