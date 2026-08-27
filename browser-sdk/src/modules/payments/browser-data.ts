@@ -180,9 +180,11 @@ export async function fetchBrowserData(
     // the payment that was about to be charged. A plain request keeps the failure
     // local, and keeps a tolerated 404 from firing the merchant's onError.
     const { signal, release } = timeoutSignal(options?.signal);
-    let response: Response;
+    // The timeout has to outlive the headers: fetch() resolves as soon as they
+    // arrive, so a response that then stalls its body would hang the charge if
+    // the timer were already cleared here.
     try {
-        response = await fetch(
+        const response = await fetch(
             new Request(buildUrl(client.baseUrl, '/cards/browser-data'), {
                 method: 'GET',
                 headers: {
@@ -192,20 +194,20 @@ export async function fetchBrowserData(
                 signal,
             }),
         );
+
+        if (!response.ok) {
+            let body: unknown;
+            try {
+                body = await response.json();
+            } catch {
+                body = undefined;
+            }
+            throw new GoPayHTTPError(response.status, body);
+        }
+
+        const detected = (await response.json()) as BrowserDataDetected;
+        return { ...collectBrowserData(), ...detected };
     } finally {
         release();
     }
-
-    if (!response.ok) {
-        let body: unknown;
-        try {
-            body = await response.json();
-        } catch {
-            body = undefined;
-        }
-        throw new GoPayHTTPError(response.status, body);
-    }
-
-    const detected = (await response.json()) as BrowserDataDetected;
-    return { ...collectBrowserData(), ...detected };
 }

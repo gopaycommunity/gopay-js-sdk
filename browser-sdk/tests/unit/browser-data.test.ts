@@ -255,6 +255,52 @@ describe('fetchBrowserData()', () => {
         }
     });
 
+    it('times out a response whose body never completes', async () => {
+        // fetch() resolves on headers, so the timeout has to outlive them —
+        // otherwise a stalled body hangs the charge that follows. Exercised on
+        // the legacy path, where the timer is ours to clear.
+        const realTimeout = AbortSignal.timeout;
+        const realAny = AbortSignal.any;
+        // biome-ignore lint/suspicious/noExplicitAny: simulating an older engine
+        (AbortSignal as any).timeout = undefined;
+        // biome-ignore lint/suspicious/noExplicitAny: simulating an older engine
+        (AbortSignal as any).any = undefined;
+        vi.useFakeTimers();
+        try {
+            fetchMock.mockImplementation(
+                async (req: Request) =>
+                    ({
+                        ok: true,
+                        status: 200,
+                        // a real body stream errors when the signal aborts
+                        json: () =>
+                            new Promise((_resolve, reject) => {
+                                req.signal.addEventListener('abort', () =>
+                                    reject(
+                                        new DOMException(
+                                            'Aborted',
+                                            'AbortError',
+                                        ),
+                                    ),
+                                );
+                            }),
+                    }) as unknown as Response,
+            );
+
+            const pending = fetchBrowserData(client).catch(
+                (e: unknown) => e as Error,
+            );
+            // BROWSER_DATA_TIMEOUT_MS is 10s
+            await vi.advanceTimersByTimeAsync(10_001);
+
+            expect((await pending).name).toBe('AbortError');
+        } finally {
+            vi.useRealTimers();
+            AbortSignal.timeout = realTimeout;
+            AbortSignal.any = realAny;
+        }
+    });
+
     it('throws INVALID_CONFIG when no shareable key is configured', async () => {
         const keyless = createHttpClient({ baseUrl: 'https://example.com' });
         const err = await fetchBrowserData(keyless).catch((e: unknown) => e);
