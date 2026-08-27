@@ -496,77 +496,77 @@ export function createCardsApi(
                 }
             };
 
+            const handleHeightMessage = (height: number) => {
+                if (Number.isFinite(height) && height >= 0) {
+                    iframe.style.height = `${height}px`;
+                }
+            };
+
+            const handleValidityMessage = (nextValid: boolean) => {
+                if (typeof nextValid !== 'boolean' || nextValid === isValid) {
+                    return;
+                }
+                isValid = nextValid;
+                options.onValidityChange?.(isValid);
+            };
+
+            const handleFieldErrorsMessage = (errors: CardFormFieldError[]) => {
+                if (!Array.isArray(errors)) {
+                    return;
+                }
+                // Projected rather than forwarded: the card form is deployed
+                // independently of this SDK, so the "codes only, never values"
+                // guarantee is enforced on this side of the boundary too.
+                const projected: CardFormFieldError[] = errors.map(
+                    ({ field, code }) => ({
+                        field: field as CardFormField,
+                        code: code as CardFormErrorCode,
+                    }),
+                );
+                try {
+                    options.onFieldErrors?.(projected);
+                } catch {
+                    // consumer callback errors must not corrupt SDK flows
+                }
+            };
+
             onMessage = async (event: MessageEvent<OutboundMessage>) => {
-                if (event.source !== iframe.contentWindow) {
-                    return;
-                }
-                if (event.origin !== expectedOrigin) {
-                    return;
-                }
-
-                if (event.data?.type === 'GOPAY_CARD_FORM_HEIGHT') {
-                    const { height } = event.data;
-                    if (Number.isFinite(height) && height >= 0) {
-                        iframe.style.height = `${height}px`;
-                    }
+                if (
+                    event.source !== iframe.contentWindow ||
+                    event.origin !== expectedOrigin
+                ) {
                     return;
                 }
 
-                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_READY') {
-                    iframe.focus();
-                    return;
-                }
-
-                if (event.data?.type === 'GOPAY_CARD_FORM_VALIDITY') {
-                    if (
-                        typeof event.data.isValid === 'boolean' &&
-                        event.data.isValid !== isValid
-                    ) {
-                        isValid = event.data.isValid;
-                        options.onValidityChange?.(isValid);
-                    }
-                    return;
-                }
-
-                if (event.data?.type === 'GOPAY_CARD_FORM_ERRORS') {
-                    const { errors } = event.data;
-                    if (Array.isArray(errors)) {
-                        // Projected rather than forwarded: the card form is
-                        // deployed independently of this SDK, so the "codes
-                        // only, never values" guarantee is enforced on this side
-                        // of the boundary too.
-                        const projected: CardFormFieldError[] = errors.map(
-                            ({ field, code }) => ({
-                                field: field as CardFormField,
-                                code: code as CardFormErrorCode,
-                            }),
+                switch (event.data?.type) {
+                    case 'GOPAY_CARD_FORM_HEIGHT':
+                        handleHeightMessage(event.data.height);
+                        return;
+                    case 'GOPAY_CARD_ENCRYPT_READY':
+                        iframe.focus();
+                        return;
+                    case 'GOPAY_CARD_FORM_VALIDITY':
+                        handleValidityMessage(event.data.isValid);
+                        return;
+                    case 'GOPAY_CARD_FORM_ERRORS':
+                        handleFieldErrorsMessage(event.data.errors);
+                        return;
+                    case 'GOPAY_CARD_ENCRYPT_ERROR':
+                        cleanup();
+                        rejectResult(
+                            new GoPaySDKError(
+                                `[GoPayBrowserSDK] Card form error: ${event.data.error}`,
+                                { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                            ),
                         );
-                        try {
-                            options.onFieldErrors?.(projected);
-                        } catch {
-                            // consumer callback errors must not corrupt SDK flows
-                        }
-                    }
-                    return;
+                        return;
+                    case 'GOPAY_CARD_ENCRYPT_RESULT':
+                        cleanup();
+                        await handleEncryptResult(event.data.card_token);
+                        return;
+                    default:
+                        return;
                 }
-
-                if (event.data?.type === 'GOPAY_CARD_ENCRYPT_ERROR') {
-                    cleanup();
-                    rejectResult(
-                        new GoPaySDKError(
-                            `[GoPayBrowserSDK] Card form error: ${event.data.error}`,
-                            { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
-                        ),
-                    );
-                    return;
-                }
-
-                if (event.data?.type !== 'GOPAY_CARD_ENCRYPT_RESULT') {
-                    return;
-                }
-
-                cleanup();
-                await handleEncryptResult(event.data.card_token);
             };
 
             window.addEventListener('message', onMessage);
