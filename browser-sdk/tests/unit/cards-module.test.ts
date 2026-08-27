@@ -502,6 +502,34 @@ describe('createCardsApi() — browser SDK', () => {
             ]);
         });
 
+        it('drops malformed entries instead of throwing in the listener', async () => {
+            const onFieldErrors = vi.fn();
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+                onFieldErrors,
+            });
+            ctrl.result.catch(() => {});
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_FORM_ERRORS',
+                errors: [
+                    null,
+                    'nonsense',
+                    { field: 'cvv' },
+                    { field: 'pan', code: 'required' },
+                ],
+            });
+
+            await new Promise((r) => setTimeout(r, 0));
+            expect(onFieldErrors).toHaveBeenCalledWith([
+                { field: 'pan', code: 'required' },
+            ]);
+        });
+
         it('keeps the form usable when onFieldErrors throws', async () => {
             const onFieldErrors = vi.fn(() => {
                 throw new Error('consumer callback exploded');

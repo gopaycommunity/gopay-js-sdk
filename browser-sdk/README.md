@@ -101,7 +101,8 @@ const response = await fetch('/api/charge', {
     body: JSON.stringify({ encryptedPayload, paymentId, browserData }),
 });
 // Server calls: serverSdk.tokenizeEncryptedCard(encryptedPayload)
-//               serverSdk.chargePayment(paymentId, { input_type: 'Card-Token', browser_data: browserData, ... })
+//               serverSdk.chargePayment(paymentId, { payment_instrument: { payment_instrument: 'PAYMENT_CARD',
+//                   input: { input_type: 'CARD_TOKEN', card_token }, browser_data: browserData } })
 ```
 
 ---

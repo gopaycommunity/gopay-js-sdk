@@ -510,19 +510,30 @@ export function createCardsApi(
                 options.onValidityChange?.(isValid);
             };
 
-            const handleFieldErrorsMessage = (errors: CardFormFieldError[]) => {
+            const handleFieldErrorsMessage = (errors: readonly unknown[]) => {
                 if (!Array.isArray(errors)) {
                     return;
                 }
                 // Projected rather than forwarded: the card form is deployed
                 // independently of this SDK, so the "codes only, never values"
-                // guarantee is enforced on this side of the boundary too.
-                const projected: CardFormFieldError[] = errors.map(
-                    ({ field, code }) => ({
+                // guarantee is enforced on this side of the boundary too. A
+                // cast would not survive a malformed payload — destructuring a
+                // null entry throws inside the message listener — so each entry
+                // is checked at runtime.
+                const projected: CardFormFieldError[] = errors
+                    .filter(
+                        (entry): entry is CardFormFieldError =>
+                            typeof entry === 'object' &&
+                            entry !== null &&
+                            typeof (entry as CardFormFieldError).field ===
+                                'string' &&
+                            typeof (entry as CardFormFieldError).code ===
+                                'string',
+                    )
+                    .map(({ field, code }) => ({
                         field: field as CardFormField,
                         code: code as CardFormErrorCode,
-                    }),
-                );
+                    }));
                 try {
                     options.onFieldErrors?.(projected);
                 } catch {

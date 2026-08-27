@@ -199,6 +199,62 @@ describe('fetchBrowserData()', () => {
         );
     });
 
+    it('still fetches where AbortSignal.timeout/any are unavailable', async () => {
+        // ES2020 baseline + a CDN bundle: these statics are newer than the
+        // browsers this SDK can land in, and a TypeError here would take every
+        // card charge down with it.
+        const realTimeout = AbortSignal.timeout;
+        const realAny = AbortSignal.any;
+        // biome-ignore lint/suspicious/noExplicitAny: simulating an older engine
+        (AbortSignal as any).timeout = undefined;
+        // biome-ignore lint/suspicious/noExplicitAny: simulating an older engine
+        (AbortSignal as any).any = undefined;
+        try {
+            fetchMock.mockResolvedValue(makeResponse(DETECTED));
+            const data = await fetchBrowserData(client);
+            expect(data.ip).toBe(DETECTED.ip);
+        } finally {
+            AbortSignal.timeout = realTimeout;
+            AbortSignal.any = realAny;
+        }
+    });
+
+    it('forwards a caller abort by hand on an older engine', async () => {
+        const realTimeout = AbortSignal.timeout;
+        const realAny = AbortSignal.any;
+        // biome-ignore lint/suspicious/noExplicitAny: simulating an older engine
+        (AbortSignal as any).timeout = undefined;
+        // biome-ignore lint/suspicious/noExplicitAny: simulating an older engine
+        (AbortSignal as any).any = undefined;
+        try {
+            const controller = new AbortController();
+            let capturedReq!: Request;
+            let releaseFetch!: (r: Response) => void;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return new Promise<Response>((res) => {
+                    releaseFetch = res;
+                });
+            });
+
+            const pending = fetchBrowserData(client, {
+                signal: controller.signal,
+            });
+            await new Promise((r) => setTimeout(r, 0));
+
+            expect(capturedReq.signal.aborted).toBe(false);
+            // while the request is in flight, the caller's abort reaches it
+            controller.abort();
+            expect(capturedReq.signal.aborted).toBe(true);
+
+            releaseFetch(makeResponse(DETECTED));
+            await pending.catch(() => {});
+        } finally {
+            AbortSignal.timeout = realTimeout;
+            AbortSignal.any = realAny;
+        }
+    });
+
     it('throws INVALID_CONFIG when no shareable key is configured', async () => {
         const keyless = createHttpClient({ baseUrl: 'https://example.com' });
         const err = await fetchBrowserData(keyless).catch((e: unknown) => e);

@@ -440,9 +440,10 @@ const charge = await sdk.chargePayment(paymentId, {
     input: {
       input_type: 'CARD_TOKEN',
       card_token: cardToken.token,
-      challenge_preference: 'AUTO',
-      browser_data: browserData, // required for 3DS — do not omit
     },
+    // siblings of `input`, per Payment Card Charge Data — not fields of it
+    browser_data: browserData, // required for 3DS — do not omit
+    challenge_preference: 'AUTO',
   },
 });
 
