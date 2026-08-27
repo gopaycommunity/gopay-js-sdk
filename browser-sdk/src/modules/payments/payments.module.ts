@@ -4,6 +4,7 @@ import {
     type AwaitChargeOptions as CoreAwaitChargeOptions,
     type AwaitPaymentStatusOptions as CoreAwaitPaymentStatusOptions,
     GoPayErrorCodes,
+    GoPayHTTPError,
     GoPaySDKError,
     type HttpClient,
 } from '@gopay-internal/core';
@@ -141,12 +142,17 @@ export function createPaymentsApi(
                     if (options?.signal?.aborted) {
                         throw err;
                     }
-                    // The endpoint is not deployed on every environment yet.
-                    // Charging with the locally readable fields keeps the flow
-                    // working exactly as it did before the endpoint existed;
-                    // `ip` is then absent and 3-D Secure sees one field less.
-                    // The failed GET is already visible in the client's debug
-                    // log when debugLoggingEnabled is on.
+                    // Tolerate only an environment where the endpoint is not
+                    // deployed: charging with the locally readable fields is
+                    // exactly what the SDK did before it existed. Anything else
+                    // — 5xx, a timeout, a CORS failure — would otherwise be
+                    // turned into a charge missing the now-required `ip`, which
+                    // the API rejects with the real cause already lost.
+                    const status =
+                        err instanceof GoPayHTTPError ? err.status : undefined;
+                    if (status !== 404 && status !== 501) {
+                        throw err;
+                    }
                     collected = collectBrowserData();
                 }
                 return client.post<PaymentChargeResponse>(

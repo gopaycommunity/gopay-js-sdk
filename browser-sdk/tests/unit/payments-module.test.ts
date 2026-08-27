@@ -25,7 +25,13 @@ describe('createPaymentsApi() — browser SDK', () => {
     beforeEach(() => {
         fetchMock = vi.fn().mockResolvedValue(makeResponse({}));
         vi.stubGlobal('fetch', fetchMock);
-        client = createHttpClient({ baseUrl: 'https://example.com' });
+        // createGoPayBrowserSDK always supplies these — the browser data
+        // endpoint is authenticated by the shareable key alone.
+        client = createHttpClient({
+            baseUrl: 'https://example.com',
+            shareableKey: 'pk_test',
+        });
+        client.setClientId('cid_test');
         client.setToken(storedToken);
         api = createPaymentsApi(client, PAYMENT_ID);
     });
@@ -204,6 +210,67 @@ describe('createPaymentsApi() — browser SDK', () => {
             expect(browserData.javascript_enabled).toBe(true);
             // ip is simply absent, as it was before the endpoint existed
             expect(browserData.ip).toBeUndefined();
+        });
+
+        it('a 401 from the browser data endpoint keeps the payment session intact', async () => {
+            // The endpoint is authenticated by shareable_key alone. Routing it
+            // through the client's 401 handling would call refresh(), find no
+            // client secret and clear the token store — including the client id —
+            // breaking the very charge that was about to be sent.
+            const paths: string[] = [];
+            fetchMock.mockImplementation(async (req: Request) => {
+                paths.push(new URL(req.url).pathname);
+                if (new URL(req.url).pathname === '/cards/browser-data') {
+                    return makeResponse({ error: 'unauthorized' }, 401);
+                }
+                return makeResponse({});
+            });
+
+            const err = await api
+                .chargePayment({
+                    payment_instrument: {
+                        payment_instrument: 'PAYMENT_CARD',
+                        input: {
+                            input_type: 'ENCRYPTED_CARD',
+                            payload: 'enc_payload',
+                        },
+                    },
+                })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeDefined();
+            // no token refresh was attempted, and nothing was cleared
+            expect(paths).not.toContain('/oauth2/token');
+            expect(client.tokenStore.hasAccessToken()).toBe(true);
+            expect(client.getClientId()).toBe('cid_test');
+        });
+
+        it('propagates a 5xx from the browser data endpoint instead of charging without ip', async () => {
+            // A transient failure must not be converted into a charge missing the
+            // now-required ip, which the API rejects with the real cause lost.
+            const paths: string[] = [];
+            fetchMock.mockImplementation(async (req: Request) => {
+                paths.push(new URL(req.url).pathname);
+                if (new URL(req.url).pathname === '/cards/browser-data') {
+                    return makeResponse({ error: 'boom' }, 500);
+                }
+                return makeResponse({});
+            });
+
+            const err = await api
+                .chargePayment({
+                    payment_instrument: {
+                        payment_instrument: 'PAYMENT_CARD',
+                        input: {
+                            input_type: 'ENCRYPTED_CARD',
+                            payload: 'enc_payload',
+                        },
+                    },
+                })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeDefined();
+            expect(paths).not.toContain(`/payments/${PAYMENT_ID}/charge`);
         });
 
         it('does not charge when the browser data fetch is aborted', async () => {

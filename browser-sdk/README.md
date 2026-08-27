@@ -365,8 +365,14 @@ remaining text details.
 borders of adjacent inputs into one shared line. It pulls whole fields together, and a field is
 label + input + error, so a single merged block needs the rest of that vertical space gone too:
 
+`theme` **replaces** the built-in theme rather than extending it, so spread
+`DEFAULT_CARD_FORM_THEME` when you only mean to override a few keys:
+
 ```ts
+import { DEFAULT_CARD_FORM_THEME } from '@gopaycz/gopay-js-sdk-browser';
+
 const theme: CardFormTheme = {
+    ...DEFAULT_CARD_FORM_THEME,
     inputBorderStyle: 'boxed',
     inputBorderCollapse: true,
     groupSpacing: 0,
@@ -388,7 +394,7 @@ feedback, so pair it with `onFieldErrors` and render your own messages:
 ```ts
 const controller = await sdk.mountCardForm(container, {
     flow: 'direct-charge',
-    theme: { errorHidden: true, errorMinHeight: 0 },
+    theme: { ...DEFAULT_CARD_FORM_THEME, errorHidden: true, errorMinHeight: 0 },
     onFieldErrors: (errors) => {
         // errors: [{ field: 'pan', code: 'pattern' }] — codes only, never values
         setFieldErrors(errors);
@@ -405,7 +411,7 @@ const controller = await sdk.mountCardForm(container, {
 | `setLocale(locale)` | Update locale at runtime |
 | `submit()` | Trigger submission (external submit mode only) |
 | `isValid` | Current validity (external submit mode only) |
-| `unmount()` | Tear down the iframe, abort any in-flight charge, reject `result` — call on component teardown |
+| `unmount()` | Tear down the iframe, abort an in-flight charge and its polling, reject `result` — call on component teardown. Does not roll back a charge GoPay already accepted: after an unmount rejection, confirm with a server-side `getChargeState()`. |
 
 ### `sdk.mountApplePayButton(container, options)` / `sdk.mountGooglePayButton(container, options)`
 
@@ -478,6 +484,19 @@ The locally readable subset only: `language`, `timezone`, `javascript_enabled`, 
 metrics, plus best-effort `user_agent` and `accept_header` approximations. It has no `ip` and is
 **not** chargeable on its own — the backend does not fill `ip` in. Use it only to inspect or
 pre-seed values; use `sdk.getBrowserData()` for an actual charge.
+
+#### Upgrading from 1.14 and earlier
+
+The API now requires `browser_data.ip`, so the generated `BrowserData` type requires it too.
+TypeScript consumers may need two changes:
+
+- `collectBrowserData()` now returns `BrowserDeviceData` (`Omit<BrowserData, 'ip'>`), so assigning
+  its result to `BrowserData` no longer compiles. Use `await sdk.getBrowserData()` wherever you
+  need a chargeable object.
+- A hand-built `browser_data` needs `ip`, and only `GET /cards/browser-data` can supply it.
+
+Runtime behaviour is unchanged: `chargePayment` assembles `browser_data` itself, and falls back to
+the locally readable fields when the endpoint is unavailable.
 
 ---
 

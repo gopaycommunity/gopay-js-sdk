@@ -471,6 +471,37 @@ describe('createCardsApi() — browser SDK', () => {
             expect(onFieldErrors).toHaveBeenNthCalledWith(2, []);
         });
 
+        it('reports only field and code, dropping anything else the iframe sends', async () => {
+            const onFieldErrors = vi.fn();
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+                onFieldErrors,
+            });
+            ctrl.result.catch(() => {});
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_FORM_ERRORS',
+                errors: [
+                    {
+                        field: 'pan',
+                        code: 'pattern',
+                        value: '4111111111111111',
+                    },
+                ],
+            });
+
+            await new Promise((r) => setTimeout(r, 0));
+            // the card form is deployed separately — the SDK enforces the
+            // "codes only, never values" guarantee on this side too
+            expect(onFieldErrors).toHaveBeenCalledWith([
+                { field: 'pan', code: 'pattern' },
+            ]);
+        });
+
         it('keeps the form usable when onFieldErrors throws', async () => {
             const onFieldErrors = vi.fn(() => {
                 throw new Error('consumer callback exploded');

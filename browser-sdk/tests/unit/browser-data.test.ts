@@ -199,6 +199,17 @@ describe('fetchBrowserData()', () => {
         );
     });
 
+    it('throws INVALID_CONFIG when no shareable key is configured', async () => {
+        const keyless = createHttpClient({ baseUrl: 'https://example.com' });
+        const err = await fetchBrowserData(keyless).catch((e: unknown) => e);
+
+        expect(err).toBeInstanceOf(GoPaySDKError);
+        expect((err as GoPaySDKError).errorCode).toBe(
+            GoPayErrorCodes.INVALID_CONFIG,
+        );
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('forwards the abort signal to the request', async () => {
         const controller = new AbortController();
         let capturedReq!: Request;

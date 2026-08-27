@@ -1,5 +1,7 @@
 import {
+    buildUrl,
     GoPayErrorCodes,
+    GoPayHTTPError,
     GoPaySDKError,
     type HttpClient,
     SDK_ACCEPT_HEADER,
@@ -14,6 +16,9 @@ import type {
 // cannot read the value the browser actually sends, so we report the set all
 // current browsers advertise as a documented approximation.
 const ACCEPT_ENCODING_APPROXIMATION = 'gzip, deflate, br, zstd';
+
+/** Matches the core client's default request timeout. */
+const BROWSER_DATA_TIMEOUT_MS = 10_000;
 
 /**
  * Format `navigator.languages` as an Accept-Language header value with
@@ -115,22 +120,49 @@ export async function fetchBrowserData(
     client: HttpClient,
     options?: { signal?: AbortSignal },
 ): Promise<BrowserData> {
-    // The endpoint is secured by `shareable_key` alone. After attachPayment()
-    // the client holds a payment-scoped JWT, which the default auth handler
-    // would send instead, so the Basic credentials are set explicitly here.
-    const shareableKey = client.getShareableKey() ?? '';
+    const shareableKey = client.getShareableKey();
+    if (!shareableKey) {
+        throw new GoPaySDKError(
+            '[GoPayBrowserSDK] shareableKey is required to fetch browser data.',
+            { errorCode: GoPayErrorCodes.INVALID_CONFIG },
+        );
+    }
     const clientId = client.getClientId();
-    const credentials = clientId
-        ? globalThis.btoa(`${clientId}:${shareableKey}`)
-        : globalThis.btoa(`:${shareableKey}`);
+    const credentials = globalThis.btoa(`${clientId ?? ''}:${shareableKey}`);
 
-    const detected = await client.get<BrowserDataDetected>(
-        '/cards/browser-data',
-        {
-            headers: { Authorization: `Basic ${credentials}` },
-            signal: options?.signal,
-        },
+    // Deliberately not routed through the shared HTTP client. This endpoint is
+    // authenticated by `shareable_key` alone, and the client's 401 handling would
+    // treat a rejection here as an expired payment token: it calls refresh(),
+    // finds no client secret (the browser never holds one) and clears the token
+    // store — including the client id — leaving the SDK instance unable to charge
+    // the payment that was about to be charged. A plain request keeps the failure
+    // local, and keeps a tolerated 404 from firing the merchant's onError.
+    const timeout = AbortSignal.timeout(BROWSER_DATA_TIMEOUT_MS);
+    const signal = options?.signal
+        ? AbortSignal.any([options.signal, timeout])
+        : timeout;
+
+    const response = await fetch(
+        new Request(buildUrl(client.baseUrl, '/cards/browser-data'), {
+            method: 'GET',
+            headers: {
+                Accept: SDK_ACCEPT_HEADER,
+                Authorization: `Basic ${credentials}`,
+            },
+            signal,
+        }),
     );
 
+    if (!response.ok) {
+        let body: unknown;
+        try {
+            body = await response.json();
+        } catch {
+            body = undefined;
+        }
+        throw new GoPayHTTPError(response.status, body);
+    }
+
+    const detected = (await response.json()) as BrowserDataDetected;
     return { ...collectBrowserData(), ...detected };
 }

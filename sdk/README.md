@@ -412,7 +412,7 @@ const controller = await browserSdk.mountCardForm(container, { flow: 'return-pay
 const { encryptedPayload } = await controller.result;
 
 // Collect browser data for 3DS — must be done in the browser
-const browserData = await sdk.getBrowserData(); // ip/user_agent/accept_header from the API
+const browserData = await browserSdk.getBrowserData(); // ip/user_agent/accept_header from the API
 
 // Forward both to your server endpoint
 await fetch('/api/charge', {

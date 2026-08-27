@@ -647,6 +647,8 @@ describe('mountApplePayButton()', () => {
                     input: expect.objectContaining({ input_type: 'APPLE_PAY' }),
                 }),
             }),
+            // the wallet controller's abort must reach the charge itself
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
         );
         expect(result).toEqual(mockChargeState);
     });
@@ -1134,6 +1136,8 @@ describe('mountGooglePayButton()', () => {
                     }),
                 }),
             }),
+            // the wallet controller's abort must reach the charge itself
+            expect.objectContaining({ signal: expect.any(AbortSignal) }),
         );
         const result = await ctrl.result;
         expect(result).toEqual(mockChargeState);

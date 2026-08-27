@@ -283,9 +283,13 @@ async function runChargeFlow(
     });
 
     try {
-        await paymentsApi.chargePayment({
-            payment_instrument: instrument,
-        });
+        // Same contract as CardFormController.unmount (GPOMA-2512): the wallet
+        // controller's abort has to reach the charge itself, not just the state
+        // polling below — and with it the browser data fetch that precedes it.
+        await paymentsApi.chargePayment(
+            { payment_instrument: instrument },
+            { signal: abortSignal },
+        );
 
         emitLoadingState('polling-charge-state');
 

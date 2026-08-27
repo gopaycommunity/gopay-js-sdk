@@ -78,6 +78,12 @@ export interface CardFormController<R = EncryptedCardPayload> {
      * encrypted and the direct-charge is already running — the iframe is gone
      * by then, but the charge is not. Idempotent, and a no-op once `result`
      * has settled.
+     *
+     * Aborting the request does not roll back a charge the API has already
+     * accepted: if `unmount()` lands after the POST reached GoPay, `result`
+     * rejects while the payment can still end up `SUCCEEDED`. After an unmount
+     * rejection, confirm the real outcome server-side with `getChargeState()`
+     * before treating the order as unpaid.
      */
     unmount: () => void;
 }
@@ -525,8 +531,18 @@ export function createCardsApi(
                 if (event.data?.type === 'GOPAY_CARD_FORM_ERRORS') {
                     const { errors } = event.data;
                     if (Array.isArray(errors)) {
+                        // Projected rather than forwarded: the card form is
+                        // deployed independently of this SDK, so the "codes
+                        // only, never values" guarantee is enforced on this side
+                        // of the boundary too.
+                        const projected: CardFormFieldError[] = errors.map(
+                            ({ field, code }) => ({
+                                field: field as CardFormField,
+                                code: code as CardFormErrorCode,
+                            }),
+                        );
                         try {
-                            options.onFieldErrors?.(errors);
+                            options.onFieldErrors?.(projected);
                         } catch {
                             // consumer callback errors must not corrupt SDK flows
                         }
