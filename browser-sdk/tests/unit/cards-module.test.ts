@@ -1138,6 +1138,73 @@ describe('createCardsApi() — browser SDK', () => {
             expect(pollingSignal?.aborted).toBe(false);
         });
 
+        it('does not release a session a later mount has taken', async () => {
+            // David Kolář's review: cleanup() runs at encryption time, so a
+            // later unmount() on the old controller used to clear the shared
+            // mounted flag — releasing the session belonging to the form
+            // mounted in between, and letting a third form mount alongside it.
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+            const paymentsApi = {
+                chargePayment: vi.fn().mockResolvedValue({}),
+                awaitChargeState: vi.fn(() => new Promise(() => {})),
+                getStatus: vi.fn(),
+                getChargeState: vi.fn(),
+                getGooglePayInfo: vi.fn(),
+                getApplePayInfo: vi.fn(),
+                getApplePayAppInfo: vi.fn(),
+                startApplePaySession: vi.fn(),
+                getQRPaymentInfo: vi.fn(),
+            };
+            const cards = createCardsApi(
+                client,
+                () =>
+                    paymentsApi as unknown as ReturnType<
+                        typeof createPaymentsApi
+                    >,
+            );
+
+            const first = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+                threeDS: { mode: 'manual' },
+            });
+            first.result.catch(() => {});
+
+            // encryption tears the iframe down; the charge keeps running
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+            await new Promise((r) => setTimeout(r, 10));
+            expect(cards.isCardFormMounted()).toBe(false);
+
+            // a second form takes the session
+            const second = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            second.result.catch(() => {});
+            expect(cards.isCardFormMounted()).toBe(true);
+
+            // tearing down the first must leave the second's session alone
+            first.unmount();
+            expect(cards.isCardFormMounted()).toBe(true);
+
+            const third = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            const err = await third.result.catch((e: unknown) => e);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CARD_FORM_ALREADY_MOUNTED,
+            );
+
+            second.unmount();
+            expect(cards.isCardFormMounted()).toBe(false);
+        });
+
         it('fires the onError callback with the unmount error', async () => {
             const onError = vi.fn();
             const c = createHttpClient({

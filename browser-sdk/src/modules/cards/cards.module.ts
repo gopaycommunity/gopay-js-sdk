@@ -166,7 +166,14 @@ export function createCardsApi(
     client: HttpClient,
     getPaymentsApi: () => PaymentsApi | null,
 ) {
-    let cardFormSessionActive = false;
+    /**
+     * The mount that currently owns the card form, as an identity token rather
+     * than a boolean. A direct-charge flow tears its iframe down as soon as the
+     * card is encrypted and keeps running, so a later `unmount()` on it must not
+     * release a session another mount has since taken — GPOMA-2512 made that
+     * `unmount()` reachable.
+     */
+    let activeCardFormSession: symbol | null = null;
     let cardFormUrlPromise: Promise<string> | undefined;
 
     function getCardFormUrl(): Promise<string> {
@@ -199,7 +206,7 @@ export function createCardsApi(
     }
 
     return {
-        isCardFormMounted: () => cardFormSessionActive,
+        isCardFormMounted: () => activeCardFormSession !== null,
 
         /**
          * Fetch the GoPay-hosted card encryption iframe URL, mount it into
@@ -223,7 +230,7 @@ export function createCardsApi(
                 EncryptedCardPayload | PaymentChargeStatusResponse
             >
         > {
-            if (cardFormSessionActive) {
+            if (activeCardFormSession !== null) {
                 const result = Promise.reject<
                     EncryptedCardPayload | PaymentChargeStatusResponse
                 >(
@@ -264,7 +271,14 @@ export function createCardsApi(
                 };
             }
 
-            cardFormSessionActive = true;
+            const session = Symbol('gopay-card-form-session');
+            activeCardFormSession = session;
+            /** Releases the session only while this mount still owns it. */
+            const releaseSession = () => {
+                if (activeCardFormSession === session) {
+                    activeCardFormSession = null;
+                }
+            };
 
             const spinnerColor =
                 options.theme?.submitBackgroundColor ??
@@ -295,7 +309,7 @@ export function createCardsApi(
             try {
                 iframeSrc = await getCardFormUrl();
             } catch (err) {
-                cardFormSessionActive = false;
+                releaseSession();
                 clearSpinner();
                 emitLoadingState('idle');
                 throw err;
@@ -311,7 +325,7 @@ export function createCardsApi(
                         expectedOrigin,
                     )
                 ) {
-                    cardFormSessionActive = false;
+                    releaseSession();
                     clearSpinner();
                     emitLoadingState('idle');
                     throw new GoPaySDKError(
@@ -404,7 +418,7 @@ export function createCardsApi(
 
             const cleanup = () => {
                 iframeMounted = false;
-                cardFormSessionActive = false;
+                releaseSession();
                 clearTimeout(iframeLoadTimeout);
                 clearSpinner();
                 emitLoadingState('idle');
@@ -540,7 +554,11 @@ export function createCardsApi(
                     return;
                 }
                 isValid = nextValid;
-                options.onValidityChange?.(isValid);
+                try {
+                    options.onValidityChange?.(isValid);
+                } catch {
+                    // consumer callback errors must not corrupt SDK flows
+                }
             };
 
             const handleFieldErrorsMessage = (errors: readonly unknown[]) => {
