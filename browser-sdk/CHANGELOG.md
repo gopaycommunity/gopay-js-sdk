@@ -1,3 +1,41 @@
+# [1.7.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.6.0...browser-sdk-1.7.0) (2026-08-28)
+
+
+### Bug Fixes
+
+* **cards:** abort the charge when unmount runs during direct-charge GPOMA-2512 ([dd20169](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/dd2016901161c373f97c59c97a8c4b11c03445ea))
+* **cards:** address CodeRabbit review comments GPOMA-2510 ([d1f6388](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d1f6388c6449d1f84ec6c61ce7858a0ab32188fe))
+* **cards:** scope the card form session to the mount that owns it GPOMA-2512 ([0e14906](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0e14906029cead7f7c833bbdb676d30d8571b1e8))
+* **cards:** validate field error values against the protocol GPOMA-2510 ([9662c86](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9662c86993b7921bbd6fe686f93c95bdb02192f3))
+* **example:** reject non-integer refund amounts GPOMA-2520 ([4c60804](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4c60804584af0a8b58f151b7491b49a63a13175a))
+* **payments:** keep browser_data.ip optional for consumers GPOMA-2556 ([e370cc0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e370cc0fdda0cd1938d8af5ea2aa226b2106022e))
+* **payments:** keep the browser data timeout armed through the body read GPOMA-2556 ([807b4d5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/807b4d5a2c37f8a0070b2d9763c25c78e61d90e1))
+* **payments:** keep the payment session alive when browser data fails GPOMA-2556 ([74ab63f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/74ab63f57f09b37730f90bc1d8541a6076ee46c3))
+* **payments:** validate the browser data response shape GPOMA-2556 ([c412c96](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c412c96da8025581e7610a10a89ca61879e3e02c))
+* **refunds:** accept request options on the refund methods GPOMA-2520 ([dd4853d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/dd4853d59c1c59c26d8eb84b254a6a2ef42ef921))
+* **release:** bound the dispatch range to the run that produced it GPOMA-2417 ([ae0cce8](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ae0cce85612d72845c65d8a5afb14dc48a7869da))
+* **release:** dispatch every tag a release created, not just the head one GPOMA-2417 ([9a85417](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9a85417ca4c4f12d2dbb040508ea1ae8335829f2))
+* **release:** dispatch the npm publish from the GitHub sync step GPOMA-2417 ([9031762](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9031762ab265d1aff0e3195fde17eddb5004697b))
+* **release:** drop the dead NPM_PUSH_TOKEN export from the release step GPOMA-2417 ([843ff7e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/843ff7e13cde9c25ec329784d37610430d3e9d4a))
+* **release:** enable Corepack before setup-node GPOMA-2417 ([fbfdbc0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fbfdbc08ea696f7056f94740bfd6f7cf1d3778e8))
+* **release:** fail closed on registry errors and pin publish actions GPOMA-2417 ([bce1dfa](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bce1dfa8b07f183c888482a4e06d78a636fa105e))
+* **release:** identify the dispatched run by a unique dispatch id GPOMA-2417 ([bec2314](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bec2314b61f303c65933093f95c24419adec3a21))
+* **release:** only accept the publish run this dispatch created GPOMA-2417 ([dafd647](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/dafd647a264a0c2dd7d15616eae2d40b46484958))
+* **release:** publish both JS SDKs to npm via trusted publishing GPOMA-2417 ([ed59273](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ed59273a0b87c4c2725d002bc21232925bfa552c))
+* **release:** serialize publishes per package and pin the npm registry GPOMA-2417 ([ec7df32](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ec7df32ce13736438532bac106a9e5d1d69385e9))
+* **release:** wait for the dispatched publish and fail if it did not happen GPOMA-2417 ([c763e4d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c763e4dc32ab608365fdc127a6e501e1ee396236))
+* **test:** bound the terminal-refund spec and address review GPOMA-2542 ([e5c91d0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e5c91d013a4e3a13b7814e627f17473c94e0d5cb)), closes [#52](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issue/52)
+* **test:** cover awaitRefundState in e2e and the example app GPOMA-2542 ([92233c9](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/92233c979da3a5673c979e01afa723477597268b))
+* **test:** report the terminal-refund spec as skipped, not passed GPOMA-2542 ([1d2b2a6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1d2b2a6982a3d1c883d5e0a2584410fcd39cf9cf))
+
+
+### Features
+
+* **cards:** sync iframe protocol and expose field errors GPOMA-2510 ([8a96464](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8a9646489bb14f4a65eaeea523b76ab7c416a1f2))
+* **payments:** fetch browser data from the API before charging GPOMA-2556 ([e4f6e54](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e4f6e54811be5fec69d5e353f065e2f8c0fdaa12))
+* **refunds:** add awaitRefundState GPOMA-2520 ([fa9db96](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fa9db96d7d04c5425f81bf4c4e87b546a58b906e))
+* **refunds:** restore refunds module and regenerate types GPOMA-2520 ([1fb368c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1fb368ceb1aae1b83be1cbe918a0053eab2ec9be))
+
 # [1.6.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.5.0...browser-sdk-1.6.0) (2026-08-11)
 
 
