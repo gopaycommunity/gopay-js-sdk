@@ -1,3 +1,23 @@
+# [1.15.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.14.3...1.15.0) (2026-08-28)
+
+
+### Bug Fixes
+
+* **cards:** abort the charge when unmount runs during direct-charge GPOMA-2512 ([dd20169](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/dd2016901161c373f97c59c97a8c4b11c03445ea))
+* **cards:** address CodeRabbit review comments GPOMA-2510 ([d1f6388](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d1f6388c6449d1f84ec6c61ce7858a0ab32188fe))
+* **cards:** scope the card form session to the mount that owns it GPOMA-2512 ([0e14906](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0e14906029cead7f7c833bbdb676d30d8571b1e8))
+* **cards:** validate field error values against the protocol GPOMA-2510 ([9662c86](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9662c86993b7921bbd6fe686f93c95bdb02192f3))
+* **payments:** keep browser_data.ip optional for consumers GPOMA-2556 ([e370cc0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e370cc0fdda0cd1938d8af5ea2aa226b2106022e))
+* **payments:** keep the browser data timeout armed through the body read GPOMA-2556 ([807b4d5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/807b4d5a2c37f8a0070b2d9763c25c78e61d90e1))
+* **payments:** keep the payment session alive when browser data fails GPOMA-2556 ([74ab63f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/74ab63f57f09b37730f90bc1d8541a6076ee46c3))
+* **payments:** validate the browser data response shape GPOMA-2556 ([c412c96](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c412c96da8025581e7610a10a89ca61879e3e02c))
+
+
+### Features
+
+* **cards:** sync iframe protocol and expose field errors GPOMA-2510 ([8a96464](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8a9646489bb14f4a65eaeea523b76ab7c416a1f2))
+* **payments:** fetch browser data from the API before charging GPOMA-2556 ([e4f6e54](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e4f6e54811be5fec69d5e353f065e2f8c0fdaa12))
+
 ## [1.14.3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.14.2...1.14.3) (2026-08-26)
 
 
