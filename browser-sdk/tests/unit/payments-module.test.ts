@@ -11,6 +11,22 @@ const makeResponse = (data: unknown, status = 200) =>
 
 const PAYMENT_ID = 'pay_browser_001';
 
+/**
+ * The browser data endpoint's response is shape-checked, so a mock that answers
+ * every path with an empty object would fail the charge. This keeps that one
+ * path valid and leaves the rest as the test wrote them.
+ */
+const respond = (req: Request, body: unknown = {}) =>
+    new URL(req.url).pathname === '/cards/browser-data'
+        ? makeResponse(DETECTED_BROWSER_DATA)
+        : makeResponse(body);
+
+const DETECTED_BROWSER_DATA = {
+    ip: '192.0.2.42',
+    user_agent: 'Real/1.0 (as seen by the API)',
+    accept_header: '{"accept":"application/json"}',
+};
+
 const storedToken = {
     access_token: 'at-test',
     expires_in: 900,
@@ -23,7 +39,16 @@ describe('createPaymentsApi() — browser SDK', () => {
     let api: ReturnType<typeof createPaymentsApi>;
 
     beforeEach(() => {
-        fetchMock = vi.fn().mockResolvedValue(makeResponse({}));
+        // The browser data endpoint's response is shape-checked, so the
+        // default mock has to answer it with a valid body; every other path
+        // keeps the empty default.
+        fetchMock = vi
+            .fn()
+            .mockImplementation(async (req: Request) =>
+                new URL(req.url).pathname === '/cards/browser-data'
+                    ? makeResponse(DETECTED_BROWSER_DATA)
+                    : makeResponse({}),
+            );
         vi.stubGlobal('fetch', fetchMock);
         // createGoPayBrowserSDK always supplies these — the browser data
         // endpoint is authenticated by the shareable key alone.
@@ -50,7 +75,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             let capturedReq!: Request;
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedReq = req;
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.getStatus();
@@ -72,7 +97,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedReq = req;
                 await req.text();
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.chargePayment({});
@@ -87,7 +112,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             let capturedBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedBody = await req.text();
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.chargePayment({
@@ -121,7 +146,7 @@ describe('createPaymentsApi() — browser SDK', () => {
                     return makeResponse(detected);
                 }
                 capturedBody = await req.text();
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.chargePayment({
@@ -157,7 +182,7 @@ describe('createPaymentsApi() — browser SDK', () => {
                     });
                 }
                 capturedBody = await req.text();
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.chargePayment({
@@ -192,7 +217,7 @@ describe('createPaymentsApi() — browser SDK', () => {
                     return makeResponse({ error: 'not found' }, 404);
                 }
                 capturedBody = await req.text();
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.chargePayment({
@@ -223,7 +248,7 @@ describe('createPaymentsApi() — browser SDK', () => {
                 if (new URL(req.url).pathname === '/cards/browser-data') {
                     return makeResponse({ error: 'unauthorized' }, 401);
                 }
-                return makeResponse({});
+                return respond(req);
             });
 
             const err = await api
@@ -254,7 +279,7 @@ describe('createPaymentsApi() — browser SDK', () => {
                 if (new URL(req.url).pathname === '/cards/browser-data') {
                     return makeResponse({ error: 'boom' }, 500);
                 }
-                return makeResponse({});
+                return respond(req);
             });
 
             const err = await api
@@ -282,7 +307,7 @@ describe('createPaymentsApi() — browser SDK', () => {
                 if (new URL(req.url).pathname === '/cards/browser-data') {
                     throw new DOMException('Aborted', 'AbortError');
                 }
-                return makeResponse({});
+                return respond(req);
             });
 
             const err = await api
@@ -312,7 +337,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             const signals: AbortSignal[] = [];
             fetchMock.mockImplementation(async (req: Request) => {
                 signals.push(req.signal);
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.chargePayment(
@@ -333,13 +358,16 @@ describe('createPaymentsApi() — browser SDK', () => {
             expect(signals.every((s) => s.aborted)).toBe(true);
         });
 
-        it('sends the required accept_header in browser_data', async () => {
+        it('ships the accept_header the endpoint returned, not a local guess', async () => {
+            // Since GPOMA-2556 accept_header comes from /cards/browser-data —
+            // the local approximation and its q-values are covered against
+            // collectBrowserData() in browser-data.test.ts, not through a charge.
             let capturedBody = '';
             let capturedAccept = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedAccept = req.headers.get('accept') ?? '';
                 capturedBody = await req.text();
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.chargePayment({
@@ -352,25 +380,20 @@ describe('createPaymentsApi() — browser SDK', () => {
                 },
             });
 
-            const body = JSON.parse(capturedBody);
-            const acceptHeader = body.payment_instrument.browser_data
-                .accept_header as string;
-            expect(acceptHeader).toBeTypeOf('string');
-            // accept must match the Accept header the SDK actually set on this
-            // request — compare against the captured header, not a literal, so
-            // the two cannot drift apart without failing here.
+            const browserData =
+                JSON.parse(capturedBody).payment_instrument.browser_data;
+            expect(browserData.accept_header).toBe(
+                DETECTED_BROWSER_DATA.accept_header,
+            );
+            // the SDK still sets its own Accept header on the wire
             expect(capturedAccept).not.toBe('');
-            const parsed = JSON.parse(acceptHeader);
-            expect(parsed.accept).toBe(capturedAccept);
-            expect(parsed['accept-language']).toBeTypeOf('string');
-            expect(parsed['accept-encoding']).toBe('gzip, deflate, br, zstd');
         });
 
         it('caller-supplied browser_data fields override collected values', async () => {
             let capturedBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedBody = await req.text();
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.chargePayment({
@@ -392,7 +415,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             let capturedBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedBody = await req.text();
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.chargePayment({});
@@ -411,7 +434,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             let capturedReq!: Request;
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedReq = req;
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.getChargeState();
@@ -432,7 +455,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             let capturedUrl = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedUrl = req.url;
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.getGooglePayInfo();
@@ -447,7 +470,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             let capturedUrl = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedUrl = req.url;
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.getApplePayInfo();
@@ -462,7 +485,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             let capturedUrl = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedUrl = req.url;
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.getApplePayAppInfo();
@@ -481,7 +504,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             let capturedUrl = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedUrl = req.url;
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.getQRPaymentInfo();
@@ -492,7 +515,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             let capturedUrl = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedUrl = req.url;
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.getQRPaymentInfo('png');
@@ -503,7 +526,7 @@ describe('createPaymentsApi() — browser SDK', () => {
             let capturedUrl = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedUrl = req.url;
-                return makeResponse({});
+                return respond(req);
             });
 
             await api.getQRPaymentInfo('svg');

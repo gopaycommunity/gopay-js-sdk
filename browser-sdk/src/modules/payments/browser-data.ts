@@ -90,6 +90,24 @@ export function collectBrowserData(): BrowserData {
 }
 
 /**
+ * The endpoint's answer goes straight into a 3-D Secure payload, so its shape is
+ * checked rather than asserted — a cast would let a proxy's error page through
+ * as `browser_data`.
+ */
+function isBrowserDataDetected(value: unknown): value is BrowserDataDetected {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+    const { ip, user_agent, accept_header } = value as Record<string, unknown>;
+    return (
+        typeof ip === 'string' &&
+        ip !== '' &&
+        typeof user_agent === 'string' &&
+        typeof accept_header === 'string'
+    );
+}
+
+/**
  * Combine the caller's signal with a request timeout.
  *
  * `AbortSignal.timeout` and especially `AbortSignal.any` are far newer than the
@@ -203,8 +221,17 @@ export async function fetchBrowserData(
             throw new GoPayHTTPError(response.status, body);
         }
 
-        const detected = (await response.json()) as BrowserDataDetected;
-        return { ...collectBrowserData(), ...detected };
+        const body: unknown = await response.json();
+        if (!isBrowserDataDetected(body)) {
+            // NETWORK_ERROR rather than a new code: growing the public
+            // GoPayErrorCodes enum is consumer-facing surface, and a proxy
+            // error page reaching us here is a transport problem in practice.
+            throw new GoPaySDKError(
+                '[GoPayBrowserSDK] Browser data endpoint returned an unexpected shape.',
+                { errorCode: GoPayErrorCodes.NETWORK_ERROR },
+            );
+        }
+        return { ...collectBrowserData(), ...body };
     } finally {
         release();
     }
