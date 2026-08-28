@@ -490,7 +490,7 @@ to inspect or pre-seed values; use `sdk.getBrowserData()` when you need `ip` in 
 
 The API now requires `browser_data.ip`, but the SDK absorbs that: `chargePayment` and
 `mountCardForm({ flow: 'direct-charge' })` fetch it themselves, and `ip` stays optional on the
-exported `BrowserData` type. Existing code keeps compiling and behaving as it did —
+exported `BrowserData` type. Code written against 1.6.x keeps compiling and behaving as it did —
 `collectBrowserData()` has the same signature and the same shape as before. Reach for
 `sdk.getBrowserData()` only where **your server** performs the charge and needs the values
 collected in the browser.

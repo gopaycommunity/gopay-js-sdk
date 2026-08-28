@@ -75,7 +75,8 @@ export function runGetChargeState() {
 //   const result = await sdk.chargePayment(paymentId, { payment_instrument: instrument });
 //   if (result.action?.redirect_url) window.location.href = result.action.redirect_url;
 // browser_data comes from the browser SDK (see browserDataForCharge above) and is forwarded
-// as-is, per the security checklist, rather than hand-rolled here.
+// as-is rather than hand-rolled here: the values have to describe the customer's connection,
+// not this page's guesses.
 export function runChargeEncrypted() {
     const paymentId = document
         .getElementById('charge-enc-payment-id')
