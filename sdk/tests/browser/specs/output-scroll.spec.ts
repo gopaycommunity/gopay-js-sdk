@@ -53,9 +53,7 @@ test('a replaced payload is read from the top', async ({ page }) => {
         el.textContent = `── onSuccess ──\n${text}`;
     }, LONG);
 
-    await expect
-        .poll(async () => (await state(page, 'payment-create-output')).top)
-        .toBe(0);
+    expect((await state(page, 'payment-create-output')).top).toBe(0);
 });
 
 test('a second response also starts at the top', async ({ page }) => {
@@ -70,9 +68,7 @@ test('a second response also starts at the top', async ({ page }) => {
         el.textContent = `── onSuccess ──\n${text}`;
     }, LONG);
 
-    await expect
-        .poll(async () => (await state(page, 'payment-create-output')).top)
-        .toBe(0);
+    expect((await state(page, 'payment-create-output')).top).toBe(0);
 });
 
 // The postMessage log is the one panel that grows a line at a time.
@@ -88,12 +84,8 @@ test('an append follows the newest line', async ({ page }) => {
         el.textContent += '\n← GOPAY_CARD_ENCRYPT_RESULT';
     });
 
-    await expect
-        .poll(async () => {
-            const s = await state(page, 'cardpay-output');
-            return s.scroll - s.top - s.client;
-        })
-        .toBeLessThanOrEqual(24);
+    const s = await state(page, 'cardpay-output');
+    expect(s.scroll - s.top - s.client).toBeLessThanOrEqual(24);
 });
 
 // No synthetic scroll event: the position is set and the append lands in the
@@ -110,9 +102,7 @@ test('an append leaves a reader who scrolled up where they are', async ({
         el.textContent += '\n← GOPAY_CARD_ENCRYPT_RESULT';
     });
 
-    await expect
-        .poll(async () => (await state(page, 'cardpay-output')).top)
-        .toBe(0);
+    expect((await state(page, 'cardpay-output')).top).toBe(0);
 });
 
 test('following resumes once the reader returns to the bottom', async ({
@@ -131,12 +121,8 @@ test('following resumes once the reader returns to the bottom', async ({
         el.textContent += '\nline B';
     });
 
-    await expect
-        .poll(async () => {
-            const s = await state(page, 'cardpay-output');
-            return s.scroll - s.top - s.client;
-        })
-        .toBeLessThanOrEqual(24);
+    const s = await state(page, 'cardpay-output');
+    expect(s.scroll - s.top - s.client).toBeLessThanOrEqual(24);
 });
 
 test('every output panel is capped, not just the card form log', async ({
