@@ -1,12 +1,26 @@
 import { expandAllSections, expect, test } from '../fixtures/fixtures.js';
 
 /**
- * The output panels are capped and scrolled, and they follow their newest line
- * unless the reader has scrolled up. Everything here is DOM behaviour — the
- * content is written straight into the panel, so no call reaches the API.
+ * Where an output panel sits after its content changes. Everything here is DOM
+ * behaviour — the content is written straight into the panel, so no call
+ * reaches the API.
+ *
+ * None of these dispatch a `scroll` event by hand. A real browser fires that
+ * one during the rendering steps, well after the mutation the observer sees, so
+ * a spec that synthesises it synchronously tests an ordering that never happens
+ * — and would pass over a handler that reads a stale "at the bottom" flag.
  */
 
 const LONG = Array.from({ length: 200 }, (_, i) => `line ${i}`).join('\n');
+
+/** Value and scroll position exactly as the browser holds them. */
+function state(page: import('@playwright/test').Page, id: string) {
+    return page.locator(`#${id}`).evaluate((el) => ({
+        top: el.scrollTop,
+        client: el.clientHeight,
+        scroll: el.scrollHeight,
+    }));
+}
 
 test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -17,59 +31,88 @@ test.beforeEach(async ({ page }) => {
 test('a long payload is capped rather than pushing the page down', async ({
     page,
 }) => {
-    const output = page.locator('#cardpay-output');
-    await output.evaluate((el, text) => {
+    await page.locator('#cardpay-output').evaluate((el, text) => {
         el.textContent = text;
     }, LONG);
 
-    const box = await output.evaluate((el) => ({
-        client: el.clientHeight,
-        scroll: el.scrollHeight,
-        overflowY: getComputedStyle(el).overflowY,
-    }));
+    const box = await state(page, 'cardpay-output');
+    const overflowY = await page
+        .locator('#cardpay-output')
+        .evaluate((el) => getComputedStyle(el).overflowY);
 
     // 20rem at the default root size, plus the border box.
     expect(box.client).toBeLessThanOrEqual(340);
     expect(box.scroll).toBeGreaterThan(box.client);
-    expect(box.overflowY).toBe('auto');
+    expect(overflowY).toBe('auto');
 });
 
-test('new content scrolls the panel to its newest line', async ({ page }) => {
+// This is what `run()` in helpers.js does to nearly every panel: it replaces
+// the content outright. The reader wants the header and the first fields.
+test('a replaced payload is read from the top', async ({ page }) => {
+    await page.locator('#payment-create-output').evaluate((el, text) => {
+        el.textContent = `── onSuccess ──\n${text}`;
+    }, LONG);
+
+    await expect
+        .poll(async () => (await state(page, 'payment-create-output')).top)
+        .toBe(0);
+});
+
+test('a second response also starts at the top', async ({ page }) => {
+    const output = page.locator('#payment-create-output');
+    await output.evaluate((el, text) => {
+        el.textContent = text;
+    }, LONG);
+    await output.evaluate((el) => {
+        el.scrollTop = el.scrollHeight; // reader scrolled to the end of it
+    });
+    await output.evaluate((el, text) => {
+        el.textContent = `── onSuccess ──\n${text}`;
+    }, LONG);
+
+    await expect
+        .poll(async () => (await state(page, 'payment-create-output')).top)
+        .toBe(0);
+});
+
+// The postMessage log is the one panel that grows a line at a time.
+test('an append follows the newest line', async ({ page }) => {
     const output = page.locator('#cardpay-output');
     await output.evaluate((el, text) => {
         el.textContent = text;
     }, LONG);
+    await output.evaluate((el) => {
+        el.scrollTop = el.scrollHeight;
+    });
+    await output.evaluate((el) => {
+        el.textContent += '\n← GOPAY_CARD_ENCRYPT_RESULT';
+    });
 
     await expect
-        .poll(() =>
-            output.evaluate(
-                (el) => el.scrollHeight - el.scrollTop - el.clientHeight,
-            ),
-        )
+        .poll(async () => {
+            const s = await state(page, 'cardpay-output');
+            return s.scroll - s.top - s.client;
+        })
         .toBeLessThanOrEqual(24);
 });
 
-test('a panel the reader scrolled up in stays where they left it', async ({
+// No synthetic scroll event: the position is set and the append lands in the
+// same task, which is exactly the race a cached flag loses.
+test('an append leaves a reader who scrolled up where they are', async ({
     page,
 }) => {
     const output = page.locator('#cardpay-output');
     await output.evaluate((el, text) => {
         el.textContent = text;
     }, LONG);
-    await expect
-        .poll(() => output.evaluate((el) => el.scrollTop))
-        .toBeGreaterThan(0);
-
-    // The reader goes back to the top, then more output arrives.
     await output.evaluate((el) => {
         el.scrollTop = 0;
-        el.dispatchEvent(new Event('scroll'));
-    });
-    await output.evaluate((el) => {
-        el.textContent += '\nline 200';
+        el.textContent += '\n← GOPAY_CARD_ENCRYPT_RESULT';
     });
 
-    expect(await output.evaluate((el) => el.scrollTop)).toBe(0);
+    await expect
+        .poll(async () => (await state(page, 'cardpay-output')).top)
+        .toBe(0);
 });
 
 test('following resumes once the reader returns to the bottom', async ({
@@ -79,46 +122,36 @@ test('following resumes once the reader returns to the bottom', async ({
     await output.evaluate((el, text) => {
         el.textContent = text;
     }, LONG);
-
     await output.evaluate((el) => {
         el.scrollTop = 0;
-        el.dispatchEvent(new Event('scroll'));
+        el.textContent += '\nline A';
     });
     await output.evaluate((el) => {
         el.scrollTop = el.scrollHeight;
-        el.dispatchEvent(new Event('scroll'));
-    });
-    await output.evaluate((el) => {
-        el.textContent += '\nline 200';
+        el.textContent += '\nline B';
     });
 
     await expect
-        .poll(() =>
-            output.evaluate(
-                (el) => el.scrollHeight - el.scrollTop - el.clientHeight,
-            ),
-        )
+        .poll(async () => {
+            const s = await state(page, 'cardpay-output');
+            return s.scroll - s.top - s.client;
+        })
         .toBeLessThanOrEqual(24);
 });
 
 test('every output panel is capped, not just the card form log', async ({
     page,
 }) => {
-    const overflowing = await page.evaluate(() => {
-        const out = [];
-        for (const pre of document.querySelectorAll('pre[id$="-output"]')) {
-            const style = getComputedStyle(pre);
-            out.push({
-                id: pre.id,
-                maxHeight: style.maxHeight,
-                overflowY: style.overflowY,
-            });
-        }
-        return out;
-    });
+    const panels = await page.evaluate(() =>
+        [...document.querySelectorAll('pre[id$="-output"]')].map((pre) => ({
+            id: pre.id,
+            maxHeight: getComputedStyle(pre).maxHeight,
+            overflowY: getComputedStyle(pre).overflowY,
+        })),
+    );
 
-    expect(overflowing.length).toBeGreaterThan(5);
-    for (const panel of overflowing) {
+    expect(panels.length).toBeGreaterThan(5);
+    for (const panel of panels) {
         expect(panel.maxHeight, panel.id).not.toBe('none');
         expect(panel.overflowY, panel.id).toBe('auto');
     }
