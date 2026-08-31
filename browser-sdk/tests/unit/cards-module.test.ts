@@ -2,6 +2,7 @@ import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
 import { createCardsApi } from '../../src/modules/cards/cards.module.js';
+import type { CardFormTheme } from '../../src/modules/cards/iframe-protocol.js';
 import type { createPaymentsApi } from '../../src/modules/payments/payments.module.js';
 
 const CARD_FORM_URL = 'https://test.gopay.com/card-form';
@@ -933,6 +934,34 @@ describe('createCardsApi() — browser SDK', () => {
             expect(() =>
                 ctrl.setTheme({ labelColor: '#333' } as never),
             ).not.toThrow();
+        });
+
+        /**
+         * iframe-protocol.ts is duplicated by hand into gw-ui-cc-v4, so the two
+         * copies drift silently. The theme here is passed uncast on purpose —
+         * the other theme tests use `as never` — so that removing a key from
+         * CardFormTheme is a type error rather than nothing at all.
+         *
+         * That only bites once the test files are typechecked, and today they
+         * are not: browser-sdk/tsconfig.json excludes `tests`. Turning that on
+         * surfaces two pre-existing errors in the mocks in this file, so it is
+         * its own change. Until then this stands as a runtime smoke test and as
+         * the record of which keys the form expects.
+         */
+        it('takes the theme keys the card form added, uncast', async () => {
+            const theme: CardFormTheme = {
+                inputFontWeight: 600,
+                labelLineHeight: 12,
+                errorSpacing: 3,
+            };
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+                theme,
+            });
+            ctrl.result.catch(() => {});
+
+            expect(() => ctrl.setTheme(theme)).not.toThrow();
         });
 
         it('setLocale() does not throw while the iframe is active', async () => {

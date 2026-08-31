@@ -62,6 +62,13 @@ export interface CardFormTheme {
     labelFontSize?: number;
     /** Font weight of field labels. Default: 600 */
     labelFontWeight?: number | string;
+    /**
+     * Line height of field labels in px. Left unset the browser derives it from
+     * the font metrics, which makes the label box a couple of pixels taller than
+     * a design that states one — MUI's own field label is 12px on 12.
+     * Default: unset
+     */
+    labelLineHeight?: number;
     /** Whether field labels are uppercased. Default: true */
     labelUppercase?: boolean;
     /**
@@ -82,6 +89,13 @@ export interface CardFormTheme {
     inputTextColor?: string;
     /** Font size of input text in px. Default: 14 */
     inputFontSize?: number;
+    /**
+     * Font weight of input text. Left unset the value renders at the browser's
+     * default, so a form whose design asks for a semibold value could not have
+     * one — the label had a weight of its own and the value did not.
+     * Default: unset
+     */
+    inputFontWeight?: number | string;
     /**
      * Line height of input text in px. Setting it together with `inputHeight`
      * makes the field height deterministic; left unset, each browser derives it
@@ -173,6 +187,14 @@ export interface CardFormTheme {
      * from shifting when a message appears. Set to 0 to remove it. Default: 14
      */
     errorMinHeight?: number;
+    /**
+     * Distance from the input to the error line in px, when it should differ from
+     * `fieldSpacing`. A field spaces its label, input and error on one gap, so
+     * without this the error sits as far below the input as the label sits above
+     * it — where MUI's own field puts 16px under the label and 3px under the
+     * input. Default: unset, i.e. `fieldSpacing`
+     */
+    errorSpacing?: number;
     /**
      * Hides error messages visually while keeping them in the DOM and in the
      * accessibility tree, so screen readers still announce them. They occupy no
