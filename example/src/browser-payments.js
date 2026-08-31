@@ -1,5 +1,6 @@
 import { requireAttachedSDK } from './browser-sdk.js';
 import { formatError } from './helpers.js';
+import { appendOutput } from './output-scroll.js';
 import { renderQRImage } from './qr-render.js';
 import { sanitizeBody } from './sanitize.js';
 
@@ -48,6 +49,6 @@ export async function browserQRPaymentInfo() {
         pre.textContent = `── onSuccess ──\n${JSON.stringify(sanitizeBody(result), null, 2)}`;
         renderQRImage(pre, result);
     } catch (err) {
-        pre.textContent += `\n\n── onError ──\n${formatError(err)}`;
+        appendOutput(pre, `\n\n── onError ──\n${formatError(err)}`);
     }
 }

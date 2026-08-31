@@ -1,5 +1,6 @@
 import { getBrowserSDK, isSdkAttached } from './browser-sdk.js';
 import { formatError, pollChargeState, show3dsPrompt } from './helpers.js';
+import { appendOutput } from './output-scroll.js';
 import { sanitizeBody } from './sanitize.js';
 
 const TERMINAL_STATES = new Set(['SUCCEEDED', 'FAILED']);
@@ -40,7 +41,10 @@ export async function runBrowserCharge() {
             },
         });
 
-        pre.textContent += `\n${JSON.stringify(sanitizeBody(chargeResult), null, 2)}`;
+        appendOutput(
+            pre,
+            `\n${JSON.stringify(sanitizeBody(chargeResult), null, 2)}`,
+        );
 
         if (TERMINAL_STATES.has(chargeResult.state)) {
             return;
@@ -58,6 +62,6 @@ export async function runBrowserCharge() {
             pre,
         );
     } catch (err) {
-        pre.textContent += `\n\n── onError ──\n${formatError(err)}`;
+        appendOutput(pre, `\n\n── onError ──\n${formatError(err)}`);
     }
 }

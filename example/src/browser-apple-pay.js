@@ -1,5 +1,6 @@
 import { requireAttachedSDK } from './browser-sdk.js';
 import { formatError } from './helpers.js';
+import { appendOutput } from './output-scroll.js';
 import { sanitizeBody } from './sanitize.js';
 
 let _ctrl = null;
@@ -26,8 +27,10 @@ export async function browserApplePayLoadInfo() {
                     '── Apple Pay not available on this device or browser ──';
             },
             onCancel: () => {
-                pre.textContent +=
-                    '\n\n── onCancel (user dismissed the Apple Pay sheet) ──';
+                appendOutput(
+                    pre,
+                    '\n\n── onCancel (user dismissed the Apple Pay sheet) ──',
+                );
             },
         });
     } catch (err) {

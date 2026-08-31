@@ -1,5 +1,6 @@
 import { GoPayHTTPError, GoPaySDKError } from '@gopaycz/gopay-js-sdk';
 import { getBrowserSDK, isSdkAttached } from './browser-sdk.js';
+import { appendOutput } from './output-scroll.js';
 import { sanitizeBody } from './sanitize.js';
 import { sdkConfig } from './sdk.js';
 
@@ -177,14 +178,17 @@ export function prefillPaymentId(result) {
  *   `(opts) => browserSdk.awaitChargeState(opts)`
  */
 export async function pollChargeState(awaitFn, pre) {
-    pre.textContent += '\n── polling charge state ──';
+    appendOutput(pre, '\n── polling charge state ──');
     try {
         await awaitFn({
             onStateChange: (state) => {
                 if (state.state === 'SUCCEEDED' || state.state === 'FAILED') {
-                    pre.textContent += `\n\n── ${state.state} ──\n${JSON.stringify(sanitizeBody(state), null, 2)}`;
+                    appendOutput(
+                        pre,
+                        `\n\n── ${state.state} ──\n${JSON.stringify(sanitizeBody(state), null, 2)}`,
+                    );
                 } else {
-                    pre.textContent += `\n${state.state}`;
+                    appendOutput(pre, `\n${state.state}`);
                 }
             },
             onActionRequired: (url) => show3dsPrompt(pre, url),
@@ -193,10 +197,12 @@ export async function pollChargeState(awaitFn, pre) {
         if (err?.errorCode === 'CHARGE_FAILED') {
             // terminal state already shown by onStateChange
         } else if (err?.errorCode === 'CHARGE_TIMEOUT') {
-            pre.textContent +=
-                '\n\nPolling timed out — check charge state manually.';
+            appendOutput(
+                pre,
+                '\n\nPolling timed out — check charge state manually.',
+            );
         } else {
-            pre.textContent += `\n\n── onError ──\n${formatError(err)}`;
+            appendOutput(pre, `\n\n── onError ──\n${formatError(err)}`);
         }
     }
 }

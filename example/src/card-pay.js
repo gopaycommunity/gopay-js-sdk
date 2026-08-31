@@ -10,6 +10,7 @@ import {
     prefillServerChargeEncrypted,
     prefillTokenize,
 } from './helpers.js';
+import { appendOutput } from './output-scroll.js';
 import { sanitizeBody } from './sanitize.js';
 
 let currentLang = 'en';
@@ -148,10 +149,12 @@ export async function cardPayOpenIframe() {
         cardFormMounting = false;
         cardFormController = controller;
 
-        pre.textContent += '\n\nWaiting for card confirmation in iframe';
+        appendOutput(pre, '\n\nWaiting for card confirmation in iframe');
         if (isDirectCharge) {
-            pre.textContent +=
-                '\nAfter card entry, the SDK charges the payment and handles 3DS if required.';
+            appendOutput(
+                pre,
+                '\nAfter card entry, the SDK charges the payment and handles 3DS if required.',
+            );
         }
 
         const result = await controller.result;
@@ -160,10 +163,15 @@ export async function cardPayOpenIframe() {
         }
         cardFormController = null;
         container.style.display = 'none';
-        pre.textContent += `\n\n── onSuccess ──\n${JSON.stringify(sanitizeBody(result), null, 2)}`;
+        appendOutput(
+            pre,
+            `\n\n── onSuccess ──\n${JSON.stringify(sanitizeBody(result), null, 2)}`,
+        );
         if (!isDirectCharge) {
-            pre.textContent +=
-                '\n\nEncrypted payload auto-filled in the Server charge, Browser charge and Cards · tokenize sections.';
+            appendOutput(
+                pre,
+                '\n\nEncrypted payload auto-filled in the Server charge, Browser charge and Cards · tokenize sections.',
+            );
             prefillServerChargeEncrypted(result.encryptedPayload);
             prefillBrowserCharge(result.encryptedPayload);
             prefillTokenize(result.encryptedPayload);
@@ -176,6 +184,6 @@ export async function cardPayOpenIframe() {
         }
         cardFormController = null;
         container.style.display = 'none';
-        pre.textContent += `\n\n── onError ──\n${formatError(err)}`;
+        appendOutput(pre, `\n\n── onError ──\n${formatError(err)}`);
     }
 }

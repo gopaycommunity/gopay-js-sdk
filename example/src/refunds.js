@@ -1,4 +1,5 @@
 import { formatError, run } from './helpers.js';
+import { appendOutput } from './output-scroll.js';
 import { sanitizeBody } from './sanitize.js';
 import { sdk } from './sdk.js';
 
@@ -63,16 +64,24 @@ export async function runAwaitRefundState() {
         const settled = await sdk.awaitRefundState(refundId, {
             timeoutMs: 60_000,
             onStateChange: (state) => {
-                pre.textContent += `\n${state.state}`;
+                appendOutput(pre, `\n${state.state}`);
             },
         });
-        pre.textContent += `\n\n\u2500\u2500 ${settled.state} \u2500\u2500\n${JSON.stringify(sanitizeBody(settled), null, 2)}`;
+        appendOutput(
+            pre,
+            `\n\n\u2500\u2500 ${settled.state} \u2500\u2500\n${JSON.stringify(sanitizeBody(settled), null, 2)}`,
+        );
     } catch (err) {
         if (err?.errorCode === 'CHARGE_TIMEOUT') {
-            pre.textContent +=
-                '\n\nPolling timed out — the refund is still processing, check it manually.';
+            appendOutput(
+                pre,
+                '\n\nPolling timed out — the refund is still processing, check it manually.',
+            );
         } else {
-            pre.textContent += `\n\n\u2500\u2500 onError \u2500\u2500\n${formatError(err)}`;
+            appendOutput(
+                pre,
+                `\n\n\u2500\u2500 onError \u2500\u2500\n${formatError(err)}`,
+            );
         }
     }
 }

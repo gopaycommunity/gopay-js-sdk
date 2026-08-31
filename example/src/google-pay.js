@@ -20,6 +20,7 @@ import {
     loadGooglePayData,
 } from './google-pay-shared.js';
 import { formatError, prefillCharge } from './helpers.js';
+import { appendOutput } from './output-scroll.js';
 import { sanitizeBody } from './sanitize.js';
 import { sdk } from './sdk.js';
 
@@ -67,8 +68,8 @@ async function googlePayOpenSheet() {
         return;
     }
 
-    pre.textContent += '\n\n── onSuccess (loadPaymentData) ──';
+    appendOutput(pre, '\n\n── onSuccess (loadPaymentData) ──');
     // tokenizationData.token is a JSON string: { protocolVersion, signature, signedMessage, ... }
     prefillCharge(_googlePaymentId, extractGooglePayInstrument(paymentData));
-    pre.textContent += '\n\nCharge section prefilled — scroll down to run.';
+    appendOutput(pre, '\n\nCharge section prefilled — scroll down to run.');
 }

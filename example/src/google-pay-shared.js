@@ -1,4 +1,5 @@
 import { formatError } from './helpers.js';
+import { appendOutput } from './output-scroll.js';
 
 export function ensureGooglePayLoaded(pre) {
     if (window.google) {
@@ -21,14 +22,17 @@ export async function loadGooglePayData(info, pre) {
         environment: info.environment,
     });
     try {
-        pre.textContent += '\n\nOpening Google Pay sheet…';
+        appendOutput(pre, '\n\nOpening Google Pay sheet…');
         return await paymentsClient.loadPaymentData(info.paymentDataRequest);
     } catch (err) {
         const isCancel =
             err?.statusCode === 'CANCELED' ||
             (err instanceof DOMException && err.name === 'AbortError');
         const label = isCancel ? 'onCancel' : 'onError';
-        pre.textContent += `\n\n── ${label} (loadPaymentData) ──\n${formatError(err)}`;
+        appendOutput(
+            pre,
+            `\n\n── ${label} (loadPaymentData) ──\n${formatError(err)}`,
+        );
         return null;
     }
 }
