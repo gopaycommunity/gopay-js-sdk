@@ -1,3 +1,5 @@
+import { appendOutput } from './output-scroll.js';
+
 // Dev-only postMessage spy. Logs full payloads, including GOPAY_CARD_FORM_INIT
 // (carries shareable_key and client tokens) and GOPAY_CARD_ENCRYPT_RESULT
 // (carries the encrypted JWE card_token). Never used in production builds.
@@ -6,9 +8,10 @@ function logPostMessage(direction, data) {
     if (!pre) {
         return;
     }
-    // Scrolling to the newest line is output-scroll.js's job — and it yields to
-    // a reader who has scrolled up, which this did not.
-    pre.textContent += `\n${direction} ${JSON.stringify(data)}`;
+    // The one panel that grows rather than being replaced, so the one writer
+    // that says so. Scrolling to the newest line is output-scroll.js's job —
+    // and it yields to a reader who has scrolled up, which this did not.
+    appendOutput(pre, `\n${direction} ${JSON.stringify(data)}`);
 }
 
 const isGoPay = (data) =>
