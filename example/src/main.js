@@ -1,5 +1,6 @@
 import './styles/main.css';
 import './card-form-logger.js';
+import './output-scroll.js';
 import { SDK_VERSION as SERVER_SDK_VERSION } from '@gopaycz/gopay-js-sdk';
 import { SDK_VERSION as BROWSER_SDK_VERSION } from '@gopaycz/gopay-js-sdk-browser';
 import {

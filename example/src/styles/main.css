@@ -16,6 +16,11 @@ pre {
     word-break: break-all;
     margin-top: 0.75rem;
     min-height: 2.5rem;
+    /* A long payload — or the postMessage log, which only ever grows — used to
+       push the rest of the page out of reach. Capped and scrolled instead;
+       stick-to-bottom lives in output-scroll.js. */
+    max-height: 20rem;
+    overflow-y: auto;
 }
 
 .badge {

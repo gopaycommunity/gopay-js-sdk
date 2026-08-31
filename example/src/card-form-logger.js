@@ -6,8 +6,9 @@ function logPostMessage(direction, data) {
     if (!pre) {
         return;
     }
+    // Scrolling to the newest line is output-scroll.js's job — and it yields to
+    // a reader who has scrolled up, which this did not.
     pre.textContent += `\n${direction} ${JSON.stringify(data)}`;
-    pre.scrollTop = pre.scrollHeight;
 }
 
 const isGoPay = (data) =>
