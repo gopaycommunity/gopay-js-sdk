@@ -20,7 +20,10 @@ export function stubApplePayButtonRegistry(): void {
     });
 }
 
-export function makeHttpClient() {
+// Return type stated rather than inferred: the inferred one reaches into
+// @gopay-internal/core's own source path, which does not survive being named
+// from here.
+export function makeHttpClient(): ReturnType<typeof createHttpClient> {
     const c = createHttpClient({
         baseUrl: 'https://example.com',
         shareableKey: 'pk_test',

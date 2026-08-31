@@ -650,7 +650,14 @@ describe('createCardsApi() — browser SDK', () => {
 
     describe('mountCardForm() with flow: direct-charge after attachPayment', () => {
         const chargePaymentMock = vi.fn<() => Promise<unknown>>();
-        const awaitChargeStateMock = vi.fn<() => Promise<unknown>>();
+        // Takes the options the real one does: two specs below drive the 3DS
+        // path by calling onStateChange from the implementation.
+        const awaitChargeStateMock =
+            vi.fn<
+                (opts?: {
+                    onStateChange?: (s: unknown) => void;
+                }) => Promise<unknown>
+            >();
         const mockPaymentsApi = {
             chargePayment: chargePaymentMock,
             awaitChargeState: awaitChargeStateMock,
@@ -807,7 +814,7 @@ describe('createCardsApi() — browser SDK', () => {
             );
 
             awaitChargeStateMock.mockImplementation(
-                async (opts: { onStateChange?: (s: unknown) => void }) => {
+                async (opts?: { onStateChange?: (s: unknown) => void }) => {
                     opts?.onStateChange?.({
                         state: 'ACTION_REQUIRED',
                         action: { redirect_url: 'https://3ds.example.com' },
@@ -875,7 +882,7 @@ describe('createCardsApi() — browser SDK', () => {
 
             const onStateChange = vi.fn();
             awaitChargeStateMock.mockImplementation(
-                async (opts: { onStateChange?: (s: unknown) => void }) => {
+                async (opts?: { onStateChange?: (s: unknown) => void }) => {
                     opts?.onStateChange?.({ state: 'PROCESSING' });
                     return { state: 'SUCCEEDED', id: 'pay_001' };
                 },
@@ -939,14 +946,9 @@ describe('createCardsApi() — browser SDK', () => {
         /**
          * iframe-protocol.ts is duplicated by hand into gw-ui-cc-v4, so the two
          * copies drift silently. The theme here is passed uncast on purpose —
-         * the other theme tests use `as never` — so that removing a key from
-         * CardFormTheme is a type error rather than nothing at all.
-         *
-         * That only bites once the test files are typechecked, and today they
-         * are not: browser-sdk/tsconfig.json excludes `tests`. Turning that on
-         * surfaces two pre-existing errors in the mocks in this file, so it is
-         * its own change. Until then this stands as a runtime smoke test and as
-         * the record of which keys the form expects.
+         * the other theme tests use `as never` — which makes removing a key from
+         * CardFormTheme a type error rather than nothing at all. `yarn typecheck`
+         * covers this file, so that error is what says the copies have parted.
          */
         it('takes the theme keys the card form added, uncast', async () => {
             const theme: CardFormTheme = {

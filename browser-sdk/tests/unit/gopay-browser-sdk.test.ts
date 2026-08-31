@@ -70,9 +70,9 @@ describe('createGoPayBrowserSDK()', () => {
                 abort: vi.fn(),
                 begin: vi.fn(),
             };
-            expect(() =>
-                sdk.startApplePaySession(session, 'https://example.com'),
-            ).toThrow(
+            // Second argument is the optional callbacks object, not a URL — the
+            // validation URL has not been a parameter here for some time.
+            expect(() => sdk.startApplePaySession(session)).toThrow(
                 expect.objectContaining({
                     errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
                 }),

@@ -1,0 +1,11 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "rootDir": "."
+    },
+    // The base config excludes `tests`, and `exclude` is inherited rather than
+    // merged — repeating it here without them is what actually brings them in.
+    "exclude": ["node_modules", "dist"],
+    "include": ["src", "tests"]
+}

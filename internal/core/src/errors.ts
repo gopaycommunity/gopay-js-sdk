@@ -48,6 +48,13 @@ export class GoPaySDKError extends Error {
     readonly errorCode: GoPayErrorCode | undefined;
     /** Final charge state attached when the error is CHARGE_FAILED — lets catch callers read decline codes without an onStateChange callback. */
     readonly chargeState: unknown;
+    /**
+     * The error this one wraps, when it wraps one. Declared here because
+     * `Error.cause` arrived in ES2022 and this package compiles against ES2020,
+     * so the base type has no such property — assigning it through a cast, as
+     * this did, left callers unable to read it without one of their own.
+     */
+    readonly cause: unknown;
 
     constructor(
         message: string,
@@ -59,7 +66,7 @@ export class GoPaySDKError extends Error {
     ) {
         super(message);
         if (options?.cause !== undefined) {
-            (this as { cause?: unknown }).cause = options.cause;
+            this.cause = options.cause;
         }
         this.errorCode = options?.errorCode;
         this.chargeState = options?.chargeState;
