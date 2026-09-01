@@ -1,0 +1,64 @@
+<!-- ── Payment Links ───────────────────────────────────────────── -->
+<details class="group">
+    <summary class="flex items-center gap-3 pt-1 cursor-pointer select-none">
+        <div class="h-px w-4 bg-[#E1E5EB] shrink-0"></div>
+        <svg aria-hidden="true" class="h-3 w-3 text-[#6B7280] transition-transform group-open:rotate-90 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-[0.68rem] font-semibold text-[#6B7280] tracking-widest uppercase shrink-0">Payment Links · gopay-js-sdk</span>
+        <div class="h-px flex-1 bg-[#E1E5EB]"></div>
+    </summary>
+    <div class="space-y-5 mt-3">
+
+        <!-- Create link -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.createPaymentLink(goid, params)</h2>
+            <p class="desc">POST /eshops/{goid}/links — store payment data behind a shareable URL. No payment exists until a customer opens it. The returned <code>id</code> is auto-filled below; it is a different identifier from the ten-character code at the end of <code>url</code>, and neither can be derived from the other.</p>
+            <div class="fields">
+                <label>GoID<input id="link-goid" type="text" value="8123456789" /></label>
+                <label>Amount (cents)<input id="link-amount" type="number" min="1" step="1" value="15000" /></label>
+                <label>Currency<input id="link-currency" type="text" value="CZK" /></label>
+                <label>Order Number<input id="link-order-number" type="text" value="LINK-001" /></label>
+                <label>Customer Email<input id="link-customer-email" type="text" value="customer@example.com" /></label>
+                <label>Notification URL<input id="link-notification-url" type="text" value="" /></label>
+                <label>Return URL<input id="link-return-url" type="text" value="" /></label>
+                <label>Expires in (seconds)<input id="link-expires-in" type="number" min="1" step="1" placeholder="leave empty — never expires" /></label>
+                <label>Reusable
+                    <select id="link-reusable">
+                        <option value="">true (API default — omitted from the body)</option>
+                        <option value="false">false — one-shot, consumed by the first visit</option>
+                    </select>
+                </label>
+            </div>
+            <button type="button" onclick="runCreatePaymentLink()">Run</button>
+            <pre id="link-create-output">—</pre>
+            <p class="note">Opening the link creates the payment and hands the customer to the hosted gateway to pay it, so nothing here charges anything. The payment stays observable from this SDK either way — once it exists, <code>sdk.getPaymentStatus()</code> reports its state as it would for any other payment.</p>
+        </section>
+
+        <!-- Link status -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getPaymentLink(goid, linkId)</h2>
+            <p class="desc">GET /eshops/{goid}/links/{link_id} — read the link's state and the payment data it carries. Expiry is evaluated on read, so a link past its <code>expires_at</code> comes back <code>active: false</code> with <code>stop_reason: EXPIRED</code> — no need to compare timestamps yourself.</p>
+            <div class="fields">
+                <label>GoID<input id="link-get-goid" type="text" placeholder="auto-filled from the form above" /></label>
+                <label>Link ID<input id="link-get-id" type="text" placeholder="auto-filled by sdk.createPaymentLink()" /></label>
+            </div>
+            <button type="button" onclick="runGetPaymentLink()">Run</button>
+            <pre id="link-get-output">—</pre>
+        </section>
+
+        <!-- Disable link -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.disablePaymentLink(goid, linkId)</h2>
+            <p class="desc">DELETE /eshops/{goid}/links/{link_id} — stop the link from starting new payments. Not a delete: it still reads back, as <code>stop_reason: FROM_API</code>. Returns <code>void</code>, so this panel reports the follow-up read instead.</p>
+            <div class="fields">
+                <label>GoID<input id="link-disable-goid" type="text" placeholder="auto-filled from the form above" /></label>
+                <label>Link ID<input id="link-disable-id" type="text" placeholder="auto-filled by sdk.createPaymentLink()" /></label>
+            </div>
+            <button type="button" onclick="runDisablePaymentLink()">Run</button>
+            <pre id="link-disable-output">—</pre>
+            <p class="note">Disabling an already-inactive link is rejected with <code>409</code>. A one-shot link that has been used is inactive too, so it cannot be disabled — it keeps redirecting to the payment it created. Cancel that payment to stop it.</p>
+        </section>
+
+    </div>
+</details>

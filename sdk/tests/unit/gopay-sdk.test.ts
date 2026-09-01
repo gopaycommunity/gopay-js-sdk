@@ -90,6 +90,10 @@ describe('GoPaySDK', () => {
         expect(typeof sdk.refundPayment).toBe('function');
         expect(typeof sdk.listRefunds).toBe('function');
         expect(typeof sdk.getRefund).toBe('function');
+        // Payment links
+        expect(typeof sdk.createPaymentLink).toBe('function');
+        expect(typeof sdk.getPaymentLink).toBe('function');
+        expect(typeof sdk.disablePaymentLink).toBe('function');
     });
 
     describe('AuthModule', () => {

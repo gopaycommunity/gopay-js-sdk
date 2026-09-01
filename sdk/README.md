@@ -389,6 +389,58 @@ const refunds = await sdk.listRefunds(payment.id);
 
 ---
 
+### Payment links
+
+A payment link stores payment data behind a shareable URL. Nothing is charged when you create one — the payment is created when a customer opens the link, and the link then redirects them to the gateway to pay it. Server-side only: `createPaymentLink` and `disablePaymentLink` need `payment:write`, which a payment-scoped browser token never carries.
+
+| Method | Description |
+|---|---|
+| `createPaymentLink(goid, params)` | Create a payment link (`POST /eshops/{goid}/links`). Requires `payment:write` scope. |
+| `getPaymentLink(goid, linkId)` | Read a link's state and the payment data it carries (`GET /eshops/{goid}/links/{linkId}`). Requires `payment:read` scope. |
+| `disablePaymentLink(goid, linkId)` | Stop a link from starting new payments (`DELETE /eshops/{goid}/links/{linkId}`). Returns `void`. Requires `payment:write` scope. |
+
+```ts
+const link = await sdk.createPaymentLink(goid, {
+  payment: {
+    amount: 15000,
+    currency: 'CZK',
+    order_number: '2026-00042',
+    customer: { email: 'payer@example.com' },
+    callback: {
+      notification_url: 'https://eshop.example.com/gopay/notify',
+      return_url: 'https://eshop.example.com/gopay/return',
+    },
+  },
+  expires_in: 3600,   // seconds; omit for a link that never expires
+  reusable: false,    // defaults to true; false makes it one-shot
+});
+
+sendToCustomer(link.url);        // the address to share
+await db.save({ id: link.id });  // keep this to manage the link later
+```
+
+**`id` and `url` are different identifiers.** `url` ends in a random ten-character code that cannot be derived from `id`, nor `id` from the code. Store `id` at creation time — a caller that kept only the URL cannot read or disable the link afterwards.
+
+```ts
+const link = await sdk.getPaymentLink(goid, linkId);
+// link.active: false once the link can no longer start a payment
+// link.stop_reason: 'FROM_API' | 'USED' | 'EXPIRED'
+// link.payment: the payment data the link carries
+```
+
+Expiry is evaluated on read, so an expired link comes back `active: false` with `stop_reason: 'EXPIRED'` — there is no need to compare `expires_at` against the clock yourself.
+
+```ts
+await sdk.disablePaymentLink(goid, linkId);
+// the link still reads back, now with stop_reason: 'FROM_API'
+```
+
+Disabling is not a delete, and disabling an already-inactive link is rejected with `409`. A one-shot link that has been used is inactive too, so it cannot be disabled — it keeps redirecting to the payment it created. To stop that payment, cancel the payment itself.
+
+A reusable link gives every payment it creates the same `order_number` and the same `notification_url`, since they all come from the same stored payment data. Reconcile those notifications by the `id` of the payment each one reports, not by `order_number`.
+
+---
+
 ### Cards
 
 > **SDK boundary:** card data encryption and the card form UI live in the **browser SDK** ([`@gopaycz/gopay-js-sdk-browser`](../browser-sdk/README.md)), not here. The browser encrypts the card inside a GoPay-hosted iframe and returns an `encryptedPayload`; your server calls `tokenizeEncryptedCard` to convert it to a card token, then charges the payment. Raw card data never touches your server or this SDK.

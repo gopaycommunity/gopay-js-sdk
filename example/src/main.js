@@ -28,6 +28,11 @@ import {
 } from './card-pay.js';
 import { updateBrowserBadge } from './helpers.js';
 import {
+    runCreatePaymentLink,
+    runDisablePaymentLink,
+    runGetPaymentLink,
+} from './links.js';
+import {
     clearCharge,
     runCharge,
     runChargeEncrypted,
@@ -53,13 +58,13 @@ import { clientId, clientSecret, goid, sdk, shareableKey } from './sdk.js';
 // -----------------------------------------------------------------------
 // Pre-populate return/notification URL fields from the current href
 // -----------------------------------------------------------------------
-for (const id of ['create-return-url']) {
+for (const id of ['create-return-url', 'link-return-url']) {
     const el = document.getElementById(id);
     if (el) {
         el.value = window.location.href;
     }
 }
-for (const id of ['create-notification-url']) {
+for (const id of ['create-notification-url', 'link-notification-url']) {
     const el = document.getElementById(id);
     if (el) {
         el.value = `${window.location.origin}/notify`;
@@ -88,7 +93,7 @@ if (shareableKey && clientId) {
     initBrowserSDK(shareableKey, clientId);
 }
 if (goid) {
-    for (const fieldId of ['create-goid']) {
+    for (const fieldId of ['create-goid', 'link-goid']) {
         const el = document.getElementById(fieldId);
         if (el) {
             el.value = goid;
@@ -187,3 +192,6 @@ window.runRefundPayment = runRefundPayment;
 window.runListRefunds = runListRefunds;
 window.runGetRefund = runGetRefund;
 window.runAwaitRefundState = runAwaitRefundState;
+window.runCreatePaymentLink = runCreatePaymentLink;
+window.runGetPaymentLink = runGetPaymentLink;
+window.runDisablePaymentLink = runDisablePaymentLink;
