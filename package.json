@@ -44,5 +44,13 @@
                 "never"
             ]
         }
+    },
+    "resolutions": {
+        "brace-expansion@^5.0.2": "5.0.9",
+        "fast-uri": "3.1.6",
+        "ip-address": "10.7.0",
+        "js-yaml@4.1.1": "4.3.2",
+        "js-yaml@^4.1.0": "4.3.2",
+        "tar": "7.5.22"
     }
 }
