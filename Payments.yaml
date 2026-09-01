@@ -3,7 +3,11 @@ info:
   version: '4.0'
   title: Payments
   summary: Create and manage payments
-  description: ''
+  description: >-
+    REST API for creating and managing GoPay payments: creating a payment, charging it
+    with a payment instrument, following it through to a terminal outcome, and managing
+    saved card tokens. The long-form integration guides are published alongside this
+    reference.
   contact:
     name: GoPay technical support
     email: integration@gopay.com
@@ -14,12 +18,37 @@ servers:
     description: Sandbox
   - url: 'https://gate.gopay.com/gp-gw/api/4.0'
     description: Production
+tags:
+  - name: Authentication
+    description: >-
+      Exchanging merchant and per-payment credentials for the access tokens that
+      authorise every other call.
+  - name: Payments
+    description: >-
+      Creating a payment, charging it with a payment instrument, and following it
+      through to a terminal outcome.
+  - name: Refunds
+    description: >-
+      Returning funds from a paid payment to the customer, and reading back the refunds
+      a payment carries.
+  - name: Payment Links
+    description: >-
+      Payment links that carry the data for a payment and create it only when the customer
+      opens the link.
+  - name: Cards
+    description: >-
+      Saved card tokens and the public resources the GoPay client SDK needs in order
+      to collect card data and authenticate the payment.
 paths:
   /oauth2/token:
     post:
       tags:
         - Authentication
       summary: Authenticate
+      description: |-
+        Exchanges credentials for an access token.
+
+        The merchant's server presents `client_id:client_secret` with the `client_credentials` grant; the merchant's client presents `payment_id:payment_secret` with the `payment_credentials` grant to obtain a payment-scoped token. Credentials are sent as HTTP Basic and at least one scope must be requested. The returned `access_token` is a JWT valid for fifteen minutes and is presented as a Bearer token on the calls that authenticate with it; the `shareable_key` endpoints use HTTP Basic instead and involve no token exchange.
       operationId: post-oauth2-token
       requestBody:
         required: true
@@ -46,6 +75,10 @@ paths:
       tags:
         - Payments
       summary: Create a payment
+      description: |-
+        Creates a payment for the given eshop.
+
+        The response carries the payment `id`, the per-payment client credential `payment_secret`, and `gw_url` — the escape hatch into the previous (v3) hosted flow, for payment methods the v4 charge endpoint does not yet cover, not a redirect target for those it does. The new payment is in the `CREATED` state and awaits a charge attempt; if none is made before the initial timeout expires, it transitions to `TIMEOUTED`.
       operationId: post-eshops-goid-payments
       responses:
         '201':
@@ -86,6 +119,10 @@ paths:
       tags:
         - Payments
       summary: Payment Status
+      description: |-
+        Returns the current state of a payment.
+
+        Called after a webhook notification or a return-URL redirect to learn the outcome, since both carry only the payment `id`. The `state` field follows the payment lifecycle from `CREATED` to a terminal outcome.
       operationId: get-payments-payment_id
       responses:
         '200':
@@ -119,6 +156,10 @@ paths:
       tags:
         - Payments
       summary: Charge a payment
+      description: |-
+        Attempts to settle a payment with a payment instrument.
+
+        Only card payments are charged through this endpoint — `payment_instrument` is always `PAYMENT_CARD`, and the card input type nested under it is one of `ENCRYPTED_CARD`, `CARD_TOKEN`, `APPLE_PAY` or `GOOGLE_PAY`. Other payment methods are reachable only through the hosted gateway. The charge is asynchronous; a state of `ACTION_REQUIRED` means the customer must complete an external step before the charge can terminate.
       operationId: post-payments-payment_id-charge
       responses:
         '201':
@@ -153,6 +194,10 @@ paths:
       tags:
         - Payments
       summary: Payment charge state
+      description: |-
+        Returns the current state of the payment's charge.
+
+        Polled while a charge is in flight, at a recommended cadence of one second, until the state reaches `SUCCEEDED`, `FAILED` or `ACTION_REQUIRED`. On `ACTION_REQUIRED` the response carries an `action` describing the step the customer must complete; once they have, polling resumes until the charge reaches `SUCCEEDED` or `FAILED`. When a charge fails, the reason is carried in `fail_reason`.
       operationId: get-payments-payment_id-charge
       responses:
         '200':
@@ -186,6 +231,10 @@ paths:
       tags:
         - Payments
       summary: QR Payment Info
+      description: |-
+        Returns the data needed to display a QR code for settling the payment by bank transfer.
+
+        The response carries the amount, the recipient bank account, and the generated image as a base64 string under the regional format applicable to the payment's currency and recipient country. Requesting a QR code extends the payment's initial timeout to four days and does not change the payment state.
       operationId: get-payments-payment_id-qr-payment-info
       parameters:
         - name: format
@@ -233,6 +282,10 @@ paths:
       tags:
         - Payments
       summary: Google Pay Payment Info
+      description: |-
+        Returns the Google Pay payment request configuration for the payment.
+
+        Intended for the GoPay client SDK; the merchant's code does not normally call it. The same endpoint serves both the web and the in-app case — the configured environment is carried in `environment`.
       operationId: get-payments-payment_id-info-google-pay
       responses:
         '200':
@@ -264,6 +317,10 @@ paths:
       tags:
         - Payments
       summary: Apple Pay Payment Info
+      description: |-
+        Returns the Apple Pay payment request configuration for the payment on the web.
+
+        Intended for the GoPay client SDK; the merchant's code does not normally call it.
       operationId: get-payments-payment_id-info-apple-pay
       responses:
         '200':
@@ -295,6 +352,10 @@ paths:
       tags:
         - Payments
       summary: Apple Pay Payment Info For Apps
+      description: |-
+        Returns the Apple Pay payment request configuration for the payment in a native application. It carries `paymentSummaryItems` where the web variant carries a single `total`.
+
+        Intended for the GoPay client SDK; the merchant's code does not normally call it.
       operationId: get-payments-payment_id-apple-pay-app-info
       responses:
         '200':
@@ -326,6 +387,10 @@ paths:
       tags:
         - Payments
       summary: Validate Merchant
+      description: |-
+        Completes the Apple Pay merchant validation handshake for the payment session.
+
+        The `validationUrl` issued by Apple is forwarded to GoPay, which returns the merchant session that the Apple Pay sheet expects. Intended for the GoPay client SDK; the merchant's code does not normally call it.
       operationId: post-payments-payment_id-apple-pay-validate
       parameters:
         - name: Origin
@@ -371,11 +436,234 @@ paths:
         in: path
         required: true
         description: Payment ID
+  '/payments/{payment_id}/refunds':
+    post:
+      tags:
+        - Refunds
+      summary: Refund a payment
+      description: |
+        Refunds a paid payment in full or in part. Set `amount` to the payment amount for a
+        full refund, or to a lower value for a partial refund. A payment can be refunded
+        repeatedly until the sum of its refunds reaches the original amount.
+      operationId: post-payments-payment_id-refunds
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund-Details'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Refund-Create-Request'
+      security:
+        - merchant_credentials:
+            - 'payment:write'
+    get:
+      tags:
+        - Refunds
+      summary: List payment refunds
+      description: Returns every refund issued against the payment.
+      operationId: get-payments-payment_id-refunds
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Refund-Details'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - merchant_credentials:
+            - 'payment:read'
+        - payment_credentials:
+            - 'payment:read'
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+        description: Payment ID
+  '/refunds/{refund_id}':
+    get:
+      tags:
+        - Refunds
+      summary: Refund details
+      description: Returns the current state and amount of a single refund.
+      operationId: get-refunds-refund_id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund-Details'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - merchant_credentials:
+            - 'payment:read'
+    parameters:
+      - schema:
+          type: string
+        name: refund_id
+        in: path
+        required: true
+        description: Refund ID
+  '/eshops/{goid}/links':
+    post:
+      tags:
+        - Payment Links
+      summary: Create a payment link
+      description: |-
+        Creates a payment link for the given eshop. The link only stores the payment data — no payment exists until a customer opens the link.
+
+        The response carries `id`, used on the status and disable calls, and `url`, the address to share with the customer. The two are different identifiers: `url` ends in a random ten-character code that cannot be derived from `id`, nor `id` from the code.
+      operationId: post-eshops-goid-links
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Link-Details'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Link-Create-Request'
+      security:
+        - merchant_credentials:
+            - 'payment:write'
+    parameters:
+      - schema:
+          type: string
+        name: goid
+        in: path
+        required: true
+        description: Unique identifier of a registered merchant website
+  '/eshops/{goid}/links/{link_id}':
+    get:
+      tags:
+        - Payment Links
+      summary: Link status
+      description: |-
+        Returns the current settings and state of a payment link, including the payment data it carries.
+
+        Expiry is evaluated on read: a link past its `expires_at` is reported as `active: false` with `stop_reason` `EXPIRED`, without anything being written first.
+      operationId: get-eshops-goid-links-link_id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Link-Details'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - merchant_credentials:
+            - 'payment:read'
+    delete:
+      tags:
+        - Payment Links
+      summary: Disable a link
+      description: |-
+        Deactivates a payment link so that it can no longer start a new payment. This is not a delete: the link can still be read back, and reports `stop_reason` `FROM_API`.
+
+        Disabling a link that is already inactive returns `409`. A one-shot link that has already been used is inactive too, so it cannot be disabled — it keeps redirecting to the payment it created. To stop that payment, cancel the payment itself.
+      operationId: delete-eshops-goid-links-link_id
+      responses:
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - merchant_credentials:
+            - 'payment:write'
+    parameters:
+      - schema:
+          type: string
+        name: goid
+        in: path
+        required: true
+        description: Unique identifier of a registered merchant website
+      - schema:
+          type: string
+          pattern: '^[0-9]+$'
+        name: link_id
+        in: path
+        required: true
+        description: 'Link ID returned when the link was created. A non-numeric or negative value is rejected with `400`'
   /cards/tokens:
     post:
       tags:
         - Cards
       summary: Create card token
+      description: |-
+        Exchanges an encrypted card payload for a permanent card token.
+
+        The JWE produced by the GoPay client SDK is submitted in `payload` and exchanged for a `Permanent Card Token Details` object. Its `token` is what a later charge carries as `card_token` in the `CARD_TOKEN` input; its `card_id` addresses the saved card in the read and delete operations. The JWE is single-use. Tokenisation is disabled by default and must be enabled for the merchant; the operation is server-side only.
       operationId: post-cards-tokens
       responses:
         '201':
@@ -407,6 +695,10 @@ paths:
       tags:
         - Cards
       summary: Card details
+      description: |-
+        Returns the current details of a saved card.
+
+        Called after the saved-card webhook to read fields the issuer has updated in place — a reissued PAN or a new expiration date — while the `card_id` stays the same. The API does not list saved cards; the merchant persists the association between `card_id` and customer. Server-side only.
       operationId: get-cards-tokens-card_id
       parameters:
         - name: card_id
@@ -436,6 +728,10 @@ paths:
       tags:
         - Cards
       summary: Delete a card
+      description: |-
+        Permanently deletes a saved card.
+
+        A deleted token is not recoverable; saving the same card again requires re-tokenisation through the standalone flow. Server-side only.
       operationId: delete-cards-tokens-card_id
       parameters:
         - name: card_id
@@ -515,6 +811,31 @@ paths:
         - shareable_key: []
         - merchant_credentials:
             - 'shared:read'
+  /cards/browser-data:
+    get:
+      tags:
+        - Cards
+      summary: Fetch browser data
+      description: |-
+        Returns the `Browser Data` fields that the customer's browser cannot determine on its own — the source IP address, the `User-Agent` header, and the `Accept` headers — derived from the request that fetched them.
+
+        Call it from the customer's browser, immediately before charging the payment. A call made from the merchant's server returns the server's own values, which the card issuer rejects during 3-D Secure authentication.
+      operationId: get-browser-data
+      responses:
+        '200':
+          description: Shared Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Browser-Data-Detected'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - shareable_key: []
 components:
   requestBodies:
     Access-Token-Request:
@@ -546,9 +867,9 @@ components:
           scopes:
             'card:write': Used to tokenize payment cards
             'card:read': Used to read data about payment cards
-            'payment:write': 'Used to create, charge or modify payments'
-            'payment:read': Used to read data about payments
-            'shared:read': Used to get shared information like public keys and URLs.
+            'payment:write': 'Used to create, charge, modify or refund payments'
+            'payment:read': 'Used to read data about payments, charges and refunds'
+            'shared:read': Used to get shared information like public keys, URLs and values derived from the request.
           tokenUrl: /oauth2/token
       description: |-
         Authorizes a server using `client_id:client_secret`.
@@ -569,7 +890,7 @@ components:
       scheme: basic
       description: |-
         Use `client_id:shareable_key` encoded in base64 in the Authorization header.
-        Used to authenticate to endpoints holding public resources such as public key and URLs.
+        Used to authenticate to endpoints holding public resources such as public keys and URLs, and values derived from the request itself.
         See [RFC7617](https://www.rfc-editor.org/rfc/rfc7617) for specification
   responses:
     Google-Pay-Info-Response:
@@ -1017,8 +1338,8 @@ components:
           type: string
           description: |-
             List of required token scopes, separated with a space.
-            - `payment:read` reads information about payments, recurrences and links
-            - `payment:write` allow creation and modification of payments, recurrences and links
+            - `payment:read` reads information about payments, charges and refunds
+            - `payment:write` allows creation, charging, modification and refunding of payments
             - `card:read` and `card:write` allow reading information about and deleting or modifying cards respectively
             - `shared:read` allows reading public global information
           examples:
@@ -1084,7 +1405,7 @@ components:
         - `scope` -> the scopes of the token
         - `iat` -> timestamp of token issuing
         - `exp` -> timestamp of token expiration
-        - `domain` -> `merchant` for server tokens issued for client credentials. `payment` for payment tokens issued for `payment_secret` using the `authorization_code` flow - used on calling the API from the browser.
+        - `domain` -> `merchant` for server tokens issued for client credentials. `payment` for payment tokens issued for `payment_secret` using the `payment_credentials` grant - used on calling the API from the browser.
       examples:
         - eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
     Payment-Create-Request:
@@ -1492,6 +1813,7 @@ components:
         - AUTO
     Google-Pay-Input:
       type: object
+      additionalProperties: true
       title: Google Pay Input
       description: |-
         The `GOOGLE_PAY` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the data acquired from Google Pay.
@@ -1536,6 +1858,7 @@ components:
             - '{\"tag\":\"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\\u003d\",\"ephemeralPublicKey\":\"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\\u003d\",\"encryptedMessage\":\"mKOoXwi8OavZ\"}'
     Apple-Pay-Input:
       type: object
+      additionalProperties: true
       title: Apple Pay Input
       description: |-
         The `APPLE_PAY` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the data acquired from Apple Pay.
@@ -1564,8 +1887,14 @@ components:
             - EC_v1
         header:
           type: object
+          additionalProperties: true
           description: Header containing additional data for decrypting and verifying the payment token
           properties:
+            applicationData:
+              type: string
+              description: 'Hash of the `applicationData` carried on the Apple Pay payment request. Apple includes it only for sessions created with that value, so the field is optional; forward it unchanged when the Apple Pay session returns it'
+              examples:
+                - 94ee059335e587e5...c47d0d13c58f7ea4
             ephemeralPublicKey:
               type: string
               description: Ephemeral public key used for deriving the shared secret
@@ -1597,6 +1926,7 @@ components:
           signature: MIAGCSqGSIb3DQEHAqCAM...
           version: EC_v1
           header:
+            applicationData: 94ee059335e587e5...c47d0d13c58f7ea4
             ephemeralPublicKey: MFkwEwYHKoZIzj...
             publicKeyHash: L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=
             transactionId: 4f4fac7a1...a6a8ba2c0e8c5
@@ -1631,6 +1961,7 @@ components:
         - user_agent
         - accept_header
         - javascript_enabled
+        - ip
       properties:
         language:
           type: string
@@ -1659,12 +1990,12 @@ components:
             - 24
         user_agent:
           type: string
-          description: User-Agent string of the customer's browser
+          description: User-Agent string of the customer's browser, as returned by the browser data endpoint. Take it from the same source as `ip` — a pair that disagrees fails 3-D Secure authentication
           examples:
             - 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
         accept_header:
           type: string
-          description: JSON-encoded Accept headers from the customer's browser
+          description: JSON-encoded Accept headers from the customer's browser, as returned by the browser data endpoint. Take it from the same source as `ip`
           examples:
             - '{"accept-language":"cs;q=0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, */*"}'
         javascript_enabled:
@@ -1672,6 +2003,39 @@ components:
           description: Whether JavaScript is enabled in the customer's browser
           examples:
             - true
+        ip:
+          type: string
+          maxLength: 45
+          description: IP address of the customer's browser, as returned by the browser data endpoint. A merchant server charging on the customer's behalf must forward the value collected in the browser, never its own address
+          examples:
+            - 192.0.2.42
+    Browser-Data-Detected:
+      type: object
+      title: Browser Data Detected
+      description: |-
+        The `Browser Data` fields the customer's browser cannot determine on its own, derived from the request that fetched them.
+        Merge them into `Browser Data` when charging the payment.
+      required:
+        - ip
+        - user_agent
+        - accept_header
+      properties:
+        ip:
+          type: string
+          maxLength: 45
+          description: IP address the request originated from
+          examples:
+            - 192.0.2.42
+        user_agent:
+          type: string
+          description: User-Agent header sent with the request
+          examples:
+            - 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
+        accept_header:
+          type: string
+          description: JSON-encoded Accept headers sent with the request
+          examples:
+            - '{"accept-language":"cs;q=0.5","accept-encoding":"gzip, deflate, br, zstd","accept":"application/json, text/plain, */*"}'
     Payment-Charge-Response:
       type: object
       title: Payment Charge Response
@@ -2314,6 +2678,216 @@ components:
           example: ENCRYPTED_CARD
         payload:
           $ref: '#/components/schemas/JWE'
+    Refund-Create-Request:
+      title: Refund Create Request
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: integer
+          description: 'Amount to be refunded in cents. For a full amount, set it equal to the payment amount'
+          minimum: 1
+          examples:
+            - 100
+    Refund-Details:
+      title: Refund Details
+      type: object
+      required:
+        - id
+        - state
+        - amount
+        - currency
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Refund ID
+          examples:
+            - '3050123456'
+        state:
+          $ref: '#/components/schemas/Refund-State'
+          description: Refund state
+        amount:
+          type: integer
+          description: Refunded amount in cents
+          examples:
+            - 100
+        currency:
+          $ref: '#/components/schemas/Currency'
+          description: Refund currency
+        created_at:
+          type: string
+          format: date-time
+          description: When the refund was requested
+          examples:
+            - '2025-12-10T10:30:00Z'
+        updated_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: When the refund state last changed. Null until the state changes for the first time
+          examples:
+            - '2025-12-10T10:35:00Z'
+    Refund-State:
+      type: string
+      title: Refund State
+      enum:
+        - REQUESTED
+        - SUCCESS
+        - FAILED
+      description: |
+        Refund lifecycle state:
+        - `REQUESTED` - The refund was accepted and is being processed
+        - `SUCCESS` - The refund was settled
+        - `FAILED` - The refund could not be processed
+      examples:
+        - SUCCESS
+    Link-Create-Request:
+      title: Link Create Request
+      type: object
+      required:
+        - payment
+      properties:
+        payment:
+          $ref: '#/components/schemas/Payment-From-Link-Request'
+          description: Payment data used for every payment this link creates
+        expires_in:
+          type: integer
+          description: 'Link lifetime in seconds, counted from creation. Omit it for a link that never expires. The upper bound is a hundred years'
+          minimum: 1
+          examples:
+            - 3600
+        reusable:
+          type: boolean
+          default: true
+          description: 'Whether the link may start more than one payment. A one-shot link is consumed by the first visit; see `Link Stop Reason`'
+          examples:
+            - true
+    Link-Details:
+      title: Link Details
+      type: object
+      required:
+        - id
+        - url
+        - active
+        - reusable
+      properties:
+        id:
+          type: string
+          description: 'Link ID, used on the status and disable calls. Not the code that appears in `url`'
+          examples:
+            - '3405871122'
+        url:
+          type: string
+          description: 'Address to share with the customer. Opening it creates a payment and redirects the customer to the payment gateway. It ends in a random ten-character code unrelated to `id`'
+          examples:
+            - 'https://gate.gopay.com/gp-gw/l/Xk8mQ2pR7t'
+        active:
+          type: boolean
+          description: 'Whether the link can still start a payment. Reported as false once the link expires, even before that is recorded'
+          examples:
+            - true
+        reusable:
+          type: boolean
+          description: Whether the link may start more than one payment
+          examples:
+            - true
+        expires_at:
+          type: string
+          format: date-time
+          description: 'When the link stops being usable, computed at creation from `expires_in`. Absent for a link that never expires'
+          examples:
+            - '2026-08-18T14:35:12Z'
+        stop_reason:
+          $ref: '#/components/schemas/Link-Stop-Reason'
+          description: Why the link is no longer active. Absent while the link is active
+        payment:
+          $ref: '#/components/schemas/Payment-From-Link-Request'
+          description: Payment data the link carries
+    Link-Stop-Reason:
+      type: string
+      title: Link Stop Reason
+      enum:
+        - FROM_API
+        - USED
+        - EXPIRED
+      description: |
+        Why a payment link is no longer active:
+        - `FROM_API` - The merchant disabled the link
+        - `USED` - A one-shot link was opened and created its payment
+        - `EXPIRED` - The link passed its `expires_at`
+      examples:
+        - USED
+    Payment-From-Link-Request:
+      type: object
+      title: Payment From Link Request
+      description: >-
+        Representation of a payment created from a payment link. The same data is used for every
+        payment the link creates, so a reusable link gives all of them the same `order_number` and
+        the same `notification_url`.
+      required:
+        - amount
+        - currency
+        - order_number
+        - customer
+        - callback
+      properties:
+        amount:
+          type: integer
+          description: Total amount in cents
+          minimum: 0
+          examples:
+            - 15000
+        currency:
+          $ref: '#/components/schemas/Currency'
+          description: 'Payment currency. It must be a currency the eshop has an enabled payment channel for, otherwise the link is rejected with `400`'
+        order_number:
+          type: string
+          description: 'Order identification for the online shop, alphanumeric characters'
+          maxLength: 128
+          examples:
+            - '2026-00042'
+        order_description:
+          type: string
+          description: 'Order description, alphanumeric characters'
+          maxLength: 256
+          examples:
+            - Invoice 2026-00042
+        additional_params:
+          type: array
+          description: 'Additional parameters for the payment. Each `name` must not contain `=`, and `name` and `value` together may not exceed 511 characters'
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/Additional-Param'
+        customer:
+          $ref: '#/components/schemas/Customer'
+          description: Information about the customer. The email address is required
+        callback:
+          $ref: '#/components/schemas/Payment-Callback'
+          description: 'Callback urls. Both must be http or https and at most 512 characters long'
+      examples:
+        - amount: 15000
+          currency: CZK
+          order_number: '2026-00042'
+          order_description: Invoice 2026-00042
+          additional_params:
+            - name: invoice
+              value: INV-2026-001
+          customer:
+            email: payer@example.com
+            first_name: Jan
+            last_name: Novák
+            phone_number: '+420123456789'
+            city: Praha
+            street: Testovací 42
+            postal_code: '11000'
+            country_code: CZE
+            customer_id: cust-001
+          callback:
+            notification_url: 'https://eshop.example.com/gopay/notify'
+            return_url: 'https://eshop.example.com/gopay/return'
     Validate-Merchant-Request:
       title: Validate Merchant Request
       type: object

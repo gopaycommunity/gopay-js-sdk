@@ -284,6 +284,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/eshops/{goid}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of a registered merchant website */
+                goid: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a payment link
+         * @description Creates a payment link for the given eshop. The link only stores the payment data — no payment exists until a customer opens the link.
+         *
+         *     The response carries `id`, used on the status and disable calls, and `url`, the address to share with the customer. The two are different identifiers: `url` ends in a random ten-character code that cannot be derived from `id`, nor `id` from the code.
+         */
+        post: operations["post-eshops-goid-links"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/eshops/{goid}/links/{link_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of a registered merchant website */
+                goid: string;
+                /** @description Link ID returned when the link was created. A non-numeric or negative value is rejected with `400` */
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Link status
+         * @description Returns the current settings and state of a payment link, including the payment data it carries.
+         *
+         *     Expiry is evaluated on read: a link past its `expires_at` is reported as `active: false` with `stop_reason` `EXPIRED`, without anything being written first.
+         */
+        get: operations["get-eshops-goid-links-link_id"];
+        put?: never;
+        post?: never;
+        /**
+         * Disable a link
+         * @description Deactivates a payment link so that it can no longer start a new payment. This is not a delete: the link can still be read back, and reports `stop_reason` `FROM_API`.
+         *
+         *     Disabling a link that is already inactive returns `409`. A one-shot link that has already been used is inactive too, so it cannot be disabled — it keeps redirecting to the payment it created. To stop that payment, cancel the payment itself.
+         */
+        delete: operations["delete-eshops-goid-links-link_id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cards/tokens": {
         parameters: {
             query?: never;
@@ -1569,6 +1627,121 @@ export interface components {
          * @enum {string}
          */
         "Refund-State": "REQUESTED" | "SUCCESS" | "FAILED";
+        /** Link Create Request */
+        "Link-Create-Request": {
+            /** @description Payment data used for every payment this link creates */
+            payment: components["schemas"]["Payment-From-Link-Request"];
+            /**
+             * @description Link lifetime in seconds, counted from creation. Omit it for a link that never expires. The upper bound is a hundred years
+             * @example 3600
+             */
+            expires_in?: number;
+            /**
+             * @description Whether the link may start more than one payment. A one-shot link is consumed by the first visit; see `Link Stop Reason`
+             * @default true
+             * @example true
+             */
+            reusable: boolean;
+        };
+        /** Link Details */
+        "Link-Details": {
+            /**
+             * @description Link ID, used on the status and disable calls. Not the code that appears in `url`
+             * @example 3405871122
+             */
+            id: string;
+            /**
+             * @description Address to share with the customer. Opening it creates a payment and redirects the customer to the payment gateway. It ends in a random ten-character code unrelated to `id`
+             * @example https://gate.gopay.com/gp-gw/l/Xk8mQ2pR7t
+             */
+            url: string;
+            /**
+             * @description Whether the link can still start a payment. Reported as false once the link expires, even before that is recorded
+             * @example true
+             */
+            active: boolean;
+            /**
+             * @description Whether the link may start more than one payment
+             * @example true
+             */
+            reusable: boolean;
+            /**
+             * Format: date-time
+             * @description When the link stops being usable, computed at creation from `expires_in`. Absent for a link that never expires
+             * @example 2026-08-18T14:35:12Z
+             */
+            expires_at?: string;
+            /** @description Why the link is no longer active. Absent while the link is active */
+            stop_reason?: components["schemas"]["Link-Stop-Reason"];
+            /** @description Payment data the link carries */
+            payment?: components["schemas"]["Payment-From-Link-Request"];
+        };
+        /**
+         * Link Stop Reason
+         * @description Why a payment link is no longer active:
+         *     - `FROM_API` - The merchant disabled the link
+         *     - `USED` - A one-shot link was opened and created its payment
+         *     - `EXPIRED` - The link passed its `expires_at`
+         * @example USED
+         * @enum {string}
+         */
+        "Link-Stop-Reason": "FROM_API" | "USED" | "EXPIRED";
+        /**
+         * Payment From Link Request
+         * @description Representation of a payment created from a payment link. The same data is used for every payment the link creates, so a reusable link gives all of them the same `order_number` and the same `notification_url`.
+         * @example {
+         *       "amount": 15000,
+         *       "currency": "CZK",
+         *       "order_number": "2026-00042",
+         *       "order_description": "Invoice 2026-00042",
+         *       "additional_params": [
+         *         {
+         *           "name": "invoice",
+         *           "value": "INV-2026-001"
+         *         }
+         *       ],
+         *       "customer": {
+         *         "email": "payer@example.com",
+         *         "first_name": "Jan",
+         *         "last_name": "Novák",
+         *         "phone_number": "+420123456789",
+         *         "city": "Praha",
+         *         "street": "Testovací 42",
+         *         "postal_code": "11000",
+         *         "country_code": "CZE",
+         *         "customer_id": "cust-001"
+         *       },
+         *       "callback": {
+         *         "notification_url": "https://eshop.example.com/gopay/notify",
+         *         "return_url": "https://eshop.example.com/gopay/return"
+         *       }
+         *     }
+         */
+        "Payment-From-Link-Request": {
+            /**
+             * @description Total amount in cents
+             * @example 15000
+             */
+            amount: number;
+            /** @description Payment currency. It must be a currency the eshop has an enabled payment channel for, otherwise the link is rejected with `400` */
+            currency: components["schemas"]["Currency"];
+            /**
+             * @description Order identification for the online shop, alphanumeric characters
+             * @example 2026-00042
+             */
+            order_number: string;
+            /**
+             * @description Order description, alphanumeric characters
+             * @example Invoice 2026-00042
+             */
+            order_description?: string;
+            /** @description Additional parameters for the payment. Each `name` must not contain `=`, and `name` and `value` together may not exceed 511 characters */
+            additional_params?: components["schemas"]["Additional-Param"][];
+            /** @description Information about the customer. The email address is required */
+            customer: components["schemas"]["Customer"];
+            /** @description Callback urls. Both must be http or https and at most 512 characters long */
+            callback: components["schemas"]["Payment-Callback"];
+        };
         /** Validate Merchant Request */
         "Validate-Merchant-Request": {
             /** Format: uri */
@@ -2124,6 +2297,97 @@ export interface operations {
             401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];
             404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-eshops-goid-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of a registered merchant website */
+                goid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Link-Create-Request"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Link-Details"];
+                };
+            };
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-eshops-goid-links-link_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of a registered merchant website */
+                goid: string;
+                /** @description Link ID returned when the link was created. A non-numeric or negative value is rejected with `400` */
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Link-Details"];
+                };
+            };
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "delete-eshops-goid-links-link_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of a registered merchant website */
+                goid: string;
+                /** @description Link ID returned when the link was created. A non-numeric or negative value is rejected with `400` */
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
             500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };
