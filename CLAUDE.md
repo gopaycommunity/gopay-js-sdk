@@ -59,7 +59,7 @@ Two separate npm packages:
 - **`submit()`** — triggers form submission from the parent page; only valid when `submitMode: 'external'`.
 - **`isValid`** — live validity state (only populated in external submit mode).
 
-**postMessage protocol** is defined in `sdk/src/modules/cards/iframe-protocol.ts`. This file is intentionally duplicated between this repo and `gw-ui-cc-v4`. Keep both in sync manually — types and type aliases only, no imports or logic.
+**postMessage protocol** is defined in `browser-sdk/src/modules/cards/iframe-protocol.ts`. This file is intentionally duplicated between this repo and `gw-ui-cc-v4`. Keep both in sync manually — types and type aliases only, no imports or logic.
 
 **Init flow:**
 1. `mountCardForm` calls `GET /encryption/card-form-url` internally to obtain the iframe URL.
@@ -93,7 +93,7 @@ Consumer-facing breaking changes (call these out in the footer):
 - Changed `window.GoPayBrowserSDK` global shape — affects `@gopaycz/gopay-js-sdk-browser` IIFE consumers on unpkg (pin to `@1`)
 - Changed error codes in `GoPayErrorCodes`
 
-**postMessage protocol** (`sdk/src/modules/cards/iframe-protocol.ts`) changes are **not** consumer-facing — the wire protocol between the SDK and the GoPay-hosted iframe is invisible to e-shops. However, they require **coordinated deployment** with `gw-ui-cc-v4`: deploy the iframe side first, or make the change backward-compatible, to avoid a compatibility gap between the two.
+**postMessage protocol** (`browser-sdk/src/modules/cards/iframe-protocol.ts`) changes are **not** consumer-facing — the wire protocol between the SDK and the GoPay-hosted iframe is invisible to e-shops. However, they require **coordinated deployment** with `gw-ui-cc-v4`: deploy the iframe side first, or make the change backward-compatible, to avoid a compatibility gap between the two.
 
 ---
 
