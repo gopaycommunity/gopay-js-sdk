@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
-    createGoPaySDK,
     GoPayErrorCodes,
     GoPayHTTPError,
     type GoPaySDK,
     GoPaySDKError,
 } from '../../src/index.js';
+import { createSandboxSdk } from './_helpers.js';
 
 /**
  * Payment links against the live gateway.
@@ -32,52 +32,7 @@ describe('payment links — E2E', () => {
     };
 
     beforeAll(async () => {
-        const baseUrl = process.env.GOPAY_PAYMENTS_V4_BASE_URL;
-        const rawEnvironment = process.env.GOPAY_PAYMENTS_V4_ENVIRONMENT;
-
-        // These specs WRITE: they create links a customer could then open and
-        // pay. Pointing them at production would leave live payable links on a
-        // real merchant account, so production is refused outright.
-        if (rawEnvironment !== undefined && rawEnvironment !== 'sandbox') {
-            throw new Error(
-                `Payment link E2E tests only run against sandbox — they create payable links. GOPAY_PAYMENTS_V4_ENVIRONMENT was: '${rawEnvironment}'`,
-            );
-        }
-        const environment = rawEnvironment as 'sandbox' | undefined;
-        const clientId = process.env.GOPAY_PAYMENTS_V4_CLIENT_ID ?? '';
-        const clientSecret = process.env.GOPAY_PAYMENTS_V4_CLIENT_SECRET ?? '';
-        goid = process.env.GOPAY_PAYMENTS_V4_GOID ?? '';
-
-        if (!baseUrl && !environment) {
-            throw new Error(
-                'Missing required environment variables: set GOPAY_PAYMENTS_V4_ENVIRONMENT=sandbox or GOPAY_PAYMENTS_V4_BASE_URL for a mock/alpha endpoint',
-            );
-        }
-        if (baseUrl?.includes('gate.gopay.com')) {
-            throw new Error(
-                `Payment link E2E tests must not target production. GOPAY_PAYMENTS_V4_BASE_URL was: '${baseUrl}'`,
-            );
-        }
-        if (!clientId || !clientSecret) {
-            throw new Error(
-                'Missing required environment variables: GOPAY_PAYMENTS_V4_CLIENT_ID, GOPAY_PAYMENTS_V4_CLIENT_SECRET',
-            );
-        }
-        // Every call here is eshop-scoped, so an unset goid would post to
-        // /eshops//links and fail with an opaque HTTP error.
-        if (!goid) {
-            throw new Error(
-                'Missing required environment variable: GOPAY_PAYMENTS_V4_GOID',
-            );
-        }
-
-        sdk = createGoPaySDK(baseUrl ? { baseUrl } : { environment });
-        await sdk.authenticate({
-            grant_type: 'client_credentials',
-            client_id: clientId,
-            client_secret: clientSecret,
-            scope: 'payment:write payment:read',
-        });
+        ({ sdk, goid } = await createSandboxSdk('create payable links'));
     });
 
     // These reject before any request is made, but beforeAll still

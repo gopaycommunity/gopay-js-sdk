@@ -47,16 +47,32 @@ const mockChargeResponse = {
     },
 };
 
+// Shaped to match Payment-Charge-Input exactly, because a mocked fetch cannot
+// tell you when it does not: this fixture used to carry a top-level `return_url`
+// (that field is on the *response*, not the request) and a `challenge_preferrence`
+// — misspelled, and nested inside `input` where it does not belong. The live
+// gateway rejects both with 400 "Unrecognized field"; see the charge specs in
+// tests/e2e/payments.e2e.test.ts, which is what surfaced it.
 const chargeParams = {
     payment_instrument: {
         payment_instrument: 'PAYMENT_CARD',
         input: {
             input_type: 'CARD_TOKEN',
             card_token: 'J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...',
-            challenge_preferrence: 'AUTO',
         },
+        browser_data: {
+            language: 'cs-CZ',
+            timezone: -60,
+            screen_width: 1920,
+            screen_height: 1080,
+            color_depth: 24,
+            user_agent: 'Mozilla/5.0 (gopay-js-sdk tests)',
+            accept_header: '{"accept":"application/json"}',
+            javascript_enabled: true,
+            ip: '192.0.2.42',
+        },
+        challenge_preference: 'AUTO',
     },
-    return_url: 'https://example.com/return',
 } as const;
 
 describe('PaymentsModule', () => {
@@ -259,23 +275,28 @@ describe('PaymentsModule', () => {
             expect(result.state).toBe('REQUESTED');
         });
 
-        it('succeeds without return_url (return_url is optional)', async () => {
+        it('succeeds without challenge_preference, the one optional field', async () => {
             let capturedBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
                 capturedBody = await req.text();
                 return makeResponse(mockChargeResponse, 201);
             });
 
-            const paramsWithoutReturnUrl = {
-                payment_instrument: chargeParams.payment_instrument,
-            };
+            const { challenge_preference, ...instrumentWithoutPreference } =
+                chargeParams.payment_instrument;
 
             await expect(
-                payments.chargePayment('pay_300000001', paramsWithoutReturnUrl),
+                payments.chargePayment('pay_300000001', {
+                    payment_instrument: instrumentWithoutPreference,
+                }),
             ).resolves.toBeDefined();
 
             const body = JSON.parse(capturedBody);
-            expect(body).not.toHaveProperty('return_url');
+            expect(body.payment_instrument).not.toHaveProperty(
+                'challenge_preference',
+            );
+            // browser_data is not optional — a card charge without it fails 3DS.
+            expect(body.payment_instrument).toHaveProperty('browser_data');
         });
     });
 

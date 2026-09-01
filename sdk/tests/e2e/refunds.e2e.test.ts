@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
-    createGoPaySDK,
     GoPayErrorCodes,
     GoPayHTTPError,
     type GoPaySDK,
     GoPaySDKError,
 } from '../../src/index.js';
+import { createSandboxSdk, paymentBody } from './_helpers.js';
 
 /**
  * Refunds against the live sandbox gateway.
@@ -23,67 +23,16 @@ describe('refunds — E2E', () => {
     let goid: string;
 
     beforeAll(async () => {
-        const baseUrl = process.env.GOPAY_PAYMENTS_V4_BASE_URL;
-        const rawEnvironment = process.env.GOPAY_PAYMENTS_V4_ENVIRONMENT;
-
-        // Unlike the auth suite, these specs WRITE: they create payment sessions and
-        // issue refunds. Pointing them at production would put test records on a real
-        // merchant account, so production is refused outright rather than validated.
-        if (rawEnvironment !== undefined && rawEnvironment !== 'sandbox') {
-            throw new Error(
-                `Refund E2E tests only run against sandbox — they create payments and issue refunds. GOPAY_PAYMENTS_V4_ENVIRONMENT was: '${rawEnvironment}'`,
-            );
-        }
-        const environment = rawEnvironment as 'sandbox' | undefined;
-        const clientId = process.env.GOPAY_PAYMENTS_V4_CLIENT_ID ?? '';
-        const clientSecret = process.env.GOPAY_PAYMENTS_V4_CLIENT_SECRET ?? '';
-        goid = process.env.GOPAY_PAYMENTS_V4_GOID ?? '';
-
-        if (!baseUrl && !environment) {
-            throw new Error(
-                'Missing required environment variables: set GOPAY_PAYMENTS_V4_ENVIRONMENT=sandbox or GOPAY_PAYMENTS_V4_BASE_URL for a mock/alpha endpoint',
-            );
-        }
-        // A custom base URL is meant for mocks and alpha envs; catch the obvious
-        // production host so the override cannot smuggle these writes into prod.
-        if (baseUrl?.includes('gate.gopay.com')) {
-            throw new Error(
-                `Refund E2E tests must not target production. GOPAY_PAYMENTS_V4_BASE_URL was: '${baseUrl}'`,
-            );
-        }
-        if (!clientId || !clientSecret) {
-            throw new Error(
-                'Missing required environment variables: GOPAY_PAYMENTS_V4_CLIENT_ID, GOPAY_PAYMENTS_V4_CLIENT_SECRET',
-            );
-        }
-        // Every test here creates a payment first, so an unset goid would otherwise
-        // post to /eshops//payments and fail with an opaque HTTP error.
-        if (!goid) {
-            throw new Error(
-                'Missing required environment variable: GOPAY_PAYMENTS_V4_GOID',
-            );
-        }
-
-        sdk = createGoPaySDK(baseUrl ? { baseUrl } : { environment });
-        await sdk.authenticate({
-            grant_type: 'client_credentials',
-            client_id: clientId,
-            client_secret: clientSecret,
-            scope: 'payment:write payment:read',
-        });
+        ({ sdk, goid } = await createSandboxSdk(
+            'create payments and issue refunds',
+        ));
     });
 
     async function createUnpaidPayment(): Promise<string> {
-        const payment = await sdk.createPayment(goid, {
-            amount: 100,
-            currency: 'CZK',
-            order_number: 'e2e-refunds',
-            customer: { email: 'john.doe@example.com' },
-            callback: {
-                return_url: 'https://example.com/return',
-                notification_url: 'https://example.com/notify',
-            },
-        });
+        const payment = await sdk.createPayment(
+            goid,
+            paymentBody('e2e-refunds'),
+        );
         return payment.id;
     }
 
