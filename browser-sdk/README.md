@@ -353,14 +353,18 @@ nor a URL: a URL would require the form's CSP to allow arbitrary hosts and makes
 `unicode-range` a channel that reports which characters were rendered in the card fields, and a
 file would feed attacker-controlled binary to the browser's font parser inside the
 cardholder-data environment. `labelFontSize`, `labelFontWeight`, `labelUppercase` and
-`labelLetterSpacing` style the labels; `labelHidden` drops them visually while keeping them in
-the accessibility tree, so screen readers still announce each field.
+`labelLetterSpacing` style the labels; `labelLineHeight` states the label's line box in px,
+which a design that specifies one needs — left unset the browser derives it from the font
+metrics and the box comes out a couple of pixels taller. `labelHidden` drops labels visually
+while keeping them in the accessibility tree, so screen readers still announce each field.
 
 **Input metrics.** `inputHeight` fixes the field height outright, so changing `inputFontSize` no
 longer means recomputing the padding. Setting `inputLineHeight` together with it makes the
 rendered height deterministic — left unset, each browser derives it from the font metrics and
-the height varies between engines. `inputLetterSpacing` and `placeholderColor` cover the
-remaining text details.
+the height varies between engines. `inputFontWeight` sets the weight of the value itself —
+without it the value renders at the browser default, so a design asking for a semibold value
+could not have one while the label had a weight of its own. `inputLetterSpacing` and
+`placeholderColor` cover the remaining text details.
 
 **Borders and focus.** With `inputBorderStyle: 'boxed'`, `inputBorderCollapse` merges the
 borders of adjacent inputs into one shared line. It pulls whole fields together, and a field is
@@ -388,7 +392,10 @@ const theme: CardFormTheme = {
 `focusRingColor` draw a ring outside the input border; both are needed for the ring to appear.
 
 **Error text.** `errorMinHeight` reserves vertical space for the error line so the layout does
-not shift when a message appears — set it to `0` to remove the reservation. `errorHidden` keeps
+not shift when a message appears — set it to `0` to remove the reservation. `errorSpacing` sets
+the gap between the input and the error line when it should differ from `fieldSpacing`: a field
+spaces its label, input and error on one gap, so without it the error sits as far below the
+input as the label sits above it. `errorHidden` keeps
 error text in the accessibility tree but out of the layout; the cardholder then gets no visible
 feedback, so pair it with `onFieldErrors` and render your own messages:
 

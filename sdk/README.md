@@ -564,6 +564,16 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 | `NETWORK_ERROR` | Network-level failure (no response received). |
 | `CARD_FORM_ERROR` | The card form iframe encountered an error (e.g. URL unavailable, init timeout, or encryption failure). |
 
+It also carries `cause` — the underlying error it wraps, when it wraps one, and `undefined` otherwise. It is declared as an own property rather than relying on `Error.cause`, which arrived in ES2022 while this package compiles against ES2020. Reach for it when the `errorCode` says *what* failed and you need *why*: a `NETWORK_ERROR`, for instance, carries the original `fetch` rejection.
+
+```ts
+catch (err) {
+  if (err instanceof GoPaySDKError && err.errorCode === GoPayErrorCodes.NETWORK_ERROR) {
+    logger.error({ code: err.errorCode, cause: err.cause });
+  }
+}
+```
+
 ```ts
 import { GoPaySDKError, GoPayErrorCodes } from '@gopaycz/gopay-js-sdk';
 
