@@ -966,6 +966,54 @@ describe('createCardsApi() — browser SDK', () => {
             expect(() => ctrl.setTheme(theme)).not.toThrow();
         });
 
+        /**
+         * The type check above is only half the story: `satisfies CardSetTheme`
+         * is erased at build time, so nothing was asserting that the theme
+         * reaches the iframe at all. Dropping `theme` from either payload — or
+         * emptying setTheme entirely — left all 52 specs in this file green.
+         * Both directions are pinned here.
+         */
+        it('sends the theme to the iframe on init and on setTheme', async () => {
+            const theme: CardFormTheme = {
+                inputFontWeight: 600,
+                labelLineHeight: 12,
+                errorSpacing: 3,
+            };
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+                theme,
+            });
+            ctrl.result.catch(() => {});
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            const postMessageSpy = vi.spyOn(
+                iframe.contentWindow as Window,
+                'postMessage',
+            );
+
+            iframe.onload?.(new Event('load'));
+            expect(postMessageSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'GOPAY_CARD_FORM_INIT',
+                    theme: expect.objectContaining(theme),
+                }),
+                CARD_FORM_ORIGIN,
+            );
+
+            postMessageSpy.mockClear();
+            ctrl.setTheme({ ...theme, labelLineHeight: 16 });
+            expect(postMessageSpy).toHaveBeenCalledWith(
+                {
+                    type: 'GOPAY_CARD_SET_THEME',
+                    theme: { ...theme, labelLineHeight: 16 },
+                },
+                CARD_FORM_ORIGIN,
+            );
+        });
+
         it('setLocale() does not throw while the iframe is active', async () => {
             const cards = createCardsApi(client, () => null);
             const ctrl = await cards.mountCardForm(container, {

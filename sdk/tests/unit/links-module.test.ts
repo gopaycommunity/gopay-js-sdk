@@ -6,6 +6,8 @@ import { makeEmptyResponse, makeResponse } from './helpers.js';
 
 const GOID = '8123456789';
 
+// `as const` so `currency` keeps its literal type: inferred as `string` it does
+// not satisfy the Currency union, which sdk/tsconfig.tests.json now checks.
 const mockPayment = {
     amount: 15000,
     currency: 'CZK',
@@ -15,7 +17,7 @@ const mockPayment = {
         notification_url: 'https://eshop.example.com/gopay/notify',
         return_url: 'https://eshop.example.com/gopay/return',
     },
-};
+} as const;
 
 const mockLinkDetails = {
     id: '3405871122',
@@ -228,6 +230,17 @@ describe('LinksModule', () => {
             await expect(
                 links.disablePaymentLink(GOID, '3405871122'),
             ).resolves.toBeUndefined();
+        });
+
+        it('throws INVALID_ARGUMENT when goid is empty', async () => {
+            const err = await links
+                .disablePaymentLink('', '3405871122')
+                .catch((e: unknown) => e);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.INVALID_ARGUMENT,
+            );
+            expect(fetchMock).not.toHaveBeenCalled();
         });
 
         it('throws INVALID_ARGUMENT when linkId is empty', async () => {

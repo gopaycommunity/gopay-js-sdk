@@ -126,8 +126,13 @@ test('an append follows the newest line', async ({ page }) => {
     });
     await postMessageTo(page, 'first');
 
+    // Pinned to the bottom, not merely near it. The old tolerance was 24 — the
+    // same value as SLACK in output-scroll.js — so a one-line append left the
+    // panel inside it whether or not anything scrolled, and deleting the
+    // `if (wasAtBottom)` branch kept the suite green. Verified by deleting it:
+    // this assertion now fails, and the one on the resume test below with it.
     const s = await state(page, 'cardpay-output');
-    expect(s.scroll - s.top - s.client).toBeLessThanOrEqual(24);
+    expect(s.scroll - s.top - s.client).toBeLessThanOrEqual(1);
 });
 
 test('an append leaves a reader who scrolled up where they are', async ({
@@ -162,7 +167,7 @@ test('following resumes once the reader returns to the bottom', async ({
     await postMessageTo(page, 'back-at-the-bottom');
 
     const s = await state(page, 'cardpay-output');
-    expect(s.scroll - s.top - s.client).toBeLessThanOrEqual(24);
+    expect(s.scroll - s.top - s.client).toBeLessThanOrEqual(1);
 });
 
 test('every output panel is capped, not just the card form log', async ({
