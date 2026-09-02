@@ -6,8 +6,7 @@ import {
     test,
 } from '../fixtures/fixtures.js';
 
-type PaymentCreateResponse =
-    components['responses']['Payment-Create-Response']['content']['application/json'];
+type PaymentCreateResponse = components['schemas']['Payment-Details'];
 
 const PAYMENT_KEYS = ['id', 'state', 'amount'] as const satisfies ReadonlyArray<
     keyof PaymentCreateResponse

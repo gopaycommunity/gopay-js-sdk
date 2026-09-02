@@ -1,3 +1,4 @@
+import type { components } from '../../../src/types/generated.js';
 import {
     expandAllSections,
     expect,
@@ -76,7 +77,7 @@ test('payments.getQRPaymentInfo() returns QR data and recipient info', async ({
         'getQRPaymentInfo() should not have returned an error',
     ).not.toMatch(/^── onError/);
 
-    const json = parseOutput(text);
+    const json = parseOutput<components['schemas']['QR-Payment-Details']>(text);
     // Response contains qr_code with currency-specific fields (spayd for CZK)
     expect(json).toHaveProperty('qr_code');
     const qrCode = json.qr_code as Record<string, string>;

@@ -47,6 +47,23 @@ const mockChargeResponse = {
     },
 };
 
+/**
+ * Required on every card charge. Real values come from the customer's browser
+ * via the browser SDK's `getBrowserData()`; a fixed stand-in is fine here
+ * because nothing in this file reaches 3-D Secure.
+ */
+const BROWSER_DATA = {
+    language: 'cs-CZ',
+    timezone: -60,
+    screen_width: 1920,
+    screen_height: 1080,
+    color_depth: 24,
+    user_agent: 'Mozilla/5.0 (gopay-js-sdk tests)',
+    accept_header: '{"accept":"application/json"}',
+    javascript_enabled: true,
+    ip: '192.0.2.42',
+} as const;
+
 // Shaped to match Payment-Charge-Input exactly, because a mocked fetch cannot
 // tell you when it does not: this fixture used to carry a top-level `return_url`
 // (that field is on the *response*, not the request) and a `challenge_preferrence`
@@ -60,17 +77,7 @@ const chargeParams = {
             input_type: 'CARD_TOKEN',
             card_token: 'J7HjFNwzyBOHS+jwIMMktubTwoIRy6qB/4opvjG...',
         },
-        browser_data: {
-            language: 'cs-CZ',
-            timezone: -60,
-            screen_width: 1920,
-            screen_height: 1080,
-            color_depth: 24,
-            user_agent: 'Mozilla/5.0 (gopay-js-sdk tests)',
-            accept_header: '{"accept":"application/json"}',
-            javascript_enabled: true,
-            ip: '192.0.2.42',
-        },
+        browser_data: BROWSER_DATA,
         challenge_preference: 'AUTO',
     },
 } as const;
@@ -454,8 +461,8 @@ describe('PaymentsModule', () => {
                     signature: 'sig==',
                     signedMessage: '{"encryptedMessage":"enc=="}',
                 },
+                browser_data: BROWSER_DATA,
             },
-            return_url: 'https://example.com/return',
         } as const;
 
         beforeEach(() => {
@@ -564,8 +571,8 @@ describe('PaymentsModule', () => {
                         transactionId: '4f4fac7a1a6a8ba2c0e8c5',
                     },
                 },
+                browser_data: BROWSER_DATA,
             },
-            return_url: 'https://example.com/return',
         } as const;
 
         beforeEach(() => {

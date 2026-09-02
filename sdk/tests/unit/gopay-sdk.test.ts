@@ -328,8 +328,21 @@ describe('GoPaySDK', () => {
                         input_type: 'CARD_TOKEN',
                         card_token: 'tok_123',
                     },
+                    // Required on a card charge; `return_url` used to sit here
+                    // at the top level, where the request schema has no such
+                    // field — it is on the charge *response*.
+                    browser_data: {
+                        language: 'cs-CZ',
+                        timezone: -60,
+                        screen_width: 1920,
+                        screen_height: 1080,
+                        color_depth: 24,
+                        user_agent: 'Mozilla/5.0 (gopay-js-sdk tests)',
+                        accept_header: '{"accept":"application/json"}',
+                        javascript_enabled: true,
+                        ip: '192.0.2.42',
+                    },
                 },
-                return_url: 'https://example.com/return',
             });
 
             expect(capturedChargeReq.method).toBe('POST');

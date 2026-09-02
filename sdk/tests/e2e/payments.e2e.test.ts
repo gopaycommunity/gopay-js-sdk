@@ -268,7 +268,14 @@ describe('payments — E2E', () => {
 
             const info = await sdk.getApplePayInfo(created.id);
 
-            expect(info.applePayVersion).toBeGreaterThan(0);
+            // The wire key is `applePayVersion`; the spec — and so the generated
+            // type — spells it `applepayVersion`, lowercase p. Read off the
+            // response through a cast rather than the typed property, so this
+            // asserts what the gateway actually sends. One of the two is wrong
+            // and it is not this test's job to guess which.
+            expect(
+                (info as unknown as Record<string, unknown>).applePayVersion,
+            ).toBeGreaterThan(0);
             expect(info.merchantIdentifier).toBe(goid);
             expect(info.applePayPaymentRequest?.currencyCode).toBe('CZK');
             expect(
