@@ -274,3 +274,27 @@ export function prefillCharge(paymentId, instrument) {
         JSON.stringify(instrument, null, 2);
     document.getElementById('charge-token-fields').style.display = 'none';
 }
+
+/**
+ * Route a freshly minted permanent card token into the tokenized-charge panel.
+ *
+ * The charge field takes `token` — the value charge requests accept — not
+ * `card_id`, which only addresses the token in the cards endpoints. `token` is
+ * redacted in the rendered output, so this prefill is the only way to get it
+ * into the charge panel; the info line names the card_id instead of echoing it.
+ *
+ * A saved card token and a wallet instrument compete for the same panel, so
+ * this clears any pending wallet instrument and reveals the token field again —
+ * otherwise `runCharge()` would keep charging the stale instrument.
+ */
+export function prefillCardToken(card) {
+    const token = card?.token;
+    if (!token) {
+        return;
+    }
+    state.pendingInstrument = null;
+    document.getElementById('charge-card-token').value = token;
+    document.getElementById('charge-token-fields').style.display = '';
+    document.getElementById('charge-instrument-info').textContent =
+        `Card token for card_id ${card.card_id} prefilled from sdk.tokenizeEncryptedCard().`;
+}

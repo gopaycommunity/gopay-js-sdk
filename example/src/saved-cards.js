@@ -1,9 +1,19 @@
-import { run } from './helpers.js';
+import { prefillCardToken, run } from './helpers.js';
 import { sdk } from './sdk.js';
 
+// Exchange the card form's JWE payload for a permanent card token.
+// The returned token is prefilled into the tokenized-charge panel, so it can be
+// charged straight away.
+// Requires card:write scope.
+// Example:
+//   const { token } = await sdk.tokenizeEncryptedCard(payload);
 export function runTokenizeEncryptedCard() {
     const payload = document.getElementById('tokenize-payload').value.trim();
-    run('tokenize-output', () => sdk.tokenizeEncryptedCard(payload));
+    run(
+        'tokenize-output',
+        () => sdk.tokenizeEncryptedCard(payload),
+        (result) => prefillCardToken(result),
+    );
 }
 
 // Retrieve details of a stored permanent card token.
