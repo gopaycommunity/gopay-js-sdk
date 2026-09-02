@@ -1,4 +1,4 @@
-import { run } from './helpers.js';
+import { run, showLinkBanner } from './helpers.js';
 import { sdk } from './sdk.js';
 
 // Reads a field that must hold a positive whole number, or nothing at all.
@@ -16,62 +16,6 @@ function readOptionalPositiveInt(fieldId, label, outputId) {
         return null;
     }
     return value;
-}
-
-// The API returns the shareable URL as data, so render it as a real anchor
-// rather than making the developer select it out of the JSON. http(s) only:
-// an anchor href is one place where a hostile string in an API response would
-// otherwise become executable in this page.
-function showLinkUrl(pre, url) {
-    if (pre.nextElementSibling?.dataset.linkUrl) {
-        pre.nextElementSibling.remove();
-    }
-    let parsed;
-    try {
-        parsed = new URL(url);
-    } catch {
-        return;
-    }
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-        return;
-    }
-    const wrap = document.createElement('div');
-    wrap.dataset.linkUrl = '1';
-    Object.assign(wrap.style, {
-        marginTop: '0.6rem',
-        padding: '0.75rem 1rem',
-        background: '#eef6ff',
-        border: '1px solid #9dc3ec',
-        borderRadius: '6px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-    });
-    const msg = document.createElement('span');
-    Object.assign(msg.style, {
-        fontSize: '0.82rem',
-        flex: '1',
-        color: '#1c3f61',
-        wordBreak: 'break-all',
-    });
-    msg.textContent = parsed.href;
-    const btn = document.createElement('a');
-    btn.href = parsed.href;
-    btn.target = '_blank';
-    btn.rel = 'noopener';
-    btn.textContent = 'Open link →';
-    Object.assign(btn.style, {
-        padding: '0.4rem 0.9rem',
-        background: '#1a1a2e',
-        color: '#fff',
-        borderRadius: '5px',
-        fontSize: '0.82rem',
-        textDecoration: 'none',
-        whiteSpace: 'nowrap',
-    });
-    wrap.appendChild(msg);
-    wrap.appendChild(btn);
-    pre.insertAdjacentElement('afterend', wrap);
 }
 
 function prefillLinkId(result) {
@@ -92,7 +36,19 @@ function prefillLinkId(result) {
         }
     }
     if (result.url) {
-        showLinkUrl(document.getElementById('link-create-output'), result.url);
+        // The API returns the shareable URL as data; render it as a real anchor
+        // rather than making the developer select it out of the JSON.
+        showLinkBanner(document.getElementById('link-create-output'), {
+            kind: 'link-url',
+            href: result.url,
+            message: result.url,
+            cta: 'Open link →',
+            palette: {
+                background: '#eef6ff',
+                border: '#9dc3ec',
+                text: '#1c3f61',
+            },
+        });
     }
 }
 

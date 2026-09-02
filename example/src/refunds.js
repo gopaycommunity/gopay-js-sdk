@@ -54,7 +54,7 @@ export function runGetRefund() {
 export async function runAwaitRefundState() {
     const refundId = document.getElementById('refund-await-id').value.trim();
     const pre = document.getElementById('refund-await-output');
-    pre.textContent = '\u2500\u2500 polling refund state \u2500\u2500';
+    pre.textContent = '── polling refund state ──';
     try {
         // Refunds are asynchronous: refundPayment only ever returns REQUESTED, so
         // this polls until the refund settles instead of making the caller loop.
@@ -69,7 +69,7 @@ export async function runAwaitRefundState() {
         });
         appendOutput(
             pre,
-            `\n\n\u2500\u2500 ${settled.state} \u2500\u2500\n${JSON.stringify(sanitizeBody(settled), null, 2)}`,
+            `\n\n── ${settled.state} ──\n${JSON.stringify(sanitizeBody(settled), null, 2)}`,
         );
     } catch (err) {
         if (err?.errorCode === 'CHARGE_TIMEOUT') {
@@ -78,10 +78,7 @@ export async function runAwaitRefundState() {
                 '\n\nPolling timed out — the refund is still processing, check it manually.',
             );
         } else {
-            appendOutput(
-                pre,
-                `\n\n\u2500\u2500 onError \u2500\u2500\n${formatError(err)}`,
-            );
+            appendOutput(pre, `\n\n── onError ──\n${formatError(err)}`);
         }
     }
 }

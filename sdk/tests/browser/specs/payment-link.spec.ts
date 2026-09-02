@@ -53,7 +53,7 @@ test('sdk.createPaymentLink() returns a shareable link, then reads and disables 
     // The example renders the URL as a real anchor, since that is what the
     // merchant actually hands to the customer.
     await expect(
-        page.locator('#link-create-output + [data-link-url] a'),
+        page.locator('#link-create-output + [data-banner="link-url"] a'),
     ).toHaveAttribute('href', link.url);
 
     // Read it back — the id and goid are auto-filled by the create panel, so

@@ -9,38 +9,61 @@ export const state = {
     pendingInstrument: null,
 };
 
-export function show3dsPrompt(pre, redirectUrl) {
-    if (pre.nextElementSibling?.dataset.tds) {
-        pre.nextElementSibling.remove();
+/**
+ * Render a one-line banner with a call-to-action link directly under `pre`,
+ * replacing whatever banner of the same `kind` is already there.
+ *
+ * Two panels want this: the 3DS prompt and the payment link's shareable URL.
+ * They differ only in wording and colour, so the DOM lives here once.
+ *
+ * `href` is validated as http(s): an anchor href is the one place in this page
+ * where a hostile string arriving in an API response would become executable.
+ */
+export function showLinkBanner(pre, { kind, href, message, cta, palette }) {
+    const existing = pre.nextElementSibling;
+    if (existing?.dataset.banner === kind) {
+        existing.remove();
     }
-    if (!redirectUrl) {
+    if (!href) {
         return;
     }
-    const div = document.createElement('div');
-    div.dataset.tds = '1';
-    Object.assign(div.style, {
+    let parsed;
+    try {
+        parsed = new URL(href);
+    } catch {
+        return;
+    }
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        return;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.dataset.banner = kind;
+    Object.assign(wrap.style, {
         marginTop: '0.6rem',
         padding: '0.75rem 1rem',
-        background: '#fff8e1',
-        border: '1px solid #e0b840',
+        background: palette.background,
+        border: `1px solid ${palette.border}`,
         borderRadius: '6px',
         display: 'flex',
         alignItems: 'center',
         gap: '1rem',
     });
+
     const msg = document.createElement('span');
     Object.assign(msg.style, {
         fontSize: '0.82rem',
         flex: '1',
-        color: '#5a4200',
+        color: palette.text,
+        wordBreak: 'break-all',
     });
-    msg.textContent =
-        '3DS authentication required — redirect the customer to complete verification.';
+    msg.textContent = message;
+
     const btn = document.createElement('a');
-    btn.href = redirectUrl;
+    btn.href = parsed.href;
     btn.target = '_blank';
     btn.rel = 'noopener';
-    btn.textContent = 'Open 3DS verification →';
+    btn.textContent = cta;
     Object.assign(btn.style, {
         padding: '0.4rem 0.9rem',
         background: '#1a1a2e',
@@ -50,9 +73,25 @@ export function show3dsPrompt(pre, redirectUrl) {
         textDecoration: 'none',
         whiteSpace: 'nowrap',
     });
-    div.appendChild(msg);
-    div.appendChild(btn);
-    pre.insertAdjacentElement('afterend', div);
+
+    wrap.appendChild(msg);
+    wrap.appendChild(btn);
+    pre.insertAdjacentElement('afterend', wrap);
+}
+
+export function show3dsPrompt(pre, redirectUrl) {
+    showLinkBanner(pre, {
+        kind: 'tds',
+        href: redirectUrl,
+        message:
+            '3DS authentication required — redirect the customer to complete verification.',
+        cta: 'Open 3DS verification →',
+        palette: {
+            background: '#fff8e1',
+            border: '#e0b840',
+            text: '#5a4200',
+        },
+    });
 }
 
 export async function run(outputId, fn, onSuccess) {
