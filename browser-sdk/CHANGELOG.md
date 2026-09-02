@@ -1,3 +1,22 @@
+# [1.8.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.7.0...browser-sdk-1.8.0) (2026-09-02)
+
+
+### Bug Fixes
+
+* **example:** let the writer say it is appending GPOMA-2574 ([45ee215](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/45ee2150c31a5e15e3538d20876be6129757b478))
+* **example:** read a fresh payload from the top, follow only appends GPOMA-2574 ([3c40eb0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3c40eb0d389dfe64ce1c5e602a12bc228cbab557))
+* **example:** route every append through appendOutput GPOMA-2574 ([0076063](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0076063627f4a27a395dc41f792c104e167ef454))
+* read the age gate in the unit Yarn actually uses GPOMA-2574 ([9f79341](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9f793411a776a13819462f7ba1253bb9199f481d))
+* **sdk:** typecheck the test files, and fix the five things that found GPOMA-2574 ([5063d9a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5063d9abe6bfc57fab7195ffd089800c1b753f38))
+* upgrade the five advisory-carrying transitive deps GPOMA-2574 ([61310a4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/61310a4343ebaaa76b91759ecb6499d697936f56))
+
+
+### Features
+
+* **browser-sdk:** carry the card form's three new theme keys GPOMA-2574 ([2c687dd](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2c687dd0574b285c430e4ef5b4cc0c02592cfb80))
+* **example:** cap the output panels and keep them at the newest line GPOMA-2574 ([39caf3b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/39caf3bd17c2f66bf5ad012b1371b7557928b5d2))
+* **sdk:** add the payment links module, with example and tests GPOMA-2574 ([4d573fe](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4d573feec8be6628e6f603fc4405852ed4ab9f10))
+
 # [1.7.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.6.0...browser-sdk-1.7.0) (2026-08-28)
 
 
