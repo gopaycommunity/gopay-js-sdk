@@ -71,7 +71,7 @@ export default defineConfig(() => {
                     server.middlewares.use('/env.js', (_req, res) => {
                         res.setHeader('Content-Type', 'application/javascript');
                         res.end(
-                            `window._gpConfig = ${JSON.stringify({ baseUrl: process.env.GOPAY_PAYMENTS_V4_BASE_URL ?? null })};`,
+                            `window._gpConfig = ${JSON.stringify({ baseUrl: process.env.GOPAY_PAYMENTS_V4_BASE_URL ?? null, environment: process.env.GOPAY_PAYMENTS_V4_ENVIRONMENT ?? null })};`,
                         );
                     });
                 },

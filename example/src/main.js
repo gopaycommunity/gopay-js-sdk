@@ -53,7 +53,14 @@ import {
     runGetCardDetails,
     runTokenizeEncryptedCard,
 } from './saved-cards.js';
-import { clientId, clientSecret, goid, sdk, shareableKey } from './sdk.js';
+import {
+    clientId,
+    clientSecret,
+    environment,
+    goid,
+    sdk,
+    shareableKey,
+} from './sdk.js';
 
 // -----------------------------------------------------------------------
 // Pre-populate return/notification URL fields from the current href
@@ -113,8 +120,10 @@ badge.textContent = 'LOADED';
 badge.className = 'badge ok';
 sdkInfo.textContent = JSON.stringify(
     {
+        environment,
         baseUrl:
-            import.meta.env.GOPAY_PAYMENTS_V4_BASE_URL ?? '(sandbox default)',
+            import.meta.env.GOPAY_PAYMENTS_V4_BASE_URL ??
+            `(${environment} default)`,
         methods: Object.keys(sdk).filter((k) => typeof sdk[k] === 'function'),
     },
     null,
