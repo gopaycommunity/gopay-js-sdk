@@ -1,4 +1,5 @@
 import {
+    collectBrowserData,
     createGoPayBrowserSDK,
     GoPayHTTPError,
     GoPaySDKError,
@@ -91,4 +92,38 @@ export function requireAttachedSDK(pre) {
         return null;
     }
     return _browserSdk;
+}
+
+/**
+ * Collect `browser_data` the way the SDK's own charge path does.
+ *
+ * `GET /cards/browser-data` is not deployed yet (404 on sandbox and production
+ * alike), and it is the only source of `ip` — the page cannot see its own
+ * address. The browser SDK tolerates 404/501 inside `chargePayment` and falls
+ * back to the locally readable fields; a direct `getBrowserData()` call has no
+ * such tolerance, so the example does the same thing here rather than failing
+ * the charge on an endpoint that does not exist.
+ *
+ * Returns the data plus a note when the fallback was used, so the panel can say
+ * why `ip` is missing instead of leaving it a mystery.
+ */
+export async function collectBrowserDataTolerantly() {
+    const browserSdk = getBrowserSDK();
+    if (!browserSdk) {
+        throw new Error(
+            'Browser SDK not initialized — browser_data has to come from the customer\'s browser. Run auth.getBrowserKeys() or click "Initialize Browser SDK" first.',
+        );
+    }
+    try {
+        return { data: await browserSdk.getBrowserData(), note: null };
+    } catch (err) {
+        const status = err instanceof GoPayHTTPError ? err.status : undefined;
+        if (status !== 404 && status !== 501) {
+            throw err;
+        }
+        return {
+            data: collectBrowserData(),
+            note: `GET /cards/browser-data returned ${status} — endpoint not deployed. Fell back to the locally readable fields; ip is absent because the page cannot see its own address.`,
+        };
+    }
 }

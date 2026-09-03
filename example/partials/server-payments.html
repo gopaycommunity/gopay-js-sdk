@@ -76,6 +76,7 @@
             <div class="fields">
                 <label>Payment ID<input id="charge-enc-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
                 <label>Encrypted Payload (JWE)<input id="charge-enc-payload" type="text" placeholder="auto-filled from Card Pay" /></label>
+                <label class="w-full">Browser Data<input id="charge-enc-browser-data" type="text" placeholder="auto-filled by sdk.getBrowserData() in the Browser SDK section" /></label>
             </div>
             <button type="button" onclick="runChargeEncrypted()">Run</button>
             <pre id="charge-enc-output">—</pre>
@@ -91,6 +92,7 @@
             <pre id="charge-instrument-info" class="mb-2 text-[0.78rem]">No instrument prefilled — complete a Google Pay or Apple Pay flow above, or enter a card token manually.</pre>
             <div class="fields" id="charge-token-fields">
                 <label>Card Token<input id="charge-card-token" type="text" placeholder="card token" /></label>
+                <label class="w-full">Browser Data<input id="charge-browser-data" type="text" placeholder="auto-filled by sdk.getBrowserData() in the Browser SDK section" /></label>
             </div>
             <button type="button" onclick="runCharge()">Run</button>
             <button type="button" onclick="clearCharge()" class="!bg-[#F2F4F7] !text-[#2D3643] ![box-shadow:none] hover:!bg-[#E1E5EB]">Clear</button>

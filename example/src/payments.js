@@ -1,4 +1,4 @@
-import { getBrowserSDK } from './browser-sdk.js';
+import { collectBrowserDataTolerantly } from './browser-sdk.js';
 import {
     formatError,
     pollChargeState,
@@ -13,18 +13,28 @@ import { sanitizeBody } from './sanitize.js';
 import { sdk } from './sdk.js';
 
 // ip, user_agent and accept_header describe the connection the 3DS challenge
-// runs on, so they have to come from GET /cards/browser-data called in the
-// customer's browser. This page charges through the *server* SDK, which is
-// exactly the flow where the values must be collected here and forwarded —
-// a server that fills them in from its own request fails authentication.
-async function browserDataForCharge() {
-    const browserSdk = getBrowserSDK();
-    if (!browserSdk) {
-        throw new Error(
-            'Initialise the Browser SDK first — browser_data must come from GET /cards/browser-data, not from this page.',
-        );
+// runs on, so they have to be collected in the customer's browser. This page
+// charges through the *server* SDK, which is exactly the flow where the values
+// are collected in the browser and forwarded — a server that fills them in from
+// its own request fails authentication.
+//
+// The Browser Data field is that hand-off made visible: sdk.getBrowserData() in
+// the Browser SDK section fills it, and the charge sends what the field holds.
+// An empty field collects the values on the spot, so the panel still works
+// before anyone touches that section.
+async function browserDataForCharge(fieldId) {
+    const raw = document.getElementById(fieldId)?.value.trim();
+    if (raw) {
+        try {
+            return JSON.parse(raw);
+        } catch {
+            throw new Error(
+                'Browser Data is not valid JSON — re-run sdk.getBrowserData() in the Browser SDK section, or clear the field to collect it on the spot.',
+            );
+        }
     }
-    return browserSdk.getBrowserData();
+    const { data } = await collectBrowserDataTolerantly();
+    return data;
 }
 
 export function runCreatePayment() {
@@ -103,7 +113,9 @@ export function runChargeEncrypted() {
                         input_type: 'ENCRYPTED_CARD',
                         payload,
                     },
-                    browser_data: await browserDataForCharge(),
+                    browser_data: await browserDataForCharge(
+                        'charge-enc-browser-data',
+                    ),
                 },
             }),
         (result) =>
@@ -140,7 +152,9 @@ export async function runCharge() {
                 instrument?.payment_instrument === 'PAYMENT_CARD'
                     ? {
                           ...instrument,
-                          browser_data: await browserDataForCharge(),
+                          browser_data: await browserDataForCharge(
+                              'charge-browser-data',
+                          ),
                       }
                     : instrument,
         });

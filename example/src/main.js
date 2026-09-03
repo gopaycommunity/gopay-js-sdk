@@ -13,6 +13,7 @@ import { browserApplePayLoadInfo } from './browser-apple-pay.js';
 import { runBrowserCharge } from './browser-charge.js';
 import { browserGooglePayLoadInfo } from './browser-google-pay.js';
 import {
+    browserGetBrowserData,
     browserGetChargeState,
     browserGetStatus,
     browserQRPaymentInfo,
@@ -228,6 +229,7 @@ window.browserApplePayLoadInfo = browserApplePayLoadInfo;
 window.browserQRPaymentInfo = browserQRPaymentInfo;
 window.browserGetChargeState = browserGetChargeState;
 window.browserGetStatus = browserGetStatus;
+window.browserGetBrowserData = browserGetBrowserData;
 window.runGetPaymentStatus = runGetPaymentStatus;
 window.runGetChargeState = runGetChargeState;
 window.runGetCardDetails = runGetCardDetails;
