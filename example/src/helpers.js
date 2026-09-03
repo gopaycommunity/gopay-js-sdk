@@ -10,6 +10,12 @@ export const state = {
 };
 
 /**
+ * Charge states that end the flow. Both the server and the browser charge
+ * panels stop polling here, so the set lives in one place.
+ */
+export const TERMINAL_CHARGE_STATES = new Set(['SUCCEEDED', 'FAILED']);
+
+/**
  * Render a one-line banner with a call-to-action link directly under `pre`,
  * replacing whatever banner of the same `kind` is already there.
  *

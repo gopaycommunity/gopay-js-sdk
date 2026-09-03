@@ -1,5 +1,15 @@
 import { getBrowserSDK } from './browser-sdk.js';
-import { prefillPaymentId, run, show3dsPrompt, state } from './helpers.js';
+import {
+    formatError,
+    pollChargeState,
+    prefillPaymentId,
+    run,
+    show3dsPrompt,
+    state,
+    TERMINAL_CHARGE_STATES,
+} from './helpers.js';
+import { appendOutput } from './output-scroll.js';
+import { sanitizeBody } from './sanitize.js';
 import { sdk } from './sdk.js';
 
 // ip, user_agent and accept_header describe the connection the 3DS challenge
@@ -104,8 +114,14 @@ export function runChargeEncrypted() {
     );
 }
 
-export function runCharge() {
+// A 3DS challenge on a server charge is followed through here, not left as a
+// dangling banner: POST /charge only starts the charge, and the outcome lands on
+// GET /payments/{id}/charge once the customer finishes at the ACS. The browser
+// panel already does this via the browser SDK's awaitChargeState; the server SDK
+// exposes the same poller, so the two panels behave identically.
+export async function runCharge() {
     const paymentId = document.getElementById('charge-payment-id').value.trim();
+    const pre = document.getElementById('payment-charge-output');
     const instrument = state.pendingInstrument ?? {
         payment_instrument: 'PAYMENT_CARD',
         input: {
@@ -116,24 +132,36 @@ export function runCharge() {
         },
     };
 
-    run(
-        'payment-charge-output',
-        async () =>
-            sdk.chargePayment(paymentId, {
-                payment_instrument:
-                    instrument?.payment_instrument === 'PAYMENT_CARD'
-                        ? {
-                              ...instrument,
-                              browser_data: await browserDataForCharge(),
-                          }
-                        : instrument,
-            }),
-        (result) =>
-            show3dsPrompt(
-                document.getElementById('payment-charge-output'),
-                result.action?.redirect_url,
-            ),
-    );
+    pre.textContent = '── charging ──';
+
+    try {
+        const result = await sdk.chargePayment(paymentId, {
+            payment_instrument:
+                instrument?.payment_instrument === 'PAYMENT_CARD'
+                    ? {
+                          ...instrument,
+                          browser_data: await browserDataForCharge(),
+                      }
+                    : instrument,
+        });
+
+        appendOutput(pre, `\n${JSON.stringify(sanitizeBody(result), null, 2)}`);
+
+        if (TERMINAL_CHARGE_STATES.has(result.state)) {
+            return;
+        }
+
+        if (result.state === 'ACTION_REQUIRED' && result.action?.redirect_url) {
+            show3dsPrompt(pre, result.action.redirect_url);
+        }
+
+        await pollChargeState(
+            (opts) => sdk.awaitChargeState(paymentId, opts),
+            pre,
+        );
+    } catch (err) {
+        appendOutput(pre, `\n\n── onError ──\n${formatError(err)}`);
+    }
 }
 
 export function clearCharge() {
@@ -145,7 +173,9 @@ export function clearCharge() {
     document.getElementById('charge-token-fields').style.display = '';
     const output = document.getElementById('payment-charge-output');
     output.textContent = '—';
-    if (output.nextElementSibling?.dataset.tds) {
+    // showLinkBanner tags the node `data-banner="tds"`, so the old
+    // `dataset.tds` check never matched and Clear left the prompt on screen.
+    if (output.nextElementSibling?.dataset.banner === 'tds') {
         output.nextElementSibling.remove();
     }
 }
