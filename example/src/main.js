@@ -26,7 +26,7 @@ import {
     cardPaySetSubmitMode,
     cardPaySetTheme,
 } from './card-pay.js';
-import { updateBrowserBadge } from './helpers.js';
+import { prefillPaymentId, updateBrowserBadge } from './helpers.js';
 import {
     runCreatePaymentLink,
     runDisablePaymentLink,
@@ -65,16 +65,52 @@ import {
 // -----------------------------------------------------------------------
 // Pre-populate return/notification URL fields from the current href
 // -----------------------------------------------------------------------
+// Query and hash are stripped deliberately. The gateway appends ?id=&charge_id=
+// to whatever return URL it was given, so reusing the full href would send that
+// pair back out as part of the next return URL and accumulate a duplicate on
+// every round trip (?id=..&charge_id=..&id=..&charge_id=..).
+const selfUrl = `${window.location.origin}${window.location.pathname}`;
 for (const id of ['create-return-url', 'link-return-url']) {
     const el = document.getElementById(id);
     if (el) {
-        el.value = window.location.href;
+        el.value = selfUrl;
     }
 }
 for (const id of ['create-notification-url', 'link-notification-url']) {
     const el = document.getElementById(id);
     if (el) {
         el.value = `${window.location.origin}/notify`;
+    }
+}
+
+// -----------------------------------------------------------------------
+// Returning from the gateway (3DS challenge or hosted flow)
+// -----------------------------------------------------------------------
+// The gateway sends the customer back to ?id=<payment_id>&charge_id=<charge_id>.
+// Prefill the payment ID everywhere so getPaymentStatus() and getChargeState()
+// are one click away instead of a copy-paste out of the address bar.
+{
+    const params = new URLSearchParams(window.location.search);
+    // Last occurrence wins — a URL captured before the strip above can still
+    // carry a stale pair ahead of the one the gateway just appended.
+    const returnedPaymentId = params.getAll('id').at(-1);
+    const returnedChargeId = params.getAll('charge_id').at(-1);
+
+    if (returnedPaymentId) {
+        prefillPaymentId({ id: returnedPaymentId });
+
+        // getChargeState() is addressed by payment ID alone, so charge_id has no
+        // field of its own — surface it here rather than dropping it silently.
+        const chargeStateOutput = document.getElementById(
+            'charge-state-output',
+        );
+        if (chargeStateOutput) {
+            chargeStateOutput.textContent = [
+                `Returned from the gateway with payment ${returnedPaymentId}`,
+                returnedChargeId ? ` (charge ${returnedChargeId})` : '',
+                '.\nPayment ID is prefilled below and in the getPaymentStatus panel — run either to see where it landed.',
+            ].join('');
+        }
     }
 }
 
