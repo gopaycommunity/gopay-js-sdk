@@ -97,43 +97,56 @@ export function runGetChargeState() {
 // browser_data comes from the browser SDK (see browserDataForCharge above) and is forwarded
 // as-is rather than hand-rolled here: the values have to describe the customer's connection,
 // not this page's guesses.
-export function runChargeEncrypted() {
+/**
+ * Charge, then follow the charge through to a terminal state.
+ *
+ * POST /payments/{id}/charge only starts it. On production the ACS URL is not
+ * even in that response — the charge comes back PROCESSING and the challenge
+ * surfaces on a later GET /payments/{id}/charge — so a panel that prints the
+ * POST response and stops never shows the customer the challenge at all.
+ * awaitChargeState polls until a terminal state and raises the prompt when the
+ * redirect URL appears, which is what the browser panel already did.
+ */
+async function chargeAndFollow(outputId, paymentId, paymentInstrument) {
+    const pre = document.getElementById(outputId);
+    pre.textContent = '── charging ──';
+
+    try {
+        const result = await sdk.chargePayment(paymentId, {
+            payment_instrument: paymentInstrument,
+        });
+        appendOutput(pre, `\n${JSON.stringify(sanitizeBody(result), null, 2)}`);
+
+        if (TERMINAL_CHARGE_STATES.has(result.state)) {
+            return;
+        }
+        if (result.state === 'ACTION_REQUIRED' && result.action?.redirect_url) {
+            show3dsPrompt(pre, result.action.redirect_url);
+        }
+        await pollChargeState(
+            (opts) => sdk.awaitChargeState(paymentId, opts),
+            pre,
+        );
+    } catch (err) {
+        appendOutput(pre, `\n\n── onError ──\n${formatError(err)}`);
+    }
+}
+
+export async function runChargeEncrypted() {
     const paymentId = document
         .getElementById('charge-enc-payment-id')
         .value.trim();
     const payload = document.getElementById('charge-enc-payload').value.trim();
 
-    run(
-        'charge-enc-output',
-        async () =>
-            sdk.chargePayment(paymentId, {
-                payment_instrument: {
-                    payment_instrument: 'PAYMENT_CARD',
-                    input: {
-                        input_type: 'ENCRYPTED_CARD',
-                        payload,
-                    },
-                    browser_data: await browserDataForCharge(
-                        'charge-enc-browser-data',
-                    ),
-                },
-            }),
-        (result) =>
-            show3dsPrompt(
-                document.getElementById('charge-enc-output'),
-                result.action?.redirect_url,
-            ),
-    );
+    await chargeAndFollow('charge-enc-output', paymentId, {
+        payment_instrument: 'PAYMENT_CARD',
+        input: { input_type: 'ENCRYPTED_CARD', payload },
+        browser_data: await browserDataForCharge('charge-enc-browser-data'),
+    });
 }
 
-// A 3DS challenge on a server charge is followed through here, not left as a
-// dangling banner: POST /charge only starts the charge, and the outcome lands on
-// GET /payments/{id}/charge once the customer finishes at the ACS. The browser
-// panel already does this via the browser SDK's awaitChargeState; the server SDK
-// exposes the same poller, so the two panels behave identically.
 export async function runCharge() {
     const paymentId = document.getElementById('charge-payment-id').value.trim();
-    const pre = document.getElementById('payment-charge-output');
     const instrument = state.pendingInstrument ?? {
         payment_instrument: 'PAYMENT_CARD',
         input: {
@@ -144,38 +157,19 @@ export async function runCharge() {
         },
     };
 
-    pre.textContent = '── charging ──';
-
-    try {
-        const result = await sdk.chargePayment(paymentId, {
-            payment_instrument:
-                instrument?.payment_instrument === 'PAYMENT_CARD'
-                    ? {
-                          ...instrument,
-                          browser_data: await browserDataForCharge(
-                              'charge-browser-data',
-                          ),
-                      }
-                    : instrument,
-        });
-
-        appendOutput(pre, `\n${JSON.stringify(sanitizeBody(result), null, 2)}`);
-
-        if (TERMINAL_CHARGE_STATES.has(result.state)) {
-            return;
-        }
-
-        if (result.state === 'ACTION_REQUIRED' && result.action?.redirect_url) {
-            show3dsPrompt(pre, result.action.redirect_url);
-        }
-
-        await pollChargeState(
-            (opts) => sdk.awaitChargeState(paymentId, opts),
-            pre,
-        );
-    } catch (err) {
-        appendOutput(pre, `\n\n── onError ──\n${formatError(err)}`);
-    }
+    // Wallet instruments carry their own authentication and take no browser_data.
+    await chargeAndFollow(
+        'payment-charge-output',
+        paymentId,
+        instrument?.payment_instrument === 'PAYMENT_CARD'
+            ? {
+                  ...instrument,
+                  browser_data: await browserDataForCharge(
+                      'charge-browser-data',
+                  ),
+              }
+            : instrument,
+    );
 }
 
 export function clearCharge() {
