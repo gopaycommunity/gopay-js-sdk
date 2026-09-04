@@ -22,6 +22,20 @@ import { sdk } from './sdk.js';
 // the Browser SDK section fills it, and the charge sends what the field holds.
 // An empty field collects the values on the spot, so the panel still works
 // before anyone touches that section.
+/**
+ * The merchant's 3-D Secure preference for this charge, as a spread-able object.
+ *
+ * `AUTO` is the API default and is expressed by leaving the field out entirely,
+ * so the empty option yields `{}` rather than `challenge_preference: 'AUTO'`.
+ * Risk-based 3DS makes a challenge a coin flip from the merchant's side, which
+ * makes an authentication path hard to reach on purpose; `CHALLENGE_PREFERRED`
+ * asks for one so the flow can be exercised on demand.
+ */
+function challengePreference(fieldId) {
+    const value = document.getElementById(fieldId)?.value;
+    return value ? { challenge_preference: value } : {};
+}
+
 async function browserDataForCharge(fieldId) {
     const raw = document.getElementById(fieldId)?.value.trim();
     if (raw) {
@@ -142,6 +156,7 @@ export async function runChargeEncrypted() {
         payment_instrument: 'PAYMENT_CARD',
         input: { input_type: 'ENCRYPTED_CARD', payload },
         browser_data: await browserDataForCharge('charge-enc-browser-data'),
+        ...challengePreference('charge-enc-challenge-preference'),
     });
 }
 
@@ -167,6 +182,7 @@ export async function runCharge() {
                   browser_data: await browserDataForCharge(
                       'charge-browser-data',
                   ),
+                  ...challengePreference('charge-challenge-preference'),
               }
             : instrument,
     );
