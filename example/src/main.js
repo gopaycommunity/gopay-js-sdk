@@ -60,6 +60,7 @@ import {
     environment,
     goid,
     sdk,
+    sdkConfig,
     shareableKey,
 } from './sdk.js';
 
@@ -158,9 +159,10 @@ badge.className = 'badge ok';
 sdkInfo.textContent = JSON.stringify(
     {
         environment,
-        baseUrl:
-            import.meta.env.GOPAY_PAYMENTS_V4_BASE_URL ??
-            `(${environment} default)`,
+        // Read the resolved config, not the build-time env: in the Docker path
+        // the base URL arrives at runtime via /env.js, and reading import.meta
+        // here would claim a default while the SDK talks to a custom endpoint.
+        baseUrl: sdkConfig.baseUrl ?? `(${environment} default)`,
         methods: Object.keys(sdk).filter((k) => typeof sdk[k] === 'function'),
     },
     null,

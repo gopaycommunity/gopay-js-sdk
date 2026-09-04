@@ -42,6 +42,12 @@ const LOOPBACK_NAMES = ['localhost', '127.0.0.1'];
  */
 function findCertPair(): { name: string; key: string; cert: string } | null {
     const { GP_DEV_CERT: cert, GP_DEV_CERT_KEY: key } = process.env;
+    if (Boolean(cert) !== Boolean(key)) {
+        throw new Error(
+            'GP_DEV_CERT and GP_DEV_CERT_KEY must be set together — got only ' +
+                (cert ? 'GP_DEV_CERT' : 'GP_DEV_CERT_KEY'),
+        );
+    }
     if (cert && key) {
         if (!existsSync(cert) || !existsSync(key)) {
             throw new Error(
@@ -80,13 +86,20 @@ const devHost = process.env.GP_DEV_HOST ?? '127.0.0.1';
 // The card form iframe runs sandboxed (no allow-same-origin), so its origin is
 // "null" — that entry is what lets Vite's injected @vite/client script load.
 // The rest is whatever this machine can actually be reached on.
-const devOrigins = [
-    ...new Set([
-        ...LOOPBACK_NAMES,
-        devHost,
-        ...(certPair?.name ? [certHostname(certPair.name)] : []),
-    ]),
-].map((h) => h.replaceAll('.', String.raw`\.`));
+// GP_DEV_HOSTNAME is included even when the cert came from GP_DEV_CERT: the
+// explicit branch cannot know the certificate's SANs, so that variable is the
+// only way an operator can name the host they are serving under.
+const devHostnames = [
+    ...new Set(
+        [
+            ...LOOPBACK_NAMES,
+            devHost,
+            process.env.GP_DEV_HOSTNAME,
+            certPair?.name ? certHostname(certPair.name) : undefined,
+        ].filter((h): h is string => Boolean(h)),
+    ),
+];
+const devOrigins = devHostnames.map((h) => h.replaceAll('.', String.raw`\.`));
 const DEV_ORIGIN_PATTERN = new RegExp(
     String.raw`^https?://(${devOrigins.join('|')})(:\d+)?$`,
 );
@@ -162,6 +175,11 @@ export default defineConfig(() => {
             // connections. Browsers still reach https://localhost:8080, they
             // fall back to IPv4. Override with GP_DEV_HOST.
             host: devHost,
+            // Vite skips HTTP host validation when server.https is set, but the
+            // WebSocket upgrade guard is unconditional: without this, a custom
+            // hostname loads the page fine and then leaves @vite/client's socket
+            // rejected with 400, so HMR silently never works.
+            allowedHosts: devHostnames,
             fs: {
                 // Allow Vite to serve TypeScript source files from outside the
                 // example/ project root (browser-sdk/ and internal/core/).

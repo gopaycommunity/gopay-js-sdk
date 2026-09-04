@@ -121,13 +121,18 @@ export function runGetChargeState() {
  * awaitChargeState polls until a terminal state and raises the prompt when the
  * redirect URL appears, which is what the browser panel already did.
  */
-async function chargeAndFollow(outputId, paymentId, paymentInstrument) {
+async function chargeAndFollow(outputId, paymentId, buildInstrument) {
     const pre = document.getElementById(outputId);
     pre.textContent = '── charging ──';
 
     try {
+        // Built inside the try on purpose: assembling the instrument reads the
+        // Browser Data field and can call the browser SDK, so it throws on
+        // ordinary mistakes — unparseable JSON, SDK not initialised. Resolved
+        // in the caller's argument list those rejections were unhandled and the
+        // panel simply did nothing.
         const result = await sdk.chargePayment(paymentId, {
-            payment_instrument: paymentInstrument,
+            payment_instrument: await buildInstrument(),
         });
         appendOutput(pre, `\n${JSON.stringify(sanitizeBody(result), null, 2)}`);
 
@@ -152,12 +157,12 @@ export async function runChargeEncrypted() {
         .value.trim();
     const payload = document.getElementById('charge-enc-payload').value.trim();
 
-    await chargeAndFollow('charge-enc-output', paymentId, {
+    await chargeAndFollow('charge-enc-output', paymentId, async () => ({
         payment_instrument: 'PAYMENT_CARD',
         input: { input_type: 'ENCRYPTED_CARD', payload },
         browser_data: await browserDataForCharge('charge-enc-browser-data'),
         ...challengePreference('charge-enc-challenge-preference'),
-    });
+    }));
 }
 
 export async function runCharge() {
@@ -172,20 +177,14 @@ export async function runCharge() {
         },
     };
 
-    // Wallet instruments carry their own authentication and take no browser_data.
-    await chargeAndFollow(
-        'payment-charge-output',
-        paymentId,
-        instrument?.payment_instrument === 'PAYMENT_CARD'
-            ? {
-                  ...instrument,
-                  browser_data: await browserDataForCharge(
-                      'charge-browser-data',
-                  ),
-                  ...challengePreference('charge-challenge-preference'),
-              }
-            : instrument,
-    );
+    // Wallet instruments are PAYMENT_CARD too — Google Pay and Apple Pay differ
+    // in the `input`, not the instrument — so browser_data applies to all of
+    // them, exactly as the browser SDK's own chargePayment does.
+    await chargeAndFollow('payment-charge-output', paymentId, async () => ({
+        ...instrument,
+        browser_data: await browserDataForCharge('charge-browser-data'),
+        ...challengePreference('charge-challenge-preference'),
+    }));
 }
 
 export function clearCharge() {
