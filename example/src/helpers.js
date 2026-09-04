@@ -85,6 +85,19 @@ export function showLinkBanner(pre, { kind, href, message, cta, palette }) {
     pre.insertAdjacentElement('afterend', wrap);
 }
 
+/**
+ * Drop the banner of `kind` sitting under `pre`, if there is one.
+ *
+ * Resetting `pre.textContent` does not touch it — the banner is a sibling — so
+ * a charge that never reaches ACTION_REQUIRED would otherwise leave the
+ * previous charge's 3DS link on screen, pointing at a dead ACS URL.
+ */
+export function clearLinkBanner(pre, kind) {
+    if (pre?.nextElementSibling?.dataset.banner === kind) {
+        pre.nextElementSibling.remove();
+    }
+}
+
 export function show3dsPrompt(pre, redirectUrl) {
     showLinkBanner(pre, {
         kind: 'tds',

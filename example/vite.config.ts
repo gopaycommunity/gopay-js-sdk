@@ -59,6 +59,7 @@ function findCertPair(): { name: string; key: string; cert: string } | null {
     if (!existsSync(CERT_DIR)) {
         return null;
     }
+    const wanted = process.env.GP_DEV_HOSTNAME;
     const pairs = readdirSync(CERT_DIR)
         .filter((f) => f.endsWith('-key.pem'))
         .map((f) => f.slice(0, -'-key.pem'.length))
@@ -68,17 +69,35 @@ function findCertPair(): { name: string; key: string; cert: string } | null {
             cert: resolve(CERT_DIR, `${name}.pem`),
         }))
         .filter((p) => existsSync(p.cert))
-        .sort(
-            (a, b) =>
-                Number(isLoopbackCert(a.name)) - Number(isLoopbackCert(b.name)),
+        .sort((a, b) => certRank(a.name, wanted) - certRank(b.name, wanted));
+
+    // Ranking alone would silently serve some other hostname's certificate,
+    // which fails as a browser trust error rather than as a missing file.
+    if (wanted && pairs[0] && certHostname(pairs[0].name) !== wanted) {
+        console.warn(
+            `[example] GP_DEV_HOSTNAME=${wanted} but no certificate in ${CERT_DIR} covers it — ` +
+                `serving ${pairs[0].name}.pem instead. Run: GP_DEV_HOSTNAME=${wanted} yarn workspace gopay-js-sdk-example cert:install`,
         );
+    }
     return pairs[0] ?? null;
 }
 
 /** mkcert names a cert after its first SAN, with a `+N` suffix for the rest. */
 const certHostname = (name: string) => name.split('+')[0];
-const isLoopbackCert = (name: string) =>
-    LOOPBACK_NAMES.includes(certHostname(name));
+
+/**
+ * Sort key: the requested hostname first, then any other hostname, loopback
+ * last. Without the first rank a second hostname certificate in certs/ — a
+ * stale one from an earlier host, say — could win on directory order and be
+ * served for a name it does not cover.
+ */
+function certRank(name: string, wanted: string | undefined): number {
+    const host = certHostname(name);
+    if (wanted && host === wanted) {
+        return 0;
+    }
+    return LOOPBACK_NAMES.includes(host) ? 2 : 1;
+}
 
 const certPair = findCertPair();
 const devHost = process.env.GP_DEV_HOST ?? '127.0.0.1';

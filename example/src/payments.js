@@ -1,5 +1,6 @@
 import { collectBrowserDataTolerantly } from './browser-sdk.js';
 import {
+    clearLinkBanner,
     formatError,
     pollChargeState,
     prefillPaymentId,
@@ -123,6 +124,7 @@ export function runGetChargeState() {
  */
 async function chargeAndFollow(outputId, paymentId, buildInstrument) {
     const pre = document.getElementById(outputId);
+    clearLinkBanner(pre, 'tds');
     pre.textContent = '── charging ──';
 
     try {
@@ -196,11 +198,7 @@ export function clearCharge() {
     document.getElementById('charge-token-fields').style.display = '';
     const output = document.getElementById('payment-charge-output');
     output.textContent = '—';
-    // showLinkBanner tags the node `data-banner="tds"`, so the old
-    // `dataset.tds` check never matched and Clear left the prompt on screen.
-    if (output.nextElementSibling?.dataset.banner === 'tds') {
-        output.nextElementSibling.remove();
-    }
+    clearLinkBanner(output, 'tds');
 }
 
 export function runQRPaymentInfo() {
