@@ -25,7 +25,10 @@ export async function runBrowserCharge() {
     }
 
     // Payment-scoped: the browser SDK already knows which payment is attached,
-    // so neither call takes an id the way the server SDK's do.
+    // so neither call takes an id the way the server SDK's do — awaitChargeState
+    // takes the options as its *only* argument. Passing an id-shaped null first
+    // silently discarded them, so this panel polled without ever reporting a
+    // state or raising the 3DS prompt.
     await chargeAndFollow('bcharge-output', {
         charge: () =>
             browserSdk.chargePayment({
@@ -37,6 +40,6 @@ export async function runBrowserCharge() {
                     },
                 },
             }),
-        awaitState: (opts) => browserSdk.awaitChargeState(null, opts),
+        awaitState: (opts) => browserSdk.awaitChargeState(opts),
     });
 }
