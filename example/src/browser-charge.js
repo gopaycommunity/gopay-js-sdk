@@ -1,12 +1,5 @@
 import { getBrowserSDK, isSdkAttached } from './browser-sdk.js';
-import {
-    formatError,
-    pollChargeState,
-    show3dsPrompt,
-    TERMINAL_CHARGE_STATES,
-} from './helpers.js';
-import { appendOutput } from './output-scroll.js';
-import { sanitizeBody } from './sanitize.js';
+import { chargeAndFollow } from './helpers.js';
 
 export async function runBrowserCharge() {
     const encryptedPayload = document
@@ -31,40 +24,19 @@ export async function runBrowserCharge() {
         return;
     }
 
-    pre.textContent = '── charging ──';
-
-    try {
-        const chargeResult = await browserSdk.chargePayment({
-            payment_instrument: {
-                payment_instrument: 'PAYMENT_CARD',
-                input: {
-                    input_type: 'ENCRYPTED_CARD',
-                    payload: encryptedPayload,
+    // Payment-scoped: the browser SDK already knows which payment is attached,
+    // so neither call takes an id the way the server SDK's do.
+    await chargeAndFollow('bcharge-output', {
+        charge: () =>
+            browserSdk.chargePayment({
+                payment_instrument: {
+                    payment_instrument: 'PAYMENT_CARD',
+                    input: {
+                        input_type: 'ENCRYPTED_CARD',
+                        payload: encryptedPayload,
+                    },
                 },
-            },
-        });
-
-        appendOutput(
-            pre,
-            `\n${JSON.stringify(sanitizeBody(chargeResult), null, 2)}`,
-        );
-
-        if (TERMINAL_CHARGE_STATES.has(chargeResult.state)) {
-            return;
-        }
-
-        if (
-            chargeResult.state === 'ACTION_REQUIRED' &&
-            chargeResult.action?.redirect_url
-        ) {
-            show3dsPrompt(pre, chargeResult.action.redirect_url);
-        }
-
-        await pollChargeState(
-            (opts) => browserSdk.awaitChargeState(null, opts),
-            pre,
-        );
-    } catch (err) {
-        appendOutput(pre, `\n\n── onError ──\n${formatError(err)}`);
-    }
+            }),
+        awaitState: (opts) => browserSdk.awaitChargeState(null, opts),
+    });
 }

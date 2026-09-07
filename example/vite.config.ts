@@ -26,6 +26,8 @@ const browserSdkVersion = readPkgVersion(
 // production fails before it reaches the API. See README, "Local HTTPS".
 //
 // Configure with:
+//   GP_DEV_HOSTNAME  hostname to serve under — cert:install puts it in the
+//                    certificate, discovery then prefers that certificate
 //   GP_DEV_HOST      address to bind, default 127.0.0.1 (see the note on server.host)
 //   GP_DEV_CERT      path to a certificate, overrides discovery
 //   GP_DEV_CERT_KEY  path to its private key
@@ -49,9 +51,17 @@ function findCertPair(): { name: string; key: string; cert: string } | null {
         );
     }
     if (cert && key) {
-        if (!existsSync(cert) || !existsSync(key)) {
+        const missing = [
+            existsSync(cert) ? null : `GP_DEV_CERT=${cert}`,
+            existsSync(key) ? null : `GP_DEV_CERT_KEY=${key}`,
+        ].filter(Boolean);
+        if (missing.length > 0) {
+            // Thrown at config load, which aborts the dev server with this
+            // message — deliberate. A certificate asked for by name and not
+            // present is not something to fall back from silently, so the error
+            // names the variable and the path it could not read.
             throw new Error(
-                `GP_DEV_CERT / GP_DEV_CERT_KEY point at a missing file: ${cert}, ${key}`,
+                `[example] certificate file not found: ${missing.join(', ')}`,
             );
         }
         return { name: '', cert, key };
@@ -118,7 +128,10 @@ const devHostnames = [
         ].filter((h): h is string => Boolean(h)),
     ),
 ];
-const devOrigins = devHostnames.map((h) => h.replaceAll('.', String.raw`\.`));
+/** Hostnames reach the pattern verbatim, so every metacharacter has to go. */
+const escapeRegExp = (value: string) =>
+    value.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+const devOrigins = devHostnames.map(escapeRegExp);
 const DEV_ORIGIN_PATTERN = new RegExp(
     String.raw`^https?://(${devOrigins.join('|')})(:\d+)?$`,
 );

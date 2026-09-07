@@ -125,7 +125,7 @@
         <!-- Browser charge -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getBrowserData()</h2>
-            <p class="desc">GET /cards/browser-data — merges <code>ip</code>, <code>user_agent</code> and <code>accept_header</code>, which only the customer's connection can supply, with the fields this page can read itself. Needed when your <strong>server</strong> charges: collect here, post to your backend, and have it place the values in <code>browser_data</code> unchanged. The result is prefilled into both server charge panels. The endpoint is not deployed yet — on a 404 this falls back to the locally readable fields, without <code>ip</code>.</p>
+            <p class="desc">GET /cards/browser-data — merges <code>ip</code>, <code>user_agent</code> and <code>accept_header</code>, which only the customer's connection can supply, with the fields this page can read itself. Needed when your <strong>server</strong> charges: collect here, post to your backend, and have it place the values in <code>browser_data</code> unchanged. The result is prefilled into both server charge panels. The endpoint is not deployed yet — on a 404 or 501 this falls back to the locally readable fields, without <code>ip</code>.</p>
             <button type="button" onclick="browserGetBrowserData()">Get Browser Data</button>
             <pre id="bbrowserdata-output">—</pre>
         </section>

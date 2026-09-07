@@ -229,6 +229,49 @@ export function prefillPaymentId(result) {
 }
 
 /**
+ * Charge, then follow the charge through to a terminal state.
+ *
+ * POST /payments/{id}/charge only starts it. On production the ACS URL is not
+ * even in that response — the charge comes back PROCESSING and the challenge
+ * surfaces on a later GET /payments/{id}/charge — so a panel that prints the
+ * POST response and stops never shows the customer the challenge at all.
+ *
+ * The server and browser SDKs differ only in how the two calls are spelled
+ * (`sdk.chargePayment(paymentId, …)` / `awaitChargeState(paymentId, …)` versus
+ * the browser SDK's payment-scoped equivalents), so they are passed in and the
+ * sequence itself lives here once. It used to be copied into both panels, and
+ * every fix to it — the stale 3DS banner twice over — landed in one copy only.
+ *
+ * @param outputId   id of the `<pre>` to render into
+ * @param charge     starts the charge; may throw while assembling its arguments
+ * @param awaitState polls to a terminal state, given `AwaitChargeOptions`
+ */
+export async function chargeAndFollow(outputId, { charge, awaitState }) {
+    const pre = document.getElementById(outputId);
+    clearLinkBanner(pre, 'tds');
+    pre.textContent = '── charging ──';
+
+    try {
+        // Inside the try on purpose: `charge` reads form fields and can call the
+        // browser SDK, so it throws on ordinary mistakes — unparseable JSON, SDK
+        // not initialised. Resolved by the caller those rejections were
+        // unhandled and the panel simply did nothing.
+        const result = await charge();
+        appendOutput(pre, `\n${JSON.stringify(sanitizeBody(result), null, 2)}`);
+
+        if (TERMINAL_CHARGE_STATES.has(result.state)) {
+            return;
+        }
+        if (result.state === 'ACTION_REQUIRED' && result.action?.redirect_url) {
+            show3dsPrompt(pre, result.action.redirect_url);
+        }
+        await pollChargeState(awaitState, pre);
+    } catch (err) {
+        appendOutput(pre, `\n\n── onError ──\n${formatError(err)}`);
+    }
+}
+
+/**
  * Drive a charge-state poll loop via a browser SDK `awaitChargeState` call,
  * writing intermediate states and the terminal result into `pre`.
  *
