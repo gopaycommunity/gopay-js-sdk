@@ -1,3 +1,24 @@
+# [1.17.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.16.0...1.17.0) (2026-09-07)
+
+
+### Bug Fixes
+
+* **example:** clear the stale 3DS banner and prefer the requested cert GPOMA-2585 ([71a326d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/71a326d902fc27404d8c77658299d8a1cc4033fe))
+* **example:** follow the 3DS challenge through on the server card-token charge GPOMA-2585 ([9d7d24b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9d7d24ba50da53436f2ad60b3326839765de31a8))
+* **example:** follow the charge through on the encrypted server panel too GPOMA-2585 ([613b376](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/613b3761b2dbbf6150e0b8b2b2d78478ba27a9c3))
+* **example:** honour GOPAY_PAYMENTS_V4_ENVIRONMENT instead of hardcoding sandbox GPOMA-2585 ([a609da4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a609da46c9d2ccf825d0938a820fd17fbc09d198))
+* **example:** pass the polling options to the browser SDK's awaitChargeState GPOMA-2585 ([8ec7327](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8ec7327857985363d356d6e6eaf8622002e39c7a)), closes [#57](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issue/57)
+* **example:** prefill the payment ID from the gateway return URL GPOMA-2585 ([816bafa](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/816bafa536f77d72738685a9d93fcbeafb8ff5d7))
+* **example:** surface charge errors and unblock HMR under a custom hostname GPOMA-2585 ([9bee816](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9bee816c42220dd842dd67ec35394b6a579161a5))
+
+
+### Features
+
+* **example:** challenge preference selector on both server card charges GPOMA-2585 ([9379f00](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9379f0097db206ae4b5f70959c82203522f318f1))
+* **example:** collect browser_data in the browser section and prefill it into the server charges GPOMA-2585 ([f41b700](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/f41b70051f3d7847435b32cba285a785075eeba2))
+* **example:** discover the dev certificate instead of hard-coding one GPOMA-2585 ([1d73103](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1d73103b78400c336ce6575da2674d0c6f247b96))
+* **example:** prefill the tokenized card token into the charge panel GPOMA-2585 ([37935d3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/37935d373f3c4934f7ee373b53163fefa09384d0))
+
 # [1.16.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.15.0...1.16.0) (2026-09-02)
 
 
