@@ -97,16 +97,26 @@ Consumer-facing breaking changes (call these out in the footer):
 
 ---
 
-## `gw_url` — escape hatch, not a redirect target for this SDK's own flow
+## `gw_url` — GoPay's hosted gateway, not a v3 escape hatch
 
 `createPayment()` returns a `gw_url` field. **Do not redirect to it as part of this SDK's own
 flow** (create → charge: card token / Apple Pay / Google Pay), which fully covers card
 payments.
 
-`gw_url` is a deliberate escape hatch into the previous (v3) hosted-gateway processing —
-reach for it when a payment needs a method or feature not yet implemented in the v4 charge
-flow. Redirecting there hands off real-time control of the payment to the hosted flow while
-the customer is on it, but the payment stays fully v4-observable throughout: `getPaymentStatus()`
-reports the final state once the customer completes it, exactly as it would for a payment
-charged directly through v4. Don't present it as unsafe or purely legacy in generated
-examples. The API spec doesn't document this nuance yet — see GPOMA-2418.
+**What it is:** the full GoPay hosted payment gateway, offering the customer every payment
+method the eshop has enabled. **The reason not to send the customer there** is that the
+hosted gateway cannot be embedded in the merchant's own checkout — *not* that v4 is missing
+a method, and *not* that the endpoint is legacy.
+
+Earlier revisions of this file and of the spec framed it as "a deliberate escape hatch into
+the previous (v3) hosted-gateway processing", reached for when v4 lacks a method. That is
+wrong on both counts and was corrected across the spec repo in GPOMA-2591 — the published
+types no longer carry the escape-hatch wording. Don't reintroduce it, and don't present
+`gw_url` as unsafe, legacy, or a compatibility shim in docs or generated examples.
+
+A payment sent there stays fully v4-observable: `getPaymentStatus()` reports the final state
+once the customer completes it, exactly as for a payment charged directly through v4.
+
+**Recurrences are the exception.** `startRecurrence()` returns a payment whose `gw_url` is
+where the customer pays the first payment, and the recurrence does not reach `STARTED` until
+they do — so there, handing out `gw_url` is the intended flow, not an escape hatch.

@@ -77,10 +77,11 @@ describe('payments — E2E', () => {
             expect(payment.payment_secret).toBeTruthy();
         });
 
-        it('returns gw_url, the escape hatch into the hosted flow', async () => {
-            // Not a redirect target for this SDK's own create → charge flow,
-            // but it is part of the contract and consumers do reach for it, so
-            // a backend that stopped sending it should fail here.
+        it('returns gw_url, the address of the hosted gateway', async () => {
+            // Not a redirect target for this SDK's own create → charge flow —
+            // the hosted gateway cannot be embedded in the merchant's checkout
+            // — but it is part of the contract and consumers do reach for it,
+            // so a backend that stopped sending it should fail here.
             const payment = await createPayment();
             expect(payment.gw_url).toMatch(/^https:\/\//);
         });

@@ -54,9 +54,19 @@ export function createPaymentsApi(client: HttpClient) {
          *
          * POST /eshops/{goid}/payments
          *
-         * The response includes a `gw_url` field — **ignore it**. It exists only for
-         * backward compatibility with pre-SDK redirect-based integrations. This SDK's
-         * flow is always: create → charge (via card token, Apple Pay, or Google Pay).
+         * The response includes a `gw_url` field. It is the address of GoPay's
+         * hosted payment gateway, offering the customer every payment method the
+         * eshop has enabled — not a legacy or compatibility-only endpoint.
+         *
+         * It is still not part of this SDK's flow, which is always create →
+         * charge (card token, Apple Pay, or Google Pay). The reason to keep the
+         * customer here rather than sending them there is that the hosted
+         * gateway cannot be embedded in the merchant's own checkout — not that
+         * it lacks anything. Where a payment genuinely needs it, the payment
+         * stays fully observable either way: {@link getPaymentStatus} reports
+         * the outcome exactly as it would for a charge made through this SDK.
+         * Recurrences are the one place this SDK hands the customer a `gw_url`
+         * on purpose — see `startRecurrence`.
          *
          * @param goid   - Merchant's GoPay ID (eshop identifier)
          * @param params - Payment creation parameters
