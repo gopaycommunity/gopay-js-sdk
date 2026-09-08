@@ -514,7 +514,7 @@ const first = await sdk.startRecurrence(recurrence.id);
 sendToCustomer(first.gw_url);   // they pay here
 
 const settled = await sdk.awaitRecurrenceState(recurrence.id, {
-  onStateChange: (rec) => console.log(rec.state),   // NEW → REQUESTED → STARTED
+  onStateChange: (rec) => console.log(rec.state),   // REQUESTED → STARTED
 });
 
 if (settled.state === 'STARTED') {

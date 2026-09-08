@@ -25,6 +25,17 @@ function readOptionalPositiveInt(fieldId, label, outputId) {
     return value;
 }
 
+// The date picker's value is a *local* calendar date, so both the comparison
+// below and the default have to be built from local parts. toISOString() would
+// give the UTC date: west of UTC that rejects tomorrow as "not in the future",
+// and east of it, just after midnight, it accepts today as future and the API
+// then rejects the request instead.
+function formatLocalDate(date) {
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+}
+
 // recurrence_date_to is a plain calendar date, and the API rejects a past one
 // with 400. An `input[type=date]` already guarantees the *shape* — its value is
 // either a normalized yyyy-MM-dd string or empty — so the only thing left worth
@@ -36,7 +47,7 @@ function readRecurrenceDateTo(outputId) {
             'Recurrence date to is required.';
         return null;
     }
-    if (raw <= new Date().toISOString().slice(0, 10)) {
+    if (raw <= formatLocalDate(new Date())) {
         document.getElementById(outputId).textContent =
             'Recurrence date to must be in the future — the API rejects a past date with 400.';
         return null;
@@ -53,7 +64,7 @@ export function initRecurrenceDateDefault() {
     }
     const d = new Date();
     d.setFullYear(d.getFullYear() + 2);
-    el.value = d.toISOString().slice(0, 10);
+    el.value = formatLocalDate(d);
 }
 
 function prefillRecurrenceId(result) {
