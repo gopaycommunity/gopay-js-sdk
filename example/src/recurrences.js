@@ -1,4 +1,9 @@
-import { formatError, run, showLinkBanner } from './helpers.js';
+import {
+    clearLinkBanner,
+    formatError,
+    run,
+    showLinkBanner,
+} from './helpers.js';
 import { appendOutput } from './output-scroll.js';
 import { sanitizeBody } from './sanitize.js';
 import { sdk } from './sdk.js';
@@ -20,9 +25,10 @@ function readOptionalPositiveInt(fieldId, label, outputId) {
     return value;
 }
 
-// recurrence_date_to is a plain calendar date. The API rejects a value carrying
-// a time component with 400, and `input[type=date]` is the only field here that
-// could pick one up from a paste, so the shape is checked before sending.
+// recurrence_date_to is a plain calendar date, and the API rejects a past one
+// with 400. An `input[type=date]` already guarantees the *shape* — its value is
+// either a normalized yyyy-MM-dd string or empty — so the only thing left worth
+// checking here is that the date has not gone by.
 function readRecurrenceDateTo(outputId) {
     const raw = document.getElementById('rec-create-date-to').value.trim();
     if (!raw) {
@@ -30,12 +36,24 @@ function readRecurrenceDateTo(outputId) {
             'Recurrence date to is required.';
         return null;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    if (raw <= new Date().toISOString().slice(0, 10)) {
         document.getElementById(outputId).textContent =
-            'Recurrence date to must be a plain yyyy-MM-dd date, with no time part.';
+            'Recurrence date to must be in the future — the API rejects a past date with 400.';
         return null;
     }
     return raw;
+}
+
+// The panel's default has to be relative: a hardcoded date silently starts
+// returning 400 the day it goes by. Two years out, as a plain yyyy-MM-dd.
+export function initRecurrenceDateDefault() {
+    const el = document.getElementById('rec-create-date-to');
+    if (!el || el.value) {
+        return;
+    }
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 2);
+    el.value = d.toISOString().slice(0, 10);
 }
 
 function prefillRecurrenceId(result) {
@@ -60,10 +78,16 @@ function prefillRecurrenceId(result) {
 // there — and until they pay the *first* one, createNextPayment stays 409 — so
 // render it as a real anchor instead of leaving it buried in the JSON.
 function showGatewayUrl(outputId, payment) {
+    const pre = document.getElementById(outputId);
+    // Drop the previous run's banner first: it is a sibling of `pre`, so
+    // rewriting the output text leaves it in place, and a 409 or a validation
+    // bounce would otherwise show an error next to a live link to the *old*
+    // payment. See clearLinkBanner in helpers.js.
+    clearLinkBanner(pre, 'link-url');
     if (!payment?.gw_url) {
         return;
     }
-    showLinkBanner(document.getElementById(outputId), {
+    showLinkBanner(pre, {
         kind: 'link-url',
         href: payment.gw_url,
         message: payment.gw_url,
@@ -195,6 +219,7 @@ export function runGetRecurrence() {
 //   sendToCustomer(payment.gw_url);
 export function runStartRecurrence() {
     const recId = document.getElementById('rec-start-id').value.trim();
+    clearLinkBanner(document.getElementById('rec-start-output'), 'link-url');
     const amount = readOptionalPositiveInt(
         'rec-start-amount',
         'Amount',
@@ -217,6 +242,7 @@ export function runStartRecurrence() {
 //   const payment = await sdk.createNextPayment(recId, { amount: 2500 });
 export function runCreateNextPayment() {
     const recId = document.getElementById('rec-next-id').value.trim();
+    clearLinkBanner(document.getElementById('rec-next-output'), 'link-url');
     const order_number = document
         .getElementById('rec-next-order-number')
         .value.trim();

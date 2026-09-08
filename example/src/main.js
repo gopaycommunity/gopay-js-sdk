@@ -44,6 +44,7 @@ import {
     runQRPaymentInfo,
 } from './payments.js';
 import {
+    initRecurrenceDateDefault,
     runAwaitRecurrenceState,
     runCreateNextPayment,
     runCreateRecurrence,
@@ -147,7 +148,7 @@ if (shareableKey && clientId) {
     initBrowserSDK(shareableKey, clientId);
 }
 if (goid) {
-    for (const fieldId of ['create-goid', 'link-goid']) {
+    for (const fieldId of ['create-goid', 'link-goid', 'rec-create-goid']) {
         const el = document.getElementById(fieldId);
         if (el) {
             el.value = goid;
@@ -183,6 +184,11 @@ sdkInfo.textContent = JSON.stringify(
 // -----------------------------------------------------------------------
 updateAuthBadge();
 updateBrowserBadge();
+// Both have to run once at load, not only on change: a soft reload restores the
+// <select> value but not the inline display style, which would otherwise leave
+// AUTO selected with its schedule fields hidden.
+syncRecurrenceTypeFields();
+initRecurrenceDateDefault();
 
 // -----------------------------------------------------------------------
 // Expose functions to HTML onclick handlers
