@@ -1,16 +1,34 @@
 import {
     awaitPaymentStatus,
     type AwaitPaymentStatusOptions as CoreAwaitPaymentStatusOptions,
+    GoPayErrorCodes,
+    GoPaySDKError,
     type HttpClient,
     requireNonEmptyString,
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
-type RecurrenceCreateRequest =
+/**
+ * Body for {@link createRecurrence} — a discriminated union on `type`.
+ *
+ * Exported because TypeScript only excess-property-checks fresh object
+ * literals: a request built in a variable first loses the `schedule`
+ * enforcement unless the variable is annotated with this type.
+ */
+export type RecurrenceCreateRequest =
     components['schemas']['Recurrence-Create-Request'];
-type RecurrenceDetails = components['schemas']['Recurrence-Details'];
-type PaymentInstanceOverride =
+/** The `AUTO` variant of {@link RecurrenceCreateRequest} — carries a `schedule`. */
+export type RecurrenceCreateAuto =
+    components['schemas']['Recurrence-Create-Auto'];
+/** The `ON_DEMAND` variant of {@link RecurrenceCreateRequest} — must not carry a `schedule`. */
+export type RecurrenceCreateOnDemand =
+    components['schemas']['Recurrence-Create-On-Demand'];
+/** State of a recurrence and the payment it carries. */
+export type RecurrenceDetails = components['schemas']['Recurrence-Details'];
+/** Per-payment overrides accepted by {@link startRecurrence} and {@link createNextPayment}. */
+export type PaymentInstanceOverride =
     components['schemas']['Payment-Instance-Override'];
+
 type PaymentDetails = components['schemas']['Payment-Details'];
 
 /** Options for {@link awaitRecurrenceState}. */
@@ -18,11 +36,22 @@ export type AwaitRecurrenceStateOptions =
     CoreAwaitPaymentStatusOptions<RecurrenceDetails>;
 
 /**
- * A recurrence has settled once it reaches one of these. `NEW` and `REQUESTED`
- * are both transient: `NEW` is waiting for {@link startRecurrence}, `REQUESTED`
- * is waiting for the customer to pay the first payment.
+ * A recurrence has settled once it reaches one of these. `REQUESTED` is
+ * transient — it is waiting for the customer to pay the first payment.
  */
 const RECURRENCE_TERMINAL_STATES = ['STARTED', 'STOPPED'];
+
+/**
+ * States of the carried payment from which the recurrence can never reach
+ * `STARTED`, because the payment that would have started it is finished and
+ * unpaid.
+ *
+ * Without this the wait outlives the thing it is waiting for: an abandoned
+ * first payment leaves the recurrence in `REQUESTED` until `recurrence_date_to`
+ * — typically a year or more out — so a poll every few seconds would run for
+ * months against an outcome that can no longer happen.
+ */
+const UNPAYABLE_PAYMENT_STATES = new Set(['CANCELED', 'TIMEOUTED']);
 
 export function createRecurrencesApi(client: HttpClient) {
     return {
@@ -38,7 +67,10 @@ export function createRecurrencesApi(client: HttpClient) {
          *
          * `params` is a discriminated union on `type`, so the compiler enforces
          * what the API enforces at runtime: an `AUTO` recurrence must carry a
-         * `schedule`, and an `ON_DEMAND` one must not.
+         * `schedule`, and an `ON_DEMAND` one must not. Note that TypeScript
+         * only excess-property-checks fresh object literals — build the request
+         * in a variable and you lose that check unless the variable is
+         * annotated `RecurrenceCreateRequest`, which is exported for this.
          *
          * @param goid   - Merchant's GoPay ID (eshop identifier)
          * @param params - Recurrence parameters. `recurrence_date_to` is
@@ -179,11 +211,18 @@ export function createRecurrencesApi(client: HttpClient) {
             options?: AwaitRecurrenceStateOptions,
         ): Promise<RecurrenceDetails> {
             const rid = requireNonEmptyString(recId, 'recId');
+            const usingDefaultTerminals = options?.terminalStates === undefined;
             return awaitPaymentStatus(
-                () =>
-                    client.get<RecurrenceDetails>(`/recurrences/${rid}`, {
-                        signal: options?.signal,
-                    }),
+                async () => {
+                    const rec = await client.get<RecurrenceDetails>(
+                        `/recurrences/${rid}`,
+                        { signal: options?.signal },
+                    );
+                    if (usingDefaultTerminals) {
+                        assertStateStillReachable(rec);
+                    }
+                    return rec;
+                },
                 {
                     ...options,
                     terminalStates:
@@ -192,4 +231,42 @@ export function createRecurrencesApi(client: HttpClient) {
             );
         },
     };
+}
+
+/**
+ * Reject a wait that can no longer end.
+ *
+ * Two states are dead ends rather than stages, and polling through either of
+ * them never terminates:
+ *
+ * - `NEW` — only {@link createRecurrencesApi}'s own `startRecurrence` moves a
+ *   recurrence out of `NEW`. No customer, scheduler or back office will do it,
+ *   so waiting for it to happen on its own waits forever.
+ * - `REQUESTED` with a finished, unpaid payment — the payment that would have
+ *   moved the recurrence to `STARTED` is gone; see
+ *   {@link UNPAYABLE_PAYMENT_STATES}.
+ *
+ * Throwing from inside the poll surfaces the reason and stops the loop, rather
+ * than leaving the caller with a promise that cannot settle.
+ */
+function assertStateStillReachable(rec: RecurrenceDetails): void {
+    if (rec.state === 'NEW') {
+        throw new GoPaySDKError(
+            '[GoPaySDK] Recurrence is still NEW — call startRecurrence() first, ' +
+                'nothing else moves it out of this state.',
+            { errorCode: GoPayErrorCodes.INVALID_ARGUMENT },
+        );
+    }
+    const paymentState = rec.payment?.state;
+    if (
+        rec.state === 'REQUESTED' &&
+        paymentState !== undefined &&
+        UNPAYABLE_PAYMENT_STATES.has(paymentState)
+    ) {
+        throw new GoPaySDKError(
+            `[GoPaySDK] The recurrence's first payment is ${paymentState}, so the ` +
+                'recurrence can no longer reach STARTED.',
+            { errorCode: GoPayErrorCodes.CHARGE_FAILED },
+        );
+    }
 }

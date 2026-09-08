@@ -522,7 +522,19 @@ if (settled.state === 'STARTED') {
 }
 ```
 
+> **The compile-time check only applies to a fresh object literal.** TypeScript's
+> excess-property checking does not follow a variable, so `const params = {...}` passed to
+> `createRecurrence` compiles even with a `schedule` on an `ON_DEMAND` recurrence. Annotate the
+> variable to get the check back — the type is exported for exactly this:
+>
+> ```ts
+> import type { RecurrenceCreateRequest } from '@gopaycz/gopay-js-sdk';
+> const params: RecurrenceCreateRequest = { type: 'ON_DEMAND', /* … */ };
+> ```
+
 `awaitRecurrenceState` resolves on `STARTED` or `STOPPED`. `STOPPED` resolves rather than rejects — it is a legitimate outcome, and `stop_reason` says which. There is no default timeout, since the call is waiting on a human; pass `options.timeoutMs` for a ceiling or `options.signal` to abort.
+
+It **rejects** rather than waiting forever in the two cases where the state it waits for can no longer arrive: a recurrence still in `NEW` (only `startRecurrence` moves it out, so nothing else will) and a recurrence in `REQUESTED` whose first payment is already `CANCELED` or `TIMEOUTED` (the payment that would have started it is gone, while the recurrence itself stays `REQUESTED` until `recurrence_date_to`). Passing your own `terminalStates` turns both guards off, since you are then defining what done means.
 
 Starting an already-started recurrence is rejected with `409`.
 

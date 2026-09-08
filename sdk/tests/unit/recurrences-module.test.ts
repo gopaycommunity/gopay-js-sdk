@@ -420,12 +420,16 @@ describe('RecurrencesModule', () => {
             expect(fetchMock).toHaveBeenCalledTimes(1);
         });
 
-        it('keeps polling while the recurrence is NEW or REQUESTED', async () => {
+        it('keeps polling while the recurrence is REQUESTED', async () => {
             // REQUESTED means the first payment exists but the customer has not
-            // paid it yet — the whole reason this helper exists.
+            // paid it yet — the whole reason this helper exists. (NEW is not a
+            // waiting state but a dead end; it has its own test below.)
             fetchMock
                 .mockResolvedValueOnce(
-                    makeResponse({ ...mockRecurrenceDetails, state: 'NEW' }),
+                    makeResponse({
+                        ...mockRecurrenceDetails,
+                        state: 'REQUESTED',
+                    }),
                 )
                 .mockResolvedValueOnce(
                     makeResponse({
@@ -467,8 +471,12 @@ describe('RecurrencesModule', () => {
 
         it('does not treat payment states as terminal for a recurrence', async () => {
             // The shared poller defaults to payment states (PAID, REFUNDED, …);
-            // a recurrence must only settle on STARTED or STOPPED. PAID here is
-            // realistic: Recurrence-Payment carries the payment's own state.
+            // a recurrence must only settle on STARTED or STOPPED. PAID is a
+            // synthetic value here — the field the poller reads is the
+            // top-level Recurrence-State, which can never be PAID (the
+            // payment's own state lives in the nested `payment.state`). The
+            // point is that inheriting the poller's payment defaults would end
+            // the wait early, whatever the value.
             fetchMock
                 .mockResolvedValueOnce(
                     makeResponse({ ...mockRecurrenceDetails, state: 'PAID' }),
@@ -506,7 +514,7 @@ describe('RecurrencesModule', () => {
 
             await recurrences.awaitRecurrenceState(REC_ID, {
                 intervalMs: 10,
-                onStateChange: (rec) => seen.push(rec.state as string),
+                onStateChange: (rec) => seen.push(rec.state),
             });
 
             expect(seen).toEqual(['REQUESTED', 'STARTED']);
@@ -522,6 +530,91 @@ describe('RecurrencesModule', () => {
                     signal: controller.signal,
                 }),
             ).rejects.toBeInstanceOf(GoPaySDKError);
+        });
+
+        it('rejects instead of polling forever while the recurrence is NEW', async () => {
+            // Only startRecurrence() moves a recurrence out of NEW, so nothing
+            // this loop is waiting for can happen on its own.
+            fetchMock.mockResolvedValue(
+                makeResponse({ ...mockRecurrenceDetails, state: 'NEW' }),
+            );
+
+            const err = await recurrences
+                .awaitRecurrenceState(REC_ID, { intervalMs: 10 })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.INVALID_ARGUMENT,
+            );
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('rejects once the first payment is finished and unpaid', async () => {
+            // REQUESTED with a CANCELED payment can never become STARTED, but
+            // the recurrence itself stays REQUESTED until recurrence_date_to.
+            fetchMock.mockResolvedValue(
+                makeResponse({
+                    ...mockRecurrenceDetails,
+                    state: 'REQUESTED',
+                    payment: {
+                        ...mockRecurrenceDetails.payment,
+                        state: 'CANCELED',
+                    },
+                }),
+            );
+
+            const err = await recurrences
+                .awaitRecurrenceState(REC_ID, { intervalMs: 10 })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.CHARGE_FAILED,
+            );
+        });
+
+        it('keeps waiting while the first payment is merely unfinished', async () => {
+            // CREATED is not a dead end — the customer simply has not paid yet.
+            fetchMock
+                .mockResolvedValueOnce(
+                    makeResponse({
+                        ...mockRecurrenceDetails,
+                        state: 'REQUESTED',
+                        payment: {
+                            ...mockRecurrenceDetails.payment,
+                            state: 'CREATED',
+                        },
+                    }),
+                )
+                .mockResolvedValueOnce(
+                    makeResponse({
+                        ...mockRecurrenceDetails,
+                        state: 'STARTED',
+                    }),
+                );
+
+            const result = await recurrences.awaitRecurrenceState(REC_ID, {
+                intervalMs: 10,
+            });
+
+            expect(result.state).toBe('STARTED');
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        it('leaves the dead-end guards off when the caller overrides terminalStates', async () => {
+            // An explicit terminalStates means the caller wants their own
+            // definition of done; NEW is a legitimate target then.
+            fetchMock.mockResolvedValue(
+                makeResponse({ ...mockRecurrenceDetails, state: 'NEW' }),
+            );
+
+            const result = await recurrences.awaitRecurrenceState(REC_ID, {
+                intervalMs: 10,
+                terminalStates: ['NEW'],
+            });
+
+            expect(result.state).toBe('NEW');
         });
 
         it('honours a caller-supplied terminalStates override', async () => {
