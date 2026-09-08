@@ -109,8 +109,8 @@ const payment = await sdk.createPayment(goid, params);
 
 | Scope | Constant | Used by |
 |---|---|---|
-| `payment:write` | `GoPayScopes.PAYMENT_WRITE` | `createPayment`, `chargePayment`, `refundPayment` |
-| `payment:read` | `GoPayScopes.PAYMENT_READ` | `getPaymentStatus`, `getChargeState`, `listRefunds`, `getRefund` |
+| `payment:write` | `GoPayScopes.PAYMENT_WRITE` | `createPayment`, `chargePayment`, `refundPayment`, `createPaymentLink`, `disablePaymentLink`, `createRecurrence`, `startRecurrence`, `createNextPayment`, `stopRecurrence` |
+| `payment:read` | `GoPayScopes.PAYMENT_READ` | `getPaymentStatus`, `getChargeState`, `listRefunds`, `getRefund`, `getPaymentLink`, `getRecurrence`, `awaitRecurrenceState` |
 | `card:write` | `GoPayScopes.CARD_WRITE` | `getBrowserKeys()` — allows the browser SDK to present the card form |
 | `card:read` | `GoPayScopes.CARD_READ` | `getCardDetails`, `deleteCard` |
 | `payment:charge` | `GoPayScopes.PAYMENT_CHARGE` | Browser SDK only (`attachPayment` / `payment_credentials` grant) |
@@ -438,6 +438,101 @@ await sdk.disablePaymentLink(goid, linkId);
 Disabling is not a delete, and disabling an already-inactive link is rejected with `409`. A one-shot link that has been used is inactive too, so it cannot be disabled — it keeps redirecting to the payment it created. To stop that payment, cancel the payment itself.
 
 A reusable link gives every payment it creates the same `order_number` and the same `notification_url`, since they all come from the same stored payment data. Reconcile those notifications by the `id` of the payment each one reports, not by `order_number`.
+
+---
+
+### Recurrences
+
+A recurrence stores a payment template that further payments are created from. Creating one charges nothing and creates no payment. Server-side only: every call needs `payment:write` or `payment:read`, neither of which a payment-scoped browser token carries.
+
+There are two kinds, and `createRecurrence` is typed as a discriminated union on `type`, so the compiler enforces what the API enforces at runtime:
+
+| Type | `schedule` | Who creates further payments |
+|---|---|---|
+| `AUTO` | **required** | GoPay, on the schedule |
+| `ON_DEMAND` | **must be omitted** | you, via `createNextPayment` |
+
+| Method | Description |
+|---|---|
+| `createRecurrence(goid, params)` | Create a recurrence (`POST /eshops/{goid}/recurrences`). Requires `payment:write` scope. |
+| `getRecurrence(recId)` | Read the recurrence's state and the payment it carries (`GET /recurrences/{recId}`). Requires `payment:read` scope. |
+| `startRecurrence(recId, override?)` | Create the first payment (`POST /recurrences/{recId}/start`). Requires `payment:write` scope. |
+| `createNextPayment(recId, override?)` | Create the next payment (`POST /recurrences/{recId}/next`). Requires `payment:write` scope. |
+| `stopRecurrence(recId)` | Stop the recurrence (`DELETE /recurrences/{recId}`). Returns `void`. Requires `payment:write` scope. |
+| `awaitRecurrenceState(recId, options?)` | Poll until the recurrence reaches `STARTED` or `STOPPED`. Requires `payment:read` scope. |
+
+```ts
+const recurrence = await sdk.createRecurrence(goid, {
+  type: 'ON_DEMAND',
+  recurrence_date_to: '2027-09-04',   // mandatory, plain yyyy-MM-dd
+  payment: {
+    amount: 1500,
+    currency: 'CZK',
+    order_number: '2025010199',
+    customer: { email: 'payer@example.com' },
+    callback: {
+      notification_url: 'https://eshop.example.com/gopay/notify',
+      return_url: 'https://eshop.example.com/gopay/return',
+    },
+  },
+});
+```
+
+**`recurrence_date_to` is mandatory** and must be a plain calendar date. A value carrying a time component is rejected with `400`.
+
+An `AUTO` recurrence adds the schedule; omitting it there, or sending it on an `ON_DEMAND` one, is a compile error as well as a `400`:
+
+```ts
+await sdk.createRecurrence(goid, {
+  type: 'AUTO',
+  schedule: { period: 'MONTH', cycle: 1 },
+  recurrence_date_to: '2027-09-04',
+  payment: { /* … */ },
+});
+```
+
+#### The first payment has to be paid before the rest
+
+`startRecurrence` creates the first payment and moves the recurrence to `REQUESTED` — **not** `STARTED`. The customer pays that payment at the returned `gw_url`, and only then does the recurrence become `STARTED`. Until it does, `createNextPayment` is rejected with `409`, so wait for it rather than retrying:
+
+```ts
+const first = await sdk.startRecurrence(recurrence.id);
+sendToCustomer(first.gw_url);   // they pay here
+
+const settled = await sdk.awaitRecurrenceState(recurrence.id, {
+  onStateChange: (rec) => console.log(rec.state),   // NEW → REQUESTED → STARTED
+});
+
+if (settled.state === 'STARTED') {
+  await sdk.createNextPayment(recurrence.id, { amount: 2500 });
+}
+```
+
+`awaitRecurrenceState` resolves on `STARTED` or `STOPPED`. `STOPPED` resolves rather than rejects — it is a legitimate outcome, and `stop_reason` says which. There is no default timeout, since the call is waiting on a human; pass `options.timeoutMs` for a ceiling or `options.signal` to abort.
+
+Starting an already-started recurrence is rejected with `409`.
+
+#### Per-payment overrides
+
+`startRecurrence` and `createNextPayment` both take an optional body that overrides the stored template for that payment only — `amount`, `order_number`, `order_description`, `customer`, `callback`, `additional_params`:
+
+```ts
+await sdk.createNextPayment(recId, {
+  amount: 2500,
+  customer: { first_name: 'Jane' },   // merged field by field
+});
+```
+
+**`customer` is merged, not replaced.** Fields you omit keep their stored value, so overriding `first_name` alone does not clear the stored `email`. An unknown field, at any level, is rejected with `400`.
+
+#### Stopping
+
+```ts
+await sdk.stopRecurrence(recId);
+// still reads back: state 'STOPPED', stop_reason 'CANCELLED_VIA_API'
+```
+
+Stopping is not a delete, and stopping an already-stopped recurrence is rejected with `409`.
 
 ---
 

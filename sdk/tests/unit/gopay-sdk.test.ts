@@ -94,6 +94,13 @@ describe('GoPaySDK', () => {
         expect(typeof sdk.createPaymentLink).toBe('function');
         expect(typeof sdk.getPaymentLink).toBe('function');
         expect(typeof sdk.disablePaymentLink).toBe('function');
+        // Recurrences
+        expect(typeof sdk.createRecurrence).toBe('function');
+        expect(typeof sdk.getRecurrence).toBe('function');
+        expect(typeof sdk.startRecurrence).toBe('function');
+        expect(typeof sdk.createNextPayment).toBe('function');
+        expect(typeof sdk.stopRecurrence).toBe('function');
+        expect(typeof sdk.awaitRecurrenceState).toBe('function');
     });
 
     describe('AuthModule', () => {

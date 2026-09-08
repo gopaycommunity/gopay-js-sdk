@@ -6,9 +6,9 @@
  * or use the convenience {@link combineScopes} helper.
  */
 export const GoPayScopes = {
-    /** Create payments, charge them, and refund them. */
+    /** Create payments, charge them, refund them, and manage payment links and recurrences. */
     PAYMENT_WRITE: 'payment:write',
-    /** Read payment status, charge state, and refunds. */
+    /** Read payment status, charge state, refunds, payment links, and recurrences. */
     PAYMENT_READ: 'payment:read',
     /** Charge a single payment (browser/payment-credentials grant only). */
     PAYMENT_CHARGE: 'payment:charge',

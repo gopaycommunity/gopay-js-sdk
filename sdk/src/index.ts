@@ -9,6 +9,7 @@ export type {
     AwaitChargeOptions,
     AwaitPaymentStatusOptions,
 } from './modules/payments/payments.module.js';
+export type { AwaitRecurrenceStateOptions } from './modules/recurrences/recurrences.module.js';
 export type { AwaitRefundStateOptions } from './modules/refunds/refunds.module.js';
 export type {
     AuthenticateRequest,

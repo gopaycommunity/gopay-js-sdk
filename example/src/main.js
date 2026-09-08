@@ -44,6 +44,15 @@ import {
     runQRPaymentInfo,
 } from './payments.js';
 import {
+    runAwaitRecurrenceState,
+    runCreateNextPayment,
+    runCreateRecurrence,
+    runGetRecurrence,
+    runStartRecurrence,
+    runStopRecurrence,
+    syncRecurrenceTypeFields,
+} from './recurrences.js';
+import {
     runAwaitRefundState,
     runGetRefund,
     runListRefunds,
@@ -244,3 +253,10 @@ window.runAwaitRefundState = runAwaitRefundState;
 window.runCreatePaymentLink = runCreatePaymentLink;
 window.runGetPaymentLink = runGetPaymentLink;
 window.runDisablePaymentLink = runDisablePaymentLink;
+window.runCreateRecurrence = runCreateRecurrence;
+window.runGetRecurrence = runGetRecurrence;
+window.runStartRecurrence = runStartRecurrence;
+window.runAwaitRecurrenceState = runAwaitRecurrenceState;
+window.runCreateNextPayment = runCreateNextPayment;
+window.runStopRecurrence = runStopRecurrence;
+window.syncRecurrenceTypeFields = syncRecurrenceTypeFields;

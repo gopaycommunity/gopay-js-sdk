@@ -1,0 +1,112 @@
+<!-- ── Recurrences ─────────────────────────────────────────────── -->
+<details class="group">
+    <summary class="flex items-center gap-3 pt-1 cursor-pointer select-none">
+        <div class="h-px w-4 bg-[#E1E5EB] shrink-0"></div>
+        <svg aria-hidden="true" class="h-3 w-3 text-[#6B7280] transition-transform group-open:rotate-90 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-[0.68rem] font-semibold text-[#6B7280] tracking-widest uppercase shrink-0">Recurrences · gopay-js-sdk</span>
+        <div class="h-px flex-1 bg-[#E1E5EB]"></div>
+    </summary>
+    <div class="space-y-5 mt-3">
+
+        <!-- Create recurrence -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.createRecurrence(goid, params)</h2>
+            <p class="desc">POST /eshops/{goid}/recurrences — store a payment template to create payments from. Nothing is charged and no payment exists yet. The returned <code>id</code> is auto-filled into every panel below.</p>
+            <div class="fields">
+                <label>GoID<input id="rec-create-goid" type="text" value="8123456789" /></label>
+                <label>Type
+                    <select id="rec-create-type" onchange="syncRecurrenceTypeFields()">
+                        <option value="ON_DEMAND">ON_DEMAND — you ask for each further payment</option>
+                        <option value="AUTO">AUTO — GoPay creates them on a schedule</option>
+                    </select>
+                </label>
+                <label>Recurrence date to<input id="rec-create-date-to" type="date" value="2027-09-04" /></label>
+                <label>Amount (cents)<input id="rec-create-amount" type="number" min="1" step="1" value="1500" /></label>
+                <label>Currency<input id="rec-create-currency" type="text" value="CZK" /></label>
+                <label>Order Number<input id="rec-create-order-number" type="text" value="REC-001" /></label>
+                <label>Order Description<input id="rec-create-order-description" type="text" value="Monthly subscription" /></label>
+                <label>Customer Email<input id="rec-create-email" type="text" value="customer@example.com" /></label>
+                <label>Notification URL<input id="rec-create-notification-url" type="text" value="" /></label>
+                <label>Return URL<input id="rec-create-return-url" type="text" value="" /></label>
+            </div>
+            <div class="fields" id="rec-create-schedule-row" style="display: none">
+                <label>Period
+                    <select id="rec-create-period">
+                        <option value="DAY">DAY</option>
+                        <option value="WEEK">WEEK</option>
+                        <option value="MONTH" selected>MONTH</option>
+                    </select>
+                </label>
+                <label>Cycle (periods between payments)<input id="rec-create-cycle" type="number" min="1" step="1" value="1" /></label>
+            </div>
+            <button type="button" onclick="runCreateRecurrence()">Run</button>
+            <pre id="rec-create-output">—</pre>
+            <p class="note"><code>recurrence_date_to</code> is mandatory and must be a plain <code>yyyy-MM-dd</code> date — a value carrying a time component is rejected with <code>400</code>. The schedule fields appear only for <code>AUTO</code>: an <code>ON_DEMAND</code> recurrence must not send a <code>schedule</code> at all, and the compiler enforces that too, since <code>params</code> is a discriminated union on <code>type</code>.</p>
+        </section>
+
+        <!-- Recurrence status -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getRecurrence(recId)</h2>
+            <p class="desc">GET /recurrences/{rec_id} — read the recurrence's state and the payment it carries. <code>NEW</code> after creation, <code>REQUESTED</code> once the first payment is waiting to be paid, <code>STARTED</code> once it was paid, <code>STOPPED</code> when it ended.</p>
+            <div class="fields">
+                <label>Recurrence ID<input id="rec-get-id" type="text" placeholder="auto-filled by sdk.createRecurrence()" /></label>
+            </div>
+            <button type="button" onclick="runGetRecurrence()">Run</button>
+            <pre id="rec-get-output">—</pre>
+        </section>
+
+        <!-- Start recurrence -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.startRecurrence(recId, override?)</h2>
+            <p class="desc">POST /recurrences/{rec_id}/start — create the first payment and move the recurrence to <code>REQUESTED</code>. Returns the payment, whose <code>gw_url</code> is rendered as a link below; the customer pays there.</p>
+            <div class="fields">
+                <label>Recurrence ID<input id="rec-start-id" type="text" placeholder="auto-filled by sdk.createRecurrence()" /></label>
+                <label>Amount override (cents)<input id="rec-start-amount" type="number" min="1" step="1" placeholder="leave empty — keeps the stored template" /></label>
+            </div>
+            <button type="button" onclick="runStartRecurrence()">Run</button>
+            <pre id="rec-start-output">—</pre>
+            <p class="note">The recurrence is not <code>STARTED</code> yet — it becomes so only once the customer actually pays this payment. Starting an already-started recurrence is rejected with <code>409</code>.</p>
+        </section>
+
+        <!-- Await recurrence state -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.awaitRecurrenceState(recId, options?)</h2>
+            <p class="desc">Polls GET /recurrences/{rec_id} until the recurrence reaches <code>STARTED</code> or <code>STOPPED</code>. This is the supported way to wait for the customer to pay the first payment, which is what <code>createNextPayment</code> below is blocked on.</p>
+            <div class="fields">
+                <label>Recurrence ID<input id="rec-await-id" type="text" placeholder="auto-filled by sdk.createRecurrence()" /></label>
+            </div>
+            <button type="button" onclick="runAwaitRecurrenceState()">Run</button>
+            <pre id="rec-await-output">—</pre>
+            <p class="note"><code>STOPPED</code> resolves rather than rejects — it is a real outcome, and <code>stop_reason</code> says which. This panel passes <code>timeoutMs: 60000</code>; the SDK itself has no default timeout, since it is waiting on a human.</p>
+        </section>
+
+        <!-- Next payment -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.createNextPayment(recId, override?)</h2>
+            <p class="desc">POST /recurrences/{rec_id}/next — create the next payment of a recurrence that is already <code>STARTED</code>. Overrides replace only the fields you send; <code>customer</code> is merged field by field rather than replaced.</p>
+            <div class="fields">
+                <label>Recurrence ID<input id="rec-next-id" type="text" placeholder="auto-filled by sdk.createRecurrence()" /></label>
+                <label>Amount override (cents)<input id="rec-next-amount" type="number" min="1" step="1" placeholder="leave empty — keeps the stored template" /></label>
+                <label>Order Number override<input id="rec-next-order-number" type="text" placeholder="leave empty — keeps the stored template" /></label>
+            </div>
+            <button type="button" onclick="runCreateNextPayment()">Run</button>
+            <pre id="rec-next-output">—</pre>
+            <p class="note">Called before the recurrence is <code>STARTED</code> this answers <code>409</code> — run the await panel above first. An unknown field in the override is rejected with <code>400</code>.</p>
+        </section>
+
+        <!-- Stop recurrence -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.stopRecurrence(recId)</h2>
+            <p class="desc">DELETE /recurrences/{rec_id} — stop the recurrence from creating further payments. Not a delete: it still reads back, in state <code>STOPPED</code> with <code>stop_reason: CANCELLED_VIA_API</code>. Returns <code>void</code>, so this panel reports the follow-up read instead.</p>
+            <div class="fields">
+                <label>Recurrence ID<input id="rec-stop-id" type="text" placeholder="auto-filled by sdk.createRecurrence()" /></label>
+            </div>
+            <button type="button" onclick="runStopRecurrence()">Run</button>
+            <pre id="rec-stop-output">—</pre>
+            <p class="note">Stopping an already-stopped recurrence is rejected with <code>409</code>.</p>
+        </section>
+
+    </div>
+</details>
