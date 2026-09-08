@@ -72,10 +72,19 @@ const charge = await sdk.chargePayment(payment.id, {
 // payment_instrument: { payment_instrument: 'BANK_ACCOUNT', input: { input_type: 'ACCOUNT_TOKEN', account_token: '...' } }
 
 if (charge.action?.redirect_url) {
-  // 3DS or PSD2 authentication required — redirect the customer
+  // 3DS or PSD2 authentication required — redirect the customer now, not later
   res.redirect(charge.action.redirect_url);
 }
 ```
+
+> **Redirect the customer to `action.redirect_url` immediately.** The bank holds the 3DS
+> authentication open for only a short time, and a redirect that arrives after that window finds
+> the payment already cancelled on the bank's side — the URL itself still looks perfectly valid,
+> so this fails as a payment that simply never completes rather than as an obvious error.
+>
+> Send the customer there as the very next thing that happens. Do not finish other work first,
+> queue the redirect, put the URL in an email, or stash it to redirect from some later request.
+> If you are not in a position to redirect the customer right now, do not charge yet.
 
 ---
 
@@ -330,7 +339,7 @@ const chargeState = await sdk.getChargeState(payment.id);
 // chargeState.state: 'REQUESTED' | 'PROCESSING' | 'ACTION_REQUIRED'
 //                  | 'SUCCEEDED' | 'FAILED'
 if (chargeState.action?.redirect_url) {
-  // 3DS challenge still in progress — redirect the customer again
+  // 3DS challenge still in progress — redirect again, and again without delay
   window.location.href = chargeState.action.redirect_url;
 }
 ```
@@ -595,10 +604,16 @@ const charge = await sdk.chargePayment(paymentId, {
 });
 
 if (charge.action?.redirect_url) {
-  // 3DS authentication required — redirect the customer
+  // 3DS authentication required — the browser must navigate there immediately
   res.json({ redirectUrl: charge.action.redirect_url });
 }
 ```
+
+> **The redirect is time-critical here too.** Returning the URL to the browser is not the same as
+> using it: the page must navigate as soon as it receives it, for the reason described under
+> [Charging a payment](#charging-a-payment). A client that shows a confirmation step, waits on
+> another request, or renders the URL as a link the customer may click later will authenticate
+> against a payment the bank has already cancelled.
 
 > **`browser_data` is required for 3DS, and this server must not invent it.** The server SDK
 > deliberately does not collect it. Its `ip`, `user_agent` and `accept_header` describe the

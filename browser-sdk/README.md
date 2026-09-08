@@ -319,9 +319,17 @@ mountCardForm(
 | Value | Behaviour |
 |---|---|
 | `{ mode: 'redirect' }` (default) | Navigates the top-level page to the ACS URL. The returned promise stays pending as the page unloads. After 3DS, the bank redirects to the `return_url` set at payment creation; confirm the outcome with a server-side `getChargeState()` (see the note below). |
-| `{ mode: 'manual' }` | Does nothing automatically. Handle the ACS URL yourself via the `onActionRequired` callback in `awaitChargeState`. |
+| `{ mode: 'manual' }` | Does nothing automatically. Handle the ACS URL yourself via the `onActionRequired` callback in `awaitChargeState` — and navigate to it immediately (see the note below). |
 
 > **`mode: 'redirect'` and `controller.result`**: When 3DS triggers a full-page navigation, `controller.result` never resolves or rejects — the page unloads while it is still pending. **Do not `await controller.result` to detect completion on this code path.** Confirm the outcome on your server after the customer comes back.
+>
+> **Navigate to the ACS URL immediately — this matters in `mode: 'manual'`.** The bank holds the
+> 3DS authentication open for only a short time, and a navigation that arrives after that window
+> finds the payment already cancelled on the bank's side. The URL still looks valid, so the
+> symptom is a payment that silently never completes. The default `mode: 'redirect'` already gets
+> this right; under `mode: 'manual'` the timing is yours, so treat `onActionRequired` as "go now"
+> and not as "here is a URL for later" — no confirmation step in between, no rendering it as a
+> link the customer might click minutes later.
 >
 > **Put nothing confidential in `return_url`.** It is a plain browser navigation, so whatever it
 > carries ends up in browser history, access logs, analytics, and any `Referer` the return page
