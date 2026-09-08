@@ -85,6 +85,11 @@ if (charge.action?.redirect_url) {
 > Send the customer there as the very next thing that happens. Do not finish other work first,
 > queue the redirect, put the URL in an email, or stash it to redirect from some later request.
 > If you are not in a position to redirect the customer right now, do not charge yet.
+>
+> **The length of that window is deliberately not documented here.** It belongs to the customer's
+> bank, it differs between banks, and they can change it without telling anyone. Do not design
+> against an assumed value, and do not start a timer that treats "not expired yet" as permission
+> to wait — redirecting straight away is the only rule that stays correct.
 
 ---
 

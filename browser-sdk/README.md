@@ -329,7 +329,9 @@ mountCardForm(
 > symptom is a payment that silently never completes. The default `mode: 'redirect'` already gets
 > this right; under `mode: 'manual'` the timing is yours, so treat `onActionRequired` as "go now"
 > and not as "here is a URL for later" — no confirmation step in between, no rendering it as a
-> link the customer might click minutes later.
+> link the customer might click minutes later. How long the window actually is belongs to the
+> customer's bank and can change without notice, so it is deliberately not documented: navigate
+> immediately rather than designing against a value.
 >
 > **Put nothing confidential in `return_url`.** It is a plain browser navigation, so whatever it
 > carries ends up in browser history, access logs, analytics, and any `Referer` the return page
