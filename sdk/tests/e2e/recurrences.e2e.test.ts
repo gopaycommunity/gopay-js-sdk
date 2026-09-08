@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
     GoPayErrorCodes,
     GoPayHTTPError,
@@ -27,11 +27,17 @@ describe('recurrences — E2E', () => {
     let goid: string;
 
     // Two years out. Recomputed per run rather than pinned: a hardcoded date
-    // silently starts failing with 400 the day it goes by.
+    // silently starts failing with 400 the day it goes by. Built from local
+    // parts — toISOString() would give the UTC date, which is a different
+    // calendar day either side of midnight.
     const dateTo = (() => {
         const d = new Date();
         d.setFullYear(d.getFullYear() + 2);
-        return d.toISOString().slice(0, 10);
+        return [
+            d.getFullYear(),
+            String(d.getMonth() + 1).padStart(2, '0'),
+            String(d.getDate()).padStart(2, '0'),
+        ].join('-');
     })();
 
     const onDemand = (): RecurrenceCreateRequest => ({
@@ -40,14 +46,38 @@ describe('recurrences — E2E', () => {
         payment: paymentBody('e2e-recurrences'),
     });
 
+    /**
+     * Every recurrence this suite creates, so afterAll can stop the lot.
+     *
+     * Tracked centrally rather than stopped inline: an inline stop is skipped
+     * when an assertion above it throws, which is precisely the run that leaves
+     * records behind. These are persistent on the environment — they outlive
+     * the test process and accumulate across runs.
+     */
+    const createdIds: string[] = [];
+
+    /** Create a recurrence and register it for cleanup. */
+    const track = async (body: RecurrenceCreateRequest) => {
+        const rec = await sdk.createRecurrence(goid, body);
+        createdIds.push(rec.id);
+        return rec;
+    };
+
     /** A recurrence in NEW, freshly created for one test to use. */
-    const freshRecurrence = async () =>
-        await sdk.createRecurrence(goid, onDemand());
+    const freshRecurrence = async () => await track(onDemand());
 
     beforeAll(async () => {
         ({ sdk, goid } = await createSandboxSdk(
             'create recurrences and their payments',
         ));
+    });
+
+    afterAll(async () => {
+        // allSettled: a recurrence a test already stopped answers 409, and the
+        // suite's verdict must not hinge on cleanup either way.
+        await Promise.allSettled(
+            createdIds.map((id) => sdk.stopRecurrence(id)),
+        );
     });
 
     describe('argument validation', () => {
@@ -84,7 +114,7 @@ describe('recurrences — E2E', () => {
 
     describe('createRecurrence', () => {
         it('creates an ON_DEMAND recurrence in NEW, with no schedule', async () => {
-            const rec = await sdk.createRecurrence(goid, onDemand());
+            const rec = await track(onDemand());
 
             expect(rec.id).toBeTruthy();
             expect(rec.type).toBe('ON_DEMAND');
@@ -98,7 +128,7 @@ describe('recurrences — E2E', () => {
         });
 
         it('creates an AUTO recurrence and echoes its schedule', async () => {
-            const rec = await sdk.createRecurrence(goid, {
+            const rec = await track({
                 type: 'AUTO',
                 schedule: { period: 'MONTH', cycle: 1 },
                 recurrence_date_to: dateTo,
@@ -192,8 +222,6 @@ describe('recurrences — E2E', () => {
             expect(payment.gw_url).toMatch(/^https:\/\//);
             // Asserted for presence only — never logged, never compared.
             expect(payment.payment_secret).toBeTruthy();
-
-            await sdk.stopRecurrence(rec.id);
         });
 
         it('leaves the recurrence REQUESTED, not STARTED', async () => {
@@ -206,8 +234,6 @@ describe('recurrences — E2E', () => {
             const read = await sdk.getRecurrence(rec.id);
             expect(read.state).toBe('REQUESTED');
             expect(read.payment.id).toBeTruthy();
-
-            await sdk.stopRecurrence(rec.id);
         });
 
         it('applies an amount override to the created payment', async () => {
@@ -216,8 +242,6 @@ describe('recurrences — E2E', () => {
             const payment = await sdk.startRecurrence(rec.id, { amount: 250 });
 
             expect(payment.amount).toBe(250);
-
-            await sdk.stopRecurrence(rec.id);
         });
 
         it('merges a customer override field by field', async () => {
@@ -231,8 +255,6 @@ describe('recurrences — E2E', () => {
 
             expect(payment.customer.first_name).toBe('Jane');
             expect(payment.customer.email).toBe('john.doe@example.com');
-
-            await sdk.stopRecurrence(rec.id);
         });
 
         it('400s on an unknown field in the override', async () => {
@@ -246,8 +268,6 @@ describe('recurrences — E2E', () => {
 
             expect(err).toBeInstanceOf(GoPayHTTPError);
             expect((err as GoPayHTTPError).status).toBe(400);
-
-            await sdk.stopRecurrence(rec.id);
         });
 
         it('409s when the recurrence was already started', async () => {
@@ -260,8 +280,6 @@ describe('recurrences — E2E', () => {
 
             expect(err).toBeInstanceOf(GoPayHTTPError);
             expect((err as GoPayHTTPError).status).toBe(409);
-
-            await sdk.stopRecurrence(rec.id);
         });
 
         it('404s on an unknown recurrence id', async () => {
@@ -284,8 +302,6 @@ describe('recurrences — E2E', () => {
 
             expect(err).toBeInstanceOf(GoPayHTTPError);
             expect((err as GoPayHTTPError).status).toBe(409);
-
-            await sdk.stopRecurrence(rec.id);
         });
 
         it('409s on a recurrence that was never started', async () => {
@@ -357,8 +373,6 @@ describe('recurrences — E2E', () => {
             expect((err as GoPaySDKError).errorCode).toBe(
                 GoPayErrorCodes.INVALID_ARGUMENT,
             );
-
-            await sdk.stopRecurrence(rec.id);
         });
 
         it('resolves immediately on a recurrence that is already STOPPED', async () => {

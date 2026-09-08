@@ -58,11 +58,14 @@ export function createPaymentsApi(client: HttpClient) {
          * hosted payment gateway, offering the customer every payment method the
          * eshop has enabled — not a legacy or compatibility-only endpoint.
          *
-         * It is still not part of this SDK's flow, which is always create →
-         * charge (card token, Apple Pay, or Google Pay). The reason to keep the
-         * customer here rather than sending them there is that the hosted
-         * gateway cannot be embedded in the merchant's own checkout — not that
-         * it lacks anything. Where a payment genuinely needs it, the payment
+         * It is still not the redirect target for the flows this SDK drives
+         * itself. For card, Apple Pay and Google Pay that flow is create →
+         * charge; QR and bank transfer never charge at all — they create the
+         * payment, hand the customer a QR code or account details, and follow
+         * it with {@link awaitPaymentStatus}. The reason to keep the customer
+         * inside either of those rather than sending them to `gw_url` is that
+         * the hosted gateway cannot be embedded in the merchant's own
+         * checkout — not that it lacks anything. Where a payment genuinely needs it, the payment
          * stays fully observable either way: {@link getPaymentStatus} reports
          * the outcome exactly as it would for a charge made through this SDK.
          * Recurrences are the one place this SDK hands the customer a `gw_url`
