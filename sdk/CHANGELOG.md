@@ -1,3 +1,19 @@
+# [1.18.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.17.0...1.18.0) (2026-09-09)
+
+
+### Bug Fixes
+
+* **example:** build recurrence dates from local parts, not UTC GPOMA-2592 ([8dbd17e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8dbd17e2c93e556cc9d1a0e4b770b458c475b42b))
+* **example:** clear the stale gateway banner and unpin the recurrence date GPOMA-2592 ([a09fae4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a09fae4e24b798c27744bdb5833cbaa49c50c1a9))
+* **sdk:** scope the create-to-charge claim and clean up after E2E GPOMA-2592 ([8c799f4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8c799f49c2c7454a4791d7f74f806bd3159a33b8))
+* **sdk:** stop awaitRecurrenceState waiting for states that cannot arrive GPOMA-2592 ([4c4ffaf](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4c4ffafdbb86d831505f1eededfca4555251aedd))
+
+
+### Features
+
+* **core:** regenerate types from the merged spec, adding recurrences GPOMA-2592 ([bd959f3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bd959f34ff2e7b6f0301a09bbcfbf40c4270eea3))
+* **sdk:** add the recurrences module, with example and tests GPOMA-2592 ([3a90d70](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3a90d703962ddc187f642b123f5fadcfde68dce7))
+
 # [1.17.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.16.0...1.17.0) (2026-09-07)
 
 
