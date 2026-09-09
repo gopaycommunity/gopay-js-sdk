@@ -153,10 +153,7 @@ definitions:
           - version
           - browser-sdk-version
           - release-head
-    # Required secret: GITHUB_PERSONAL_ACCESS_TOKEN. Prefer a fine-grained token scoped to this one
-    # repo with Contents: write (push), Workflows: write (push .github/workflows/) and
-    # Actions: write (dispatch the publish). A classic token needs `workflow` + `repo`, where
-    # `repo` grants far more than the dispatch requires.
+    # No token anywhere: push via the repository SSH key (GitHub deploy key), publish is watched anonymously.
     - step: &github-sync
         name: Sync master to GitHub
         clone:
@@ -164,19 +161,17 @@ definitions:
         script:
           - export GITHUB_REPO=gopaycommunity/gopay-js-sdk
           - git fetch origin master --tags
-          - git remote add github https://${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/${GITHUB_REPO}.git
+          - git remote add github git@github.com:${GITHUB_REPO}.git
           # --force: GitHub's existing master/tags are the old orphan snapshot commits (unrelated
           # history to the real graph being pushed here for the first time). Without --force this
           # push is rejected as a non-fast-forward. NOTE: the mirror is no longer inert — GitHub
           # builds and publishes to npm from these tags, so a re-delivered tag can retrigger a
           # publish. That is why npm-publish.yml uses --tolerate-republish and guards `latest`.
           - git push github origin/master:refs/heads/master --force
+          # New release tags go one per push (GitHub drops tag events above three) and start npm-publish.yml; the script waits for it.
+          - ./scripts/publish-wait.sh
+          # Idempotent catch-up of any older tag the mirror lacks; new ones are already there, so this emits no events.
           - git push github --tags --force
-          # A pushed tag cannot start the publish: semantic-release tags its release commit, whose
-          # message carries [skip ci], which GitHub Actions honours on push events. The script
-          # dispatches the workflow instead and waits for the run, so a failed publish fails this
-          # step rather than leaving the pipeline green and the release unpublished.
-          - ./scripts/publish-dispatch.sh
 
     - step: &docker-build-push
         name: Build & push example Docker image

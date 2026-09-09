@@ -4,17 +4,12 @@
 
 name: Publish to npm
 
-# How the Bitbucket dispatch finds this run again to wait on. The tag alone is ambiguous — dry
-# runs and manual backfills of the same tag share it — so an automated dispatch appends its own
-# token. Manual runs pass none and keep the plain name.
-run-name: Publish ${{ inputs.tag || github.ref_name }}${{ inputs.dispatch-id && format(' [{0}]', inputs.dispatch-id) || '' }}
+run-name: Publish ${{ inputs.tag || github.ref_name }}
 
 on:
-    push:
-        tags:
-            # Filter globs, not regex: `+` is "one or more of the preceding character".
-            - '[0-9]+.[0-9]+.[0-9]+'
-            - 'browser-sdk-[0-9]+.[0-9]+.[0-9]+'
+    # `create`, not `push`: release commits carry [skip ci], which GitHub honours on push but not on create.
+    create:
+    # Manual runs, and the only way to publish a tag that already existed on GitHub (re-delivery is a push, not a create).
     workflow_dispatch:
         inputs:
             tag:
@@ -31,11 +26,6 @@ on:
                 required: false
                 default: 'latest'
                 type: string
-            dispatch-id:
-                description: 'Leave empty. Set only by the Bitbucket sync step, so it can identify the run it started.'
-                required: false
-                default: ''
-                type: string
 
 # Per package, not per tag: same-package publishes must serialize or they race the dist-tag guard
 # below. `queue: max` keeps pending runs; the default discards all but one.
@@ -50,6 +40,8 @@ permissions:
 jobs:
     publish:
         name: Publish ${{ inputs.tag || github.ref_name }}
+        # `create` also fires for branches; the mirror only creates release tags, so tags are enough here.
+        if: github.event_name != 'create' || github.ref_type == 'tag'
         runs-on: ubuntu-latest
         permissions:
             contents: read

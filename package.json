@@ -34,7 +34,8 @@
         "parserPreset": {
             "parserOpts": {
                 "issuePrefixes": [
-                    "GPOMA-"
+                    "GPOMA-",
+                    "GPMOB-"
                 ]
             }
         },
