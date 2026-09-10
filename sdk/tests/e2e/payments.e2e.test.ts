@@ -92,15 +92,23 @@ describe('payments — E2E', () => {
             ).rejects.toMatchObject({ name: 'GoPayHTTPError', status: 404 });
         });
 
-        it('422s on a negative amount', async () => {
-            // 422 VALIDATION_ERROR, not the 400 the refund endpoint answers for
-            // the same mistake — the two are validated by different layers.
+        it('rejects a negative amount', async () => {
+            // 400, the same code the refund endpoint answers for the same
+            // mistake. The two used to differ — create was validated by a layer
+            // that raised ValidationException and mapped to 422 — and GPMAIN-9260
+            // ("Narovnání API errors 2") deleted that exception in favour of
+            // validation annotations, which answer 400.
+            //
+            // 422 is still accepted because that ticket is Merged, not Done: the
+            // change is live on alpha, where CI points, but not yet on sandbox,
+            // where a laptop run lands by default. Tighten this to 400 alone once
+            // it reaches sandbox.
             const err = await createPayment({ amount: -100 }).catch(
                 (e: unknown) => e,
             );
 
             expect(err).toBeInstanceOf(GoPayHTTPError);
-            expect((err as GoPayHTTPError).status).toBe(422);
+            expect([400, 422]).toContain((err as GoPayHTTPError).status);
         });
     });
 
