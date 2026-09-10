@@ -50,6 +50,8 @@ ENV GP_BASE_PATH=/gp-gw-js-sdk/
 
 COPY --from=builder /app/example/dist ./dist
 COPY --from=builder /app/example/serve.js ./serve.js
+# serve.js imports this at runtime; without it the container starts and dies on the first request.
+COPY --from=builder /app/example/runtime-config.js ./runtime-config.js
 
 EXPOSE 8080
 

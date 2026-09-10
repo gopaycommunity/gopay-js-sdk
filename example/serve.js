@@ -3,6 +3,8 @@ import { createServer } from 'node:http';
 import { extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { runtimeConfigScript } from './runtime-config.js';
+
 const dist = resolve(fileURLToPath(import.meta.url), '..', 'dist');
 const port = process.env.PORT ?? 8080;
 
@@ -42,9 +44,7 @@ const server = createServer((req, res) => {
 
     if (url.pathname === '/env.js') {
         res.writeHead(200, { 'Content-Type': 'application/javascript' });
-        res.end(
-            `window._gpConfig = ${JSON.stringify({ baseUrl: process.env.GOPAY_PAYMENTS_V4_BASE_URL ?? null, environment: process.env.GOPAY_PAYMENTS_V4_ENVIRONMENT ?? null })};`,
-        );
+        res.end(runtimeConfigScript());
         return;
     }
 
