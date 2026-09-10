@@ -1,3 +1,18 @@
+# [1.19.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.18.0...1.19.0) (2026-09-10)
+
+
+### Bug Fixes
+
+* **ci:** sync to github via deploy key and publish from the tag create event GPMOB-152 ([b498dd0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b498dd06b901bd224a728e9ad1ddfab06dd50a71))
+* **example:** match the production host case-insensitively GPOMA-2613 ([7096d72](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/7096d7208f8cae0568168ac2862ec59b9918350e))
+* **example:** pin the credentials promise and share the config keys GPOMA-2613 ([19d240a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/19d240aebe54c030203b9501fb76332af2df77d5))
+* **test:** a negative amount is a 400 now, not a 422 GPOMA-2613 ([a15dc6d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a15dc6d73bddfd45ce8ac31e59517f3aac517380))
+
+
+### Features
+
+* **example:** serve merchant credentials from /env.js at runtime GPOMA-2613 ([6693b8d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/6693b8dd6abbabdc7236de49f38a67bfd0b07552))
+
 # [1.18.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.17.0...1.18.0) (2026-09-09)
 
 
