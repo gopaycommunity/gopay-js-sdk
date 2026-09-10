@@ -8,6 +8,10 @@ import { runtimeConfigScript } from './runtime-config.js';
 const dist = resolve(fileURLToPath(import.meta.url), '..', 'dist');
 const port = process.env.PORT ?? 8080;
 
+// Built once, at startup: process.env cannot change under a running server, and doing it here means
+// the production guard inside rejects a misconfigured deployment before it accepts any traffic.
+const envScript = runtimeConfigScript();
+
 // Normalise to no trailing slash for string prefix matching below.
 // vite.config.ts reads the same env var and passes it directly to Vite's `base`,
 // which expects a trailing slash — the two usages are intentionally different.
@@ -44,7 +48,7 @@ const server = createServer((req, res) => {
 
     if (url.pathname === '/env.js') {
         res.writeHead(200, { 'Content-Type': 'application/javascript' });
-        res.end(runtimeConfigScript());
+        res.end(envScript);
         return;
     }
 

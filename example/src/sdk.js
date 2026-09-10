@@ -1,9 +1,19 @@
 import { createGoPaySDK } from '@gopaycz/gopay-js-sdk';
 
+import { RUNTIME_ENV_VARS } from '../runtime-keys.js';
+
 // /env.js wins over the build-time value for every setting, because the deployed image is built
-// once and handed its merchant at startup (see ../runtime-config.js). `??` skips the payload's
-// nulls, so an unset runtime value still falls back to what `sdk/.env` baked in for local runs.
-const runtime = (key) => window._gpConfig?.[key] ?? undefined;
+// once and handed its merchant at startup (see ../runtime-config.js). A missing runtime value is
+// null, which the `??` below carries through to the build-time fallback `sdk/.env` baked in.
+//
+// The key is checked against the shared list because a misspelling is otherwise invisible here:
+// the lookup yields nothing, the fallback takes over, and the demo runs on the wrong merchant.
+const runtime = (key) => {
+    if (!(key in RUNTIME_ENV_VARS)) {
+        throw new Error(`Unknown runtime config key: ${key}`);
+    }
+    return window._gpConfig?.[key];
+};
 
 export const clientId =
     runtime('clientId') ?? import.meta.env.GOPAY_PAYMENTS_V4_CLIENT_ID;
