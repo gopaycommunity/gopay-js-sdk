@@ -39,8 +39,14 @@ export function assertNotProduction(env = process.env) {
     if (!env[RUNTIME_ENV_VARS.clientSecret]) {
         return;
     }
-    const baseUrl = env[RUNTIME_ENV_VARS.baseUrl] ?? '';
-    const environment = env[RUNTIME_ENV_VARS.environment] ?? '';
+    // Both comparisons are widened deliberately: host names are case-insensitive in DNS, so
+    // https://GATE.GOPAY.COM reaches production while failing a case-sensitive test. A guard may
+    // refuse more than it strictly has to, never less - which is also why this stays a substring
+    // test rather than a parsed host: a value it cannot parse still cannot slip past it.
+    const baseUrl = (env[RUNTIME_ENV_VARS.baseUrl] ?? '').toLowerCase();
+    const environment = (env[RUNTIME_ENV_VARS.environment] ?? '')
+        .trim()
+        .toLowerCase();
     if (baseUrl.includes(PRODUCTION_HOST) || environment === 'production') {
         throw new Error(
             `Refusing to serve ${RUNTIME_ENV_VARS.clientSecret} to the browser against production. ` +
