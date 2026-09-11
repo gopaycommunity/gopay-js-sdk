@@ -16,7 +16,7 @@
     "scripts": {
         "build": "tsup",
         "typecheck": "tsc --noEmit",
-        "codegen": "openapi-typescript https://payments-api.beta.gopay.com/spec/en/payments.yaml -o src/types/generated.ts"
+        "codegen": "node scripts/codegen.mjs"
     },
     "devDependencies": {
         "@types/node": "^24.12.2",

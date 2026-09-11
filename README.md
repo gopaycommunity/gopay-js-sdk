@@ -28,6 +28,11 @@ gp-gw-js-sdk/
 └── Payments.yaml         # OpenAPI 3.1 reference snapshot — codegen fetches the spec by URL, not this file
 ```
 
+> **On `Payments.yaml`** — this is a maintainer-facing snapshot of the OpenAPI document, kept in
+> the repo for reference. It is not part of either published npm package, and it is not the
+> integration reference. For the authoritative published spec, the base URLs to integrate
+> against, and the long-form guides, see [api-docs.gopay.com](https://api-docs.gopay.com/).
+
 ## Development
 
 ```bash

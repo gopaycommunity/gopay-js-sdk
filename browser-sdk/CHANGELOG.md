@@ -60,14 +60,14 @@
 
 ### Bug Fixes
 
-* keep beta mock-server entry in Payments.yaml snapshot GPOMA-2477 ([3682ba6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3682ba67a37af16acbe2ad6db615dca153e16fb6))
+* keep the Payments.yaml snapshot aligned with the next spec GPOMA-2477 ([3682ba6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3682ba67a37af16acbe2ad6db615dca153e16fb6))
 * **wallets:** address code review on Apple Pay SDK loading GPOMA-2488 ([3ed82ec](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3ed82ec3157fcd0c407a593c5dc7735089734571))
 * **wallets:** address review comments on PR 49 GPOMA-2488 ([0db3858](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0db385853725dceda1cb5cc84b25b1e656a88bcf))
 
 
 ### Features
 
-* sync generated types with beta spec GPOMA-2477 ([bdff2be](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bdff2be9aa491439e02e18e5a4d203c1b0c652c1))
+* update generated types from the next spec GPOMA-2477 ([bdff2be](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bdff2be9aa491439e02e18e5a4d203c1b0c652c1))
 * **wallets:** load the 1.latest apple-pay-sdk build GPOMA-2488 ([579beb5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/579beb50b5d7d8b977446f9146c0d4850debecf4))
 
 
@@ -121,7 +121,7 @@ collectBrowserData() output are unaffected.
 
 * add repository/homepage metadata so npm links to GitHub mirror GPOMA-2423 ([630aa16](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/630aa1644c5153212e54e0a0380d4be939cb62d5))
 * correct codegen doc location in CLAUDE.md GPOMA-2423 ([8d2dd22](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8d2dd22616617b36d499f190ba1547c8c64cbda4))
-* fetch beta API spec for codegen, keep only public spec in docs GPOMA-2423 ([ff2cd30](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ff2cd30ca5295cd7f192dbd4bfe71f62783dc8a3))
+* fetch the next spec for codegen, reference only the public spec in docs GPOMA-2423 ([ff2cd30](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ff2cd30ca5295cd7f192dbd4bfe71f62783dc8a3))
 * pin semantic-release repositoryUrl to git origin GPOMA-2423 ([dbfbab6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/dbfbab617b8f10ecd27dee6f0a88db33b3bdb085))
 
 # [1.4.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.3.2...browser-sdk-1.4.0) (2026-07-09)

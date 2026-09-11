@@ -1,16 +1,90 @@
 ## API Spec & Code Generation
 
-TypeScript types are generated from the **beta** GoPay API spec using `openapi-typescript`, so the SDK stays ahead of upcoming API changes:
+TypeScript types are generated from the **next spec** — the upcoming version of the GoPay
+Payments API spec, ahead of what the published reference at `https://api-docs.gopay.com/`
+shows. That is why the SDK's types can describe fields the public docs don't mention yet.
+
+### Two ways to get the next spec
+
+1. **GoPay's internal pre-release feed.** GoPay serves the next spec from an internal
+   environment:
+
+   ```
+   https://payments-api.beta.gopay.com/spec/en/payments.yaml
+   ```
+
+   Reachable only from inside GoPay — the host resolves to a private address behind an
+   internal load balancer, and the environment is shut down overnight and at weekends, so a
+   404 or a timeout out of hours is expected rather than an outage.
+
+2. **Sideload from the API spec repo.** Check the spec repo out at the commit you want and
+   point codegen at the local file. Use this when the internal environment is unavailable,
+   or when you need types generated against one specific spec commit rather than whatever
+   the feed happens to be serving.
+
+### Running codegen
+
+The source is **not hardcoded**. Pass it as `SPEC_SOURCE` (or as the first argument) — a URL
+or a local path:
 
 ```bash
-cd internal/core && yarn codegen
-# fetches https://payments-api.beta.gopay.com/spec/en/payments.yaml
+cd internal/core
+
+# 1. internal feed (URL above)
+SPEC_SOURCE=https://payments-api.beta.gopay.com/spec/en/payments.yaml yarn codegen
+
+# 2. sideload from a spec repo checkout
+SPEC_SOURCE=../../../gopay-payments-api-v4/spec/payments.yaml yarn codegen
+
 # outputs: internal/core/src/types/generated.ts
 ```
 
-Only the **public** spec (`https://api-docs.gopay.com/`) should be referenced in user-facing docs (e.g. `sdk/README.md`) — the beta URL is an internal codegen source, not something to point SDK users at.
+### This file is the only place the internal hostname belongs
 
-The local [Payments.yaml](Payments.yaml) is kept as a reference snapshot but codegen always pulls from the URL. Run codegen whenever you need the types in sync with the latest spec.
+`payments-api.beta.gopay.com` is an internal GoPay hostname. The word "beta" in it names the
+environment the spec is authored on — it says nothing about the maturity of Payments API v4
+or the stability of this SDK, both of which are GA. Nobody outside GoPay can tell that apart,
+and nobody outside GoPay can reach the host to find out, so to an integrator the word reads
+as a product-status warning on the thing they are about to integrate.
+
+Keep it in this file and nowhere else. In particular:
+
+- **Not in code or config** — hence `SPEC_SOURCE` rather than a URL baked into
+  `internal/core/package.json`.
+- **Not in `README.md`, `sdk/README.md`, `browser-sdk/README.md`, `src/`, or either
+  `CHANGELOG.md`.** Reference the public spec at `https://api-docs.gopay.com/` instead.
+- **Not in commit subjects.** semantic-release copies every `fix:` / `feat:` subject verbatim
+  into `CHANGELOG.md`, and this repo is mirrored to the public `gopaycommunity/gopay-js-sdk`,
+  so a subject naming the feed becomes a permanent public changelog line.
+
+### Commit convention for spec updates
+
+When a change comes from a new spec, the subject is:
+
+```
+fix: update api from next spec GPOMA-xxxx
+```
+
+Say that and nothing about where the bytes came from — not the hostname, not which of the two
+sources was used, not "beta". If the update genuinely breaks consumers, the `BREAKING CHANGE:`
+footer still carries that (see *Releasing* below); the footer describes the API change, not
+the spec source.
+
+### `Payments.yaml` snapshot
+
+Codegen writes [Payments.yaml](Payments.yaml) from `SPEC_SOURCE` and then generates the types
+from that file, so the snapshot and `generated.ts` cannot drift apart.
+
+It **strips the Prism mock server** the feed injects as `servers[0]`, and fails rather than
+generate if a mock reference survives. The mock server itself is fine and stays where it runs
+— it is what makes "Try It" work in the Elements docs UI — but it must never reach a vendored
+spec file: `servers[0]` is the default base URL for any OpenAPI tooling that opens
+`Payments.yaml`, the published spec lists only Sandbox and Production, and this repo is
+mirrored publicly. The PHP SDK does the same in its `scripts/codegen.sh`.
+
+**Never pass `Payments.yaml` itself as `SPEC_SOURCE`.** The snapshot lags the feed, so
+regenerating from it silently rolls the types back — it drops endpoints added since the last
+refresh and reverts prose corrections made in the spec. It is an output, not a source.
 
 ---
 
