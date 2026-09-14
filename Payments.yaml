@@ -33,6 +33,10 @@ tags:
     description: >-
       Payment links that carry the data for a payment and create it only when the customer
       opens the link.
+  - name: Recurrences
+    description: >-
+      Recurring payments that hold a payment template and create payments from it, either on a
+      schedule or when the merchant asks for the next one.
   - name: Cards
     description: >-
       Saved card tokens and the public resources the GoPay client SDK needs in order
@@ -76,7 +80,7 @@ paths:
       description: |-
         Creates a payment for the given eshop.
 
-        The response carries the payment `id`, the per-payment client credential `payment_secret`, and `gw_url` — the escape hatch into the previous (v3) hosted flow, for payment methods the v4 charge endpoint does not yet cover, not a redirect target for those it does. The new payment is in the `CREATED` state and awaits a charge attempt; if none is made before the initial timeout expires, it transitions to `TIMEOUTED`.
+        The response carries the payment `id`, the per-payment client credential `payment_secret`, and `gw_url` — the address of GoPay's hosted payment gateway, which offers the customer every payment method the eshop has enabled but cannot be embedded in the merchant's own checkout. The new payment is in the `CREATED` state and awaits a charge attempt; if none is made before the initial timeout expires, it transitions to `TIMEOUTED`.
       operationId: post-eshops-goid-payments
       responses:
         '201':
@@ -539,6 +543,199 @@ paths:
         in: path
         required: true
         description: Refund ID
+  '/eshops/{goid}/recurrences':
+    post:
+      tags:
+        - Recurrences
+      summary: Create a recurrence
+      description: >-
+        Registers a recurrence for the eshop and returns it in state `NEW`. The recurrence only
+        stores the payment template — no payment exists until the recurrence is started.
+        `schedule` is required for an `AUTO` recurrence and must be omitted for an `ON_DEMAND`
+        one.
+      operationId: post-eshops-goid-recurrences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recurrence-Create-Request'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recurrence-Details'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - merchant_credentials:
+            - 'payment:write'
+    parameters:
+      - schema:
+          type: string
+        name: goid
+        in: path
+        required: true
+        description: Unique identifier of a registered merchant website
+  '/recurrences/{rec_id}':
+    get:
+      tags:
+        - Recurrences
+      summary: Recurrence status
+      description: Returns the current state of the recurrence and the payment it last created.
+      operationId: get-recurrences-rec_id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recurrence-Details'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - merchant_credentials:
+            - 'payment:read'
+    delete:
+      tags:
+        - Recurrences
+      summary: Stop a recurrence
+      description: >-
+        Stops the recurrence permanently. It moves to state `STOPPED` with `stop_reason`
+        `CANCELLED_VIA_API` and creates no further payments. Stopping cannot be undone.
+      operationId: delete-recurrences-rec_id
+      responses:
+        '204':
+          description: No Content
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - merchant_credentials:
+            - 'payment:write'
+    parameters:
+      - schema:
+          type: string
+        name: rec_id
+        in: path
+        required: true
+        description: Unique ID of a previously created recurrence
+  '/recurrences/{rec_id}/start':
+    post:
+      tags:
+        - Recurrences
+      summary: Start a recurrence
+      description: >-
+        Creates the first payment of the recurrence and moves it to state `REQUESTED`. The
+        customer pays that payment at its `gw_url`; once it is paid the recurrence becomes
+        `STARTED` and further payments can be requested. The optional body overrides fields of
+        the stored payment template for this payment only.
+      operationId: post-recurrences-rec_id-start
+      requestBody:
+        description: Fields to override for this payment only
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment-Instance-Override'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment-Details'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - merchant_credentials:
+            - 'payment:write'
+    parameters:
+      - schema:
+          type: string
+        name: rec_id
+        in: path
+        required: true
+        description: Unique ID of a previously created recurrence
+  '/recurrences/{rec_id}/next':
+    post:
+      tags:
+        - Recurrences
+      summary: Create a next payment for a recurrence
+      description: >-
+        Creates a further payment from a recurrence that has already reached state `STARTED`.
+        Returns `409` while the recurrence has not been started and its first payment paid. The
+        optional body overrides fields of the stored payment template for this payment only.
+      operationId: post-recurrences-rec_id-next
+      requestBody:
+        description: Fields to override for this payment only
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment-Instance-Override'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment-Details'
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - merchant_credentials:
+            - 'payment:write'
+    parameters:
+      - schema:
+          type: string
+        name: rec_id
+        in: path
+        required: true
+        description: Unique ID of a previously created recurrence
   '/eshops/{goid}/links':
     post:
       tags:
@@ -865,8 +1062,8 @@ components:
           scopes:
             'card:write': Used to tokenize payment cards
             'card:read': Used to read data about payment cards
-            'payment:write': 'Used to create, charge, modify or refund payments'
-            'payment:read': 'Used to read data about payments, charges and refunds'
+            'payment:write': 'Create, charge and modify payments and the resources built on them'
+            'payment:read': 'Read payments and the resources built on them'
             'shared:read': Used to get shared information like public keys, URLs and values derived from the request.
           tokenUrl: /oauth2/token
       description: |-
@@ -1336,8 +1533,8 @@ components:
           type: string
           description: |-
             List of required token scopes, separated with a space.
-            - `payment:read` reads information about payments, charges and refunds
-            - `payment:write` allows creation, charging, modification and refunding of payments
+            - `payment:read` reads payments and the resources built on them, such as charges, refunds, recurrences and payment links
+            - `payment:write` creates, charges and modifies payments and those same resources
             - `card:read` and `card:write` allow reading information about and deleting or modifying cards respectively
             - `shared:read` allows reading public global information
           examples:
@@ -1547,13 +1744,16 @@ components:
         gw_url:
           type: string
           description: |
-            Escape hatch into the previous (v3) hosted-gateway flow, for payment methods
-            not yet covered by the v4 charge endpoint. Redirecting the customer here hands
-            off real-time control of the payment to the hosted flow while they are on it,
-            but the payment stays fully v4-observable throughout — GET /payments/{payment_id}
-            still reports the final state once the customer completes it, exactly as it
-            would for a payment charged directly through v4. Not a redirect target for
-            payment methods the v4 charge flow already covers.
+            Address of GoPay's hosted payment gateway for this payment. It offers the
+            customer every payment method the eshop has enabled, and GoPay drives the
+            payment while the customer is on it. It is a destination the customer is sent
+            to — it cannot be embedded in the merchant's own checkout. A merchant who needs
+            the payment step inside their own UI builds a checkout integration instead, which
+            today covers card, Google Pay, Apple Pay and QR payments and is being extended to
+            further methods; this gateway already offers every method the eshop has enabled.
+            Either way the payment stays fully v4-observable:
+            GET /payments/{payment_id} still reports the final state once the customer
+            completes it, exactly as it would for a payment charged directly through v4.
           format: uri
           examples:
             - 'https://gate.gopay.com/gw/123456789'
@@ -2742,6 +2942,389 @@ components:
         - `FAILED` - The refund could not be processed
       examples:
         - SUCCESS
+    Recurrence-Schedule:
+      title: Recurrence Schedule
+      type: object
+      description: How often an AUTO recurrence creates a payment
+      required:
+        - period
+        - cycle
+      properties:
+        period:
+          type: string
+          description: Unit the cycle is counted in
+          enum:
+            - DAY
+            - WEEK
+            - MONTH
+          examples:
+            - MONTH
+        cycle:
+          type: integer
+          description: Number of periods between two payments
+          minimum: 1
+          examples:
+            - 1
+      examples:
+        - period: MONTH
+          cycle: 1
+    Recurrence-Create-Request:
+      type: object
+      title: Recurrence Create Request
+      description: 'Discriminated union of the two recurrence kinds. The discriminator is the `type` field gaining values from the [Recurrence Type](#/schemas/Recurrence-Type) enum. An `AUTO` recurrence carries a `schedule`; an `ON_DEMAND` one must not, because the merchant asks for each further payment itself.'
+      examples: []
+      oneOf:
+        - $ref: '#/components/schemas/Recurrence-Create-Auto'
+        - $ref: '#/components/schemas/Recurrence-Create-On-Demand'
+      discriminator:
+        propertyName: type
+        mapping:
+          AUTO: '#/components/schemas/Recurrence-Create-Auto'
+          ON_DEMAND: '#/components/schemas/Recurrence-Create-On-Demand'
+    Recurrence-Create-Auto:
+      type: object
+      title: Recurrence Create Auto
+      description: 'The `AUTO` variant of the [Recurrence Create Request](#/schemas/Recurrence-Create-Request) union. GoPay creates the payments itself on the schedule, so `schedule` is required here.'
+      additionalProperties: false
+      required:
+        - type
+        - schedule
+        - recurrence_date_to
+        - payment
+      properties:
+        type:
+          const: AUTO
+          type: string
+          description: Always `AUTO`
+          examples:
+            - AUTO
+        schedule:
+          $ref: '#/components/schemas/Recurrence-Schedule'
+          description: How often the recurrence creates a payment
+        recurrence_date_to:
+          type: string
+          format: date
+          description: 'Last day on which the recurrence may create a payment, as yyyy-MM-dd'
+          examples:
+            - '2027-09-04'
+        payment:
+          $ref: '#/components/schemas/Payment-Create-Request'
+          description: Payment template every payment of this recurrence is created from
+      examples:
+        - type: AUTO
+          schedule:
+            period: MONTH
+            cycle: 1
+          recurrence_date_to: '2027-09-04'
+          payment:
+            amount: 1500
+            currency: CZK
+            order_number: '2025010199'
+            order_description: Monthly subscription
+            customer:
+              email: john.doe@example.com
+              first_name: John
+              last_name: Doe
+            callback:
+              notification_url: 'https://example.com/notify'
+              return_url: 'https://example.com/return'
+    Recurrence-Create-On-Demand:
+      type: object
+      title: Recurrence Create On Demand
+      description: 'The `ON_DEMAND` variant of the [Recurrence Create Request](#/schemas/Recurrence-Create-Request) union. There is no schedule — the merchant asks for each further payment with the next operation — so `schedule` must not be sent.'
+      additionalProperties: false
+      required:
+        - type
+        - recurrence_date_to
+        - payment
+      properties:
+        type:
+          const: ON_DEMAND
+          type: string
+          description: Always `ON_DEMAND`
+          examples:
+            - ON_DEMAND
+        recurrence_date_to:
+          type: string
+          format: date
+          description: 'Last day on which the recurrence may create a payment, as yyyy-MM-dd'
+          examples:
+            - '2027-09-04'
+        payment:
+          $ref: '#/components/schemas/Payment-Create-Request'
+          description: Payment template every payment of this recurrence is created from
+      examples:
+        - type: ON_DEMAND
+          recurrence_date_to: '2027-09-04'
+          payment:
+            amount: 1500
+            currency: CZK
+            order_number: '2025010199'
+            order_description: Monthly subscription
+            customer:
+              email: john.doe@example.com
+              first_name: John
+              last_name: Doe
+            callback:
+              notification_url: 'https://example.com/notify'
+              return_url: 'https://example.com/return'
+    Recurrence-Details:
+      title: Recurrence Details
+      type: object
+      description: State of a recurrence and the payment it last created
+      required:
+        - id
+        - type
+        - state
+        - recurrence_date_to
+        - payment
+      properties:
+        id:
+          type: string
+          description: Unique ID of the recurrence
+          examples:
+            - '8008013370'
+        type:
+          $ref: '#/components/schemas/Recurrence-Type'
+          description: Whether payments are created on a schedule or only on request
+        state:
+          $ref: '#/components/schemas/Recurrence-State'
+          description: Current state of the recurrence
+        schedule:
+          $ref: '#/components/schemas/Recurrence-Schedule'
+          description: Present only for an AUTO recurrence
+        recurrence_date_to:
+          type: string
+          format: date
+          description: 'Last day on which the recurrence may create a payment, as yyyy-MM-dd'
+          examples:
+            - '2027-09-04'
+        stop_reason:
+          $ref: '#/components/schemas/Recurrence-Stop-Reason'
+          description: Why the recurrence stopped — present only in state STOPPED
+        payment:
+          $ref: '#/components/schemas/Recurrence-Payment'
+          description: Payment the recurrence carries — the stored template until one is created
+      examples:
+        - id: '8008013370'
+          type: ON_DEMAND
+          state: NEW
+          recurrence_date_to: '2027-09-04'
+          payment:
+            amount: 1500
+            currency: CZK
+            order_number: '2025010199'
+            customer:
+              email: john.doe@example.com
+    Recurrence-Payment:
+      title: Recurrence Payment
+      type: object
+      description: >-
+        The payment the recurrence carries. Before the recurrence is started this is the stored
+        template only; once a payment exists, `id`, `state`, `gw_url` and `payment_secret` are
+        filled in as well.
+      required:
+        - amount
+        - currency
+        - order_number
+        - customer
+      properties:
+        id:
+          type: string
+          description: Payment ID. Absent until the recurrence has created a payment
+          examples:
+            - '7310142951'
+        state:
+          $ref: '#/components/schemas/Payment-State'
+          description: State of the created payment. Absent until the recurrence has created one
+        amount:
+          type: integer
+          description: Total amount in cents
+          minimum: 0
+          examples:
+            - 1500
+        currency:
+          $ref: '#/components/schemas/Currency'
+          description: Payment currency
+        order_number:
+          type: string
+          description: 'Order identification for the online shop, alphanumeric characters'
+          maxLength: 128
+          examples:
+            - '2025010199'
+        customer:
+          $ref: '#/components/schemas/Customer'
+          description: Information about the customer
+        gw_url:
+          type: string
+          description: 'Address of GoPay''s hosted payment gateway, where the customer pays the created payment. It cannot be embedded in the merchant''s own checkout — see `Payment-Details.gw_url`. Absent until the recurrence has created one'
+          examples:
+            - 'https://gate.gopay.com/gw/123456789'
+        payment_secret:
+          type: string
+          description: 'Secret the client SDK exchanges for a payment-scoped token. Absent until the recurrence has created a payment. **Do not embed in URLs, log or store!**'
+          examples:
+            - ps_6aa48c5fadd5ca9ccbc2a30bb13d7e8e
+      examples:
+        - amount: 1500
+          currency: CZK
+          order_number: '2025010199'
+          customer:
+            email: john.doe@example.com
+    Recurrence-Type:
+      title: Recurrence Type
+      type: string
+      description: >-
+        `AUTO` creates payments on the schedule, `ON_DEMAND` only when the merchant asks for the
+        next payment.
+      enum:
+        - AUTO
+        - ON_DEMAND
+      examples:
+        - ON_DEMAND
+    Recurrence-State:
+      title: Recurrence State
+      type: string
+      description: >-
+        `NEW` after creation, `REQUESTED` once the first payment was created and is waiting to be
+        paid, `STARTED` once it was paid and further payments can be requested, `STOPPED` when
+        the recurrence ended.
+      enum:
+        - NEW
+        - REQUESTED
+        - STARTED
+        - STOPPED
+      examples:
+        - NEW
+    Recurrence-Stop-Reason:
+      title: Recurrence Stop Reason
+      type: string
+      description: Why a recurrence in state STOPPED ended
+      enum:
+        - RECURRENCE_EXPIRED
+        - CARD_EXPIRED
+        - CANCELLED_VIA_API
+        - CANCELLED_VIA_BACKOFFICE
+        - CANCELLED_BY_GOPAY
+        - UNKNOWN
+      examples:
+        - CANCELLED_VIA_API
+    Customer-Override:
+      title: Customer Override
+      type: object
+      description: >-
+        Customer fields to replace for a single payment. Unlike `Customer` no field is required
+        — the recurrence's stored customer supplies whatever is omitted, merged field by field.
+        Unknown fields are rejected.
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          description: Customer email.
+          format: email
+          maxLength: 128
+          examples:
+            - john.doe@example.com
+        first_name:
+          type: string
+          description: Customer first name
+          maxLength: 256
+          examples:
+            - John
+        last_name:
+          type: string
+          description: Customer last name
+          maxLength: 256
+          examples:
+            - Doe
+        phone_number:
+          type: string
+          description: Customer phone number (home or mobile)
+          maxLength: 128
+          examples:
+            - '+420123456789'
+        city:
+          type: string
+          description: Customer address city
+          maxLength: 128
+          examples:
+            - Testington
+        street:
+          type: string
+          description: Customer address street
+          maxLength: 128
+          examples:
+            - Example st. 10
+        postal_code:
+          type: string
+          description: Customer address ZIP (postal code)
+          maxLength: 128
+          examples:
+            - '10000'
+        country_code:
+          type: string
+          description: 'Customer country code in respect to [ISO 3166-1 alpha-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)'
+          maxLength: 128
+          examples:
+            - CZE
+        customer_id:
+          type: string
+          description: Unique customer ID (used to customise the checkout experience)
+          maxLength: 128
+          examples:
+            - customer420
+      examples:
+        - first_name: John
+          last_name: Doe
+    Payment-Instance-Override:
+      title: Payment Instance Override
+      type: object
+      description: >-
+        Fields that replace the recurrence's stored payment template for a single payment.
+        Omitted fields keep the stored value; `customer` is merged field by field rather than
+        replaced. Unknown fields are rejected.
+      additionalProperties: false
+      properties:
+        amount:
+          type: integer
+          description: Total amount in cents
+          minimum: 0
+          examples:
+            - 9900
+        order_number:
+          type: string
+          description: 'Order identification for the online shop, alphanumeric characters'
+          maxLength: 128
+          examples:
+            - '2025010199'
+        order_description:
+          type: string
+          description: 'Order description, alphanumeric characters'
+          examples:
+            - Test order
+        additional_params:
+          type: array
+          description: Additional parameters for the payment
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/Additional-Param'
+        customer:
+          $ref: '#/components/schemas/Customer-Override'
+          description: 'Customer fields to replace; omitted ones keep the stored value'
+        callback:
+          $ref: '#/components/schemas/Payment-Callback'
+          description: Callback urls
+      examples:
+        - amount: 9900
+          order_number: '2025010199'
+          order_description: Test order
+          customer:
+            email: john.doe@example.com
+            first_name: John
+            last_name: Doe
+          callback:
+            notification_url: 'https://example.com/notify'
+            return_url: 'https://example.com/return'
     Link-Create-Request:
       title: Link Create Request
       type: object
