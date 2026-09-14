@@ -41,6 +41,21 @@ if (!source) {
 
 const isUrl = /^https?:\/\//i.test(source);
 
+// Payments.yaml is what this script writes, not something it reads. Passing it back in reads
+// the snapshot, writes it over itself and regenerates the types from whatever the snapshot
+// happened to hold — so endpoints added upstream since the last refresh silently disappear
+// from generated.ts. Refuse it rather than produce a plausible-looking rollback.
+if (!isUrl && resolve(source) === SNAPSHOT) {
+    console.error(
+        [
+            'codegen: Payments.yaml is the snapshot this script writes, not a spec source.',
+            'Regenerating from it would roll the types back to whatever it already held.',
+            'Pass the next spec instead — see CLAUDE.md ("API Spec & Code Generation").',
+        ].join('\n'),
+    );
+    process.exit(1);
+}
+
 let spec;
 if (isUrl) {
     console.error('→ Fetching the next spec ...');
