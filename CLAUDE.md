@@ -76,10 +76,9 @@ Codegen writes [Payments.yaml](Payments.yaml) from `SPEC_SOURCE` and then genera
 from that file, so both come from one fetch of one source rather than from two independent
 ones.
 
-The two steps are sequential, not atomic: the snapshot is written first, so if
-`openapi-typescript` then fails you are left with a refreshed `Payments.yaml` beside an
-unchanged `generated.ts`. Re-run codegen against the same source to finish the job — don't
-hand-edit either file to close the gap.
+Both outputs are staged to temporary files and moved into place only once
+`openapi-typescript` has succeeded, so a failed run leaves `Payments.yaml` and `generated.ts`
+exactly as they were rather than refreshing one and not the other.
 
 It **strips the Prism mock server** the feed injects as `servers[0]`, and fails rather than
 generate if a mock reference survives. The mock server itself is fine and stays where it runs

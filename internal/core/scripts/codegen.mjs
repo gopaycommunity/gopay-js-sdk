@@ -9,11 +9,18 @@
 // the API spec repo — are documented in CLAUDE.md. The source is deliberately not hardcoded
 // here; see CLAUDE.md for why.
 //
-// The spec is written to Payments.yaml at the repo root and the types are generated from
-// that file, so the snapshot and the generated types can never drift apart.
+// Both outputs — Payments.yaml at the repo root and src/types/generated.ts — are staged to
+// temporary files and moved into place only once type generation succeeds, so a failed run
+// never leaves one refreshed and the other stale.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+    existsSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+    writeFileSync,
+} from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -103,16 +110,40 @@ if (spec.includes('payments-api-mock')) {
     process.exit(1);
 }
 
-writeFileSync(SNAPSHOT, spec, 'utf8');
-console.error('→ Wrote Payments.yaml snapshot');
+// Stage both outputs, then move them into place only once type generation has succeeded.
+// Writing the snapshot first and generating from it in place would leave a refreshed
+// Payments.yaml beside an unchanged generated.ts whenever openapi-typescript fails — two
+// committed files describing different specs, with nothing in either saying so.
+const TMP_SPEC = `${SNAPSHOT}.tmp`;
+const TMP_OUT = `${OUT}.tmp`;
+
+const cleanup = () => {
+    for (const f of [TMP_SPEC, TMP_OUT]) {
+        if (existsSync(f)) {
+            rmSync(f);
+        }
+    }
+};
+
+writeFileSync(TMP_SPEC, spec, 'utf8');
 
 console.error('→ Generating types ...');
 const result = spawnSync(
     'yarn',
-    ['exec', 'openapi-typescript', SNAPSHOT, '-o', OUT],
+    ['exec', 'openapi-typescript', TMP_SPEC, '-o', TMP_OUT],
     {
         stdio: 'inherit',
     },
 );
 
-process.exit(result.status ?? 1);
+if (result.status !== 0 || !existsSync(TMP_OUT)) {
+    cleanup();
+    console.error(
+        'codegen: type generation failed — Payments.yaml and generated.ts left as they were.',
+    );
+    process.exit(result.status ?? 1);
+}
+
+renameSync(TMP_SPEC, SNAPSHOT);
+renameSync(TMP_OUT, OUT);
+console.error('→ Wrote Payments.yaml and generated.ts');
