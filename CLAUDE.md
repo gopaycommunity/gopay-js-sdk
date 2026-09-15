@@ -70,6 +70,14 @@ sources was used, not "beta". If the update genuinely breaks consumers, the `BRE
 footer still carries that (see *Releasing* below); the footer describes the API change, not
 the spec source.
 
+**When the refresh leaves `generated.ts` untouched** — the snapshot had drifted but the types
+were already current — nothing consumers can observe has changed, and `Payments.yaml` is not
+in the published packages or the Docker image. Prefer `chore:` for that commit, *provided the
+PR carries another releasable commit*. If a snapshot refresh is the whole PR, it has to stay
+`fix:`: `release-preview.sh --gate` fails a PR in which nothing is releasable, so a lone
+`chore:` turns it red. The version doubles as the Docker deploy tag, so a patch bump for a
+no-op commit is cheap; a red pipeline is not.
+
 ### `Payments.yaml` snapshot
 
 Codegen writes [Payments.yaml](Payments.yaml) from `SPEC_SOURCE` and then generates the types
