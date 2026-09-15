@@ -1,3 +1,40 @@
+## [1.8.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.8.0...browser-sdk-1.8.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* address CodeRabbit comments on PR 61 GPOMA-2629 ([915cf23](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/915cf2302f1b161c665084cbb2ab7239851100cc))
+* anchor codegen paths and harden the spec fetch GPOMA-2629 ([de5acfe](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/de5acfeed642f1cf1caecbf9df38c9e59eda079f))
+* **ci:** sync to github via deploy key and publish from the tag create event GPMOB-152 ([b498dd0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b498dd06b901bd224a728e9ad1ddfab06dd50a71))
+* **docs:** keep the internal spec hostname to CLAUDE.md only GPOMA-2629 ([5eb59d3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5eb59d39f040a1efcd0e3c874a323c27bd2629b7))
+* **example:** build recurrence dates from local parts, not UTC GPOMA-2592 ([8dbd17e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8dbd17e2c93e556cc9d1a0e4b770b458c475b42b))
+* **example:** clear the stale 3DS banner and prefer the requested cert GPOMA-2585 ([71a326d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/71a326d902fc27404d8c77658299d8a1cc4033fe))
+* **example:** clear the stale gateway banner and unpin the recurrence date GPOMA-2592 ([a09fae4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a09fae4e24b798c27744bdb5833cbaa49c50c1a9))
+* **example:** follow the 3DS challenge through on the server card-token charge GPOMA-2585 ([9d7d24b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9d7d24ba50da53436f2ad60b3326839765de31a8))
+* **example:** follow the charge through on the encrypted server panel too GPOMA-2585 ([613b376](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/613b3761b2dbbf6150e0b8b2b2d78478ba27a9c3))
+* **example:** honour GOPAY_PAYMENTS_V4_ENVIRONMENT instead of hardcoding sandbox GPOMA-2585 ([a609da4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a609da46c9d2ccf825d0938a820fd17fbc09d198))
+* **example:** match the production host case-insensitively GPOMA-2613 ([7096d72](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/7096d7208f8cae0568168ac2862ec59b9918350e))
+* **example:** pass the polling options to the browser SDK's awaitChargeState GPOMA-2585 ([8ec7327](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8ec7327857985363d356d6e6eaf8622002e39c7a)), closes [#57](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issue/57)
+* **example:** pin the credentials promise and share the config keys GPOMA-2613 ([19d240a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/19d240aebe54c030203b9501fb76332af2df77d5))
+* **example:** prefill the payment ID from the gateway return URL GPOMA-2585 ([816bafa](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/816bafa536f77d72738685a9d93fcbeafb8ff5d7))
+* **example:** surface charge errors and unblock HMR under a custom hostname GPOMA-2585 ([9bee816](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9bee816c42220dd842dd67ec35394b6a579161a5))
+* **sdk:** scope the create-to-charge claim and clean up after E2E GPOMA-2592 ([8c799f4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8c799f49c2c7454a4791d7f74f806bd3159a33b8))
+* **sdk:** stop awaitRecurrenceState waiting for states that cannot arrive GPOMA-2592 ([4c4ffaf](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/4c4ffafdbb86d831505f1eededfca4555251aedd))
+* stage codegen outputs so a failed run leaves both alone GPOMA-2629 ([eed8bb0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/eed8bb06f428398fc76df38686e6bbed222cf7ed))
+* **test:** a negative amount is a 400 now, not a 422 GPOMA-2613 ([a15dc6d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a15dc6d73bddfd45ce8ac31e59517f3aac517380))
+* update api from next spec GPOMA-2629 ([26f6727](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/26f67279bd84f76c226ad892af919ba50388ee43))
+
+
+### Features
+
+* **core:** regenerate types from the merged spec, adding recurrences GPOMA-2592 ([bd959f3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/bd959f34ff2e7b6f0301a09bbcfbf40c4270eea3))
+* **example:** challenge preference selector on both server card charges GPOMA-2585 ([9379f00](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9379f0097db206ae4b5f70959c82203522f318f1))
+* **example:** collect browser_data in the browser section and prefill it into the server charges GPOMA-2585 ([f41b700](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/f41b70051f3d7847435b32cba285a785075eeba2))
+* **example:** discover the dev certificate instead of hard-coding one GPOMA-2585 ([1d73103](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1d73103b78400c336ce6575da2674d0c6f247b96))
+* **example:** prefill the tokenized card token into the charge panel GPOMA-2585 ([37935d3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/37935d373f3c4934f7ee373b53163fefa09384d0))
+* **example:** serve merchant credentials from /env.js at runtime GPOMA-2613 ([6693b8d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/6693b8dd6abbabdc7236de49f38a67bfd0b07552))
+* **sdk:** add the recurrences module, with example and tests GPOMA-2592 ([3a90d70](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3a90d703962ddc187f642b123f5fadcfde68dce7))
+
 # [1.8.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.7.0...browser-sdk-1.8.0) (2026-09-02)
 
 
