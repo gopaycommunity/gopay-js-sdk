@@ -39,6 +39,17 @@
             <pre id="status-output">—</pre>
         </section>
 
+        <!-- Cancel payment -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.cancelPayment(paymentId)</h2>
+            <p class="desc">DELETE /payments/{id} — cancel a payment that has not been charged yet. Only CREATED can be canceled; any other state answers 409. The payment is not deleted, it moves to CANCELED.</p>
+            <div class="fields">
+                <label>Payment ID<input id="cancel-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
+            </div>
+            <button type="button" onclick="runCancelPayment()">Run</button>
+            <pre id="cancel-output">—</pre>
+        </section>
+
         <!-- Google Pay -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getGooglePayInfo(paymentId)</h2>

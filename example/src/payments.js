@@ -87,6 +87,20 @@ export function runGetPaymentStatus() {
     run('status-output', () => sdk.getPaymentStatus(paymentId));
 }
 
+// Cancel a payment that has not been charged yet.
+// Returns void (204 No Content) on success, so the call is wrapped to give the
+// output panel something to render — same shape as runDeleteCard().
+// Only a payment in CREATED can be canceled; any other state answers 409.
+// Example:
+//   await sdk.cancelPayment(paymentId);
+export function runCancelPayment() {
+    const paymentId = document.getElementById('cancel-payment-id').value.trim();
+    run('cancel-output', async () => {
+        await sdk.cancelPayment(paymentId);
+        return { canceled: true, payment_id: paymentId };
+    });
+}
+
 // Retrieve the current state of a specific charge attempt.
 // Example:
 //   const state = await sdk.getChargeState(paymentId);

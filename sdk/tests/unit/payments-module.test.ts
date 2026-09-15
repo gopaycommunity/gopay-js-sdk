@@ -2,7 +2,7 @@ import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
 import { createPaymentsApi } from '../../src/modules/payments/payments.module.js';
-import { makeResponse } from './helpers.js';
+import { makeEmptyResponse, makeResponse } from './helpers.js';
 
 const mockPaymentResponse = {
     id: 'pay_300000001',
@@ -786,6 +786,57 @@ describe('PaymentsModule', () => {
             await expect(payments.getPaymentStatus('')).rejects.toThrow(
                 'paymentId is required',
             );
+        });
+    });
+
+    describe('cancelPayment()', () => {
+        beforeEach(() => {
+            fetchMock.mockResolvedValue(makeEmptyResponse());
+        });
+
+        it('sends DELETE to /payments/{paymentId}', async () => {
+            let capturedReq!: Request;
+            fetchMock.mockImplementation(async (req: Request) => {
+                capturedReq = req;
+                return makeEmptyResponse();
+            });
+
+            await payments.cancelPayment('pay_300000001');
+
+            expect(capturedReq.method).toBe('DELETE');
+            expect(capturedReq.url).toBe(
+                'https://example.com/payments/pay_300000001',
+            );
+        });
+
+        it('returns void', async () => {
+            const result = await payments.cancelPayment('pay_300000001');
+            expect(result).toBeUndefined();
+        });
+
+        it('throws when paymentId is empty', async () => {
+            await expect(payments.cancelPayment('')).rejects.toThrow(
+                '[GoPaySDK] paymentId is required',
+            );
+        });
+
+        // Only a payment in CREATED can be canceled; every other state answers
+        // 409 and leaves the payment unchanged, so a second cancel fails.
+        it('surfaces a 409 outside CREATED', async () => {
+            fetchMock.mockResolvedValue(
+                makeResponse(
+                    {
+                        error: 'CONFLICT',
+                        message:
+                            'Payment can only be canceled in the CREATED state',
+                    },
+                    409,
+                ),
+            );
+
+            await expect(
+                payments.cancelPayment('pay_300000001'),
+            ).rejects.toMatchObject({ status: 409 });
         });
     });
 

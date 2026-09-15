@@ -70,7 +70,13 @@ export interface paths {
         get: operations["get-payments-payment_id"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Cancel a payment
+         * @description Cancels a payment that has not been charged yet.
+         *
+         *     The payment transitions to `CANCELED` and remains readable; it is not deleted. Only a payment in the `CREATED` state can be canceled; any other state returns `409`. The operation is server-side only.
+         */
+        delete: operations["delete-payments-payment_id"];
         options?: never;
         head?: never;
         patch?: never;
@@ -573,7 +579,7 @@ export interface components {
             /**
              * @description List of required token scopes, separated with a space.
              *     - `payment:read` reads payments and the resources built on them, such as charges, refunds, recurrences and payment links
-             *     - `payment:write` creates, charges and modifies payments and those same resources
+             *     - `payment:write` creates, charges, cancels and modifies payments and those same resources
              *     - `card:read` and `card:write` allow reading information about and deleting or modifying cards respectively
              *     - `shared:read` allows reading public global information
              * @example payment:write payment:read
@@ -2434,6 +2440,32 @@ export interface operations {
             401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];
             404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "delete-payments-payment_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Payment ID */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
             500: components["responses"]["Internal-Server-Error-500-Response"];
         };
     };

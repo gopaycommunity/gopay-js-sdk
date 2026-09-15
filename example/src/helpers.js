@@ -201,6 +201,7 @@ export function prefillPaymentId(result) {
         'charge-enc-payment-id',
         'charge-payment-id',
         'status-payment-id',
+        'cancel-payment-id',
         'charge-state-payment-id',
         'googlepay-payment-id',
         'qr-payment-id',

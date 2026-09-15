@@ -131,6 +131,44 @@ describe('payments — E2E', () => {
         });
     });
 
+    /**
+     * DELETE /payments/{payment_id} is deployed on alpha8 and alpha9 but not on
+     * the public sandbox, which answers 405 for the method (measured 15.09.2026).
+     * CI runs this suite against alpha8, so these assertions hold there. Running
+     * locally against a sandbox .env will fail all three — point the env at an
+     * alpha gateway instead of loosening them.
+     */
+    describe('cancelPayment', () => {
+        it('cancels a CREATED payment and leaves it readable', async () => {
+            const created = await createPayment();
+
+            await expect(
+                sdk.cancelPayment(created.id),
+            ).resolves.toBeUndefined();
+
+            // Cancelling is not deleting — the payment stays readable.
+            const read = await sdk.getPaymentStatus(created.id);
+            expect(read.id).toBe(created.id);
+            expect(read.state).toBe('CANCELED');
+        });
+
+        it('409s on a payment that is no longer CREATED', async () => {
+            const created = await createPayment();
+            await sdk.cancelPayment(created.id);
+
+            await expect(sdk.cancelPayment(created.id)).rejects.toMatchObject({
+                name: 'GoPayHTTPError',
+                status: 409,
+            });
+        });
+
+        it('404s on an unknown payment id', async () => {
+            await expect(sdk.cancelPayment('9999999999')).rejects.toMatchObject(
+                { name: 'GoPayHTTPError', status: 404 },
+            );
+        });
+    });
+
     describe('getChargeState', () => {
         it('404s while the payment has never been charged', async () => {
             // A CREATED payment has no charge yet, and the gateway says so with

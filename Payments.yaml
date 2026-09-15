@@ -146,6 +146,31 @@ paths:
             - 'payment:read'
         - payment_credentials:
             - 'payment:read'
+    delete:
+      tags:
+        - Payments
+      summary: Cancel a payment
+      description: |-
+        Cancels a payment that has not been charged yet.
+
+        The payment transitions to `CANCELED` and remains readable; it is not deleted. Only a payment in the `CREATED` state can be canceled; any other state returns `409`. The operation is server-side only.
+      operationId: delete-payments-payment_id
+      responses:
+        '204':
+          description: No Content
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - merchant_credentials:
+            - 'payment:write'
     parameters:
       - schema:
           type: string
@@ -1062,7 +1087,7 @@ components:
           scopes:
             'card:write': Used to tokenize payment cards
             'card:read': Used to read data about payment cards
-            'payment:write': 'Create, charge and modify payments and the resources built on them'
+            'payment:write': 'Create, charge, cancel and modify payments and the resources built on them'
             'payment:read': 'Read payments and the resources built on them'
             'shared:read': Used to get shared information like public keys, URLs and values derived from the request.
           tokenUrl: /oauth2/token
@@ -1534,7 +1559,7 @@ components:
           description: |-
             List of required token scopes, separated with a space.
             - `payment:read` reads payments and the resources built on them, such as charges, refunds, recurrences and payment links
-            - `payment:write` creates, charges and modifies payments and those same resources
+            - `payment:write` creates, charges, cancels and modifies payments and those same resources
             - `card:read` and `card:write` allow reading information about and deleting or modifying cards respectively
             - `shared:read` allows reading public global information
           examples:

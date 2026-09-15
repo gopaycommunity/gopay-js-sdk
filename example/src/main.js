@@ -35,6 +35,7 @@ import {
 } from './links.js';
 import {
     clearCharge,
+    runCancelPayment,
     runCharge,
     runChargeEncrypted,
     runCreatePayment,
@@ -248,6 +249,7 @@ window.browserGetChargeState = browserGetChargeState;
 window.browserGetStatus = browserGetStatus;
 window.browserGetBrowserData = browserGetBrowserData;
 window.runGetPaymentStatus = runGetPaymentStatus;
+window.runCancelPayment = runCancelPayment;
 window.runGetChargeState = runGetChargeState;
 window.runGetCardDetails = runGetCardDetails;
 window.runDeleteCard = runDeleteCard;

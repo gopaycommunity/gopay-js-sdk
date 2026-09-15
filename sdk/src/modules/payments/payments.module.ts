@@ -50,6 +50,29 @@ export function createPaymentsApi(client: HttpClient) {
         },
 
         /**
+         * Cancel a payment that has not been charged yet.
+         * Requires the `payment:write` OAuth2 scope, so it is called from the
+         * merchant's server — the payment-scoped token does not reach it.
+         *
+         * Only a payment in `CREATED` can be canceled; any other state answers
+         * `409` and leaves the payment unchanged. The state is what decides
+         * this, not whether a charge was attempted: a charge rejected before it
+         * engages an instrument leaves the payment in `CREATED`, so it can
+         * still be canceled.
+         *
+         * The payment is not deleted. It moves to `CANCELED` and stays readable
+         * through {@link getPaymentStatus}.
+         *
+         * DELETE /payments/{payment_id}
+         *
+         * @param paymentId - Payment session ID returned by {@link createPayment}
+         */
+        async cancelPayment(paymentId: string): Promise<void> {
+            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            return client.delete(`/payments/${pid}`);
+        },
+
+        /**
          * Create a new payment session.
          *
          * POST /eshops/{goid}/payments

@@ -123,7 +123,7 @@ const payment = await sdk.createPayment(goid, params);
 
 | Scope | Constant | Used by |
 |---|---|---|
-| `payment:write` | `GoPayScopes.PAYMENT_WRITE` | `createPayment`, `chargePayment`, `refundPayment`, `createPaymentLink`, `disablePaymentLink`, `createRecurrence`, `startRecurrence`, `createNextPayment`, `stopRecurrence` |
+| `payment:write` | `GoPayScopes.PAYMENT_WRITE` | `createPayment`, `chargePayment`, `cancelPayment`, `refundPayment`, `createPaymentLink`, `disablePaymentLink`, `createRecurrence`, `startRecurrence`, `createNextPayment`, `stopRecurrence` |
 | `payment:read` | `GoPayScopes.PAYMENT_READ` | `getPaymentStatus`, `getChargeState`, `listRefunds`, `getRefund`, `getPaymentLink`, `getRecurrence`, `awaitRecurrenceState` |
 | `card:write` | `GoPayScopes.CARD_WRITE` | `getBrowserKeys()` — allows the browser SDK to present the card form |
 | `card:read` | `GoPayScopes.CARD_READ` | `getCardDetails`, `deleteCard` |
@@ -216,6 +216,7 @@ Throws `AUTH_CREDENTIALS_MISSING` if either prerequisite is missing.
 | `createPayment(goid, params)` | Create a new payment session (`POST /eshops/{goid}/payments`). |
 | `chargePayment(paymentId, params)` | Charge a payment using a payment instrument (`POST /payments/{paymentId}/charge`). |
 | `getPaymentStatus(paymentId)` | Retrieve the current status of a payment (`GET /payments/{paymentId}`). Returns state, amount, currency, customer, and charge reference. |
+| `cancelPayment(paymentId)` | Cancel a payment that has not been charged yet (`DELETE /payments/{paymentId}`). Only a payment in `CREATED` can be canceled; any other state answers `409`. The payment is not deleted — it moves to `CANCELED` and stays readable. |
 | `getChargeState(paymentId)` | Retrieve the current state of a payment charge (`GET /payments/{paymentId}/charge`). Returns charge state, instrument details, and any 3DS action. |
 | `getGooglePayInfo(paymentId)` | Retrieve Google Pay configuration for a payment. |
 | `getApplePayInfo(paymentId)` | Retrieve Apple Pay configuration for a payment. Returns `applepayVersion`, `merchantIdentifier`, and `applePayPaymentRequest` needed to construct an `ApplePaySession`. |
