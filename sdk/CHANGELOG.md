@@ -1,3 +1,14 @@
+## [1.19.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.19.0...1.19.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* address CodeRabbit comments on PR 61 GPOMA-2629 ([915cf23](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/915cf2302f1b161c665084cbb2ab7239851100cc))
+* anchor codegen paths and harden the spec fetch GPOMA-2629 ([de5acfe](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/de5acfeed642f1cf1caecbf9df38c9e59eda079f))
+* **docs:** keep the internal spec hostname to CLAUDE.md only GPOMA-2629 ([5eb59d3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5eb59d39f040a1efcd0e3c874a323c27bd2629b7))
+* stage codegen outputs so a failed run leaves both alone GPOMA-2629 ([eed8bb0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/eed8bb06f428398fc76df38686e6bbed222cf7ed))
+* update api from next spec GPOMA-2629 ([26f6727](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/26f67279bd84f76c226ad892af919ba50388ee43))
+
 # [1.19.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.18.0...1.19.0) (2026-09-10)
 
 
