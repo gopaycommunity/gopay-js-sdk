@@ -1,4 +1,8 @@
-import { type HttpClient, requireNonEmptyString } from '@gopay-internal/core';
+import {
+    type HttpClient,
+    requireNonEmptyString,
+    requirePathSegment,
+} from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type EncryptedCardRequest = components['schemas']['Token-Create-Request'];
@@ -15,7 +19,7 @@ export function createCardsApi(client: HttpClient) {
          * @param cardId - Unique identifier of the stored card token
          */
         async getCardDetails(cardId: string): Promise<PermanentCardToken> {
-            const cid = requireNonEmptyString(cardId, 'cardId');
+            const cid = requirePathSegment(cardId, 'cardId');
             return client.get<PermanentCardToken>(`/cards/tokens/${cid}`);
         },
 
@@ -27,7 +31,7 @@ export function createCardsApi(client: HttpClient) {
          * @param cardId - Unique identifier of the stored card token
          */
         async deleteCard(cardId: string): Promise<void> {
-            const cid = requireNonEmptyString(cardId, 'cardId');
+            const cid = requirePathSegment(cardId, 'cardId');
             return client.delete(`/cards/tokens/${cid}`);
         },
 

@@ -4,7 +4,7 @@ import {
     GoPayErrorCodes,
     GoPaySDKError,
     type HttpClient,
-    requireNonEmptyString,
+    requirePathSegment,
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
@@ -82,7 +82,7 @@ export function createRecurrencesApi(client: HttpClient) {
             params: RecurrenceCreateRequest,
             options?: { signal?: AbortSignal },
         ): Promise<RecurrenceDetails> {
-            const id = requireNonEmptyString(goid, 'goid');
+            const id = requirePathSegment(goid, 'goid');
             return client.post<RecurrenceDetails>(
                 `/eshops/${id}/recurrences`,
                 params,
@@ -102,7 +102,7 @@ export function createRecurrencesApi(client: HttpClient) {
             recId: string,
             options?: { signal?: AbortSignal },
         ): Promise<RecurrenceDetails> {
-            const rid = requireNonEmptyString(recId, 'recId');
+            const rid = requirePathSegment(recId, 'recId');
             return client.get<RecurrenceDetails>(
                 `/recurrences/${rid}`,
                 options,
@@ -131,7 +131,7 @@ export function createRecurrencesApi(client: HttpClient) {
             override?: PaymentInstanceOverride,
             options?: { signal?: AbortSignal },
         ): Promise<PaymentDetails> {
-            const rid = requireNonEmptyString(recId, 'recId');
+            const rid = requirePathSegment(recId, 'recId');
             return client.post<PaymentDetails>(
                 `/recurrences/${rid}/start`,
                 override,
@@ -159,7 +159,7 @@ export function createRecurrencesApi(client: HttpClient) {
             override?: PaymentInstanceOverride,
             options?: { signal?: AbortSignal },
         ): Promise<PaymentDetails> {
-            const rid = requireNonEmptyString(recId, 'recId');
+            const rid = requirePathSegment(recId, 'recId');
             return client.post<PaymentDetails>(
                 `/recurrences/${rid}/next`,
                 override,
@@ -183,7 +183,7 @@ export function createRecurrencesApi(client: HttpClient) {
             recId: string,
             options?: { signal?: AbortSignal },
         ): Promise<void> {
-            const rid = requireNonEmptyString(recId, 'recId');
+            const rid = requirePathSegment(recId, 'recId');
             return client.delete(`/recurrences/${rid}`, options);
         },
 
@@ -210,7 +210,7 @@ export function createRecurrencesApi(client: HttpClient) {
             recId: string,
             options?: AwaitRecurrenceStateOptions,
         ): Promise<RecurrenceDetails> {
-            const rid = requireNonEmptyString(recId, 'recId');
+            const rid = requirePathSegment(recId, 'recId');
             const usingDefaultTerminals = options?.terminalStates === undefined;
             return awaitPaymentStatus(
                 async () => {

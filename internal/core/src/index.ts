@@ -17,4 +17,8 @@ export type {
     BrowserData,
     BrowserDataDetected,
 } from './types/browser-data.js';
-export { assertHttpsOrigin, requireNonEmptyString } from './validate.js';
+export {
+    assertHttpsOrigin,
+    requireNonEmptyString,
+    requirePathSegment,
+} from './validate.js';

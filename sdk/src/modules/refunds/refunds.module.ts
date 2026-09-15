@@ -2,7 +2,7 @@ import {
     awaitPaymentStatus,
     type AwaitPaymentStatusOptions as CoreAwaitPaymentStatusOptions,
     type HttpClient,
-    requireNonEmptyString,
+    requirePathSegment,
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
@@ -32,7 +32,7 @@ export function createRefundsApi(client: HttpClient) {
             params: RefundCreateRequest,
             options?: { signal?: AbortSignal },
         ): Promise<RefundDetails> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             return client.post<RefundDetails>(
                 `/payments/${pid}/refunds`,
                 params,
@@ -52,7 +52,7 @@ export function createRefundsApi(client: HttpClient) {
             paymentId: string,
             options?: { signal?: AbortSignal },
         ): Promise<RefundDetails[]> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             return client.get<RefundDetails[]>(
                 `/payments/${pid}/refunds`,
                 options,
@@ -71,7 +71,7 @@ export function createRefundsApi(client: HttpClient) {
             refundId: string,
             options?: { signal?: AbortSignal },
         ): Promise<RefundDetails> {
-            const rid = requireNonEmptyString(refundId, 'refundId');
+            const rid = requirePathSegment(refundId, 'refundId');
             return client.get<RefundDetails>(`/refunds/${rid}`, options);
         },
 
@@ -94,7 +94,7 @@ export function createRefundsApi(client: HttpClient) {
             refundId: string,
             options?: AwaitRefundStateOptions,
         ): Promise<RefundDetails> {
-            const rid = requireNonEmptyString(refundId, 'refundId');
+            const rid = requirePathSegment(refundId, 'refundId');
             return awaitPaymentStatus(
                 () =>
                     client.get<RefundDetails>(`/refunds/${rid}`, {

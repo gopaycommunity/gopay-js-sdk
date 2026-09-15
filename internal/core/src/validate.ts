@@ -14,6 +14,27 @@ export function requireNonEmptyString(value: string, field: string): string {
 }
 
 /**
+ * Validates `value` as a single URL path segment and returns it percent-encoded.
+ *
+ * Path segments are interpolated into request paths that `buildUrl` resolves with
+ * `new URL(relative, base)`, which normalises `.` and `..`. An unencoded id such as
+ * `../recurrences/123` would therefore reach a different endpoint than the caller
+ * named. Rejecting the traversal segments outright and encoding the rest keeps the
+ * path the caller wrote. Mirrors `requirePathSegment()` in the PHP SDK.
+ */
+export function requirePathSegment(value: string, field: string): string {
+    const validated = requireNonEmptyString(value, field);
+
+    if (validated === '.' || validated === '..') {
+        throw new GoPaySDKError(`[GoPaySDK] ${field} must not be "." or ".."`, {
+            errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
+        });
+    }
+
+    return encodeURIComponent(validated);
+}
+
+/**
  * Throws GoPaySDKError if `origin` is not a valid https: origin string.
  * No-op when `origin` is empty — callers guard the optional case themselves.
  */

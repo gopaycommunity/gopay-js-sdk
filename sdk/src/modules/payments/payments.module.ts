@@ -6,7 +6,7 @@ import {
     type AwaitPaymentStatusOptions as CoreAwaitPaymentStatusOptions,
     type GoPaySDKError,
     type HttpClient,
-    requireNonEmptyString,
+    requirePathSegment,
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
@@ -45,7 +45,7 @@ export function createPaymentsApi(client: HttpClient) {
             paymentId: string,
             options?: { signal?: AbortSignal },
         ): Promise<PaymentDetails> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             return client.get<PaymentDetails>(`/payments/${pid}`, options);
         },
 
@@ -68,7 +68,7 @@ export function createPaymentsApi(client: HttpClient) {
          * @param paymentId - Payment session ID returned by {@link createPayment}
          */
         async cancelPayment(paymentId: string): Promise<void> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             return client.delete(`/payments/${pid}`);
         },
 
@@ -132,7 +132,7 @@ export function createPaymentsApi(client: HttpClient) {
             params: PaymentChargeRequest,
             options?: { signal?: AbortSignal },
         ): Promise<PaymentChargeResponse> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             return client.post<PaymentChargeResponse>(
                 `/payments/${pid}/charge`,
                 params,
@@ -151,7 +151,7 @@ export function createPaymentsApi(client: HttpClient) {
             paymentId: string,
             options?: { signal?: AbortSignal },
         ): Promise<PaymentChargeStatusResponse> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             return client.get<PaymentChargeStatusResponse>(
                 `/payments/${pid}/charge`,
                 options,
@@ -168,7 +168,7 @@ export function createPaymentsApi(client: HttpClient) {
         async getGooglePayInfo(
             paymentId: string,
         ): Promise<GooglePayInfoResponse> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             return client.get<GooglePayInfoResponse>(
                 `/payments/${pid}/google-pay/info`,
             );
@@ -184,7 +184,7 @@ export function createPaymentsApi(client: HttpClient) {
         async getApplePayInfo(
             paymentId: string,
         ): Promise<ApplePayInfoResponse> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             return client.get<ApplePayInfoResponse>(
                 `/payments/${pid}/apple-pay/info`,
             );
@@ -211,7 +211,7 @@ export function createPaymentsApi(client: HttpClient) {
             origin: string = globalThis.location?.origin ?? '',
             callbacks?: { oncancel?: (event: unknown) => void },
         ): void {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             if (origin) {
                 try {
                     assertHttpsOrigin(
@@ -268,7 +268,7 @@ export function createPaymentsApi(client: HttpClient) {
             paymentId: string,
             format?: 'png' | 'svg',
         ): Promise<QRPaymentDetails> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             const path = format
                 ? `/payments/${pid}/qr-payment/info?format=${format}`
                 : `/payments/${pid}/qr-payment/info`;
@@ -292,7 +292,7 @@ export function createPaymentsApi(client: HttpClient) {
             paymentId: string,
             options?: AwaitChargeOptions,
         ): Promise<PaymentChargeStatusResponse> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             return awaitCharge(
                 () =>
                     client.get<PaymentChargeStatusResponse>(
@@ -320,7 +320,7 @@ export function createPaymentsApi(client: HttpClient) {
             paymentId: string,
             options?: AwaitPaymentStatusOptions,
         ): Promise<PaymentDetails> {
-            const pid = requireNonEmptyString(paymentId, 'paymentId');
+            const pid = requirePathSegment(paymentId, 'paymentId');
             return awaitPaymentStatus(
                 () =>
                     client.get<PaymentDetails>(`/payments/${pid}`, {

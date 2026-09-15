@@ -1,4 +1,4 @@
-import { type HttpClient, requireNonEmptyString } from '@gopay-internal/core';
+import { type HttpClient, requirePathSegment } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 
 type LinkCreateRequest = components['schemas']['Link-Create-Request'];
@@ -39,7 +39,7 @@ export function createLinksApi(client: HttpClient) {
             params: CreatePaymentLinkParams,
             options?: { signal?: AbortSignal },
         ): Promise<LinkDetails> {
-            const id = requireNonEmptyString(goid, 'goid');
+            const id = requirePathSegment(goid, 'goid');
             return client.post<LinkDetails>(
                 `/eshops/${id}/links`,
                 params,
@@ -66,8 +66,8 @@ export function createLinksApi(client: HttpClient) {
             linkId: string,
             options?: { signal?: AbortSignal },
         ): Promise<LinkDetails> {
-            const id = requireNonEmptyString(goid, 'goid');
-            const lid = requireNonEmptyString(linkId, 'linkId');
+            const id = requirePathSegment(goid, 'goid');
+            const lid = requirePathSegment(linkId, 'linkId');
             return client.get<LinkDetails>(
                 `/eshops/${id}/links/${lid}`,
                 options,
@@ -94,8 +94,8 @@ export function createLinksApi(client: HttpClient) {
             linkId: string,
             options?: { signal?: AbortSignal },
         ): Promise<void> {
-            const id = requireNonEmptyString(goid, 'goid');
-            const lid = requireNonEmptyString(linkId, 'linkId');
+            const id = requirePathSegment(goid, 'goid');
+            const lid = requirePathSegment(linkId, 'linkId');
             return client.delete(`/eshops/${id}/links/${lid}`, options);
         },
     };
