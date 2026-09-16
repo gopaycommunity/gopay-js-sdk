@@ -14,13 +14,24 @@ export function requireNonEmptyString(value: string, field: string): string {
 }
 
 /**
+ * The five characters `encodeURIComponent` leaves alone but PHP's `rawurlencode`
+ * escapes: RFC 3986 lists them as sub-delims, not as unreserved characters, and
+ * only the unreserved set is safe to leave raw. A server decodes `pay(1)` and
+ * `pay%281%29` identically, so escaping them changes no request that works today
+ * — it is here so that "mirrors the PHP SDK" holds for the bytes on the wire and
+ * not merely for the validation rules.
+ */
+const RFC3986_SUB_DELIMS = /[!'()*]/g;
+
+/**
  * Validates `value` as a single URL path segment and returns it percent-encoded.
  *
  * Path segments are interpolated into request paths that `buildUrl` resolves with
  * `new URL(relative, base)`, which normalises `.` and `..`. An unencoded id such as
  * `../recurrences/123` would therefore reach a different endpoint than the caller
  * named. Rejecting the traversal segments outright and encoding the rest keeps the
- * path the caller wrote. Mirrors `requirePathSegment()` in the PHP SDK.
+ * path the caller wrote. Mirrors `requirePathSegment()` in the PHP SDK, down to the
+ * bytes it emits — see {@link RFC3986_SUB_DELIMS}.
  */
 export function requirePathSegment(value: string, field: string): string {
     const validated = requireNonEmptyString(value, field);
@@ -31,7 +42,10 @@ export function requirePathSegment(value: string, field: string): string {
         });
     }
 
-    return encodeURIComponent(validated);
+    return encodeURIComponent(validated).replace(
+        RFC3986_SUB_DELIMS,
+        (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
 }
 
 /**
