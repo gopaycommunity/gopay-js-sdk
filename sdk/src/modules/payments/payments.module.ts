@@ -102,8 +102,9 @@ export function createPaymentsApi(client: HttpClient) {
             params: PaymentCreateRequest,
             options?: { signal?: AbortSignal },
         ): Promise<PaymentDetails> {
+            const id = requirePathSegment(goid, 'goid');
             return client.post<PaymentDetails>(
-                `/eshops/${goid}/payments`,
+                `/eshops/${id}/payments`,
                 params,
                 options,
             );

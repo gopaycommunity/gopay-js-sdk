@@ -196,6 +196,11 @@ describe('modules do not let a path segment escape its endpoint', () => {
             '/payments/{id}',
         ],
         [
+            'payments.createPayment',
+            (raw) => createPaymentsApi(client).createPayment(raw, mockPayment),
+            '/eshops/{id}/payments',
+        ],
+        [
             'payments.getChargeState',
             (raw) => createPaymentsApi(client).getChargeState(raw),
             '/payments/{id}/charge',
