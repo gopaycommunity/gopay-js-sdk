@@ -14,8 +14,14 @@ import type { HttpClient } from './http/client.js';
  * reporting in one place, so a module that grows a new guard is covered by
  * construction instead of by remembering.
  *
- * `emitError` only reports an error the first time it sees it, so a failure
+ * `reportError` only reports an error the first time it sees it, so a failure
  * already reported deeper down is not reported again here.
+ *
+ * **Only for objects whose properties are plain values and methods.**
+ * `Object.entries` *evaluates* a getter, so wrapping an object that has one
+ * replaces it with whatever it happened to return at wrap time. That rules out
+ * `CardFormController`, whose `isValid` is a live getter and would freeze at its
+ * mount-time `false`; the card form reports through `rejectResult` instead.
  */
 export function reportErrors<T extends object>(client: HttpClient, api: T): T {
     const wrapped: Record<string, unknown> = {};
