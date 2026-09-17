@@ -535,6 +535,12 @@ raises, and you forward from it into whatever you already run. No monitoring
 client is bundled — you bring your own.
 
 ```ts
+import * as Sentry from '@sentry/browser';
+import {
+  createGoPayBrowserSDK,
+  GoPayHTTPError,
+} from '@gopaycz/gopay-js-sdk-browser';
+
 const sdk = createGoPayBrowserSDK({
   environment: 'production',
   shareableKey,

@@ -33,10 +33,15 @@ export function reportErrors<T extends object>(client: HttpClient, api: T): T {
         }
 
         const method = value as (...args: unknown[]) => unknown;
-        wrapped[key] = (...args: unknown[]): unknown => {
+        // A plain function rather than an arrow, and Reflect.apply rather than a
+        // bare call, so a method invoked as `sdk.foo()` still receives a
+        // receiver. Today's modules all close over `client` and ignore `this`,
+        // but this is an exported generic and the next object through it need
+        // not.
+        wrapped[key] = function (this: unknown, ...args: unknown[]): unknown {
             let result: unknown;
             try {
-                result = method(...args);
+                result = Reflect.apply(method, this, args);
             } catch (error) {
                 client.reportError(error);
                 throw error;
