@@ -541,6 +541,10 @@ import {
   GoPayHTTPError,
 } from '@gopaycz/gopay-js-sdk-browser';
 
+// Both come from your server — see § Where the inputs come from.
+const shareableKey = 'pk_live_…';
+const clientId = 'your-client-id';
+
 const sdk = createGoPayBrowserSDK({
   environment: 'production',
   shareableKey,

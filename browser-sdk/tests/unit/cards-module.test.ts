@@ -1284,6 +1284,90 @@ describe('createCardsApi() — browser SDK', () => {
             expect(cards.isCardFormMounted()).toBe(false);
         });
 
+        it('fires the onError callback for the already-mounted guard', async () => {
+            // This guard returns its own already-rejected promise and never
+            // reaches rejectResult, so it needs reporting of its own.
+            const onError = vi.fn();
+            const c = createHttpClient({
+                baseUrl: 'https://example.com',
+                shareableKey: 'pk_test',
+                onError,
+            });
+            c.setClientId('cid_test');
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            const cards = createCardsApi(c, () => null);
+            const first = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            first.result.catch(() => {});
+
+            const second = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            second.result.catch(() => {});
+
+            expect(onError).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    errorCode: GoPayErrorCodes.CARD_FORM_ALREADY_MOUNTED,
+                }),
+            );
+        });
+
+        it('fires the onError callback for the direct-charge not-attached guard', async () => {
+            const onError = vi.fn();
+            const c = createHttpClient({
+                baseUrl: 'https://example.com',
+                shareableKey: 'pk_test',
+                onError,
+            });
+            c.setClientId('cid_test');
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            const cards = createCardsApi(c, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+            });
+            ctrl.result.catch(() => {});
+
+            expect(onError).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+                }),
+            );
+        });
+
+        it('fires the onError callback when submit() is called in internal mode', async () => {
+            const onError = vi.fn();
+            const c = createHttpClient({
+                baseUrl: 'https://example.com',
+                shareableKey: 'pk_test',
+                onError,
+            });
+            c.setClientId('cid_test');
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+
+            const cards = createCardsApi(c, () => null);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+            });
+            ctrl.result.catch(() => {});
+
+            // Still throws to the caller — reporting must not swallow it.
+            expect(() => ctrl.submit()).toThrow(GoPaySDKError);
+            expect(onError).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
+                }),
+            );
+        });
+
         it('fires the onError callback when the iframe reports an encrypt error', async () => {
             // The card form delivers its failures by rejecting `result` rather
             // than by throwing, so these reached the caller without onError

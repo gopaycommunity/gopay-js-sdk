@@ -231,17 +231,16 @@ export function createCardsApi(
             >
         > {
             if (activeCardFormSession !== null) {
+                const alreadyMounted = new GoPaySDKError(
+                    '[GoPayBrowserSDK] A card form is already mounted. Call unmount() on the existing controller before mounting a new one.',
+                    { errorCode: GoPayErrorCodes.CARD_FORM_ALREADY_MOUNTED },
+                );
+                // Reported here rather than in rejectResult: this guard returns
+                // its own already-rejected promise and never reaches the funnel.
+                client.reportError(alreadyMounted);
                 const result = Promise.reject<
                     EncryptedCardPayload | PaymentChargeStatusResponse
-                >(
-                    new GoPaySDKError(
-                        '[GoPayBrowserSDK] A card form is already mounted. Call unmount() on the existing controller before mounting a new one.',
-                        {
-                            errorCode:
-                                GoPayErrorCodes.CARD_FORM_ALREADY_MOUNTED,
-                        },
-                    ),
-                );
+                >(alreadyMounted);
                 result.catch(() => {});
                 return {
                     result,
@@ -254,12 +253,13 @@ export function createCardsApi(
             }
 
             if (options.flow === 'direct-charge' && !getPaymentsApi()) {
-                const result = Promise.reject<EncryptedCardPayload>(
-                    new GoPaySDKError(
-                        '[GoPayBrowserSDK] Payment not attached. Call attachPayment({ paymentId, paymentSecret }) before mounting with flow: "direct-charge".',
-                        { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
-                    ),
+                const notAttached = new GoPaySDKError(
+                    '[GoPayBrowserSDK] Payment not attached. Call attachPayment({ paymentId, paymentSecret }) before mounting with flow: "direct-charge".',
+                    { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
                 );
+                client.reportError(notAttached);
+                const result =
+                    Promise.reject<EncryptedCardPayload>(notAttached);
                 result.catch(() => {});
                 return {
                     result,
@@ -655,9 +655,14 @@ export function createCardsApi(
                 },
                 submit: () => {
                     if (submitMode !== 'external') {
-                        throw new GoPaySDKError(
-                            '[GoPayBrowserSDK] submit() is only available in external submit mode (submitMode: "external").',
-                            { errorCode: GoPayErrorCodes.INVALID_ARGUMENT },
+                        // emitError, not reportError: the controller is not run
+                        // through reportErrors (its isValid is a live getter),
+                        // and this has to keep throwing to its caller.
+                        client.emitError(
+                            new GoPaySDKError(
+                                '[GoPayBrowserSDK] submit() is only available in external submit mode (submitMode: "external").',
+                                { errorCode: GoPayErrorCodes.INVALID_ARGUMENT },
+                            ),
                         );
                     }
                     if (iframeMounted) {
