@@ -76,6 +76,18 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
         }
     }
 
+    /**
+     * Report without throwing — for failures delivered by rejecting a promise
+     * rather than by throwing, where there is no throw for emitError to do.
+     * Ignores anything that is not an SDK error, so callers can hand it a bare
+     * rejection reason.
+     */
+    function reportError(error: unknown): void {
+        if (error instanceof GoPaySDKError || error instanceof GoPayHTTPError) {
+            reportOnce(config, error);
+        }
+    }
+
     function emitError<E extends GoPaySDKError | GoPayHTTPError>(
         error: E,
     ): never {
@@ -193,6 +205,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
         },
 
         emitError,
+        reportError,
 
         async get<T>(path: string, options?: RequestOptions): Promise<T> {
             try {

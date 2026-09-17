@@ -410,6 +410,11 @@ export function createCardsApi(
                         return;
                     }
                     settled = true;
+                    // The card form reports every failure by rejecting `result`
+                    // rather than by throwing, so without this the errors an
+                    // integrator most wants to be alerted on — the card form
+                    // itself failing — are the ones onError never sees.
+                    client.reportError(reason);
                     rej(reason);
                 };
             });

@@ -1,9 +1,4 @@
-import { GoPayHTTPError, GoPaySDKError } from './errors.js';
 import type { HttpClient } from './http/client.js';
-
-function isSDKError(value: unknown): value is GoPaySDKError | GoPayHTTPError {
-    return value instanceof GoPaySDKError || value instanceof GoPayHTTPError;
-}
 
 /**
  * Wraps an assembled API surface so every error its methods raise reaches
@@ -37,9 +32,7 @@ export function reportErrors<T extends object>(client: HttpClient, api: T): T {
             try {
                 result = method(...args);
             } catch (error) {
-                if (isSDKError(error)) {
-                    client.emitError(error);
-                }
+                client.reportError(error);
                 throw error;
             }
 
@@ -47,9 +40,7 @@ export function reportErrors<T extends object>(client: HttpClient, api: T): T {
             // done by the time an async method fails.
             if (result instanceof Promise) {
                 return result.catch((error: unknown) => {
-                    if (isSDKError(error)) {
-                        client.emitError(error);
-                    }
+                    client.reportError(error);
                     throw error;
                 });
             }
