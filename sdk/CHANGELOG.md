@@ -1,3 +1,17 @@
+# [1.20.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.19.1...1.20.0) (2026-09-17)
+
+
+### Bug Fixes
+
+* **core:** escape RFC 3986 sub-delims in path segments ([fd9b8a2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fd9b8a2320a3e6f4af568b755f3b4f02f3b2cb03))
+* **core:** percent-encode URL path segments across every module GPOMA-2633 ([b7c4a08](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b7c4a087a1aeef0ff75bc939efb03f5b7851bc8f))
+* **payments:** validate the goid in createPayment ([459240b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/459240b1a04b0c13659d22f9e431ec616b277e3f))
+
+
+### Features
+
+* **payments:** add cancelPayment and wire it into the example page GPOMA-2633 ([0f1c399](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0f1c39989a878c61dc28d5ecf107319d940f6b3e))
+
 ## [1.19.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.19.0...1.19.1) (2026-09-15)
 
 
