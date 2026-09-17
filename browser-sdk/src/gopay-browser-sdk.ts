@@ -2,6 +2,7 @@ import {
     createHttpClient,
     GoPayErrorCodes,
     GoPaySDKError,
+    reportErrors,
     requireNonEmptyString,
 } from '@gopay-internal/core';
 import type { AttachPaymentArgs, GoPayBrowserConfig } from './config.js';
@@ -71,7 +72,10 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
         getPaymentsApi,
     );
 
-    return {
+    // reportErrors so that config.onError also sees the failures raised before a
+    // request goes out — argument validation and the mount-time guards — and not
+    // just the ones the HTTP client raises itself.
+    return reportErrors(client, {
         version: SDK_VERSION,
         ...createAuthApi(client),
 
@@ -160,7 +164,7 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
         async getQRPaymentInfo(format?: 'png' | 'svg') {
             return (paymentsApi ?? notAttached()).getQRPaymentInfo(format);
         },
-    };
+    });
 }
 
 export type GoPayBrowserSDK = ReturnType<typeof createGoPayBrowserSDK>;

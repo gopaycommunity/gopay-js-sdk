@@ -75,11 +75,24 @@ export class GoPaySDKError extends Error {
 
 export class GoPayHTTPError extends Error {
     readonly name = 'GoPayHTTPError';
+    /** HTTP method of the request that failed, when the SDK issued it. */
+    readonly method: string | undefined;
+    /**
+     * Request path with ids collapsed to `{id}` (`/payments/{id}/charge`).
+     * A stable grouping key for monitoring: the raw path would open a fresh
+     * group per payment. Undefined when the SDK did not issue the request.
+     */
+    readonly endpoint: string | undefined;
 
     constructor(
         public readonly status: number,
         public readonly body: unknown,
+        request?: { method?: string; endpoint?: string },
     ) {
+        // The message deliberately stays free of the endpoint: consumers match
+        // on it, and the grouping key belongs in a field a tracker can read.
         super(`GoPay API error: HTTP ${status}`);
+        this.method = request?.method;
+        this.endpoint = request?.endpoint;
     }
 }

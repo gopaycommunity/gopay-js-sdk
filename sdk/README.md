@@ -740,6 +740,12 @@ try {
 |---|---|---|
 | `status` | `number` | HTTP status code (e.g. `401`, `422`). |
 | `body` | `unknown` | Parsed JSON response body, or raw text if JSON parsing failed. |
+| `method` | `string \| undefined` | HTTP method of the failed request. |
+| `endpoint` | `string \| undefined` | Request path with ids collapsed to `{id}`, e.g. `/payments/{id}/charge`. |
+
+`endpoint` exists to be a grouping key. The raw path carries the payment id, so
+grouping an error tracker by it opens one group per payment — thousands of groups
+for a single fault. Group by `endpoint` and `status` instead.
 
 A 422 error from `chargePayment` with an invalid amount looks like:
 
@@ -771,7 +777,47 @@ const sdk = createGoPaySDK({
 });
 ```
 
-The callback fires synchronously before the error propagates to the caller.
+The callback fires synchronously before the error propagates to the caller. It
+sees every error the SDK raises — including argument validation and config
+errors, which happen before any request is issued — and it sees each one exactly
+once, however many internal layers the failure passes through on its way out.
+
+`onError` observes; it does not handle. The error still propagates, so your
+`catch` blocks keep working unchanged. An exception thrown *by* your `onError` is
+swallowed so it cannot replace the error the SDK was reporting.
+
+## Monitoring
+
+`onError` is the seam for your own monitoring: forward from it into whatever you
+already run. No monitoring client is bundled — you bring your own.
+
+```ts
+import * as Sentry from '@sentry/node';
+import { GoPayHTTPError, GoPaySDKError } from '@gopaycz/gopay-js-sdk';
+
+const sdk = createGoPaySDK({
+  environment: 'production',
+  onError(err) {
+    Sentry.captureException(err, {
+      tags:
+        err instanceof GoPayHTTPError
+          ? { gopay_status: err.status, gopay_endpoint: err.endpoint }
+          : { gopay_code: (err as GoPaySDKError).errorCode },
+    });
+  },
+});
+```
+
+The same shape works for any tracker — swap `captureException` for
+`datadogLogs.logger.error`, an OpenTelemetry span event, or your own logger.
+
+Two fields are worth attaching as tags, because they are what makes the events
+groupable: `errorCode` on a `GoPaySDKError` and `status` + `endpoint` on a
+`GoPayHTTPError`. Do not attach the error `body` verbatim — it is the API's
+response and may name the customer.
+
+**Never forward the arguments you passed in.** A charge carries a card token and
+a payment secret, and an error tracker is not a place for either.
 
 ---
 

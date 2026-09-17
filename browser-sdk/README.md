@@ -528,6 +528,59 @@ For shared error types (`GoPaySDKError`, `GoPayHTTPError`, network codes) see th
 
 ---
 
+## Monitoring
+
+`onError` is the hook for your own monitoring: it receives every error the SDK
+raises, and you forward from it into whatever you already run. No monitoring
+client is bundled — you bring your own.
+
+```ts
+const sdk = createGoPayBrowserSDK({
+  environment: 'production',
+  shareableKey,
+  clientId,
+  onError(err) {
+    Sentry.captureException(err, {
+      tags:
+        err instanceof GoPayHTTPError
+          ? { gopay_status: err.status, gopay_endpoint: err.endpoint }
+          : { gopay_code: err.errorCode },
+    });
+  },
+});
+```
+
+`onError` sees every error the SDK raises — including the mount-time guards and
+argument validation, which run before any request is issued — and sees each one
+exactly once. It observes rather than handles: the error still propagates to your
+`catch`, and an exception thrown by your own `onError` is swallowed rather than
+allowed to replace it.
+
+Group by `endpoint` and `status`, never by the raw URL: request paths carry the
+payment id, so grouping on them opens a fresh group per payment.
+
+### What not to forward
+
+- **Never** the values you passed in — a charge carries a card token, and
+  `attachPayment` a payment secret.
+- **Never** the raw `body` of a `GoPayHTTPError`: it is the API's response and may
+  name the customer.
+- **Session replay must not record the card form.** The card fields live in a
+  GoPay-hosted iframe; configure your replay tool to block iframes, or leave
+  replay off on the payment page.
+
+### Two browser-specific gotchas
+
+- **Content-Security-Policy.** Your monitoring tool's ingest host needs to be in
+  your `connect-src`. If it is missing, reports fail silently in the console while
+  payments keep working — the SDK is unaffected either way.
+- **`getBrowserData()` on sandbox.** `GET /cards/browser-data` is not deployed in
+  every environment and answers 404 there. Called directly it reports as any other
+  failure; used internally by `chargePayment` a 404 is tolerated and never
+  reported, since the charge simply proceeds with the locally readable fields.
+
+---
+
 ## CDN / IIFE
 
 ```html

@@ -3,12 +3,50 @@ import { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from '../errors.js';
 import { createAuthHandler } from './auth-handler.js';
 import { buildUrl, resolveBaseUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
+import { normalizeEndpoint } from './endpoint.js';
 import { parseBody } from './response.js';
 import { createTokenStore, type StoredTokenPair } from './token-store.js';
 import type { RequestOptions } from './types.js';
 
+/**
+ * Errors already handed to `onError`.
+ *
+ * One failure crosses several layers on its way out — `throwIfNotOk` reports an
+ * HTTP error, the verb method's catch hands it to `handleError`, and the API
+ * wrapper sees it again — and each layer would otherwise report it afresh.
+ * Holding the errors weakly keeps the set from pinning them in memory.
+ */
+const reportedErrors = new WeakSet<GoPaySDKError | GoPayHTTPError>();
+
+function reportOnce(
+    config: CoreConfig,
+    error: GoPaySDKError | GoPayHTTPError,
+): void {
+    if (reportedErrors.has(error)) {
+        return;
+    }
+    reportedErrors.add(error);
+    // A throwing onError is the integrator's bug, and must not replace the
+    // error the SDK was already reporting.
+    try {
+        config.onError?.(error);
+    } catch {}
+}
+
 export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
-    const baseUrl = resolveBaseUrl(config);
+    // resolveBaseUrl validates config.baseUrl and throws on a bad one. It runs
+    // before emitError exists, so it reports through reportOnce directly —
+    // otherwise the one error guaranteed to happen at construction time is the
+    // one error onError never sees.
+    let baseUrl: string;
+    try {
+        baseUrl = resolveBaseUrl(config);
+    } catch (err) {
+        if (err instanceof GoPaySDKError || err instanceof GoPayHTTPError) {
+            reportOnce(config, err);
+        }
+        throw err;
+    }
     const tokenStore = createTokenStore();
     let shareableKey: string | undefined = config.shareableKey;
     const auth = createAuthHandler({
@@ -41,18 +79,20 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
     function emitError<E extends GoPaySDKError | GoPayHTTPError>(
         error: E,
     ): never {
-        try {
-            config.onError?.(error);
-        } catch {}
+        reportOnce(config, error);
         throw error;
     }
 
     function handleError(err: unknown): never {
+        // Report before rethrowing. These arrive already typed — either from
+        // throwIfNotOk, which has reported them, or from a validator such as
+        // buildUrl, which has not. reportOnce tells the two apart, so the
+        // second case stops being invisible without the first firing twice.
         if (err instanceof GoPaySDKError) {
-            throw err;
+            emitError(err);
         }
         if (err instanceof GoPayHTTPError) {
-            throw err;
+            emitError(err);
         }
 
         if (err instanceof Error && err.name === 'TimeoutError') {
@@ -75,12 +115,21 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
         throw err;
     }
 
-    async function throwIfNotOk(response: Response): Promise<void> {
+    async function throwIfNotOk(
+        response: Response,
+        method: string,
+        path: string,
+    ): Promise<void> {
         if (response.ok) {
             return;
         }
         const body = await parseBody(response);
-        emitError(new GoPayHTTPError(response.status, body));
+        emitError(
+            new GoPayHTTPError(response.status, body, {
+                method,
+                endpoint: normalizeEndpoint(path),
+            }),
+        );
     }
 
     return {
@@ -156,7 +205,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                     { method: 'GET', headers },
                     options?.signal,
                 );
-                await throwIfNotOk(response);
+                await throwIfNotOk(response, 'GET', path);
                 return (await response.json()) as T;
             } catch (err) {
                 return handleError(err);
@@ -181,7 +230,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                     { method: 'POST', headers, body: JSON.stringify(body) },
                     options?.signal,
                 );
-                await throwIfNotOk(response);
+                await throwIfNotOk(response, 'POST', path);
                 return (await response.json()) as T;
             } catch (err) {
                 return handleError(err);
@@ -199,7 +248,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                     { method: 'DELETE', headers },
                     options?.signal,
                 );
-                await throwIfNotOk(response);
+                await throwIfNotOk(response, 'DELETE', path);
             } catch (err) {
                 return handleError(err);
             }
@@ -238,7 +287,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                     }),
                 );
                 debugLogResponse(response);
-                await throwIfNotOk(response);
+                await throwIfNotOk(response, 'POST', path);
                 return (await response.json()) as T;
             } catch (err) {
                 return handleError(err);

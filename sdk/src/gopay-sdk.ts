@@ -1,4 +1,4 @@
-import { createHttpClient } from '@gopay-internal/core';
+import { createHttpClient, reportErrors } from '@gopay-internal/core';
 import type { GoPayConfig } from './config.js';
 import { createAuthApi } from './modules/auth/auth.module.js';
 import { createCardsApi } from './modules/cards/cards.module.js';
@@ -20,7 +20,10 @@ import { SDK_VERSION } from './version.js';
  */
 export function createGoPaySDK(config: GoPayConfig = {}) {
     const client = createHttpClient(config);
-    return {
+    // reportErrors so that config.onError also sees the failures raised before a
+    // request goes out — argument validation, mostly — and not just the ones the
+    // HTTP client raises itself.
+    return reportErrors(client, {
         version: SDK_VERSION,
         ...createAuthApi(client),
         ...createPaymentsApi(client),
@@ -28,7 +31,7 @@ export function createGoPaySDK(config: GoPayConfig = {}) {
         ...createRefundsApi(client),
         ...createLinksApi(client),
         ...createRecurrencesApi(client),
-    };
+    });
 }
 
 export type GoPaySDK = ReturnType<typeof createGoPaySDK>;
