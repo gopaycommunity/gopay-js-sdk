@@ -7,6 +7,7 @@ import {
     GoPayHTTPError,
     GoPaySDKError,
     type HttpClient,
+    requirePathSegment,
 } from '@gopay-internal/core';
 import type { components } from '../../types/generated.js';
 import { collectBrowserData, fetchBrowserData } from './browser-data.js';
@@ -85,6 +86,18 @@ export function createPaymentsApi(
     paymentId: string,
     defaultThreeDS?: ThreeDSConfig,
 ) {
+    // Validated and encoded once here rather than at each of the twelve
+    // interpolations below. buildUrl resolves a relative path with
+    // `new URL(relative, base)`, which normalises `.` and `..` — so a raw
+    // `../../oauth2/token` would address an endpoint the caller never named.
+    // This factory owns every path the id reaches, so an endpoint added later is
+    // covered by construction rather than by whoever copies an existing method
+    // remembering to encode.
+    //
+    // attachPayment deliberately keeps the raw id: there it goes into the Basic
+    // auth credentials, where percent-encoding would change the value being
+    // authenticated rather than the path being addressed.
+    const pid = requirePathSegment(paymentId, 'paymentId');
     async function validateApplePayMerchant(
         validationURL?: string,
     ): Promise<ValidateMerchantResponse> {
@@ -92,7 +105,7 @@ export function createPaymentsApi(
             ? { validationUrl: validationURL }
             : undefined;
         return client.post<ValidateMerchantResponse>(
-            `/payments/${paymentId}/apple-pay/validate`,
+            `/payments/${pid}/apple-pay/validate`,
             body,
         );
     }
@@ -105,10 +118,7 @@ export function createPaymentsApi(
         async getStatus(options?: {
             signal?: AbortSignal;
         }): Promise<PaymentDetails> {
-            return client.get<PaymentDetails>(
-                `/payments/${paymentId}`,
-                options,
-            );
+            return client.get<PaymentDetails>(`/payments/${pid}`, options);
         },
 
         /**
@@ -155,7 +165,7 @@ export function createPaymentsApi(
                     collected = collectBrowserData();
                 }
                 return client.post<PaymentChargeResponse>(
-                    `/payments/${paymentId}/charge`,
+                    `/payments/${pid}/charge`,
                     {
                         ...params,
                         payment_instrument: {
@@ -170,7 +180,7 @@ export function createPaymentsApi(
                 );
             }
             return client.post<PaymentChargeResponse>(
-                `/payments/${paymentId}/charge`,
+                `/payments/${pid}/charge`,
                 params,
                 options,
             );
@@ -184,7 +194,7 @@ export function createPaymentsApi(
             signal?: AbortSignal;
         }): Promise<PaymentChargeStatusResponse> {
             return client.get<PaymentChargeStatusResponse>(
-                `/payments/${paymentId}/charge`,
+                `/payments/${pid}/charge`,
                 options,
             );
         },
@@ -213,7 +223,7 @@ export function createPaymentsApi(
             return awaitCharge(
                 () =>
                     client.get<PaymentChargeStatusResponse>(
-                        `/payments/${paymentId}/charge`,
+                        `/payments/${pid}/charge`,
                         { signal: options?.signal },
                     ),
                 {
@@ -235,7 +245,7 @@ export function createPaymentsApi(
          */
         async getGooglePayInfo(): Promise<GooglePayInfoResponse> {
             return client.get<GooglePayInfoResponse>(
-                `/payments/${paymentId}/google-pay/info`,
+                `/payments/${pid}/google-pay/info`,
             );
         },
 
@@ -245,7 +255,7 @@ export function createPaymentsApi(
          */
         async getApplePayInfo(): Promise<ApplePayInfoResponse> {
             return client.get<ApplePayInfoResponse>(
-                `/payments/${paymentId}/apple-pay/info`,
+                `/payments/${pid}/apple-pay/info`,
             );
         },
 
@@ -255,7 +265,7 @@ export function createPaymentsApi(
          */
         async getApplePayAppInfo(): Promise<ApplePayAppInfoResponse> {
             return client.get<ApplePayAppInfoResponse>(
-                `/payments/${paymentId}/apple-pay/app-info`,
+                `/payments/${pid}/apple-pay/app-info`,
             );
         },
 
@@ -303,8 +313,8 @@ export function createPaymentsApi(
             format?: 'png' | 'svg',
         ): Promise<QRPaymentDetails> {
             const path = format
-                ? `/payments/${paymentId}/qr-payment/info?format=${format}`
-                : `/payments/${paymentId}/qr-payment/info`;
+                ? `/payments/${pid}/qr-payment/info?format=${format}`
+                : `/payments/${pid}/qr-payment/info`;
             return client.get<QRPaymentDetails>(path);
         },
 
@@ -322,7 +332,7 @@ export function createPaymentsApi(
         ): Promise<PaymentDetails> {
             return awaitPaymentStatus(
                 () =>
-                    client.get<PaymentDetails>(`/payments/${paymentId}`, {
+                    client.get<PaymentDetails>(`/payments/${pid}`, {
                         signal: options?.signal,
                     }),
                 options,
