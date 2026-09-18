@@ -87,6 +87,10 @@ function makeClient() {
         emitError: vi.fn((e: unknown) => {
             throw e;
         }),
+        // Wallet failures are delivered by rejecting `result` rather than by
+        // throwing, so this — not emitError — is the call that carries them to
+        // onError.
+        reportError: vi.fn<(error: unknown) => void>(),
     };
 }
 
@@ -909,6 +913,130 @@ describe('mountApplePayButton()', () => {
         await new Promise((r) => setTimeout(r, 0));
         expect(paymentsApi.chargePayment).not.toHaveBeenCalled();
     });
+
+    // -----------------------------------------------------------------------
+    // Error reporting (GPOMA-2647)
+    //
+    // Every failure below leaves by rejecting `result`, never by throwing, so
+    // onError sees it only if the module hands it over explicitly.
+    // -----------------------------------------------------------------------
+
+    it('reports PAYMENT_NOT_ATTACHED to onError', async () => {
+        const client = makeClient();
+        const api = createWalletsApi(client as never, () => null);
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+            }),
+        );
+    });
+
+    it('reports a failed Apple Pay SDK script load to onError', async () => {
+        vi.stubGlobal('ApplePaySession', undefined);
+        mockLoadScriptOnce.mockRejectedValue(new Error('network'));
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message: expect.stringContaining(
+                    'Failed to load Apple Pay SDK script',
+                ),
+            }),
+        );
+    });
+
+    it('reports the unavailable-device guard to onError', async () => {
+        MockApplePaySession.canMakePayments.mockReturnValue(false);
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                message: expect.stringContaining('not available'),
+            }),
+        );
+    });
+
+    it('reports the already-active guard to onError', async () => {
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const first = await api.mountApplePayButton(container);
+        first.result.catch(() => {});
+        const second = await api.mountApplePayButton(container);
+        second.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message: expect.stringContaining('already active'),
+            }),
+        );
+    });
+
+    it('reports a charge-flow failure to onError through rejectResult', async () => {
+        const chargeError = new Error('charge flow failed');
+        const paymentsApi = makePaymentsApi({
+            awaitChargeState: vi.fn().mockRejectedValue(chargeError),
+        });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
+        container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        lastSession.onpaymentauthorized!({
+            payment: { token: { paymentData: validApplePaymentData } },
+        });
+        await ctrl.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(chargeError);
+    });
+
+    it('reports missing payment data in the authorisation event to onError', async () => {
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
+        container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        lastSession.onpaymentauthorized!('not-an-object');
+        await ctrl.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+            }),
+        );
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -1398,5 +1526,120 @@ describe('mountGooglePayButton()', () => {
         }
 
         expect(paymentsApi.chargePayment).not.toHaveBeenCalled();
+    });
+
+    // -----------------------------------------------------------------------
+    // Error reporting (GPOMA-2647)
+    // -----------------------------------------------------------------------
+
+    it('reports PAYMENT_NOT_ATTACHED to onError', async () => {
+        const client = makeClient();
+        const api = createWalletsApi(client as never, () => null);
+
+        const ctrl = await api.mountGooglePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+            }),
+        );
+    });
+
+    it('reports a failed Google Pay script load to onError', async () => {
+        mockLoadScriptOnce.mockRejectedValue(new Error('network'));
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message: expect.stringContaining(
+                    'Failed to load Google Pay script',
+                ),
+            }),
+        );
+    });
+
+    it('reports the isReadyToPay=false guard to onError', async () => {
+        mockIsReadyToPay = vi.fn().mockResolvedValue({ result: false });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                message: expect.stringContaining('not available'),
+            }),
+        );
+    });
+
+    it('reports the already-active guard to onError', async () => {
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const first = await api.mountGooglePayButton(container);
+        first.result.catch(() => {});
+        const second = await api.mountGooglePayButton(container);
+        second.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message: expect.stringContaining('already active'),
+            }),
+        );
+    });
+
+    it('reports a charge-flow failure to onError through rejectResult', async () => {
+        const chargeError = new Error('charge flow failed');
+        const paymentsApi = makePaymentsApi({
+            awaitChargeState: vi.fn().mockRejectedValue(chargeError),
+        });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        await capturedOnClick!();
+        await ctrl.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(chargeError);
+    });
+
+    it('reports missing paymentMethodData to onError', async () => {
+        mockLoadPaymentData = vi.fn().mockResolvedValue({});
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        await capturedOnClick!();
+        await ctrl.result.catch(() => {});
+
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+            }),
+        );
     });
 });

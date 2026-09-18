@@ -235,28 +235,31 @@ function whenApplePayButtonDefined(): Promise<void> {
     });
 }
 
-function makeNotAttachedController(): WalletButtonController {
-    const result = Promise.reject<PaymentChargeStatusResponse>(
-        new GoPaySDKError(
-            '[GoPayBrowserSDK] Payment not attached. Call attachPayment({ paymentId, paymentSecret }) before mounting a wallet button.',
-            { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
-        ),
+function makeNotAttachedController(client: HttpClient): WalletButtonController {
+    const notAttached = new GoPaySDKError(
+        '[GoPayBrowserSDK] Payment not attached. Call attachPayment({ paymentId, paymentSecret }) before mounting a wallet button.',
+        { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
     );
+    // Reported here rather than in rejectResult: this guard returns its own
+    // already-rejected promise and never reaches the funnel.
+    client.reportError(notAttached);
+    const result = Promise.reject<PaymentChargeStatusResponse>(notAttached);
     // Prevent unhandled-rejection noise — callers subscribe via .result
     result.catch(() => {});
     return { result, unmount: () => {} };
 }
 
 function makeUnavailableController(
+    client: HttpClient,
     onUnavailable: (() => void) | undefined,
 ): WalletButtonController {
     onUnavailable?.();
-    const result = Promise.reject<PaymentChargeStatusResponse>(
-        new GoPaySDKError(
-            '[GoPayBrowserSDK] Wallet payment method not available on this device or browser.',
-            { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
-        ),
+    const unavailable = new GoPaySDKError(
+        '[GoPayBrowserSDK] Wallet payment method not available on this device or browser.',
+        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
     );
+    client.reportError(unavailable);
+    const result = Promise.reject<PaymentChargeStatusResponse>(unavailable);
     result.catch(() => {});
     return { result, unmount: () => {} };
 }
@@ -356,16 +359,17 @@ export function createWalletsApi(
         ): Promise<WalletButtonController> {
             const paymentsApi = getPaymentsApi();
             if (!paymentsApi) {
-                return makeNotAttachedController();
+                return makeNotAttachedController(client);
             }
 
             if (activeAppleCleanup) {
-                const result = Promise.reject<PaymentChargeStatusResponse>(
-                    new GoPaySDKError(
-                        '[GoPayBrowserSDK] Apple Pay button is already active. Call unmount() on the existing controller first.',
-                        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
-                    ),
+                const alreadyActive = new GoPaySDKError(
+                    '[GoPayBrowserSDK] Apple Pay button is already active. Call unmount() on the existing controller first.',
+                    { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
                 );
+                client.reportError(alreadyActive);
+                const result =
+                    Promise.reject<PaymentChargeStatusResponse>(alreadyActive);
                 result.catch(() => {});
                 return { result, unmount: () => {} };
             }
@@ -400,6 +404,7 @@ export function createWalletsApi(
                         '[GoPayBrowserSDK] Failed to load Apple Pay SDK script.',
                         { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
                     );
+                    client.reportError(err);
                     const result =
                         Promise.reject<PaymentChargeStatusResponse>(err);
                     result.catch(() => {});
@@ -415,6 +420,7 @@ export function createWalletsApi(
                     `[GoPayBrowserSDK] Apple Pay SDK loaded but <${APPLE_PAY_BUTTON_TAG}> was never registered.`,
                     { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR, cause },
                 );
+                client.reportError(err);
                 const result = Promise.reject<PaymentChargeStatusResponse>(err);
                 result.catch(() => {});
                 return { result, unmount: () => {} };
@@ -430,13 +436,17 @@ export function createWalletsApi(
             // through the deprecated `canMakePaymentsWithActiveCard()`, which would
             // newly hide the button from users with no provisioned card.
             if (!ApplePaySession?.canMakePayments()) {
-                return makeUnavailableController(options.onUnavailable);
+                return makeUnavailableController(client, options.onUnavailable);
             }
 
             let info: Awaited<ReturnType<typeof paymentsApi.getApplePayInfo>>;
             try {
                 info = await paymentsApi.getApplePayInfo();
             } catch (err) {
+                // A no-op for the errors the HTTP client already reported —
+                // reportError dedupes. Here so this path does not depend on
+                // which layer happened to construct the failure.
+                client.reportError(err);
                 const result = Promise.reject<PaymentChargeStatusResponse>(err);
                 result.catch(() => {});
                 return { result, unmount: () => {} };
@@ -460,6 +470,12 @@ export function createWalletsApi(
                     rejectResult = (e) => {
                         settled = true;
                         activeAppleCleanup = undefined;
+                        // The wallet buttons report every failure by
+                        // rejecting `result` rather than by throwing, so
+                        // without this the errors an integrator most wants to
+                        // be alerted on — the charge flow itself failing — are
+                        // the ones onError never sees.
+                        client.reportError(e);
                         rej(e);
                     };
                 },
@@ -624,16 +640,17 @@ export function createWalletsApi(
         ): Promise<WalletButtonController> {
             const paymentsApi = getPaymentsApi();
             if (!paymentsApi) {
-                return makeNotAttachedController();
+                return makeNotAttachedController(client);
             }
 
             if (activeGoogleCleanup) {
-                const result = Promise.reject<PaymentChargeStatusResponse>(
-                    new GoPaySDKError(
-                        '[GoPayBrowserSDK] Google Pay button is already active. Call unmount() on the existing controller first.',
-                        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
-                    ),
+                const alreadyActive = new GoPaySDKError(
+                    '[GoPayBrowserSDK] Google Pay button is already active. Call unmount() on the existing controller first.',
+                    { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
                 );
+                client.reportError(alreadyActive);
+                const result =
+                    Promise.reject<PaymentChargeStatusResponse>(alreadyActive);
                 result.catch(() => {});
                 return { result, unmount: () => {} };
             }
@@ -650,6 +667,7 @@ export function createWalletsApi(
                     '[GoPayBrowserSDK] Failed to load Google Pay script.',
                     { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
                 );
+                client.reportError(err);
                 const result = Promise.reject<PaymentChargeStatusResponse>(err);
                 result.catch(() => {});
                 return { result, unmount: () => {} };
@@ -670,13 +688,17 @@ export function createWalletsApi(
             )?.google;
 
             if (!googleGlobal) {
-                return makeUnavailableController(options.onUnavailable);
+                return makeUnavailableController(client, options.onUnavailable);
             }
 
             let info: Awaited<ReturnType<typeof paymentsApi.getGooglePayInfo>>;
             try {
                 info = await paymentsApi.getGooglePayInfo();
             } catch (err) {
+                // A no-op for the errors the HTTP client already reported —
+                // reportError dedupes. Here so this path does not depend on
+                // which layer happened to construct the failure.
+                client.reportError(err);
                 const result = Promise.reject<PaymentChargeStatusResponse>(err);
                 result.catch(() => {});
                 return { result, unmount: () => {} };
@@ -694,10 +716,13 @@ export function createWalletsApi(
                     info.paymentDataRequest ?? {},
                 );
                 if (!readiness.result) {
-                    return makeUnavailableController(options.onUnavailable);
+                    return makeUnavailableController(
+                        client,
+                        options.onUnavailable,
+                    );
                 }
             } catch {
-                return makeUnavailableController(options.onUnavailable);
+                return makeUnavailableController(client, options.onUnavailable);
             }
 
             // Tear down any previous Google Pay button mount
@@ -718,6 +743,12 @@ export function createWalletsApi(
                     rejectResult = (e) => {
                         settled = true;
                         activeGoogleCleanup = undefined;
+                        // The wallet buttons report every failure by
+                        // rejecting `result` rather than by throwing, so
+                        // without this the errors an integrator most wants to
+                        // be alerted on — the charge flow itself failing — are
+                        // the ones onError never sees.
+                        client.reportError(e);
                         rej(e);
                     };
                 },
