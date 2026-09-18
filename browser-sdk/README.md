@@ -594,6 +594,42 @@ payment id, so grouping on them opens a fresh group per payment.
 
 ---
 
+## Operational data
+
+The SDK sends GoPay basic diagnostic data about its own behaviour: which SDK
+operation ran, the HTTP status it got back, how long it took, and — when the SDK
+raises an error — the SDK's own error code and message. This is always on. There
+is no switch and nothing to configure, because a signal produced only by the
+merchants who opted in describes those merchants rather than the SDK.
+
+**What it never contains.** Card numbers, CVV, the encrypted card payload, card
+tokens, `paymentSecret`, credentials, 3DS or ACS redirect parameters, and
+personal data such as e-mail, phone, name or IBAN. Request and response bodies
+are not sent at all — not redacted, not sampled, simply never read — so a field
+added to the API later cannot start leaking through a redaction list that
+predates it. Request paths are sent as templates (`/payments/{id}/charge`), so
+the payment id does not travel either, and error messages are stripped of
+PAN-shaped digit runs and query strings before they leave the page.
+
+**What it does contain that concerns you.** Every request carries the customer's
+IP address, as any HTTP request does, and the page URL the SDK is running on
+without its query string. The data is therefore pseudonymised personal data, not
+anonymous. GoPay processes it under legitimate interest to keep the payment
+integration working and diagnosable.
+
+**What you should do.** Reflect this in your own privacy notice — you are the
+controller for your checkout, and your customers' data is being processed on your
+page. If your Content-Security-Policy restricts `connect-src`, add
+`https://lx.gopay.com` (production) or `https://lx.sandbox.gopay.com` (sandbox);
+without it the browser blocks the reports, which changes nothing about the
+payment.
+
+Delivery is fire-and-forget: a hard 2-second timeout, no retries, a cap per
+visit, and every failure is discarded silently. Nothing here can delay or fail a
+payment.
+
+---
+
 ## CDN / IIFE
 
 ```html
