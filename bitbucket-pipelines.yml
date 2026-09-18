@@ -121,6 +121,12 @@ definitions:
           - corepack enable
           - yarn install --immutable
           - yarn workspace @gopaycz/gopay-js-sdk run build
+          # browser-sdk was previously built nowhere on a PR — not here, not in
+          # the Docker dry-run — so a broken tsup build first failed on master.
+          # browser-sdk-iife.spec.ts also loads dist/gopay-browser-sdk.min.js
+          # directly: the example serves TypeScript source through Vite aliases,
+          # so without this the bundle is never executed by anything.
+          - yarn workspace @gopaycz/gopay-js-sdk-browser run build
           - yarn test:e2e
         artifacts:
           - playwright-report/**
