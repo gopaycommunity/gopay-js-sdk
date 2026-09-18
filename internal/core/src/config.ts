@@ -37,3 +37,18 @@ export const BASE_URLS: Record<GoPayEnvironment, string> = {
     sandbox: 'https://gw.sandbox.gopay.com/gp-gw/api/4.0',
     production: 'https://gate.gopay.com/gp-gw/api/4.0',
 };
+
+/**
+ * gw-logger ingest, keyed on the same `environment` the API base URL is keyed
+ * on. Deliberately a second entry in this table rather than a new setting: the
+ * operational data the browser SDK emits is GoPay's, so there is nothing here
+ * for an integrator to point elsewhere, and nothing new to configure.
+ *
+ * Not derived from BASE_URLS either — `lx` is its own host, and a rule that
+ * rewrote `gw.` into `lx.` would silently produce a wrong host the moment
+ * `config.baseUrl` is overridden for a mock server.
+ */
+export const LOGGER_URLS: Record<GoPayEnvironment, string> = {
+    sandbox: 'https://lx.sandbox.gopay.com',
+    production: 'https://lx.gopay.com',
+};

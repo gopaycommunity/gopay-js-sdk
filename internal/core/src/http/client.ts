@@ -1,5 +1,11 @@
 import type { CoreConfig } from '../config.js';
 import { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from '../errors.js';
+import {
+    type ApiCallRecord,
+    NO_TELEMETRY,
+    nowMs,
+    type Telemetry,
+} from '../logging/telemetry.js';
 import { createAuthHandler } from './auth-handler.js';
 import { buildUrl, resolveBaseUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
@@ -21,11 +27,18 @@ const reportedErrors = new WeakSet<GoPaySDKError | GoPayHTTPError>();
 function reportOnce(
     config: CoreConfig,
     error: GoPaySDKError | GoPayHTTPError,
+    telemetry: Telemetry,
 ): void {
     if (reportedErrors.has(error)) {
         return;
     }
     reportedErrors.add(error);
+    // Behind the same dedupe as onError, so one failure is one record however
+    // many layers it crossed. HTTP errors are skipped on purpose — they already
+    // left through apiCall carrying their real status.
+    if (error instanceof GoPaySDKError) {
+        telemetry.error(error);
+    }
     // A throwing onError is the integrator's bug, and must not replace the
     // error the SDK was already reporting.
     //
@@ -41,7 +54,32 @@ function reportOnce(
     } catch {}
 }
 
-export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
+export function createHttpClient(
+    config: CoreConfig,
+    reAuthAction?: string,
+    telemetry: Telemetry = NO_TELEMETRY,
+) {
+    /**
+     * Records the call whichever way it ends. `finally` rather than two call
+     * sites because a request that throws is the one most worth having timed,
+     * and `status` stays null when the request never produced a response —
+     * which is what tells a timeout apart from a 500.
+     */
+    function record(
+        method: string,
+        path: string,
+        started: number,
+        statusCode: number | null,
+    ): void {
+        const rec: ApiCallRecord = {
+            method,
+            endpoint: normalizeEndpoint(path),
+            statusCode,
+            durationMs: Math.round(nowMs() - started),
+        };
+        telemetry.apiCall(rec);
+    }
+
     // resolveBaseUrl validates config.baseUrl and throws on a bad one. It runs
     // before emitError exists, so it reports through reportOnce directly —
     // otherwise the one error guaranteed to happen at construction time is the
@@ -51,7 +89,7 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
         baseUrl = resolveBaseUrl(config);
     } catch (err) {
         if (err instanceof GoPaySDKError || err instanceof GoPayHTTPError) {
-            reportOnce(config, err);
+            reportOnce(config, err, telemetry);
         }
         throw err;
     }
@@ -92,14 +130,14 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
      */
     function reportError(error: unknown): void {
         if (error instanceof GoPaySDKError || error instanceof GoPayHTTPError) {
-            reportOnce(config, error);
+            reportOnce(config, error, telemetry);
         }
     }
 
     function emitError<E extends GoPaySDKError | GoPayHTTPError>(
         error: E,
     ): never {
-        reportOnce(config, error);
+        reportOnce(config, error, telemetry);
         throw error;
     }
 
@@ -216,6 +254,8 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
         reportError,
 
         async get<T>(path: string, options?: RequestOptions): Promise<T> {
+            const started = nowMs();
+            let status: number | null = null;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({ Accept: SDK_ACCEPT_HEADER });
@@ -226,10 +266,13 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                     { method: 'GET', headers },
                     options?.signal,
                 );
+                status = response.status;
                 await throwIfNotOk(response, 'GET', path);
                 return (await response.json()) as T;
             } catch (err) {
                 return handleError(err);
+            } finally {
+                record('GET', path, started, status);
             }
         },
 
@@ -238,6 +281,8 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
             body?: unknown,
             options?: RequestOptions,
         ): Promise<T> {
+            const started = nowMs();
+            let status: number | null = null;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
@@ -251,14 +296,19 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                     { method: 'POST', headers, body: JSON.stringify(body) },
                     options?.signal,
                 );
+                status = response.status;
                 await throwIfNotOk(response, 'POST', path);
                 return (await response.json()) as T;
             } catch (err) {
                 return handleError(err);
+            } finally {
+                record('POST', path, started, status);
             }
         },
 
         async delete(path: string, options?: RequestOptions): Promise<void> {
+            const started = nowMs();
+            let status: number | null = null;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers();
@@ -269,9 +319,12 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                     { method: 'DELETE', headers },
                     options?.signal,
                 );
+                status = response.status;
                 await throwIfNotOk(response, 'DELETE', path);
             } catch (err) {
                 return handleError(err);
+            } finally {
+                record('DELETE', path, started, status);
             }
         },
 
@@ -280,6 +333,8 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
             form: Record<string, string>,
             options?: RequestOptions,
         ): Promise<T> {
+            const started = nowMs();
+            let status: number | null = null;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
@@ -308,10 +363,13 @@ export function createHttpClient(config: CoreConfig, reAuthAction?: string) {
                     }),
                 );
                 debugLogResponse(response);
+                status = response.status;
                 await throwIfNotOk(response, 'POST', path);
                 return (await response.json()) as T;
             } catch (err) {
                 return handleError(err);
+            } finally {
+                record('POST', path, started, status);
             }
         },
     };
