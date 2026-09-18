@@ -11,7 +11,19 @@ export interface CoreConfig {
     requestTimeoutMs?: number;
     /** Log outgoing requests and incoming responses to console.debug. */
     debugLoggingEnabled?: boolean;
-    /** Called whenever the SDK throws a GoPaySDKError or GoPayHTTPError. */
+    /**
+     * Called for every `GoPaySDKError` and `GoPayHTTPError` the SDK raises,
+     * exactly once per error.
+     *
+     * "Raises" rather than "throws" on purpose: the card form and the wallet
+     * buttons deliver their failures by rejecting `result`, never by throwing,
+     * and those reach this callback too.
+     *
+     * Observes rather than handles — the error still propagates to the caller.
+     * Anything this callback throws is swallowed, including a rejection from an
+     * `async` handler, so monitoring being down cannot replace the SDK's own
+     * error or crash the host process.
+     */
     onError?: (error: GoPaySDKError | GoPayHTTPError) => void;
     /**
      * Shareable key (X-API-Key for browser requests). Public — safe to expose in

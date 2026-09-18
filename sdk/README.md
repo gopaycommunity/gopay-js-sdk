@@ -793,7 +793,7 @@ already run. No monitoring client is bundled — you bring your own.
 
 ```ts
 import * as Sentry from '@sentry/node';
-import { GoPayHTTPError, GoPaySDKError } from '@gopaycz/gopay-js-sdk';
+import { GoPayHTTPError } from '@gopaycz/gopay-js-sdk';
 
 const sdk = createGoPaySDK({
   environment: 'production',
@@ -802,7 +802,7 @@ const sdk = createGoPaySDK({
       tags:
         err instanceof GoPayHTTPError
           ? { gopay_status: err.status, gopay_endpoint: err.endpoint }
-          : { gopay_code: (err as GoPaySDKError).errorCode },
+          : { gopay_code: err.errorCode },
     });
   },
 });

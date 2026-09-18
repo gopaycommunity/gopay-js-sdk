@@ -560,6 +560,9 @@ const sdk = createGoPayBrowserSDK({
 });
 ```
 
+The same shape works for any tracker — swap `captureException` for
+`datadogLogs.logger.error`, an OpenTelemetry span event, or your own logger.
+
 `onError` sees every error the SDK raises — including the mount-time guards and
 argument validation, which run before any request is issued — and sees each one
 exactly once. It observes rather than handles: the error still propagates to your
