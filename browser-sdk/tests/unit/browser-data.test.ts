@@ -1,6 +1,7 @@
 import {
     createHttpClient,
     GoPayErrorCodes,
+    GoPayHTTPError,
     GoPaySDKError,
     SDK_ACCEPT_HEADER,
 } from '@gopay-internal/core';
@@ -331,5 +332,19 @@ describe('fetchBrowserData()', () => {
         // which is how unmount() cancels the fetch that precedes a charge
         controller.abort();
         expect(capturedReq.signal.aborted).toBe(true);
+    });
+
+    it('puts method and endpoint on the HTTP error, like every other failure', async () => {
+        // This request bypasses the shared client deliberately, so the request
+        // context the client would have attached has to be supplied here or
+        // this is the one error that reaches onError without it.
+        fetchMock.mockResolvedValue(makeResponse({ error: 'nope' }, 500));
+
+        const err = await fetchBrowserData(client).catch((e: unknown) => e);
+
+        expect(err).toBeInstanceOf(GoPayHTTPError);
+        expect((err as GoPayHTTPError).status).toBe(500);
+        expect((err as GoPayHTTPError).method).toBe('GET');
+        expect((err as GoPayHTTPError).endpoint).toBe('/cards/browser-data');
     });
 });

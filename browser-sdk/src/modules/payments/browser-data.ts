@@ -218,7 +218,13 @@ export async function fetchBrowserData(
             } catch {
                 body = undefined;
             }
-            throw new GoPayHTTPError(response.status, body);
+            // Carries the same method/endpoint pair the shared client attaches,
+            // so this error groups in monitoring like every other one. Spelled
+            // out rather than normalized: the path holds no id segments.
+            throw new GoPayHTTPError(response.status, body, {
+                method: 'GET',
+                endpoint: '/cards/browser-data',
+            });
         }
 
         const body: unknown = await response.json();
