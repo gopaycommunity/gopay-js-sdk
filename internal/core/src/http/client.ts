@@ -28,8 +28,16 @@ function reportOnce(
     reportedErrors.add(error);
     // A throwing onError is the integrator's bug, and must not replace the
     // error the SDK was already reporting.
+    //
+    // `onError` is declared `=> void`, and TypeScript accepts an async function
+    // wherever a void return is expected — so `async onError` type-checks, and a
+    // handler that forwards to the integrator's own ingest (a network call, i.e.
+    // the likely shape) rejects long after this block has exited. Unhandled,
+    // that takes a Node process down with it. Promise.resolve covers the sync
+    // and async shapes in one path; a synchronous throw still happens while the
+    // argument is evaluated, so the try below keeps catching it.
     try {
-        config.onError?.(error);
+        void Promise.resolve(config.onError?.(error)).catch(() => {});
     } catch {}
 }
 

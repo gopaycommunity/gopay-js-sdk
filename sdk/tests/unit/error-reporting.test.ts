@@ -196,6 +196,73 @@ describe('error reporting to onError', () => {
             );
             expect(onError).toHaveBeenCalledOnce();
         });
+
+        /**
+         * `onError` is declared `=> void`, and TypeScript accepts a function
+         * returning anything at all wherever a void return is expected — so
+         * `async onError` type-checks, and forwarding to an integrator's own
+         * ingest (a network call) is exactly the shape that rejects after the
+         * synchronous try block has exited. Left unadopted that is an unhandled
+         * rejection, which on Node kills the process: the SDK's monitoring hook
+         * would take down the app it was meant to observe.
+         *
+         * Asserted through promise adoption rather than a `process`
+         * 'unhandledRejection' listener, because Vitest installs its own
+         * handler for that event — a listener registered here never fires, so
+         * that version of this test passed with the fix reverted. Measured
+         * directly on plain Node instead: one unhandled rejection without the
+         * fix, none with it.
+         */
+        it('adopts the promise an async onError returns, so its rejection cannot escape', async () => {
+            let adopted = false;
+            // Stands in for an async handler. Promise.resolve() adopts a
+            // thenable by calling .then — which a bare `config.onError?.(error)`
+            // never does, leaving the rejection to escape.
+            const rejectingThenable = {
+                // biome-ignore lint/suspicious/noThenProperty: a thenable is the subject under test — it is what an async onError returns.
+                then(_ok: (v: unknown) => void, fail: (e: unknown) => void) {
+                    adopted = true;
+                    fail(new Error('ingest is down'));
+                },
+            };
+            // No cast: assigning this to `(error) => void` is precisely the
+            // TypeScript rule that lets the bug through in the first place.
+            const onError = vi.fn(() => rejectingThenable);
+            const sdk = createGoPaySDK({
+                baseUrl: 'https://example.com',
+                onError,
+            });
+
+            await expect(sdk.getPaymentStatus('')).rejects.toThrow(
+                GoPaySDKError,
+            );
+            expect(onError).toHaveBeenCalledOnce();
+
+            // Adoption happens on a microtask.
+            await Promise.resolve();
+            await Promise.resolve();
+            expect(adopted).toBe(true);
+        });
+
+        it('still reports through an async onError that resolves', async () => {
+            const seen: unknown[] = [];
+            const onError = vi.fn(async (error: unknown) => {
+                await Promise.resolve();
+                seen.push(error);
+            });
+            const sdk = createGoPaySDK({
+                baseUrl: 'https://example.com',
+                onError,
+            });
+
+            await expect(sdk.getPaymentStatus('')).rejects.toThrow(
+                GoPaySDKError,
+            );
+
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            expect(seen).toHaveLength(1);
+            expect(seen[0]).toBeInstanceOf(GoPaySDKError);
+        });
     });
 
     describe('successful calls', () => {
