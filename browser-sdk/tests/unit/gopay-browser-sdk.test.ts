@@ -146,8 +146,13 @@ describe('createGoPayBrowserSDK()', () => {
             let capturedReq!: Request;
             let capturedBody = '';
             fetchMock.mockImplementation(async (req: Request) => {
-                capturedReq = req;
-                capturedBody = await req.text();
+                // Match the token request specifically: the SDK also posts
+                // operational data to the gw-logger ingest, and capturing
+                // whichever call happened to be last would assert on that.
+                if (req.url.includes('/oauth2/token')) {
+                    capturedReq = req;
+                    capturedBody = await req.clone().text();
+                }
                 return makeResponse(validTokenPair);
             });
 
@@ -189,7 +194,12 @@ describe('createGoPayBrowserSDK()', () => {
                     await req.text();
                     return makeResponse(validTokenPair);
                 }
-                capturedUrl = req.url;
+                // Only the payments call: the SDK also posts operational data
+                // to the gw-logger ingest, which would otherwise be the last
+                // url seen and overwrite this.
+                if (req.url.includes('/payments/')) {
+                    capturedUrl = req.url;
+                }
                 return makeResponse({});
             });
 

@@ -6,6 +6,7 @@ import {
     requireNonEmptyString,
 } from '@gopay-internal/core';
 import type { AttachPaymentArgs, GoPayBrowserConfig } from './config.js';
+import { createGwLoggerTelemetry } from './logging/gw-logger.js';
 import {
     createAuthApi,
     exchangePaymentCredentials,
@@ -58,9 +59,19 @@ function notAttached(): never {
  */
 export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
     const { shareableKey, clientId, threeDS, ...coreConfig } = config;
+    // Always on, with no switch and nothing to configure: GoPay needs to see
+    // how the SDK behaves on real checkouts, and a signal only the merchants
+    // who opted in produce is a signal about those merchants, not about the
+    // SDK. What it may carry is bounded at the source instead — see
+    // logging/sanitize.ts and the README's Operational data section.
+    const telemetry = createGwLoggerTelemetry({
+        environment: coreConfig.environment ?? 'sandbox',
+        getShareableKey: () => shareableKey,
+    });
     const client = createHttpClient(
         { ...coreConfig, shareableKey },
         'Call attachPayment({ paymentId, paymentSecret }) again.',
+        telemetry,
     );
     client.setClientId(clientId);
 
