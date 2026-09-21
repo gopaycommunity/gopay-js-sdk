@@ -9,6 +9,7 @@ const pkg: { version: string } = JSON.parse(
 export default defineConfig({
     define: {
         __GOPAY_BROWSER_SDK_VERSION__: JSON.stringify(pkg.version),
+        __GOPAY_INTEGRATION__: '"browser-sdk-test"',
     },
     resolve: {
         alias: [

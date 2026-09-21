@@ -6,6 +6,7 @@ import {
     LOGGER_URLS,
     type Telemetry,
 } from '@gopay-internal/core';
+import { SDK_VERSION } from '../version.js';
 import { getTransactionId, newTraceId } from './ids.js';
 import { safeErrorMessage, safePageUrl } from './sanitize.js';
 
@@ -80,6 +81,22 @@ type GwLoggerEvent = ApiCallEvent | NavigationEvent;
 function orUndefined(value: string | undefined): string | undefined {
     return value ? value : undefined;
 }
+
+/**
+ * Read through `typeof`, which is the one way to touch a possibly-undeclared
+ * identifier without a ReferenceError.
+ *
+ * The value is a build-time constant, so it has to be declared in every build
+ * config that compiles this file — tsup, both vitest configs, and the example's
+ * Vite config. Miss one and a bare read throws where `base()` runs, which is
+ * now SDK construction: a missing label would take the whole checkout down.
+ * That contradicts the rule the rest of this file is built on — logging is
+ * never worth a thrown error in a payment flow — so it degrades instead.
+ */
+const INTEGRATION: string =
+    typeof __GOPAY_INTEGRATION__ === 'string'
+        ? __GOPAY_INTEGRATION__
+        : 'browser-sdk-unknown';
 
 /** `/payments/{id}/charge` → `charge`; gw-ui's action convention. */
 function lastSegment(endpoint: string): string {
@@ -164,8 +181,8 @@ export function createGwLoggerTelemetry(options: {
             // Known only from attachPayment onwards. The encrypt-only flow
             // never has one, which is why gw-logger stopped requiring it.
             payment_session_id: orUndefined(options.getPaymentId()),
-            sdk_version: __GOPAY_BROWSER_SDK_VERSION__,
-            integration: __GOPAY_INTEGRATION__,
+            sdk_version: SDK_VERSION,
+            integration: INTEGRATION,
             trace_id: newTraceId(),
             transaction_id: getTransactionId(),
             origin: safePageUrl(),

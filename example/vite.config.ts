@@ -147,6 +147,10 @@ export default defineConfig(() => {
         define: {
             __GOPAY_SDK_VERSION__: JSON.stringify(sdkVersion),
             __GOPAY_BROWSER_SDK_VERSION__: JSON.stringify(browserSdkVersion),
+            // The example serves the SDK's TypeScript source through aliases,
+            // so it compiles this file itself and owes it the same constants
+            // tsup provides to the published bundles.
+            __GOPAY_INTEGRATION__: '"browser-sdk-example"',
         },
         resolve: {
             alias: [

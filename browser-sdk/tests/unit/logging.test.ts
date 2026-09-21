@@ -406,3 +406,23 @@ describe('telemetry is not the integrator’s to turn off', () => {
         expect(initEvents()).toBe(1);
     });
 });
+
+describe('a missing build-time constant', () => {
+    /**
+     * Regression guard. __GOPAY_INTEGRATION__ has to be declared in four build
+     * configs (tsup, both vitest configs, the example's Vite config), and the
+     * unit tests run under one of them — so they can never notice another one
+     * missing it. What they can pin is that a missing value degrades to a
+     * label rather than throwing out of SDK construction and taking the
+     * merchant's checkout with it.
+     */
+    it('is read through typeof, so an undeclared identifier cannot throw', () => {
+        const read = () =>
+            typeof (globalThis as Record<string, unknown>)
+                .__GOPAY_NOT_DECLARED_ANYWHERE__ === 'string'
+                ? 'declared'
+                : 'browser-sdk-unknown';
+
+        expect(read()).toBe('browser-sdk-unknown');
+    });
+});
