@@ -117,10 +117,19 @@ describe('createGwLoggerTelemetry()', () => {
         ).event;
     };
 
-    const makeTelemetry = () =>
+    const makeTelemetry = (
+        overrides: Partial<{
+            getShareableKey: () => string | undefined;
+            getClientId: () => string | undefined;
+            getPaymentId: () => string | undefined;
+        }> = {},
+    ) =>
         createGwLoggerTelemetry({
             environment: 'sandbox',
             getShareableKey: () => 'pk_test_123',
+            getClientId: () => 'client_test_123',
+            getPaymentId: () => undefined,
+            ...overrides,
         });
 
     const GET_PAYMENT = {
@@ -172,7 +181,14 @@ describe('createGwLoggerTelemetry()', () => {
     it('carries no raw id — target is the template the caller was given', async () => {
         makeTelemetry().apiCall({ ...GET_PAYMENT, statusCode: 404 });
 
-        expect(JSON.stringify(await eventOf())).not.toMatch(/\d{6,}/u);
+        // trace_id and transaction_id are random UUIDs and are excluded on
+        // purpose: a UUID contains a run of six digits often enough that
+        // scanning them made this assertion fail at random. Every other field
+        // is scanned, which is where a leaked payment id would actually land.
+        const { trace_id, transaction_id, ...rest } = await eventOf();
+        expect(trace_id).toBeDefined();
+        expect(transaction_id).toBeDefined();
+        expect(JSON.stringify(rest)).not.toMatch(/\d{6,}/u);
     });
 
     it('sends null status when the request produced no response', async () => {
@@ -248,6 +264,8 @@ describe('createGwLoggerTelemetry()', () => {
         createGwLoggerTelemetry({
             environment: 'production',
             getShareableKey: () => 'pk_live',
+            getClientId: () => 'client_live',
+            getPaymentId: () => undefined,
         }).apiCall(GET_PAYMENT);
 
         expect(requests[0]?.url).toBe('https://lx.gopay.com/events');
@@ -259,5 +277,83 @@ describe('createGwLoggerTelemetry()', () => {
         makeTelemetry().error(new GoPayHTTPError(500, { err: 'x' }));
 
         expect((await eventOf()).action).toBe('SDK.UNKNOWN');
+    });
+});
+
+describe('lifecycle events', () => {
+    const requests: Request[] = [];
+    let originalFetch: typeof globalThis.fetch;
+
+    beforeEach(() => {
+        requests.length = 0;
+        originalFetch = globalThis.fetch;
+        globalThis.fetch = vi.fn((input: RequestInfo | URL) => {
+            requests.push(input as Request);
+            return Promise.resolve(new Response(null, { status: 204 }));
+        }) as unknown as typeof globalThis.fetch;
+    });
+
+    afterEach(() => {
+        globalThis.fetch = originalFetch;
+    });
+
+    const readEvent = async (index: number) => {
+        const req = requests[index];
+        if (!req) {
+            throw new Error(`no request at ${index}`);
+        }
+        return (
+            JSON.parse(await req.clone().text()) as {
+                event: Record<string, unknown>;
+            }
+        ).event;
+    };
+
+    const telemetry = (paymentId?: string) =>
+        createGwLoggerTelemetry({
+            environment: 'sandbox',
+            getShareableKey: () => 'pk_test_123',
+            getClientId: () => 'client_test_123',
+            getPaymentId: () => paymentId,
+        });
+
+    it('sends init as a navigation event the ingest accepts', async () => {
+        telemetry().lifecycle('init');
+
+        const event = await readEvent(0);
+        expect(event.event_type).toBe('navigation');
+        expect(event.navigation_type).toBe('init');
+        // Required by the schema and nullable; a lifecycle event has no
+        // destination, which origin already describes.
+        expect(event.target).toBeNull();
+        expect(event.duration).toBeNull();
+    });
+
+    it('carries the diagnostic fields on every lifecycle event', async () => {
+        telemetry().lifecycle('ready', {
+            paymentMethod: 'applepay',
+            flow: 'direct-charge',
+        });
+
+        const event = await readEvent(0);
+        expect(event.payment_method).toBe('applepay');
+        expect(event.flow).toBe('direct-charge');
+        expect(event.client_id).toBe('client_test_123');
+        expect(typeof event.sdk_version).toBe('string');
+        expect(typeof event.integration).toBe('string');
+    });
+
+    it('omits payment_session_id before attachPayment rather than sending an empty one', async () => {
+        telemetry(undefined).lifecycle('init');
+
+        // gw-logger rejects an attribution key that is present but empty, so an
+        // absent payment session has to be absent from the payload.
+        expect(await readEvent(0)).not.toHaveProperty('payment_session_id');
+    });
+
+    it('reports payment_session_id once a payment is attached', async () => {
+        telemetry('3273103424').lifecycle('ready', { paymentMethod: 'card' });
+
+        expect((await readEvent(0)).payment_session_id).toBe('3273103424');
     });
 });

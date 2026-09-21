@@ -602,6 +602,14 @@ raises an error — the SDK's own error code and message. This is always on. The
 is no switch and nothing to configure, because a signal produced only by the
 merchants who opted in describes those merchants rather than the SDK.
 
+Alongside those it reports three lifecycle moments — the SDK being created, a
+card form or wallet button becoming usable, and the visit ending — plus the SDK
+version, which build of the package is running (ESM/CJS or the CDN bundle),
+which payment method and flow the event belongs to, and your `clientId` and
+`shareableKey`. The lifecycle pair is what makes a checkout that never starts
+visible at all: without it a payment that silently fails to appear produces no
+data of any kind, which is indistinguishable from nobody having visited.
+
 **What it never contains.** Card numbers, CVV, the encrypted card payload, card
 tokens, `paymentSecret`, credentials, 3DS or ACS redirect parameters, and
 personal data such as e-mail, phone, name or IBAN. Request and response bodies

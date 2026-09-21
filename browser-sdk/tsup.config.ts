@@ -11,6 +11,12 @@ const { version } = pkg;
 
 const define = { __GOPAY_BROWSER_SDK_VERSION__: JSON.stringify(version) };
 
+// Which distribution is running, decided at build time because the bundle
+// cannot tell at runtime. Worth having: "only the CDN bundle fails" is a
+// different investigation from "every integration fails".
+const defineEsm = { ...define, __GOPAY_INTEGRATION__: '"browser-sdk-esm"' };
+const defineIife = { ...define, __GOPAY_INTEGRATION__: '"browser-sdk-iife"' };
+
 export default defineConfig([
     // ESM + CJS dual package with type declarations
     {
@@ -21,7 +27,7 @@ export default defineConfig([
         sourcemap: true,
         outDir: 'dist',
         noExternal: ['@gopay-internal/core'],
-        define,
+        define: defineEsm,
     },
     // IIFE browser bundle (script src)
     {
@@ -33,6 +39,6 @@ export default defineConfig([
         outDir: 'dist',
         outExtension: () => ({ js: '.js' }),
         noExternal: ['@gopay-internal/core'],
-        define,
+        define: defineIife,
     },
 ]);

@@ -7,6 +7,7 @@ import {
 } from '@gopay-internal/core';
 import type { AttachPaymentArgs, GoPayBrowserConfig } from './config.js';
 import { createGwLoggerTelemetry } from './logging/gw-logger.js';
+import { registerLeaveBeacon } from './logging/leave-beacon.js';
 import {
     createAuthApi,
     exchangePaymentCredentials,
@@ -64,9 +65,12 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
     // who opted in produce is a signal about those merchants, not about the
     // SDK. What it may carry is bounded at the source instead — see
     // logging/sanitize.ts and the README's Operational data section.
+    let attachedPaymentId: string | undefined;
     const telemetry = createGwLoggerTelemetry({
         environment: coreConfig.environment ?? 'sandbox',
         getShareableKey: () => shareableKey,
+        getClientId: () => clientId,
+        getPaymentId: () => attachedPaymentId,
     });
     const client = createHttpClient(
         { ...coreConfig, shareableKey },
@@ -75,12 +79,19 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
     );
     client.setClientId(clientId);
 
+    // The denominator. Every other event says something went a particular way;
+    // this one says an attempt happened at all, which is what a payment that
+    // never starts otherwise leaves no trace of.
+    telemetry.lifecycle('init');
+    registerLeaveBeacon(telemetry);
+
     let paymentsApi: PaymentsApi | null = null;
     const getPaymentsApi = () => paymentsApi;
 
     const { isCardFormMounted, ...cardsApi } = createCardsApi(
         client,
         getPaymentsApi,
+        telemetry,
     );
 
     // reportErrors so that config.onError also sees the failures raised before a
@@ -114,12 +125,16 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
                 'paymentSecret',
             );
             paymentsApi = null;
+            attachedPaymentId = undefined;
             await exchangePaymentCredentials(client, pid, secret);
             paymentsApi = createPaymentsApi(client, pid, threeDS);
+            // Set only once the exchange succeeded, so events never claim a
+            // payment session the SDK never got.
+            attachedPaymentId = pid;
         },
 
         ...cardsApi,
-        ...createWalletsApi(client, getPaymentsApi),
+        ...createWalletsApi(client, getPaymentsApi, telemetry),
 
         /**
          * Fetch `ip`, `user_agent` and `accept_header` from

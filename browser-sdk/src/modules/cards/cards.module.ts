@@ -10,6 +10,10 @@ import type {
     SpinnerConfig,
 } from '../../internal/loading-spinner.js';
 import { showSpinnerIn } from '../../internal/loading-spinner.js';
+import {
+    type BrowserTelemetry,
+    NO_BROWSER_TELEMETRY,
+} from '../../logging/gw-logger.js';
 import type { components } from '../../types/generated.js';
 import type { EncryptedCardPayload } from '../../types/index.js';
 import type {
@@ -165,6 +169,7 @@ export type CardFormOptions = CardFormBaseOptions &
 export function createCardsApi(
     client: HttpClient,
     getPaymentsApi: () => PaymentsApi | null,
+    telemetry: BrowserTelemetry = NO_BROWSER_TELEMETRY,
 ) {
     /**
      * The mount that currently owns the card form, as an identity token rather
@@ -451,6 +456,16 @@ export function createCardsApi(
                     } satisfies CardFormConfig,
                     expectedOrigin,
                 );
+
+                // The other half of the init/ready pair. Deliberately the load
+                // event and not an acknowledgement from the iframe: an ack
+                // would need a new message in the postMessage protocol, and
+                // that protocol is shared with gw-ui-cc-v4. "The form is on the
+                // page" is what this claims, and it is what it can prove.
+                telemetry.lifecycle('ready', {
+                    paymentMethod: 'card',
+                    flow: options.flow,
+                });
             };
 
             iframe.onerror = () => {

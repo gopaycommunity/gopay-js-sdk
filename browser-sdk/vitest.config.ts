@@ -10,6 +10,9 @@ const version = pkg.version;
 export default defineConfig({
     define: {
         __GOPAY_BROWSER_SDK_VERSION__: JSON.stringify(version),
+        // tsup gives each bundle its own value; under test there is no bundle,
+        // so the tests assert the field is populated rather than its content.
+        __GOPAY_INTEGRATION__: '"browser-sdk-test"',
     },
     resolve: {
         alias: [

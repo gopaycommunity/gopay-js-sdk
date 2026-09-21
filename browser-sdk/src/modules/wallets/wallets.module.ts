@@ -9,6 +9,10 @@ import type {
     SpinnerConfig,
 } from '../../internal/loading-spinner.js';
 import { showSpinnerIn } from '../../internal/loading-spinner.js';
+import {
+    type BrowserTelemetry,
+    NO_BROWSER_TELEMETRY,
+} from '../../logging/gw-logger.js';
 import type { components } from '../../types/generated.js';
 import type {
     AwaitChargeOptions,
@@ -334,6 +338,7 @@ async function runChargeFlow(
 export function createWalletsApi(
     client: HttpClient,
     getPaymentsApi: () => PaymentsApi | null,
+    telemetry: BrowserTelemetry = NO_BROWSER_TELEMETRY,
 ) {
     let activeAppleCleanup: (() => void) | undefined;
     let activeGoogleCleanup: (() => void) | undefined;
@@ -598,6 +603,9 @@ export function createWalletsApi(
             };
 
             container.appendChild(appleBtn);
+            // In the DOM and upgraded by apple-pay-sdk.js — the point past
+            // which a shopper can actually start paying.
+            telemetry.lifecycle('ready', { paymentMethod: 'applepay' });
 
             return {
                 result,
@@ -837,6 +845,7 @@ export function createWalletsApi(
                 ...options.googleButtonOptions,
             });
             container.appendChild(btn);
+            telemetry.lifecycle('ready', { paymentMethod: 'googlepay' });
 
             return {
                 result,
