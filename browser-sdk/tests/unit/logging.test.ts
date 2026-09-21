@@ -4,6 +4,7 @@ import {
     GoPayHTTPError,
     GoPaySDKError,
 } from '../../src/errors.js';
+import { createGoPayBrowserSDK } from '../../src/gopay-browser-sdk.js';
 import { createGwLoggerTelemetry } from '../../src/logging/gw-logger.js';
 import { getTransactionId } from '../../src/logging/ids.js';
 import { safeErrorMessage, safePageUrl } from '../../src/logging/sanitize.js';
@@ -355,5 +356,53 @@ describe('lifecycle events', () => {
         telemetry('3273103424').lifecycle('ready', { paymentMethod: 'card' });
 
         expect((await readEvent(0)).payment_session_id).toBe('3273103424');
+    });
+});
+
+describe('telemetry is not the integrator’s to turn off', () => {
+    let posted: Request[];
+    let originalFetch: typeof globalThis.fetch;
+
+    beforeEach(() => {
+        posted = [];
+        originalFetch = globalThis.fetch;
+        globalThis.fetch = vi.fn((input: RequestInfo | URL) => {
+            posted.push(input as Request);
+            return Promise.resolve(new Response(null, { status: 204 }));
+        }) as unknown as typeof globalThis.fetch;
+    });
+
+    afterEach(() => {
+        globalThis.fetch = originalFetch;
+    });
+
+    const initEvents = () =>
+        posted.filter((r) => r.url.endsWith('/events')).length;
+
+    it('reports init on construction with nothing but the required config', () => {
+        createGoPayBrowserSDK({
+            shareableKey: 'pk_test_123',
+            clientId: 'client_test_123',
+        });
+
+        expect(initEvents()).toBe(1);
+    });
+
+    /**
+     * The guard on the requirement, not a test of behaviour anyone asked for:
+     * the day someone adds `telemetry: false` or reuses an existing flag to
+     * gate it, this fails. debugLoggingEnabled is the flag most likely to be
+     * mistaken for one — it gates console.debug and nothing else.
+     */
+    it('still reports init with every config flag set to its quietest value', () => {
+        createGoPayBrowserSDK({
+            shareableKey: 'pk_test_123',
+            clientId: 'client_test_123',
+            environment: 'production',
+            debugLoggingEnabled: false,
+            onError: () => {},
+        });
+
+        expect(initEvents()).toBe(1);
     });
 });
