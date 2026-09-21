@@ -1,3 +1,25 @@
+# [1.9.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.8.1...browser-sdk-1.9.0) (2026-09-21)
+
+
+### Bug Fixes
+
+* **browser-data:** attach method and endpoint to the HTTP error GPOMA-2647 ([2292c5f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2292c5f47b557f00b76388c37a39a3c6b3e160c1))
+* **cards:** report card form failures to onError GPOMA-2647 ([a2b8a5d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a2b8a5d378b699f82cd51743a68a70494b5d7284))
+* **cards:** report the mount guards and submit() to onError GPOMA-2647 ([06ab65d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/06ab65db1682a8774f2ff37cc8b73d1e043cf543))
+* **core:** adopt the promise an async onError returns GPOMA-2647 ([e82031c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e82031ccf2d5ca7d82887f3894737bc84ffcb0bf))
+* **core:** escape RFC 3986 sub-delims in path segments ([fd9b8a2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/fd9b8a2320a3e6f4af568b755f3b4f02f3b2cb03))
+* **core:** keep the receiver when wrapping API methods GPOMA-2647 ([180b69a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/180b69a3dcf20aad21364ed7f5a547331457f623))
+* **core:** percent-encode URL path segments across every module GPOMA-2633 ([b7c4a08](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b7c4a087a1aeef0ff75bc939efb03f5b7851bc8f))
+* **payments:** keep the attached payment id inside its endpoint GPOMA-2647 ([591e1ca](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/591e1ca5cc08e29870885d112f1abe9cca2522a5)), closes [#62](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issue/62)
+* **payments:** validate the goid in createPayment ([459240b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/459240b1a04b0c13659d22f9e431ec616b277e3f))
+* **wallets:** report Apple Pay and Google Pay failures to onError GPOMA-2647 ([8fb8370](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8fb83700cfa406b4418abe7ae50824f8ef9d43ce))
+
+
+### Features
+
+* **core:** report every SDK error to onError GPOMA-2647 ([1f0cc58](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1f0cc58c3cf723af7db65d07ac8c5bb27cae16a2))
+* **payments:** add cancelPayment and wire it into the example page GPOMA-2633 ([0f1c399](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0f1c39989a878c61dc28d5ecf107319d940f6b3e))
+
 ## [1.8.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.8.0...browser-sdk-1.8.1) (2026-09-15)
 
 
