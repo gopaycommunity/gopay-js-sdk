@@ -147,3 +147,132 @@ describe('telemetry from the HTTP client', () => {
         await expect(plain.get('/payments/1')).resolves.toBeDefined();
     });
 });
+
+/**
+ * The auth handler issues two requests of its own — the client-credentials
+ * token fetch and the retry a 401 triggers — through raw `fetch` rather than
+ * through the verb methods. Until GPOMA-2631 they were the only traffic the SDK
+ * makes that no record described, so a re-auth storm looked like silence.
+ */
+describe('telemetry from the auth handler', () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+    const makeTelemetrySpy = () => ({
+        apiCall: vi.fn<(record: ApiCallRecord) => void>(),
+        error: vi.fn<(error: GoPaySDKError | GoPayHTTPError) => void>(),
+    });
+    let telemetry: ReturnType<typeof makeTelemetrySpy>;
+
+    const tokenResponse = () =>
+        makeResponse({ access_token: 'fresh-at', expires_in: 900 });
+
+    const makeClient = () => {
+        const client = createHttpClient(
+            { baseUrl: 'https://example.com' },
+            undefined,
+            telemetry,
+        );
+        client.tokenStore.setClientSecret('cid', 'secret', 'payment:read');
+        return client;
+    };
+
+    const records = () =>
+        telemetry.apiCall.mock.calls.map(([r]) => ({
+            method: r.method,
+            endpoint: r.endpoint,
+            statusCode: r.statusCode,
+        }));
+
+    beforeEach(() => {
+        telemetry = makeTelemetrySpy();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    it('records the token call it makes to refresh an expiring token', async () => {
+        fetchMock = vi.fn((req: Request) =>
+            Promise.resolve(
+                req.url.includes('/oauth2/token')
+                    ? tokenResponse()
+                    : makeResponse({ ok: true }),
+            ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const client = makeClient();
+        // expires_in 0 puts it inside isExpiringSoon's buffer, which is what
+        // sends injectAuth through refresh() before the request goes out.
+        client.tokenStore.set({
+            access_token: 'stale-at',
+            expires_in: 0,
+            token_type: 'bearer',
+        });
+
+        await client.get('/payments/300000001');
+
+        expect(records()).toEqual([
+            { method: 'POST', endpoint: '/oauth2/token', statusCode: 200 },
+            { method: 'GET', endpoint: '/payments/{id}', statusCode: 200 },
+        ]);
+    });
+
+    it('records the retry a 401 triggers, not only the call that got the 401', async () => {
+        let rejectedOnce = false;
+        fetchMock = vi.fn((req: Request) => {
+            if (req.url.includes('/oauth2/token')) {
+                return Promise.resolve(tokenResponse());
+            }
+            if (!rejectedOnce) {
+                rejectedOnce = true;
+                return Promise.resolve(makeResponse({ err: 'stale' }, 401));
+            }
+            return Promise.resolve(makeResponse({ ok: true }));
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const client = makeClient();
+        client.tokenStore.set({
+            access_token: 'at-abc',
+            expires_in: 900,
+            token_type: 'bearer',
+        });
+
+        await client.get('/payments/300000001');
+
+        // Three records for two endpoints: the refresh, the retry, and the
+        // verb method's own record of how the call ended.
+        expect(records()).toEqual([
+            { method: 'POST', endpoint: '/oauth2/token', statusCode: 200 },
+            { method: 'GET', endpoint: '/payments/{id}', statusCode: 200 },
+            { method: 'GET', endpoint: '/payments/{id}', statusCode: 200 },
+        ]);
+    });
+
+    it('records the token call that fails, which is the one worth seeing', async () => {
+        fetchMock = vi.fn((req: Request) =>
+            Promise.resolve(
+                req.url.includes('/oauth2/token')
+                    ? makeResponse({ err: 'bad client' }, 401)
+                    : makeResponse({ ok: true }),
+            ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const client = makeClient();
+        client.tokenStore.set({
+            access_token: 'stale-at',
+            expires_in: 0,
+            token_type: 'bearer',
+        });
+
+        await expect(client.get('/payments/300000001')).rejects.toThrow();
+
+        expect(records()[0]).toEqual({
+            method: 'POST',
+            endpoint: '/oauth2/token',
+            statusCode: 401,
+        });
+    });
+});

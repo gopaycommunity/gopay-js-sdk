@@ -602,22 +602,25 @@ raises an error — the SDK's own error code and message. This is always on. The
 is no switch and nothing to configure, because a signal produced only by the
 merchants who opted in describes those merchants rather than the SDK.
 
-Alongside those it reports three lifecycle moments — the SDK being created, a
-card form or wallet button becoming usable, and the visit ending — plus the SDK
-version, which build of the package is running (ESM/CJS or the CDN bundle),
-which payment method and flow the event belongs to, and your `clientId` and
-`shareableKey`. The lifecycle pair is what makes a checkout that never starts
-visible at all: without it a payment that silently fails to appear produces no
-data of any kind, which is indistinguishable from nobody having visited.
+Alongside those it reports four lifecycle moments — the SDK being created, it
+attaching to a payment, a card form or wallet button becoming usable, and the
+visit ending — plus the SDK version, which build of the package is running
+(ESM/CJS or the CDN bundle), which payment method and flow the event belongs to,
+the id of the payment being paid, and your `clientId` and `shareableKey`. The
+lifecycle markers are what make a checkout that never starts visible at all:
+without them a payment that silently fails to appear produces no data of any
+kind, which is indistinguishable from nobody having visited.
 
 **What it never contains.** Card numbers, CVV, the encrypted card payload, card
 tokens, `paymentSecret`, credentials, 3DS or ACS redirect parameters, and
 personal data such as e-mail, phone, name or IBAN. Request and response bodies
 are not sent at all — not redacted, not sampled, simply never read — so a field
 added to the API later cannot start leaking through a redaction list that
-predates it. Request paths are sent as templates (`/payments/{id}/charge`), so
-the payment id does not travel either, and error messages are stripped of
-PAN-shaped digit runs and query strings before they leave the page.
+predates it. Request paths are sent as templates (`/payments/{id}/charge`)
+rather than as the URLs actually called, and error messages are stripped of
+PAN-shaped digit runs and query strings before they leave the page. The payment
+id itself is sent, once, as its own field — it is what ties the events of one
+checkout together, and it identifies a payment rather than a person.
 
 **What it does contain that concerns you.** Every request carries the customer's
 IP address, as any HTTP request does, and the page URL the SDK is running on

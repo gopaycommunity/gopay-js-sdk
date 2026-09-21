@@ -64,14 +64,16 @@ interface ApiCallEvent extends CommonFields {
 }
 
 /**
- * The lifecycle pair. init says the SDK was constructed, ready says what it was
+ * The lifecycle markers. init says the SDK was constructed, navigate (flow
+ * `attach`) says it took ownership of a payment session, ready says what it was
  * asked to mount is on the page. A payment that never starts is init without a
  * matching ready — neither event on its own carries that, which is why the
- * failure was invisible before.
+ * failure was invisible before, and the attach in between says which of the two
+ * steps it got stuck on.
  */
 interface NavigationEvent extends CommonFields {
     event_type: 'navigation';
-    navigation_type: 'init' | 'ready' | 'leave';
+    navigation_type: 'init' | 'navigate' | 'ready' | 'leave';
     target: string | null;
 }
 

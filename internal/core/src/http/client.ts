@@ -101,6 +101,7 @@ export function createHttpClient(
         emitError: (e) => emitError(e),
         getTimeoutMs: () => timeoutMs(),
         debugLogResponse: (r) => debugLogResponse(r),
+        recordApiCall: record,
         getShareableKey: () => shareableKey,
         getClientId: () => tokenStore.getClientId(),
         reAuthAction,

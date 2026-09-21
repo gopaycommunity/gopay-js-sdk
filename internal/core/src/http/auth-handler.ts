@@ -1,4 +1,5 @@
 import { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from '../errors.js';
+import { nowMs } from '../logging/telemetry.js';
 import { buildUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
 import { fetchWithRetry } from './fetch-with-retry.js';
@@ -14,6 +15,18 @@ interface AuthHandlerDeps {
     emitError: <E extends GoPaySDKError | GoPayHTTPError>(error: E) => never;
     getTimeoutMs: () => number;
     debugLogResponse: (response: Response) => void;
+    /**
+     * Times a call the same way the client does. The handler issues two
+     * requests of its own — the token fetch and the post-refresh retry — and
+     * without this they are the only traffic the SDK makes that no event
+     * describes, which is how a re-auth storm stays invisible.
+     */
+    recordApiCall: (
+        method: string,
+        path: string,
+        started: number,
+        statusCode: number | null,
+    ) => void;
     getShareableKey?: () => string | undefined;
     getClientId?: () => string | null;
     /** Appended to auth error messages to tell the caller how to recover. */
@@ -100,13 +113,25 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         const retryHeaders = new Headers(init.headers);
         retryHeaders.set('Authorization', `Bearer ${fresh.access_token}`);
 
-        response = await fetch(
-            new Request(url, {
-                ...init,
-                headers: retryHeaders,
-                signal: combinedSignal,
-            }),
-        );
+        const retryStarted = nowMs();
+        let retryStatus: number | null = null;
+        try {
+            response = await fetch(
+                new Request(url, {
+                    ...init,
+                    headers: retryHeaders,
+                    signal: combinedSignal,
+                }),
+            );
+            retryStatus = response.status;
+        } finally {
+            deps.recordApiCall(
+                init.method ?? 'GET',
+                new URL(url).pathname,
+                retryStarted,
+                retryStatus,
+            );
+        }
         debugLogResponse(response);
 
         if (response.status === 401) {
@@ -162,14 +187,22 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
                 Authorization: `Basic ${credentials}`,
             });
 
-            const response = await fetch(
-                new Request(url, {
-                    method: 'POST',
-                    headers,
-                    body: new URLSearchParams(form).toString(),
-                    signal: AbortSignal.timeout(getTimeoutMs()),
-                }),
-            );
+            const started = nowMs();
+            let status: number | null = null;
+            let response: Response;
+            try {
+                response = await fetch(
+                    new Request(url, {
+                        method: 'POST',
+                        headers,
+                        body: new URLSearchParams(form).toString(),
+                        signal: AbortSignal.timeout(getTimeoutMs()),
+                    }),
+                );
+                status = response.status;
+            } finally {
+                deps.recordApiCall('POST', AUTH_PATH, started, status);
+            }
             if (!response.ok) {
                 throw new GoPayHTTPError(
                     response.status,

@@ -125,12 +125,25 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
                 'paymentSecret',
             );
             paymentsApi = null;
-            attachedPaymentId = undefined;
-            await exchangePaymentCredentials(client, pid, secret);
-            paymentsApi = createPaymentsApi(client, pid, threeDS);
-            // Set only once the exchange succeeded, so events never claim a
-            // payment session the SDK never got.
+            // Set before the exchange rather than after it. The token call
+            // that performs the attach is emitted while it runs, and so is the
+            // error event if it fails — set afterwards, both went out with no
+            // payment session on them, which left a failed attach impossible
+            // to tie to the payment it was for. The catch below puts the
+            // "never claim a session the SDK did not get" guarantee back.
             attachedPaymentId = pid;
+            try {
+                await exchangePaymentCredentials(client, pid, secret);
+            } catch (error) {
+                attachedPaymentId = undefined;
+                throw error;
+            }
+            paymentsApi = createPaymentsApi(client, pid, threeDS);
+            // The attach has no HTTP call of its own to stand for it: the
+            // exchange is a POST /oauth2/token like the SDK's own
+            // authentication, so in the logs the two are only told apart by
+            // this marker.
+            telemetry.lifecycle('navigate', { flow: 'attach' });
         },
 
         ...cardsApi,

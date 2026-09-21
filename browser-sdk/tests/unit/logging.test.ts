@@ -407,6 +407,119 @@ describe('telemetry is not the integrator’s to turn off', () => {
     });
 });
 
+describe('attachPayment in the logs', () => {
+    let posted: Request[];
+    let originalFetch: typeof globalThis.fetch;
+    let tokenStatus: number;
+
+    beforeEach(() => {
+        posted = [];
+        tokenStatus = 200;
+        originalFetch = globalThis.fetch;
+        globalThis.fetch = vi.fn((input: RequestInfo | URL) => {
+            const req = input as Request;
+            posted.push(req);
+            if (req.url.includes('/oauth2/token')) {
+                return Promise.resolve(
+                    new Response(
+                        JSON.stringify({
+                            access_token: 'tok',
+                            expires_in: 600,
+                            token_type: 'bearer',
+                        }),
+                        {
+                            status: tokenStatus,
+                            headers: { 'Content-Type': 'application/json' },
+                        },
+                    ),
+                );
+            }
+            return Promise.resolve(new Response(null, { status: 204 }));
+        }) as unknown as typeof globalThis.fetch;
+    });
+
+    afterEach(() => {
+        globalThis.fetch = originalFetch;
+    });
+
+    const events = async () =>
+        Promise.all(
+            posted
+                .filter((r) => r.url.endsWith('/events'))
+                .map(
+                    async (r) =>
+                        (
+                            JSON.parse(await r.clone().text()) as {
+                                event: Record<string, unknown>;
+                            }
+                        ).event,
+                ),
+        );
+
+    const sdk = () =>
+        createGoPayBrowserSDK({
+            shareableKey: 'pk_test_123',
+            clientId: 'client_test_123',
+        });
+
+    it('emits a navigate marker so the attach is not just another token call', async () => {
+        await sdk().attachPayment({
+            paymentId: '3273103424',
+            paymentSecret: 'secret',
+        });
+
+        const attach = (await events()).find(
+            (e) => e.navigation_type === 'navigate',
+        );
+        expect(attach).toBeDefined();
+        expect(attach?.flow).toBe('attach');
+        expect(attach?.payment_session_id).toBe('3273103424');
+    });
+
+    it('puts the payment id on the token call that performs the attach', async () => {
+        await sdk().attachPayment({
+            paymentId: '3273103424',
+            paymentSecret: 'secret',
+        });
+
+        // The exchange is emitted while it runs, so this only holds because the
+        // id is set before it rather than after — the regression this pins.
+        const token = (await events()).find((e) => e.action === 'token');
+        expect(token?.payment_session_id).toBe('3273103424');
+        expect(token?.status_code).toBe(200);
+    });
+
+    it('keeps the payment id on a failed attach, then stops claiming the session', async () => {
+        tokenStatus = 401;
+        const api = sdk();
+
+        await expect(
+            api.attachPayment({
+                paymentId: '3273103424',
+                paymentSecret: 'wrong',
+            }),
+        ).rejects.toThrow();
+
+        const failed = (await events()).find((e) => e.action === 'token');
+        expect(failed?.status_code).toBe(401);
+        expect(failed?.payment_session_id).toBe('3273103424');
+        expect(
+            (await events()).some((e) => e.navigation_type === 'navigate'),
+        ).toBe(false);
+
+        // Nothing after the failure may be attributed to a session the SDK
+        // never got: this argument error is raised before the id is set again.
+        posted.length = 0;
+        await expect(
+            api.attachPayment({ paymentId: '', paymentSecret: 'x' }),
+        ).rejects.toThrow();
+
+        const after = await events();
+        expect(after).toHaveLength(1);
+        expect(after[0]).not.toHaveProperty('payment_session_id');
+    });
+});
+
 describe('a missing build-time constant', () => {
     /**
      * Regression guard. __GOPAY_INTEGRATION__ has to be declared in four build
