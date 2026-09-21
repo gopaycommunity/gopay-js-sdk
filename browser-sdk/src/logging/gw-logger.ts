@@ -77,7 +77,26 @@ interface NavigationEvent extends CommonFields {
     target: string | null;
 }
 
-type GwLoggerEvent = ApiCallEvent | NavigationEvent;
+/**
+ * The one thing the customer does that the SDK can see. Everything they type
+ * happens inside the card form iframe and is deliberately invisible here; what
+ * crosses back out is that they submitted and the payload encrypted, which is
+ * the step between "the form was on the page" and "a charge was attempted".
+ *
+ * Without it those two are the only markers, and a checkout that dies in
+ * between — the customer never submitting, or the encrypt result never
+ * arriving — looks identical to one where the charge itself failed.
+ *
+ * No payload, no field contents, no keystroke count. `duration` is how long
+ * the form was on the page before it was submitted.
+ */
+interface InteractionEvent extends CommonFields {
+    event_type: 'interaction';
+    interaction_type: 'submit';
+    element_id: string;
+}
+
+type GwLoggerEvent = ApiCallEvent | NavigationEvent | InteractionEvent;
 
 /** Omitted rather than sent empty — see CommonFields. */
 function orUndefined(value: string | undefined): string | undefined {
@@ -116,6 +135,14 @@ export interface BrowserTelemetry extends Telemetry {
         navigationType: NavigationEvent['navigation_type'],
         context?: { paymentMethod?: string; flow?: string },
     ): void;
+    submit(
+        elementId: string,
+        context?: {
+            paymentMethod?: string;
+            flow?: string;
+            durationMs?: number | null;
+        },
+    ): void;
 }
 
 /**
@@ -128,6 +155,7 @@ export const NO_BROWSER_TELEMETRY: BrowserTelemetry = {
     apiCall: () => {},
     error: () => {},
     lifecycle: () => {},
+    submit: () => {},
 };
 
 export function createGwLoggerTelemetry(options: {
@@ -214,6 +242,18 @@ export function createGwLoggerTelemetry(options: {
                 target: null,
                 payment_method: orUndefined(context?.paymentMethod),
                 flow: orUndefined(context?.flow),
+            });
+        },
+
+        submit(elementId, context): void {
+            post({
+                ...base(),
+                event_type: 'interaction',
+                interaction_type: 'submit',
+                element_id: elementId,
+                payment_method: orUndefined(context?.paymentMethod),
+                flow: orUndefined(context?.flow),
+                duration: context?.durationMs ?? null,
             });
         },
 

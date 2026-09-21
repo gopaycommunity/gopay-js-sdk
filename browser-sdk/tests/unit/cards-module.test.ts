@@ -1,6 +1,7 @@
 import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
+import type { BrowserTelemetry } from '../../src/logging/gw-logger.js';
 import { createCardsApi } from '../../src/modules/cards/cards.module.js';
 import type { CardFormTheme } from '../../src/modules/cards/iframe-protocol.js';
 import type { createPaymentsApi } from '../../src/modules/payments/payments.module.js';
@@ -1562,5 +1563,137 @@ describe('createCardsApi() — browser SDK', () => {
             // Two separate fetches were made (the failed one was not cached).
             expect(fetchMock).toHaveBeenCalledTimes(2);
         });
+    });
+});
+
+/**
+ * The submit is the only thing the customer does that the SDK can observe:
+ * everything they type is inside the iframe and stays there. Without it the
+ * funnel jumps from "the form was mounted" straight to the charge, so a
+ * customer who never submitted and a submit whose result never arrived are the
+ * same absence.
+ */
+describe('the card form submit is reported', () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+    let client: ReturnType<typeof createHttpClient>;
+    let container: HTMLDivElement;
+    let telemetry: BrowserTelemetry & {
+        submit: ReturnType<typeof vi.fn>;
+        lifecycle: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(() => {
+        fetchMock = vi
+            .fn()
+            .mockResolvedValue(makeResponse({ card_form_url: CARD_FORM_URL }));
+        vi.stubGlobal('fetch', fetchMock);
+        client = makeClient();
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+        } as unknown as typeof telemetry;
+    });
+
+    afterEach(() => {
+        container.remove();
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    /** Enough of the surface for the charge to resolve; the flow itself is
+     *  covered elsewhere — what matters here is that the submit precedes it. */
+    const stubPaymentsApi = () =>
+        ({
+            chargePayment: vi.fn().mockResolvedValue({}),
+            awaitChargeState: vi
+                .fn()
+                .mockResolvedValue({ state: 'SUCCEEDED', id: 'pay_001' }),
+            getStatus: vi.fn(),
+            getChargeState: vi.fn(),
+            getGooglePayInfo: vi.fn(),
+            getApplePayInfo: vi.fn(),
+            getApplePayAppInfo: vi.fn(),
+            startApplePaySession: vi.fn(),
+            getQRPaymentInfo: vi.fn(),
+        }) as unknown as ReturnType<typeof createPaymentsApi>;
+
+    const mountAndSubmit = async (flow: 'return-payload' | 'direct-charge') => {
+        const paymentsApi = flow === 'direct-charge' ? stubPaymentsApi() : null;
+        const cards = createCardsApi(client, () => paymentsApi, telemetry);
+        const ctrl = await cards.mountCardForm(
+            container,
+            flow === 'direct-charge'
+                ? { flow, threeDS: { mode: 'manual' } }
+                : { flow },
+        );
+        ctrl.result.catch(() => {});
+        const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+        iframe.onload?.(new Event('load'));
+        simulateMessage(iframe, {
+            type: 'GOPAY_CARD_ENCRYPT_RESULT',
+            card_token: 'enc_token_abc',
+        });
+        return ctrl;
+    };
+
+    it('reports the submit in the encrypt-only flow, which makes no request at all after it', async () => {
+        const ctrl = await mountAndSubmit('return-payload');
+        await ctrl.result;
+
+        expect(telemetry.submit).toHaveBeenCalledOnce();
+        expect(telemetry.submit.mock.calls[0]?.[0]).toBe('card-form');
+        expect(telemetry.submit.mock.calls[0]?.[1]).toMatchObject({
+            paymentMethod: 'card',
+            flow: 'return-payload',
+        });
+    });
+
+    it('reports the submit in the direct-charge flow too, ahead of the charge', async () => {
+        const ctrl = await mountAndSubmit('direct-charge');
+        await ctrl.result.catch(() => {});
+
+        expect(telemetry.submit).toHaveBeenCalledOnce();
+        expect(telemetry.submit.mock.calls[0]?.[1]).toMatchObject({
+            paymentMethod: 'card',
+            flow: 'direct-charge',
+        });
+    });
+
+    it('never puts the encrypted payload, or anything derived from it, in the event', async () => {
+        const ctrl = await mountAndSubmit('return-payload');
+        await ctrl.result;
+
+        const reported = JSON.stringify(telemetry.submit.mock.calls[0]);
+        expect(reported).not.toContain('enc_token_abc');
+        // A length or a hash would be derived from card data too — the only
+        // number here is how long the form was on the page.
+        expect(Object.keys(telemetry.submit.mock.calls[0]?.[1] ?? {})).toEqual([
+            'paymentMethod',
+            'flow',
+            'durationMs',
+        ]);
+    });
+
+    it('measures the form being on the page, and reports null when it never loaded', async () => {
+        const cards = createCardsApi(client, () => null, telemetry);
+        const ctrl = await cards.mountCardForm(container, {
+            flow: 'return-payload',
+        });
+        ctrl.result.catch(() => {});
+        const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+
+        // No onload: the iframe never became usable, so there is no start to
+        // measure from and a fabricated 0 would read as an instant submit.
+        simulateMessage(iframe, {
+            type: 'GOPAY_CARD_ENCRYPT_RESULT',
+            card_token: 'enc_token_abc',
+        });
+        await ctrl.result;
+
+        expect(telemetry.submit.mock.calls[0]?.[1]?.durationMs).toBeNull();
     });
 });

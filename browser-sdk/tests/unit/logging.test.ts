@@ -352,6 +352,56 @@ describe('lifecycle events', () => {
         expect(await readEvent(0)).not.toHaveProperty('payment_session_id');
     });
 
+    it('sends the submit as an interaction event the ingest accepts', async () => {
+        telemetry('3273103424').submit('card-form', {
+            paymentMethod: 'card',
+            flow: 'direct-charge',
+            durationMs: 42_000,
+        });
+
+        const event = await readEvent(0);
+        expect(event.event_type).toBe('interaction');
+        expect(event.interaction_type).toBe('submit');
+        expect(event.element_id).toBe('card-form');
+        expect(event.duration).toBe(42_000);
+        expect(event.payment_session_id).toBe('3273103424');
+    });
+
+    it('sends a null duration rather than a fabricated zero', async () => {
+        telemetry().submit('card-form', { paymentMethod: 'card' });
+
+        // Required by the schema and nullable. Zero would read as an instant
+        // submit, which is a different fact from "never measured".
+        expect((await readEvent(0)).duration).toBeNull();
+    });
+
+    it('carries nothing that could describe what was typed', async () => {
+        telemetry().submit('card-form', {
+            paymentMethod: 'card',
+            flow: 'return-payload',
+            durationMs: 1_000,
+        });
+
+        // The whole event, field by field: anything not on this list would be
+        // a new channel out of the card form, which is the one thing this
+        // event must never become.
+        expect(Object.keys(await readEvent(0)).sort()).toEqual([
+            'client_id',
+            'duration',
+            'element_id',
+            'event_type',
+            'flow',
+            'integration',
+            'interaction_type',
+            'origin',
+            'payment_method',
+            'sdk_version',
+            'shareable_key',
+            'trace_id',
+            'transaction_id',
+        ]);
+    });
+
     it('reports payment_session_id once a payment is attached', async () => {
         telemetry('3273103424').lifecycle('ready', { paymentMethod: 'card' });
 

@@ -580,6 +580,16 @@ export function createWalletsApi(
                         >[0],
                     );
 
+                    // The customer authorised in the sheet. Same gap the card
+                    // form had: without this the next event is the charge, so
+                    // a sheet the customer dismissed and a charge that never
+                    // fired look the same. No duration — the useful one is
+                    // time spent in the sheet, which starts at the tap, not
+                    // when the button drew.
+                    telemetry.submit('applepay-button', {
+                        paymentMethod: 'applepay',
+                    });
+
                     await runChargeFlow(
                         paymentsApi,
                         container,
@@ -828,6 +838,10 @@ export function createWalletsApi(
                     rejectResult(err);
                     return;
                 }
+
+                telemetry.submit('googlepay-button', {
+                    paymentMethod: 'googlepay',
+                });
 
                 await runChargeFlow(
                     paymentsApi,

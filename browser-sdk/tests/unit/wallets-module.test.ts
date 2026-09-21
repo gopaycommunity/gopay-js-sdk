@@ -657,6 +657,41 @@ describe('mountApplePayButton()', () => {
         expect(result).toEqual(mockChargeState);
     });
 
+    it('reports the authorisation as a submit, ahead of the charge', async () => {
+        // The wallet sheet is as opaque as the card form iframe: the customer
+        // authorising is the one moment the SDK sees. Without it a dismissed
+        // sheet and a charge that never fired are the same absence.
+        const telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+        };
+        const paymentsApi = makePaymentsApi();
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => paymentsApi as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
+        container.querySelector<HTMLElement>('apple-pay-button')!.click();
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        lastSession.onpaymentauthorized!({
+            payment: { token: { paymentData: validApplePaymentData } },
+        });
+        await ctrl.result;
+
+        expect(telemetry.submit).toHaveBeenCalledWith('applepay-button', {
+            paymentMethod: 'applepay',
+        });
+        // Nothing from the wallet token may travel with it.
+        expect(JSON.stringify(telemetry.submit.mock.calls)).not.toContain(
+            'APPLE_PAY',
+        );
+    });
+
     it('calls completePayment(STATUS_SUCCESS) on successful authorisation', async () => {
         const paymentsApi = makePaymentsApi();
         const client = makeClient();
@@ -1269,6 +1304,30 @@ describe('mountGooglePayButton()', () => {
         );
         const result = await ctrl.result;
         expect(result).toEqual(mockChargeState);
+    });
+
+    it('reports the authorisation as a submit, ahead of the charge', async () => {
+        const telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+        };
+        const paymentsApi = makePaymentsApi();
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => paymentsApi as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        await capturedOnClick!();
+        await ctrl.result;
+
+        expect(telemetry.submit).toHaveBeenCalledWith('googlepay-button', {
+            paymentMethod: 'googlepay',
+        });
     });
 
     it('fires onCancel and does not reject when loadPaymentData is cancelled', async () => {

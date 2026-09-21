@@ -611,6 +611,15 @@ lifecycle markers are what make a checkout that never starts visible at all:
 without them a payment that silently fails to appear produces no data of any
 kind, which is indistinguishable from nobody having visited.
 
+One event describes something your customer did rather than something the SDK
+did: that they submitted the card form, or authorised in an Apple Pay or Google
+Pay sheet, and how long the form had been on the page before they did. That is
+the whole of it — no field contents, no keystrokes, no timing of individual
+fields, nothing derived from the card data, not even the length of the
+encrypted payload. It exists because it is the only point between "the form
+appeared" and "a charge was attempted", so without it a customer who gave up at
+the form and a charge that failed to fire are the same silence.
+
 **What it never contains.** Card numbers, CVV, the encrypted card payload, card
 tokens, `paymentSecret`, credentials, 3DS or ACS redirect parameters, and
 personal data such as e-mail, phone, name or IBAN. Request and response bodies

@@ -388,6 +388,8 @@ export function createCardsApi(
              */
             let settled = false;
             let isValid = false;
+            /** When the form became usable, so the submit can report how long it took. */
+            let readyAt: number | null = null;
             let onMessage:
                 | ((e: MessageEvent<OutboundMessage>) => Promise<void>)
                 | undefined;
@@ -462,6 +464,7 @@ export function createCardsApi(
                 // would need a new message in the postMessage protocol, and
                 // that protocol is shared with gw-ui-cc-v4. "The form is on the
                 // page" is what this claims, and it is what it can prove.
+                readyAt = Date.now();
                 telemetry.lifecycle('ready', {
                     paymentMethod: 'card',
                     flow: options.flow,
@@ -491,6 +494,22 @@ export function createCardsApi(
             const handleEncryptResult = async (
                 encryptedPayload: string,
             ): Promise<void> => {
+                // Reported before the branch, so both flows mark it. It is the
+                // only proof the customer got as far as submitting: the
+                // encrypt-only flow makes no request at all after this, and
+                // the direct-charge flow's next event is the charge, which
+                // cannot say whether a missing charge means no submit or a
+                // submit that never reached here.
+                //
+                // The payload is deliberately not touched — not its length,
+                // not a hash, nothing. What leaves is that a submit happened
+                // and how long the form had been on the page.
+                telemetry.submit('card-form', {
+                    paymentMethod: 'card',
+                    flow: options.flow,
+                    durationMs: readyAt === null ? null : Date.now() - readyAt,
+                });
+
                 if (options.flow === 'return-payload') {
                     resolveResult({ encryptedPayload });
                     return;
