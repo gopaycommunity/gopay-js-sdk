@@ -579,6 +579,43 @@ allowed to replace it.
 Group by `endpoint` and `status`, never by the raw URL: request paths carry the
 payment id, so grouping on them opens a fresh group per payment.
 
+### Run your own global handler — the SDK does not install one
+
+`onError` covers what the SDK raises on the paths it instruments. It cannot
+cover an error thrown outside its call stack: Apple's `apple-pay-sdk.js` or
+Google's `pay.js` failing inside their own asynchronous plumbing, or anything
+that goes wrong before `createGoPayBrowserSDK()` runs. Those reach
+`window.onerror` and `unhandledrejection`, and **this SDK deliberately
+registers neither.**
+
+That is a decision, not an omission. A page has one useful owner for its global
+handlers, and it is the page — if every embedded script installed its own, each
+would report every other script's errors and you would pay for the duplicates.
+More importantly, a handler installed by a payment SDK would collect your
+application's own errors, which are your data and nothing GoPay has any basis
+to receive. So the handler is yours. Sentry, Datadog and the rest register both
+of these for you as soon as you initialise them, as early in the page as you
+can manage.
+
+Two things worth knowing about what you will see there:
+
+- **Apple Pay errors arrive complete.** `applepay.cdn-apple.com` sends
+  `Access-Control-Allow-Origin`, and the SDK injects the script with
+  `crossorigin`, so an uncaught error from it reaches your handler with its
+  message and stack intact.
+- **Google Pay errors arrive as `Script error.`** `pay.google.com` sends no CORS
+  headers, so the browser strips the message and stack from anything thrown by
+  `pay.js`. This cannot be fixed from our side: a `crossorigin` attribute on a
+  script served without those headers blocks the script outright, which would
+  disable Google Pay rather than improve its diagnostics.
+
+Errors thrown by callbacks **you** supply — `onStateChange`, `onValidityChange`,
+`onFieldErrors`, `onCancel`, `onLoadingStateChange` — are caught so they cannot
+abort a payment in flight, and then rethrown on a later task. They therefore
+reach your global handler with their original stack, a moment after the SDK has
+finished with them. GoPay records only that a callback threw and the error's
+class name, never its message.
+
 ### What not to forward
 
 - **Never** the values you passed in — a charge carries a card token, and

@@ -4,6 +4,7 @@ import {
     GoPaySDKError,
     type HttpClient,
 } from '@gopay-internal/core';
+import { callIntegrator } from '../../internal/integrator-callback.js';
 import { makeLoadingEmitter } from '../../internal/loading-emitter.js';
 import type {
     LoadingState,
@@ -401,9 +402,13 @@ async function runChargeFlow(
     abortSignal: AbortSignal,
     resolveResult: (v: PaymentChargeStatusResponse) => void,
     rejectResult: (e: unknown) => void,
+    telemetry: BrowserTelemetry = NO_BROWSER_TELEMETRY,
 ): Promise<void> {
     const spinnerColor = options.theme?.submitBackgroundColor ?? '#1899d6';
-    const emitLoadingState = makeLoadingEmitter(options.onLoadingStateChange);
+    const emitLoadingState = makeLoadingEmitter(
+        options.onLoadingStateChange,
+        telemetry,
+    );
     container.replaceChildren();
     emitLoadingState('charging');
     let clearSpinner = showSpinnerIn(container, {
@@ -435,11 +440,13 @@ async function runChargeFlow(
                     clearSpinner = () => {};
                     emitLoadingState('idle');
                 }
-                try {
-                    options.awaitOptions?.onStateChange?.(state);
-                } catch {
-                    // consumer callback errors must not corrupt SDK flows
-                }
+                callIntegrator(
+                    'onStateChange',
+                    () => {
+                        options.awaitOptions?.onStateChange?.(state);
+                    },
+                    telemetry,
+                );
             },
         });
 
@@ -722,6 +729,7 @@ export function createWalletsApi(
                         chargeAbortController.signal,
                         resolveResult,
                         rejectResult,
+                        telemetry,
                     );
                 };
 
@@ -731,7 +739,11 @@ export function createWalletsApi(
 
                 paymentsApi.startApplePaySession(session, {
                     oncancel: () => {
-                        options.onCancel?.();
+                        callIntegrator(
+                            'onCancel',
+                            () => options.onCancel?.(),
+                            telemetry,
+                        );
                     },
                 });
             };
@@ -942,7 +954,11 @@ export function createWalletsApi(
                         (err instanceof DOMException &&
                             err.name === 'AbortError');
                     if (isCancel) {
-                        options.onCancel?.();
+                        callIntegrator(
+                            'onCancel',
+                            () => options.onCancel?.(),
+                            telemetry,
+                        );
                     } else {
                         cleanup();
                         rejectResult(err);
@@ -995,6 +1011,7 @@ export function createWalletsApi(
                     chargeAbortController.signal,
                     resolveResult,
                     rejectResult,
+                    telemetry,
                 );
             };
 

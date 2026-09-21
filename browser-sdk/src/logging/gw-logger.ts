@@ -202,6 +202,20 @@ export interface BrowserTelemetry extends Telemetry {
         reason: string;
         capabilities?: Record<string, string | number | boolean | null>;
     }): void;
+    /**
+     * A callback the integrator supplied threw.
+     *
+     * Deliberately not routed through `error()`, which also reaches
+     * `config.onError`: that channel means "the SDK hit a problem", and
+     * filling it with bugs in the merchant's own callbacks would make it
+     * useless as a signal about the SDK. They hear about it from their own
+     * global handler instead — see `callIntegrator`.
+     *
+     * Carries the callback name and the error's constructor name, nothing
+     * else. The message is written by the merchant's code and can hold their
+     * data; a class name cannot.
+     */
+    integratorError(label: string, errorName: string): void;
 }
 
 /**
@@ -216,6 +230,7 @@ export const NO_BROWSER_TELEMETRY: BrowserTelemetry = {
     lifecycle: () => {},
     submit: () => {},
     walletUnavailable: () => {},
+    integratorError: () => {},
 };
 
 export function createGwLoggerTelemetry(options: {
@@ -346,6 +361,18 @@ export function createGwLoggerTelemetry(options: {
                 res_body: safeErrorMessage(
                     describeCapabilities(reason, capabilities),
                 ),
+            }));
+        },
+
+        integratorError(label, errorName): void {
+            post('error', () => ({
+                ...base(),
+                event_type: 'api_call',
+                action: 'SDK.INTEGRATOR_CALLBACK',
+                target: '',
+                status_code: SDK_ERROR_STATUS,
+                duration: null,
+                res_body: `${label}: ${errorName}`,
             }));
         },
 

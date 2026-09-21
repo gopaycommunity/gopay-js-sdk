@@ -5,6 +5,7 @@ import {
     nowMs,
 } from '@gopay-internal/core';
 import { TRUSTED_CARD_FORM_ORIGINS } from '../../config.js';
+import { callIntegrator } from '../../internal/integrator-callback.js';
 import { makeLoadingEmitter } from '../../internal/loading-emitter.js';
 import type {
     LoadingState,
@@ -301,6 +302,7 @@ export function createCardsApi(
 
             const emitLoadingState = makeLoadingEmitter(
                 options.onLoadingStateChange,
+                telemetry,
             );
 
             // Show spinner during card-form-url fetch
@@ -571,11 +573,13 @@ export function createCardsApi(
                                 clearSpinner();
                                 emitLoadingState('idle');
                             }
-                            try {
-                                awaitOptions?.onStateChange?.(state);
-                            } catch {
-                                // consumer callback errors must not corrupt SDK flows
-                            }
+                            callIntegrator(
+                                'onStateChange',
+                                () => {
+                                    awaitOptions?.onStateChange?.(state);
+                                },
+                                telemetry,
+                            );
                         },
                     });
 
@@ -600,11 +604,13 @@ export function createCardsApi(
                     return;
                 }
                 isValid = nextValid;
-                try {
-                    options.onValidityChange?.(isValid);
-                } catch {
-                    // consumer callback errors must not corrupt SDK flows
-                }
+                callIntegrator(
+                    'onValidityChange',
+                    () => {
+                        options.onValidityChange?.(isValid);
+                    },
+                    telemetry,
+                );
             };
 
             const handleFieldErrorsMessage = (errors: readonly unknown[]) => {
@@ -622,11 +628,13 @@ export function createCardsApi(
                 const projected: CardFormFieldError[] = errors
                     .filter(isCardFormFieldError)
                     .map(({ field, code }) => ({ field, code }));
-                try {
-                    options.onFieldErrors?.(projected);
-                } catch {
-                    // consumer callback errors must not corrupt SDK flows
-                }
+                callIntegrator(
+                    'onFieldErrors',
+                    () => {
+                        options.onFieldErrors?.(projected);
+                    },
+                    telemetry,
+                );
             };
 
             onMessage = async (event: MessageEvent<OutboundMessage>) => {

@@ -422,6 +422,55 @@ describe('createCardsApi() — browser SDK', () => {
             expect(iframe.style.height).toBe('100%');
         });
 
+        it('survives a throwing onValidityChange and reports it without the message', async () => {
+            // Guards the wiring, not the helper: the helper has its own tests,
+            // but a call site quietly reverting to `catch {}` would make the
+            // integrator's bug invisible again and nothing else would notice.
+            // The asynchronous rethrow is covered there too — asserting it
+            // here would need fake timers, which leak into the next test when
+            // anything above them fails.
+            const telemetry = {
+                apiCall: vi.fn(),
+                error: vi.fn(),
+                lifecycle: vi.fn(),
+                submit: vi.fn(),
+                walletUnavailable: vi.fn(),
+                integratorError: vi.fn(),
+            };
+            const cards = createCardsApi(
+                client,
+                () => null,
+                telemetry as unknown as BrowserTelemetry,
+            );
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'return-payload',
+                submitMode: 'external',
+                onValidityChange: () => {
+                    throw new TypeError('secret@merchant.test blew up');
+                },
+            });
+            ctrl.result.catch(() => {});
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            expect(() =>
+                simulateMessage(iframe, {
+                    type: 'GOPAY_CARD_FORM_VALIDITY',
+                    isValid: true,
+                }),
+            ).not.toThrow();
+            await new Promise((r) => setTimeout(r, 0));
+
+            expect(telemetry.integratorError).toHaveBeenCalledWith(
+                'onValidityChange',
+                'TypeError',
+            );
+            expect(
+                JSON.stringify(telemetry.integratorError.mock.calls),
+            ).not.toContain('secret@merchant.test');
+        });
+
         it('calls onValidityChange and updates isValid on GOPAY_CARD_FORM_VALIDITY', async () => {
             const onValidityChange = vi.fn();
             const cards = createCardsApi(client, () => null);
