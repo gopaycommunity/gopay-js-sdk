@@ -1056,6 +1056,38 @@ describe('mountApplePayButton()', () => {
         );
     });
 
+    it('blames the library, not the device, when ApplePaySession never installed', async () => {
+        // The script can register the button and still leave no
+        // ApplePaySession — the older v1 build does exactly that. Filing it
+        // under unsupported-device would blame the shopper's phone for a
+        // script that did not finish loading, and they can do nothing about
+        // the former.
+        vi.stubGlobal('ApplePaySession', undefined);
+        const telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+            walletUnavailable: vi.fn(),
+            integratorError: vi.fn(),
+        };
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect.objectContaining({
+                paymentMethod: 'applepay',
+                reason: 'library-missing',
+            }),
+        );
+    });
+
     it('carries the mobile flag that a DevTools device toolbar flips', async () => {
         // There is no way to detect the toolbar itself. What is detectable is
         // the flag it sets, which is the input Apple's non-Safari shim reads

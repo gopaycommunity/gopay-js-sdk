@@ -588,7 +588,22 @@ export function createWalletsApi(
             // merchant identifier and a network round-trip, and on Safari it resolves
             // through the deprecated `canMakePaymentsWithActiveCard()`, which would
             // newly hide the button from users with no provisioned card.
-            if (!ApplePaySession?.canMakePayments()) {
+            // Told apart deliberately. The script can register the button and
+            // still leave no ApplePaySession — the older `v1` build does
+            // exactly that — and folding it into the check below would file a
+            // library that did not load under the shopper's device, which is
+            // the one thing they cannot do anything about.
+            if (!ApplePaySession) {
+                return makeUnavailableController({
+                    client,
+                    telemetry,
+                    wallet: 'applepay',
+                    reason: WALLET_UNAVAILABLE.libraryMissing,
+                    onUnavailable: options.onUnavailable,
+                });
+            }
+
+            if (!ApplePaySession.canMakePayments()) {
                 return makeUnavailableController({
                     client,
                     telemetry,

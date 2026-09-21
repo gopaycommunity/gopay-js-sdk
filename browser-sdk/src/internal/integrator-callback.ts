@@ -17,6 +17,34 @@ import type { BrowserTelemetry } from '../logging/gw-logger.js';
  * owner for a bug in the page's own code, and it is why the SDK installs no
  * global handler of its own.
  */
+/**
+ * `Error.name` is writable — `err.name = someCustomerEmail` is legal — and a
+ * custom error class can be named anything its author likes. So the class
+ * name is not the safe constant it looks like, and this event's whole promise
+ * is that it carries nothing the merchant's code chose. An allowlist of the
+ * built-ins makes that promise true instead of approximately true; anything
+ * else reports as the base class it is.
+ */
+const REPORTABLE_ERROR_NAMES: ReadonlySet<string> = new Set([
+    'AggregateError',
+    'DOMException',
+    'Error',
+    'EvalError',
+    'RangeError',
+    'ReferenceError',
+    'SyntaxError',
+    'TypeError',
+    'URIError',
+]);
+
+function safeErrorName(error: unknown): string {
+    if (!(error instanceof Error)) {
+        // A fixed vocabulary: 'string', 'object', 'undefined', …
+        return typeof error;
+    }
+    return REPORTABLE_ERROR_NAMES.has(error.name) ? error.name : 'Error';
+}
+
 export function callIntegrator(
     label: string,
     fn: () => void,
@@ -28,11 +56,8 @@ export function callIntegrator(
         setTimeout(() => {
             throw error;
         });
-        // Name only, never the message: the message is written by the
-        // merchant's code and can carry their data. `TypeError` cannot.
-        telemetry?.integratorError(
-            label,
-            error instanceof Error ? error.name : typeof error,
-        );
+        // Never the message, and never a name the merchant's code supplied
+        // — see safeErrorName.
+        telemetry?.integratorError(label, safeErrorName(error));
     }
 }

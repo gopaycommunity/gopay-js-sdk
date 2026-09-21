@@ -69,6 +69,50 @@ describe('callIntegrator()', () => {
         ).not.toContain('user@example.com');
     });
 
+    it('does not trust a name the callback chose for its own error', () => {
+        vi.useFakeTimers();
+        const telemetry = makeTelemetry();
+        const tampered = new Error('boom');
+        // `Error.name` is writable, and a custom error class can be named
+        // anything. Reporting it verbatim would be the same leak the message
+        // is withheld to prevent, just through a field that looks constant.
+        tampered.name = 'customer-4213@merchant.test';
+
+        callIntegrator(
+            'onStateChange',
+            () => {
+                throw tampered;
+            },
+            telemetry,
+        );
+
+        expect(telemetry.integratorError).toHaveBeenCalledWith(
+            'onStateChange',
+            'Error',
+        );
+        expect(
+            JSON.stringify(telemetry.integratorError.mock.calls),
+        ).not.toContain('merchant.test');
+    });
+
+    it('keeps the real class name when it is a built-in', () => {
+        vi.useFakeTimers();
+        const telemetry = makeTelemetry();
+
+        callIntegrator(
+            'onCancel',
+            () => {
+                throw new RangeError('out of range');
+            },
+            telemetry,
+        );
+
+        expect(telemetry.integratorError).toHaveBeenCalledWith(
+            'onCancel',
+            'RangeError',
+        );
+    });
+
     it('never reports an integrator bug as an SDK error', () => {
         vi.useFakeTimers();
         const telemetry = makeTelemetry();
