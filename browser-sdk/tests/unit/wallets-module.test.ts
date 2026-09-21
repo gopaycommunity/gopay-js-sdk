@@ -989,6 +989,44 @@ describe('mountApplePayButton()', () => {
         );
     });
 
+    it('reports the unavailable wallet even when onUnavailable throws', async () => {
+        // onUnavailable is the one integrator callback the SDK is guaranteed
+        // to invoke on this path, and it runs ahead of both the telemetry and
+        // the reportError. A merchant whose fallback UI throws would take out
+        // the very event added to explain why their button never drew.
+        vi.useFakeTimers();
+        MockApplePaySession.canMakePayments.mockReturnValue(false);
+        const telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+            walletUnavailable: vi.fn(),
+            integratorError: vi.fn(),
+        };
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container, {
+            onUnavailable: () => {
+                throw new TypeError('their fallback UI is broken');
+            },
+        });
+        ctrl.result.catch(() => {});
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalled();
+        expect(client.reportError).toHaveBeenCalled();
+        expect(telemetry.integratorError).toHaveBeenCalledWith(
+            'onUnavailable',
+            'TypeError',
+        );
+        vi.useRealTimers();
+    });
+
     it('names Apple Pay and the reason when the device gate turns it away', async () => {
         // The whole point of the reason code: "a wallet was unavailable" is
         // not an answer anyone can act on, and the sentence this replaces was

@@ -372,7 +372,14 @@ function makeUnavailableController(args: {
     cause?: unknown;
 }): WalletButtonController {
     const { client, telemetry, wallet, reason, onUnavailable, cause } = args;
-    onUnavailable?.();
+    // Guarded like every other integrator callback. This one is the easiest to
+    // overlook — it is the only callback this path is guaranteed to invoke,
+    // and it runs ahead of both the telemetry and the reportError below, so a
+    // merchant whose fallback UI throws would take out the very event that
+    // explains why their button never drew, and the throw would leave
+    // mountApplePayButton rejecting with their error instead of returning a
+    // controller.
+    callIntegrator('onUnavailable', () => onUnavailable?.(), telemetry);
     telemetry.walletUnavailable({
         paymentMethod: wallet,
         reason,
