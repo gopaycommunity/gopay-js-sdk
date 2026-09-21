@@ -1,3 +1,21 @@
+# [1.21.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.20.0...1.21.0) (2026-09-21)
+
+
+### Bug Fixes
+
+* **browser-data:** attach method and endpoint to the HTTP error GPOMA-2647 ([2292c5f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2292c5f47b557f00b76388c37a39a3c6b3e160c1))
+* **cards:** report card form failures to onError GPOMA-2647 ([a2b8a5d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a2b8a5d378b699f82cd51743a68a70494b5d7284))
+* **cards:** report the mount guards and submit() to onError GPOMA-2647 ([06ab65d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/06ab65db1682a8774f2ff37cc8b73d1e043cf543))
+* **core:** adopt the promise an async onError returns GPOMA-2647 ([e82031c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e82031ccf2d5ca7d82887f3894737bc84ffcb0bf))
+* **core:** keep the receiver when wrapping API methods GPOMA-2647 ([180b69a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/180b69a3dcf20aad21364ed7f5a547331457f623))
+* **payments:** keep the attached payment id inside its endpoint GPOMA-2647 ([591e1ca](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/591e1ca5cc08e29870885d112f1abe9cca2522a5)), closes [#62](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issue/62)
+* **wallets:** report Apple Pay and Google Pay failures to onError GPOMA-2647 ([8fb8370](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8fb83700cfa406b4418abe7ae50824f8ef9d43ce))
+
+
+### Features
+
+* **core:** report every SDK error to onError GPOMA-2647 ([1f0cc58](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1f0cc58c3cf723af7db65d07ac8c5bb27cae16a2))
+
 # [1.20.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.19.1...1.20.0) (2026-09-17)
 
 
