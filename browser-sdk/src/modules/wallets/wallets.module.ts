@@ -398,19 +398,35 @@ function makeUnavailableController(args: {
     return { result, unmount: () => {} };
 }
 
-async function runChargeFlow(
-    paymentsApi: PaymentsApi,
-    container: HTMLElement,
+/**
+ * One object rather than a parameter list. Both wallets pass the same eight
+ * things and positional arguments that long are read by counting commas —
+ * adding `telemetry` to the end was what tipped it over.
+ */
+interface ChargeFlowArgs {
+    paymentsApi: PaymentsApi;
+    container: HTMLElement;
     instrument: Omit<
         components['schemas']['Payment-Card-Charge-Data'],
         'browser_data'
-    >,
-    options: WalletButtonBaseOptions,
-    abortSignal: AbortSignal,
-    resolveResult: (v: PaymentChargeStatusResponse) => void,
-    rejectResult: (e: unknown) => void,
-    telemetry: BrowserTelemetry = NO_BROWSER_TELEMETRY,
-): Promise<void> {
+    >;
+    options: WalletButtonBaseOptions;
+    abortSignal: AbortSignal;
+    resolveResult: (v: PaymentChargeStatusResponse) => void;
+    rejectResult: (e: unknown) => void;
+    telemetry?: BrowserTelemetry;
+}
+
+async function runChargeFlow({
+    paymentsApi,
+    container,
+    instrument,
+    options,
+    abortSignal,
+    resolveResult,
+    rejectResult,
+    telemetry = NO_BROWSER_TELEMETRY,
+}: ChargeFlowArgs): Promise<void> {
     const spinnerColor = options.theme?.submitBackgroundColor ?? '#1899d6';
     const emitLoadingState = makeLoadingEmitter(
         options.onLoadingStateChange,
@@ -728,16 +744,16 @@ export function createWalletsApi(
                         paymentMethod: 'applepay',
                     });
 
-                    await runChargeFlow(
+                    await runChargeFlow({
                         paymentsApi,
                         container,
                         instrument,
                         options,
-                        chargeAbortController.signal,
+                        abortSignal: chargeAbortController.signal,
                         resolveResult,
                         rejectResult,
                         telemetry,
-                    );
+                    });
                 };
 
                 session.onpaymentauthorized = (event: unknown) => {
@@ -1010,16 +1026,16 @@ export function createWalletsApi(
                     paymentMethod: 'googlepay',
                 });
 
-                await runChargeFlow(
+                await runChargeFlow({
                     paymentsApi,
                     container,
                     instrument,
                     options,
-                    chargeAbortController.signal,
+                    abortSignal: chargeAbortController.signal,
                     resolveResult,
                     rejectResult,
                     telemetry,
-                );
+                });
             };
 
             const btn = paymentsClient.createButton({
