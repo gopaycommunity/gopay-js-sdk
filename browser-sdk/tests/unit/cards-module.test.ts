@@ -56,6 +56,13 @@ describe('createCardsApi() — browser SDK', () => {
 
     afterEach(() => {
         container.remove();
+        // callIntegrator rethrows a consumer's error on a later task, so any
+        // test that makes one throw has to own that timer — otherwise it
+        // fires after the test and vitest counts it as an unhandled error,
+        // which fails the run even with every assertion green. Restoring here
+        // rather than in each test body means a test that fails early cannot
+        // leave fake timers behind for the next one.
+        vi.useRealTimers();
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
     });
@@ -426,9 +433,7 @@ describe('createCardsApi() — browser SDK', () => {
             // Guards the wiring, not the helper: the helper has its own tests,
             // but a call site quietly reverting to `catch {}` would make the
             // integrator's bug invisible again and nothing else would notice.
-            // The asynchronous rethrow is covered there too — asserting it
-            // here would need fake timers, which leak into the next test when
-            // anything above them fails.
+            vi.useFakeTimers();
             const telemetry = {
                 apiCall: vi.fn(),
                 error: vi.fn(),
@@ -460,12 +465,15 @@ describe('createCardsApi() — browser SDK', () => {
                     isValid: true,
                 }),
             ).not.toThrow();
-            await new Promise((r) => setTimeout(r, 0));
 
             expect(telemetry.integratorError).toHaveBeenCalledWith(
                 'onValidityChange',
                 'TypeError',
             );
+            // Consume the deferred rethrow: in a browser it lands in
+            // window.onerror, which is the point, and here it has to be
+            // asserted rather than left to escape into the runner.
+            expect(() => vi.runAllTimers()).toThrow(TypeError);
             expect(
                 JSON.stringify(telemetry.integratorError.mock.calls),
             ).not.toContain('secret@merchant.test');
@@ -586,6 +594,11 @@ describe('createCardsApi() — browser SDK', () => {
         });
 
         it('keeps the form usable when onFieldErrors throws', async () => {
+            // The throw is no longer swallowed — callIntegrator defers it to a
+            // later task so the page's own handler sees it. The form staying
+            // usable is still what this test is about; the timer is just the
+            // part it now has to account for.
+            vi.useFakeTimers();
             const onFieldErrors = vi.fn(() => {
                 throw new Error('consumer callback exploded');
             });
@@ -611,7 +624,9 @@ describe('createCardsApi() — browser SDK', () => {
                 isValid: true,
             });
 
-            await new Promise((r) => setTimeout(r, 0));
+            expect(() => vi.runAllTimers()).toThrow(
+                'consumer callback exploded',
+            );
             expect(onFieldErrors).toHaveBeenCalledOnce();
             // the throwing consumer must not stop later protocol messages
             expect(onValidityChange).toHaveBeenCalledWith(true);
