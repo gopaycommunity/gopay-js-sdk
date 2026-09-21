@@ -17,10 +17,22 @@ import { safeErrorMessage, safePageUrl } from './sanitize.js';
 const REQUEST_TIMEOUT_MS = 2_000;
 
 /**
- * Per visit. A page that somehow loops through the SDK cannot turn into a flood
- * against an ingest that answers every POST with 204 and no backpressure.
+ * Per SDK instance, and split in two on purpose.
+ *
+ * A page that somehow loops through the SDK must not turn into a flood against
+ * an ingest that answers every POST with 204 and no backpressure — but one
+ * shared cap made the flood eat the funnel. Charge-state polling emits an
+ * api_call every couple of seconds and 3DS has no time limit, so a slow
+ * authentication would spend the whole budget on identical poll records and
+ * then silently drop the `leave` and the terminal charge — the events the
+ * feature exists for, lost in exactly the flows most worth watching.
+ *
+ * The lifecycle side is bounded by design (a handful of markers per mount), so
+ * its own small budget both caps a runaway and guarantees it can never be
+ * crowded out by traffic.
  */
-const MAX_EVENTS_PER_VISIT = 200;
+const MAX_API_CALL_EVENTS = 200;
+const MAX_LIFECYCLE_EVENTS = 50;
 
 /**
  * `status_code` is nullable in the schema, which leaves three states worth
@@ -122,7 +134,17 @@ const INTEGRATION: string =
 /** `/payments/{id}/charge` → `charge`; gw-ui's action convention. */
 function lastSegment(endpoint: string): string {
     const parts = endpoint.split('/').filter(Boolean);
-    return parts[parts.length - 1] ?? '';
+    // Skipping the `{id}` normalizeEndpoint leaves behind is the whole point.
+    // `GET /payments/{id}` — the charge-state poll, the highest-volume call the
+    // SDK makes — would otherwise be reported under the action `{id}`, which
+    // names nothing and collides with every other id-terminated path.
+    for (let i = parts.length - 1; i >= 0; i -= 1) {
+        const part = parts[i];
+        if (part && !part.startsWith('{')) {
+            return part;
+        }
+    }
+    return '';
 }
 
 /**
@@ -165,7 +187,8 @@ export function createGwLoggerTelemetry(options: {
     getPaymentId: () => string | undefined;
 }): BrowserTelemetry {
     const url = `${LOGGER_URLS[options.environment]}/events`;
-    let sent = 0;
+    let apiCallsSent = 0;
+    let lifecycleSent = 0;
 
     /**
      * Fire and forget, in the strict sense: nothing here is awaited by a caller,
@@ -180,13 +203,27 @@ export function createGwLoggerTelemetry(options: {
      * thing being measured, so routing telemetry through it would emit an
      * api_call per api_call.
      */
-    function post(event: GwLoggerEvent): void {
-        if (sent >= MAX_EVENTS_PER_VISIT) {
-            return;
-        }
-        sent += 1;
-
+    function post(build: () => GwLoggerEvent): void {
         try {
+            // Built inside the try, not passed in already built. `base()` reads
+            // the page URL and the callers' getters, and an emitter is called
+            // from a `finally` on the payment path — a throw while assembling
+            // the event would replace the payment error the caller was about
+            // to receive with a telemetry error. Logging is never worth that.
+            const event = build();
+
+            if (event.event_type === 'api_call') {
+                if (apiCallsSent >= MAX_API_CALL_EVENTS) {
+                    return;
+                }
+                apiCallsSent += 1;
+            } else {
+                if (lifecycleSent >= MAX_LIFECYCLE_EVENTS) {
+                    return;
+                }
+                lifecycleSent += 1;
+            }
+
             void fetch(
                 new Request(url, {
                     method: 'POST',
@@ -199,8 +236,9 @@ export function createGwLoggerTelemetry(options: {
                 }),
             ).catch(() => {});
         } catch {
-            // AbortSignal.timeout or fetch missing on an older engine. Logging
-            // is never worth a thrown error in a payment flow.
+            // A field getter throwing, or AbortSignal.timeout / fetch missing
+            // on an older engine. Logging is never worth a thrown error in a
+            // payment flow.
         }
     }
 
@@ -222,18 +260,18 @@ export function createGwLoggerTelemetry(options: {
 
     return {
         apiCall(record: ApiCallRecord): void {
-            post({
+            post(() => ({
                 ...base(),
                 event_type: 'api_call',
                 action: lastSegment(record.endpoint),
                 target: record.endpoint,
                 status_code: record.statusCode,
                 duration: record.durationMs,
-            });
+            }));
         },
 
         lifecycle(navigationType, context): void {
-            post({
+            post(() => ({
                 ...base(),
                 event_type: 'navigation',
                 navigation_type: navigationType,
@@ -242,11 +280,11 @@ export function createGwLoggerTelemetry(options: {
                 target: null,
                 payment_method: orUndefined(context?.paymentMethod),
                 flow: orUndefined(context?.flow),
-            });
+            }));
         },
 
         submit(elementId, context): void {
-            post({
+            post(() => ({
                 ...base(),
                 event_type: 'interaction',
                 interaction_type: 'submit',
@@ -254,7 +292,7 @@ export function createGwLoggerTelemetry(options: {
                 payment_method: orUndefined(context?.paymentMethod),
                 flow: orUndefined(context?.flow),
                 duration: context?.durationMs ?? null,
-            });
+            }));
         },
 
         error(error: GoPaySDKError | GoPayHTTPError): void {
@@ -262,7 +300,7 @@ export function createGwLoggerTelemetry(options: {
                 'errorCode' in error && typeof error.errorCode === 'string'
                     ? error.errorCode
                     : 'UNKNOWN';
-            post({
+            post(() => ({
                 ...base(),
                 event_type: 'api_call',
                 action: `SDK.${code}`,
@@ -272,7 +310,7 @@ export function createGwLoggerTelemetry(options: {
                 status_code: SDK_ERROR_STATUS,
                 duration: null,
                 res_body: safeErrorMessage(error),
-            });
+            }));
         },
     };
 }

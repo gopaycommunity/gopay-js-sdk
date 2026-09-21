@@ -8,30 +8,38 @@ import type { BrowserTelemetry } from './gw-logger.js';
  * `ready`, and then silence — indistinguishable from a page still open in a
  * background tab. The beacon turns that into a fact with a timestamp.
  *
- * `visibilitychange` rather than `beforeunload` or `unload`: those two are not
- * fired reliably on mobile Safari or Chrome for Android, where a tab is more
- * often discarded than closed. `hidden` is the last callback a page is
- * guaranteed to get.
+ * `pagehide` rather than `visibilitychange`, which is what this used first.
+ * `hidden` fires on every tab switch, so a shopper glancing at their banking
+ * app for an SMS code produced a `leave` mid-payment — and the latch that was
+ * meant to stop duplicates then blocked the real end of the visit, so the
+ * event fired at the wrong moment and never at the right one. `pagehide`
+ * fires when the document is actually being torn down: a navigation away
+ * (including the 3DS redirect, which genuinely ends the visit to this page),
+ * a closed tab, or entry into the back/forward cache. It does not fire on a
+ * tab switch, which is the whole difference.
+ *
+ * What that costs: a mobile tab backgrounded and later discarded by the OS
+ * never fires it. That is a lost event rather than a wrong one, and the data
+ * is documented as a lower bound.
+ *
+ * `once` rather than a latch, so the listener also removes itself — an SDK
+ * built per step in an SPA would otherwise leave one live listener per
+ * construction, each pinning its own telemetry closure.
  *
  * The event is a plain `fetch` with `keepalive` inside the telemetry emitter,
  * which is what lets it outlive the page — the same mechanism the charge event
  * relies on to survive the 3DS redirect.
  */
 export function registerLeaveBeacon(telemetry: BrowserTelemetry): void {
-    // A visit ends once. `hidden` fires on every tab switch, and a shopper who
-    // switches to their banking app and back would otherwise report a leave
-    // per switch, inflating exactly the number this exists to measure.
-    let sent = false;
-
-    if (typeof globalThis.document?.addEventListener !== 'function') {
+    if (typeof globalThis.addEventListener !== 'function') {
         return;
     }
 
-    globalThis.document.addEventListener('visibilitychange', () => {
-        if (sent || globalThis.document.visibilityState !== 'hidden') {
-            return;
-        }
-        sent = true;
-        telemetry.lifecycle('leave');
-    });
+    globalThis.addEventListener(
+        'pagehide',
+        () => {
+            telemetry.lifecycle('leave');
+        },
+        { once: true },
+    );
 }

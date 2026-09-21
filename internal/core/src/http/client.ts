@@ -254,14 +254,31 @@ export function createHttpClient(
         emitError,
         reportError,
 
+        /**
+         * For the requests that deliberately bypass this client and would
+         * otherwise be the SDK's only untimed traffic — today
+         * `fetchBrowserData`, which cannot use the verb methods because their
+         * 401 handling would clear the token store mid-charge.
+         */
+        recordApiCall: record,
+
         async get<T>(path: string, options?: RequestOptions): Promise<T> {
             const started = nowMs();
             let status: number | null = null;
+            // Only a call that actually went out gets a record. Without
+            // this the `finally` also fires for a failure that happened
+            // before the request — a missing token, a bad path — and
+            // reports it as `status_code: null`, which downstream means
+            // "issued, no response": a phantom network error on an
+            // endpoint nothing ever called, next to the SDK.<CODE> event
+            // that already described the same failure correctly.
+            let issued = false;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({ Accept: SDK_ACCEPT_HEADER });
                 await auth.injectAuth(headers, url, options);
                 debugLogRequest('GET', url);
+                issued = true;
                 const response = await auth.fetchAndHandle401(
                     url,
                     { method: 'GET', headers },
@@ -273,7 +290,9 @@ export function createHttpClient(
             } catch (err) {
                 return handleError(err);
             } finally {
-                record('GET', path, started, status);
+                if (issued) {
+                    record('GET', path, started, status);
+                }
             }
         },
 
@@ -284,6 +303,14 @@ export function createHttpClient(
         ): Promise<T> {
             const started = nowMs();
             let status: number | null = null;
+            // Only a call that actually went out gets a record. Without
+            // this the `finally` also fires for a failure that happened
+            // before the request — a missing token, a bad path — and
+            // reports it as `status_code: null`, which downstream means
+            // "issued, no response": a phantom network error on an
+            // endpoint nothing ever called, next to the SDK.<CODE> event
+            // that already described the same failure correctly.
+            let issued = false;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
@@ -292,6 +319,7 @@ export function createHttpClient(
                 });
                 await auth.injectAuth(headers, url, options);
                 debugLogRequest('POST', url);
+                issued = true;
                 const response = await auth.fetchAndHandle401(
                     url,
                     { method: 'POST', headers, body: JSON.stringify(body) },
@@ -303,18 +331,29 @@ export function createHttpClient(
             } catch (err) {
                 return handleError(err);
             } finally {
-                record('POST', path, started, status);
+                if (issued) {
+                    record('POST', path, started, status);
+                }
             }
         },
 
         async delete(path: string, options?: RequestOptions): Promise<void> {
             const started = nowMs();
             let status: number | null = null;
+            // Only a call that actually went out gets a record. Without
+            // this the `finally` also fires for a failure that happened
+            // before the request — a missing token, a bad path — and
+            // reports it as `status_code: null`, which downstream means
+            // "issued, no response": a phantom network error on an
+            // endpoint nothing ever called, next to the SDK.<CODE> event
+            // that already described the same failure correctly.
+            let issued = false;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers();
                 await auth.injectAuth(headers, url, options);
                 debugLogRequest('DELETE', url);
+                issued = true;
                 const response = await auth.fetchAndHandle401(
                     url,
                     { method: 'DELETE', headers },
@@ -325,7 +364,9 @@ export function createHttpClient(
             } catch (err) {
                 return handleError(err);
             } finally {
-                record('DELETE', path, started, status);
+                if (issued) {
+                    record('DELETE', path, started, status);
+                }
             }
         },
 
@@ -336,6 +377,14 @@ export function createHttpClient(
         ): Promise<T> {
             const started = nowMs();
             let status: number | null = null;
+            // Only a call that actually went out gets a record. Without
+            // this the `finally` also fires for a failure that happened
+            // before the request — a missing token, a bad path — and
+            // reports it as `status_code: null`, which downstream means
+            // "issued, no response": a phantom network error on an
+            // endpoint nothing ever called, next to the SDK.<CODE> event
+            // that already described the same failure correctly.
+            let issued = false;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
@@ -349,6 +398,7 @@ export function createHttpClient(
                 }
                 await auth.injectAuth(headers, url, options);
                 debugLogRequest('POST', url);
+                issued = true;
                 const bodyStr = new URLSearchParams(form).toString();
                 const response = await fetch(
                     new Request(url, {
@@ -370,7 +420,9 @@ export function createHttpClient(
             } catch (err) {
                 return handleError(err);
             } finally {
-                record('POST', path, started, status);
+                if (issued) {
+                    record('POST', path, started, status);
+                }
             }
         },
     };

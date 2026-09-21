@@ -348,3 +348,87 @@ describe('fetchBrowserData()', () => {
         expect((err as GoPayHTTPError).endpoint).toBe('/cards/browser-data');
     });
 });
+
+describe('fetchBrowserData() is timed like every other call', () => {
+    const makeResponse = (data: unknown, status = 200) =>
+        new Response(JSON.stringify(data), {
+            status,
+            headers: { 'content-type': 'application/json' },
+        });
+
+    const DETECTED = {
+        ip: '192.0.2.42',
+        user_agent: 'Real/1.0',
+        accept_header: '{"accept":"application/json"}',
+    };
+
+    let telemetry: {
+        apiCall: ReturnType<typeof vi.fn>;
+        error: ReturnType<typeof vi.fn>;
+    };
+
+    const makeClient = (fetchImpl: ReturnType<typeof vi.fn>) => {
+        vi.stubGlobal('fetch', fetchImpl);
+        const client = createHttpClient(
+            { baseUrl: 'https://example.com', shareableKey: 'pk_test' },
+            undefined,
+            telemetry as never,
+        );
+        client.setClientId('cid_test');
+        return client;
+    };
+
+    beforeEach(() => {
+        telemetry = { apiCall: vi.fn(), error: vi.fn() };
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    it('records the call, which the shared client cannot do for it', async () => {
+        // It bypasses the verb methods on purpose (their 401 handling would
+        // clear the token store mid-charge), and therefore bypassed their
+        // timing too — leaving it the one SDK request no event described.
+        await fetchBrowserData(
+            makeClient(vi.fn().mockResolvedValue(makeResponse(DETECTED))),
+        );
+
+        expect(telemetry.apiCall).toHaveBeenCalledOnce();
+        expect(telemetry.apiCall.mock.calls[0]?.[0]).toMatchObject({
+            method: 'GET',
+            endpoint: '/cards/browser-data',
+            statusCode: 200,
+        });
+    });
+
+    it('records the tolerated 404, which is the whole reason this matters', async () => {
+        // Sandbox answers 404 and the SDK carries on with the locally readable
+        // fields. Tolerated, so it reaches neither the merchant's onError nor
+        // a rejected promise — without a record it is invisible everywhere.
+        const client = makeClient(
+            vi.fn().mockResolvedValue(makeResponse({ err: 'nope' }, 404)),
+        );
+
+        await expect(fetchBrowserData(client)).rejects.toThrow();
+
+        expect(telemetry.apiCall.mock.calls[0]?.[0]).toMatchObject({
+            endpoint: '/cards/browser-data',
+            statusCode: 404,
+        });
+    });
+
+    it('records a null status when the request produced no response at all', async () => {
+        const client = makeClient(
+            vi.fn().mockRejectedValue(new Error('network down')),
+        );
+
+        await expect(fetchBrowserData(client)).rejects.toThrow();
+
+        expect(telemetry.apiCall.mock.calls[0]?.[0]).toMatchObject({
+            endpoint: '/cards/browser-data',
+            statusCode: null,
+        });
+    });
+});

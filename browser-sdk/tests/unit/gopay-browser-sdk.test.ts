@@ -91,14 +91,20 @@ describe('createGoPayBrowserSDK()', () => {
                 user_agent: 'Real/1.0',
                 accept_header: '{"accept":"application/json"}',
             };
-            let capturedReq!: Request;
+            // The call is now timed, so a telemetry POST follows it and would
+            // be the last request seen — pick the one under test by URL.
+            const seen: Request[] = [];
             fetchMock.mockImplementation(async (req: Request) => {
-                capturedReq = req;
+                seen.push(req);
                 return makeResponse(detected);
             });
 
             const data = await sdk.getBrowserData();
 
+            const capturedReq = seen.find((r) =>
+                r.url.includes('/cards/browser-data'),
+            ) as Request;
+            expect(capturedReq).toBeDefined();
             expect(capturedReq.url).toBe(
                 'https://example.com/cards/browser-data',
             );

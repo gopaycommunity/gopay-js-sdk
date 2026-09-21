@@ -1,6 +1,11 @@
 /**
  * ECS `transaction.id` — one id per visit, so every event a customer generates
- * on one checkout can be pulled together later.
+ * in one tab can be pulled together later.
+ *
+ * A visit, not a checkout: a shopper whose card is declined and who then pays
+ * a second order in the same tab keeps this id, so the two payments share it.
+ * That is deliberate and matches what gw-logger's schema says the field means;
+ * `payment_session_id` is what separates the two payments.
  *
  * Kept in `sessionStorage` rather than in a module variable: the 3DS flow
  * navigates the top window away and back, and an in-memory id would split one

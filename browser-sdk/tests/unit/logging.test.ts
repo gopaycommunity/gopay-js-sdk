@@ -7,6 +7,7 @@ import {
 import { createGoPayBrowserSDK } from '../../src/gopay-browser-sdk.js';
 import { createGwLoggerTelemetry } from '../../src/logging/gw-logger.js';
 import { getTransactionId } from '../../src/logging/ids.js';
+import { registerLeaveBeacon } from '../../src/logging/leave-beacon.js';
 import { safeErrorMessage, safePageUrl } from '../../src/logging/sanitize.js';
 
 describe('safeErrorMessage()', () => {
@@ -225,13 +226,66 @@ describe('createGwLoggerTelemetry()', () => {
         expect(first.trace_id).not.toBe(second.trace_id);
     });
 
-    it('stops at the per-visit cap rather than flooding the ingest', () => {
+    it('stops at the api_call cap rather than flooding the ingest', () => {
         const t = makeTelemetry();
         for (let i = 0; i < 250; i += 1) {
             t.apiCall(GET_PAYMENT);
         }
 
         expect(fetchMock).toHaveBeenCalledTimes(200);
+    });
+
+    it('still reports the lifecycle after a poll flood has spent the api_call budget', () => {
+        const t = makeTelemetry();
+        // What a long 3DS looks like: charge-state polling every couple of
+        // seconds, for longer than the budget lasts. Under one shared cap the
+        // events below — the end of the visit, and the funnel it closes — were
+        // the ones thrown away, in exactly the flows worth watching.
+        for (let i = 0; i < 250; i += 1) {
+            t.apiCall(GET_PAYMENT);
+        }
+        fetchMock.mockClear();
+
+        t.lifecycle('ready', { paymentMethod: 'card' });
+        t.submit('card-form', { paymentMethod: 'card' });
+        t.lifecycle('leave');
+
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('caps the lifecycle side too, so a runaway there cannot flood either', () => {
+        const t = makeTelemetry();
+        for (let i = 0; i < 80; i += 1) {
+            t.lifecycle('ready');
+        }
+
+        expect(fetchMock).toHaveBeenCalledTimes(50);
+    });
+
+    it('names the action after the last segment that names something', async () => {
+        // normalizeEndpoint turns the id into `{id}`, and the status poll is
+        // the highest-volume call the SDK makes — `action: "{id}"` would be
+        // both meaningless and shared with every other id-terminated path.
+        makeTelemetry().apiCall(GET_PAYMENT);
+
+        expect((await eventOf()).action).toBe('payments');
+    });
+
+    it('never lets a field getter throw out of the emitter', () => {
+        // base() used to be evaluated in the argument position, outside post()'s
+        // try — and apiCall is called from a `finally` on the payment path, so
+        // a throw here replaced the payment error the caller was about to get.
+        const t = createGwLoggerTelemetry({
+            environment: 'sandbox',
+            getShareableKey: () => {
+                throw new Error('exotic embedding');
+            },
+            getClientId: () => 'client_test_123',
+            getPaymentId: () => undefined,
+        });
+
+        expect(() => t.apiCall(GET_PAYMENT)).not.toThrow();
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('never throws when the ingest rejects — logging cannot break a payment', () => {
@@ -572,20 +626,95 @@ describe('attachPayment in the logs', () => {
 
 describe('a missing build-time constant', () => {
     /**
-     * Regression guard. __GOPAY_INTEGRATION__ has to be declared in four build
-     * configs (tsup, both vitest configs, the example's Vite config), and the
-     * unit tests run under one of them — so they can never notice another one
-     * missing it. What they can pin is that a missing value degrades to a
-     * label rather than throwing out of SDK construction and taking the
-     * merchant's checkout with it.
+     * `__GOPAY_INTEGRATION__` has to be declared in four build configs (tsup,
+     * both vitest configs, the example's Vite config) and the unit tests run
+     * under one that has it — so they cannot observe another one missing it.
+     * The earlier version of this test read a made-up property off globalThis
+     * and compared it to a literal written in the test body, which exercised
+     * none of the production code and could not fail.
+     *
+     * What is actually assertable is the guarantee that matters: whatever the
+     * label ends up being, it is a usable non-empty string on the wire, and
+     * reading it does not throw out of SDK construction.
      */
-    it('is read through typeof, so an undeclared identifier cannot throw', () => {
-        const read = () =>
-            typeof (globalThis as Record<string, unknown>)
-                .__GOPAY_NOT_DECLARED_ANYWHERE__ === 'string'
-                ? 'declared'
-                : 'browser-sdk-unknown';
+    it('still yields a usable integration label on every emitted event', async () => {
+        const requests: Request[] = [];
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = vi.fn((input: RequestInfo | URL) => {
+            requests.push(input as Request);
+            return Promise.resolve(new Response(null, { status: 204 }));
+        }) as unknown as typeof globalThis.fetch;
 
-        expect(read()).toBe('browser-sdk-unknown');
+        try {
+            expect(() =>
+                createGoPayBrowserSDK({
+                    shareableKey: 'pk_test_123',
+                    clientId: 'client_test_123',
+                }),
+            ).not.toThrow();
+
+            const req = requests[0];
+            expect(req).toBeDefined();
+            const { event } = JSON.parse(await (req as Request).clone().text());
+            // minLength 1 in the schema: an empty string is rejected, so
+            // "degrades to a label" has to mean a real one.
+            expect(typeof event.integration).toBe('string');
+            expect(event.integration.length).toBeGreaterThan(0);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+});
+
+describe('the leave beacon', () => {
+    const leaves = () =>
+        telemetrySpy.lifecycle.mock.calls.filter(([t]) => t === 'leave').length;
+    let telemetrySpy: {
+        apiCall: ReturnType<typeof vi.fn>;
+        error: ReturnType<typeof vi.fn>;
+        lifecycle: ReturnType<typeof vi.fn>;
+        submit: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(() => {
+        telemetrySpy = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+        };
+    });
+
+    it('does not fire when the customer merely switches tabs', () => {
+        registerLeaveBeacon(telemetrySpy as never);
+
+        // The shopper opens their banking app for an SMS code. The page is
+        // hidden, but the visit has not ended — and the earlier version fired
+        // here and then latched, so it reported the wrong moment and could
+        // never report the right one.
+        Object.defineProperty(globalThis.document, 'visibilityState', {
+            value: 'hidden',
+            configurable: true,
+        });
+        globalThis.document.dispatchEvent(new Event('visibilitychange'));
+
+        expect(leaves()).toBe(0);
+    });
+
+    it('fires when the document is actually torn down', () => {
+        registerLeaveBeacon(telemetrySpy as never);
+
+        globalThis.dispatchEvent(new Event('pagehide'));
+
+        expect(leaves()).toBe(1);
+    });
+
+    it('fires once and removes itself, so an SPA cannot accumulate listeners', () => {
+        registerLeaveBeacon(telemetrySpy as never);
+
+        globalThis.dispatchEvent(new Event('pagehide'));
+        globalThis.dispatchEvent(new Event('pagehide'));
+
+        expect(leaves()).toBe(1);
     });
 });

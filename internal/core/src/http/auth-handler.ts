@@ -16,10 +16,10 @@ interface AuthHandlerDeps {
     getTimeoutMs: () => number;
     debugLogResponse: (response: Response) => void;
     /**
-     * Times a call the same way the client does. The handler issues two
-     * requests of its own — the token fetch and the post-refresh retry — and
-     * without this they are the only traffic the SDK makes that no event
-     * describes, which is how a re-auth storm stays invisible.
+     * Times the token fetch the same way the client does. The handler issues
+     * it through raw `fetch`, outside any verb method, so without this it is
+     * traffic the SDK makes that no event describes — which is how a re-auth
+     * storm stays invisible.
      */
     recordApiCall: (
         method: string,
@@ -113,25 +113,21 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         const retryHeaders = new Headers(init.headers);
         retryHeaders.set('Authorization', `Bearer ${fresh.access_token}`);
 
-        const retryStarted = nowMs();
-        let retryStatus: number | null = null;
-        try {
-            response = await fetch(
-                new Request(url, {
-                    ...init,
-                    headers: retryHeaders,
-                    signal: combinedSignal,
-                }),
-            );
-            retryStatus = response.status;
-        } finally {
-            deps.recordApiCall(
-                init.method ?? 'GET',
-                new URL(url).pathname,
-                retryStarted,
-                retryStatus,
-            );
-        }
+        // Deliberately not recorded. The verb method that called us records
+        // how the call ended in its own `finally`, so a record here would put
+        // a second row under the same endpoint for one logical call — and it
+        // would have to derive the endpoint from the URL, which carries the
+        // API base path (`/gp-gw/api/4.0/...`) that normalizeEndpoint does not
+        // strip, so the two rows would not even group together. That a retry
+        // happened is legible from the token call recorded below, which is the
+        // only thing that precedes one.
+        response = await fetch(
+            new Request(url, {
+                ...init,
+                headers: retryHeaders,
+                signal: combinedSignal,
+            }),
+        );
         debugLogResponse(response);
 
         if (response.status === 401) {

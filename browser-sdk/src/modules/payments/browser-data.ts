@@ -4,6 +4,7 @@ import {
     GoPayHTTPError,
     GoPaySDKError,
     type HttpClient,
+    nowMs,
     SDK_ACCEPT_HEADER,
 } from '@gopay-internal/core';
 import type { BrowserData, BrowserDataDetected } from '../../types/index.js';
@@ -199,17 +200,29 @@ export async function fetchBrowserData(
     // The timeout has to outlive the headers: fetch() resolves as soon as they
     // arrive, so a response that then stalls its body would hang the charge if
     // the timer were already cleared here.
+    // Bypassing the client also bypasses its timing, and this is the one call
+    // whose failure is tolerated (sandbox answers 404) — so without an explicit
+    // record it is the SDK request that can fail silently and leave no trace at
+    // all. The endpoint holds no id segments, so the path is the template.
+    const started = nowMs();
+    let status: number | null = null;
     try {
-        const response = await fetch(
-            new Request(buildUrl(client.baseUrl, '/cards/browser-data'), {
-                method: 'GET',
-                headers: {
-                    Accept: SDK_ACCEPT_HEADER,
-                    Authorization: `Basic ${credentials}`,
-                },
-                signal,
-            }),
-        );
+        let response: Response;
+        try {
+            response = await fetch(
+                new Request(buildUrl(client.baseUrl, '/cards/browser-data'), {
+                    method: 'GET',
+                    headers: {
+                        Accept: SDK_ACCEPT_HEADER,
+                        Authorization: `Basic ${credentials}`,
+                    },
+                    signal,
+                }),
+            );
+            status = response.status;
+        } finally {
+            client.recordApiCall('GET', '/cards/browser-data', started, status);
+        }
 
         if (!response.ok) {
             let body: unknown;

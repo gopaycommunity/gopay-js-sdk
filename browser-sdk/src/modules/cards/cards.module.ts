@@ -2,6 +2,7 @@ import {
     GoPayErrorCodes,
     GoPaySDKError,
     type HttpClient,
+    nowMs,
 } from '@gopay-internal/core';
 import { TRUSTED_CARD_FORM_ORIGINS } from '../../config.js';
 import { makeLoadingEmitter } from '../../internal/loading-emitter.js';
@@ -388,7 +389,12 @@ export function createCardsApi(
              */
             let settled = false;
             let isValid = false;
-            /** When the form became usable, so the submit can report how long it took. */
+            /**
+             * When the form became usable, so the submit can report how long
+             * it took. Monotonic, not wall clock: an NTP correction while the
+             * customer fills the form would otherwise ship a negative duration
+             * or one off by hours.
+             */
             let readyAt: number | null = null;
             let onMessage:
                 | ((e: MessageEvent<OutboundMessage>) => Promise<void>)
@@ -464,7 +470,7 @@ export function createCardsApi(
                 // would need a new message in the postMessage protocol, and
                 // that protocol is shared with gw-ui-cc-v4. "The form is on the
                 // page" is what this claims, and it is what it can prove.
-                readyAt = Date.now();
+                readyAt = nowMs();
                 telemetry.lifecycle('ready', {
                     paymentMethod: 'card',
                     flow: options.flow,
@@ -507,7 +513,8 @@ export function createCardsApi(
                 telemetry.submit('card-form', {
                     paymentMethod: 'card',
                     flow: options.flow,
-                    durationMs: readyAt === null ? null : Date.now() - readyAt,
+                    durationMs:
+                        readyAt === null ? null : Math.round(nowMs() - readyAt),
                 });
 
                 if (options.flow === 'return-payload') {

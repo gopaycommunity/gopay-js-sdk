@@ -140,6 +140,29 @@ describe('telemetry from the HTTP client', () => {
         expect(telemetry.error).not.toHaveBeenCalled();
     });
 
+    it('records nothing for a failure that happened before any request went out', async () => {
+        // No stored tokens and no client credentials: injectAuth raises
+        // AUTH_TOKEN_MISSING and fetch is never called. record() lives in a
+        // `finally`, so this used to emit an api_call with `status_code: null`
+        // — which downstream means "issued, no response". One failure became a
+        // phantom network error on an endpoint nothing ever called, alongside
+        // the SDK.<CODE> event that already described it correctly.
+        const client = createHttpClient(
+            { baseUrl: 'https://example.com' },
+            undefined,
+            telemetry,
+        );
+
+        await expect(client.get('/payments/300000001')).rejects.toThrow();
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(telemetry.apiCall).not.toHaveBeenCalled();
+        expect(telemetry.error).toHaveBeenCalledOnce();
+        expect(
+            (telemetry.error.mock.calls[0]?.[0] as GoPaySDKError).errorCode,
+        ).toBe(GoPayErrorCodes.AUTH_TOKEN_MISSING);
+    });
+
     it('works with no telemetry installed, which is what the server SDK does', async () => {
         const plain = createHttpClient({ baseUrl: 'https://example.com' });
         plain.tokenStore.set(storedTokens);
@@ -218,7 +241,7 @@ describe('telemetry from the auth handler', () => {
         ]);
     });
 
-    it('records the retry a 401 triggers, not only the call that got the 401', async () => {
+    it('records the refresh a 401 triggers, and leaves the retry to the verb method', async () => {
         let rejectedOnce = false;
         fetchMock = vi.fn((req: Request) => {
             if (req.url.includes('/oauth2/token')) {
@@ -241,11 +264,13 @@ describe('telemetry from the auth handler', () => {
 
         await client.get('/payments/300000001');
 
-        // Three records for two endpoints: the refresh, the retry, and the
-        // verb method's own record of how the call ended.
+        // Two records, not three. The retry is the same logical call as the
+        // one the verb method already records in its `finally`, and the
+        // handler could only name its endpoint by parsing the URL — which
+        // carries the API base path, so the two rows would not even group
+        // together. One call, one row, plus the refresh that caused it.
         expect(records()).toEqual([
             { method: 'POST', endpoint: '/oauth2/token', statusCode: 200 },
-            { method: 'GET', endpoint: '/payments/{id}', statusCode: 200 },
             { method: 'GET', endpoint: '/payments/{id}', statusCode: 200 },
         ]);
     });
