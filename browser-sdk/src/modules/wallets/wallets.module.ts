@@ -285,14 +285,104 @@ function asWalletError(cause: unknown): GoPaySDKError | GoPayHTTPError {
     );
 }
 
-function makeUnavailableController(
-    client: HttpClient,
-    onUnavailable: (() => void) | undefined,
-): WalletButtonController {
+/**
+ * Why a wallet button could not be offered.
+ *
+ * Stable codes, because they are what the data gets filtered on — they have to
+ * survive any later rewording of the human-facing message.
+ */
+const WALLET_UNAVAILABLE = {
+    scriptBlocked: 'script-blocked',
+    buttonUnregistered: 'button-unregistered',
+    libraryMissing: 'library-missing',
+    unsupportedDevice: 'unsupported-device',
+    readinessCheckFailed: 'readiness-check-failed',
+} as const;
+
+type WalletUnavailableReason =
+    (typeof WALLET_UNAVAILABLE)[keyof typeof WALLET_UNAVAILABLE];
+
+type WalletId = 'applepay' | 'googlepay';
+
+const WALLET_LABEL: Record<WalletId, string> = {
+    applepay: 'Apple Pay',
+    googlepay: 'Google Pay',
+};
+
+/** What a human reading `onError` needs; the code above is what a query needs. */
+const UNAVAILABLE_MESSAGE: Record<WalletUnavailableReason, string> = {
+    'script-blocked':
+        'its SDK script could not be loaded — check CSP, an ad-blocker or a proxy',
+    'button-unregistered':
+        'its SDK script loaded but never registered the button element',
+    'library-missing': 'its SDK script loaded but installed no global',
+    'unsupported-device': 'this device or browser cannot offer it',
+    'readiness-check-failed': 'the readiness check itself failed',
+};
+
+/**
+ * The inputs the availability gate actually reads, and nothing beyond them.
+ *
+ * Deliberately not the user-agent string, the screen size or the pixel ratio:
+ * those are the raw material of a fingerprint, and none of them is what the
+ * gate consults. These few answer "why did it say no" on their own.
+ *
+ * `ua_mobile` is the one that explains most of the surprises. Apple's
+ * non-Safari shim offers the scan-with-your-iPhone flow on desktop only, so
+ * anything the browser reports as mobile is turned away — including a desktop
+ * Chrome with the DevTools device toolbar switched on, which sets exactly this
+ * flag. There is no way to detect the toolbar itself, and no need to: the flag
+ * it flips is the thing the gate read, and with it on the event an internal
+ * report stops looking like a shopper-facing outage.
+ */
+function walletCapabilities(
+    wallet: WalletId,
+): Record<string, string | number | boolean | null> {
+    try {
+        const nav = globalThis.navigator as
+            | (Navigator & { userAgentData?: { mobile?: boolean } })
+            | undefined;
+        const shared = {
+            secure_context: globalThis.isSecureContext ?? null,
+            ua_mobile: nav?.userAgentData?.mobile ?? null,
+            max_touch_points: nav?.maxTouchPoints ?? null,
+        };
+        if (wallet !== 'applepay') {
+            return shared;
+        }
+        return {
+            ...shared,
+            apple_pay_session: !!getApplePaySession(),
+            button_registered:
+                !!globalThis.customElements?.get(APPLE_PAY_BUTTON_TAG),
+        };
+    } catch {
+        // Logging is never worth a thrown error in a payment flow.
+        return {};
+    }
+}
+
+function makeUnavailableController(args: {
+    client: HttpClient;
+    telemetry: BrowserTelemetry;
+    wallet: WalletId;
+    reason: WalletUnavailableReason;
+    onUnavailable: (() => void) | undefined;
+    cause?: unknown;
+}): WalletButtonController {
+    const { client, telemetry, wallet, reason, onUnavailable, cause } = args;
     onUnavailable?.();
+    telemetry.walletUnavailable({
+        paymentMethod: wallet,
+        reason,
+        capabilities: walletCapabilities(wallet),
+    });
+    // Names the wallet as well as the reason. The single shared sentence this
+    // replaces was emitted verbatim by both wallets, so neither the merchant's
+    // onError nor the log line could say which button had gone missing.
     const unavailable = new GoPaySDKError(
-        '[GoPayBrowserSDK] Wallet payment method not available on this device or browser.',
-        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
+        `[GoPayBrowserSDK] ${WALLET_LABEL[wallet]} is not available: ${UNAVAILABLE_MESSAGE[reason]} (${reason}).`,
+        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR, cause },
     );
     client.reportError(unavailable);
     const result = Promise.reject<PaymentChargeStatusResponse>(unavailable);
@@ -436,31 +526,27 @@ export function createWalletsApi(
                     // The SDK is the only thing loading this script now, so a
                     // blocked CDN (ad-blocker, CSP, proxy) has to reach the
                     // merchant's fallback UI rather than leave an empty slot.
-                    options.onUnavailable?.();
-                    const err = new GoPaySDKError(
-                        '[GoPayBrowserSDK] Failed to load Apple Pay SDK script.',
-                        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
-                    );
-                    client.reportError(err);
-                    const result =
-                        Promise.reject<PaymentChargeStatusResponse>(err);
-                    result.catch(() => {});
-                    return { result, unmount: () => {} };
+                    return makeUnavailableController({
+                        client,
+                        telemetry,
+                        wallet: 'applepay',
+                        reason: WALLET_UNAVAILABLE.scriptBlocked,
+                        onUnavailable: options.onUnavailable,
+                    });
                 }
             }
 
             try {
                 await whenApplePayButtonDefined();
             } catch (cause) {
-                options.onUnavailable?.();
-                const err = new GoPaySDKError(
-                    `[GoPayBrowserSDK] Apple Pay SDK loaded but <${APPLE_PAY_BUTTON_TAG}> was never registered.`,
-                    { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR, cause },
-                );
-                client.reportError(err);
-                const result = Promise.reject<PaymentChargeStatusResponse>(err);
-                result.catch(() => {});
-                return { result, unmount: () => {} };
+                return makeUnavailableController({
+                    client,
+                    telemetry,
+                    wallet: 'applepay',
+                    reason: WALLET_UNAVAILABLE.buttonUnregistered,
+                    onUnavailable: options.onUnavailable,
+                    cause,
+                });
             }
 
             const ApplePaySession = getApplePaySession();
@@ -473,7 +559,13 @@ export function createWalletsApi(
             // through the deprecated `canMakePaymentsWithActiveCard()`, which would
             // newly hide the button from users with no provisioned card.
             if (!ApplePaySession?.canMakePayments()) {
-                return makeUnavailableController(client, options.onUnavailable);
+                return makeUnavailableController({
+                    client,
+                    telemetry,
+                    wallet: 'applepay',
+                    reason: WALLET_UNAVAILABLE.unsupportedDevice,
+                    onUnavailable: options.onUnavailable,
+                });
             }
 
             let info: Awaited<ReturnType<typeof paymentsApi.getApplePayInfo>>;
@@ -712,15 +804,13 @@ export function createWalletsApi(
                 // Same contract as the Apple Pay path and the availability
                 // checks below: a blocked CDN has to reach the merchant's
                 // fallback UI rather than leave an empty slot.
-                options.onUnavailable?.();
-                const err = new GoPaySDKError(
-                    '[GoPayBrowserSDK] Failed to load Google Pay script.',
-                    { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
-                );
-                client.reportError(err);
-                const result = Promise.reject<PaymentChargeStatusResponse>(err);
-                result.catch(() => {});
-                return { result, unmount: () => {} };
+                return makeUnavailableController({
+                    client,
+                    telemetry,
+                    wallet: 'googlepay',
+                    reason: WALLET_UNAVAILABLE.scriptBlocked,
+                    onUnavailable: options.onUnavailable,
+                });
             }
 
             const googleGlobal = (
@@ -738,7 +828,13 @@ export function createWalletsApi(
             )?.google;
 
             if (!googleGlobal) {
-                return makeUnavailableController(client, options.onUnavailable);
+                return makeUnavailableController({
+                    client,
+                    telemetry,
+                    wallet: 'googlepay',
+                    reason: WALLET_UNAVAILABLE.libraryMissing,
+                    onUnavailable: options.onUnavailable,
+                });
             }
 
             let info: Awaited<ReturnType<typeof paymentsApi.getGooglePayInfo>>;
@@ -766,13 +862,23 @@ export function createWalletsApi(
                     info.paymentDataRequest ?? {},
                 );
                 if (!readiness.result) {
-                    return makeUnavailableController(
+                    return makeUnavailableController({
                         client,
-                        options.onUnavailable,
-                    );
+                        telemetry,
+                        wallet: 'googlepay',
+                        reason: WALLET_UNAVAILABLE.unsupportedDevice,
+                        onUnavailable: options.onUnavailable,
+                    });
                 }
-            } catch {
-                return makeUnavailableController(client, options.onUnavailable);
+            } catch (cause) {
+                return makeUnavailableController({
+                    client,
+                    telemetry,
+                    wallet: 'googlepay',
+                    reason: WALLET_UNAVAILABLE.readinessCheckFailed,
+                    onUnavailable: options.onUnavailable,
+                    cause,
+                });
             }
 
             // Tear down any previous Google Pay button mount

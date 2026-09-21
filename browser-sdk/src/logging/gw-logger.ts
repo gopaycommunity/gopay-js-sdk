@@ -139,6 +139,20 @@ const INTEGRATION: string =
         ? __GOPAY_INTEGRATION__
         : 'browser-sdk-unknown';
 
+/**
+ * `reason; key=value; key=value` — flat on purpose, so it reads in OpenSearch
+ * without a JSON parse and stays inside the message cap.
+ */
+function describeCapabilities(
+    reason: string,
+    capabilities: Record<string, string | number | boolean | null> | undefined,
+): string {
+    const parts = Object.entries(capabilities ?? {})
+        .filter(([, value]) => value !== null && value !== undefined)
+        .map(([key, value]) => `${key}=${String(value)}`);
+    return [reason, ...parts].join('; ');
+}
+
 /** `/payments/{id}/charge` → `charge`; gw-ui's action convention. */
 function lastSegment(endpoint: string): string {
     const parts = endpoint.split('/').filter(Boolean);
@@ -173,6 +187,21 @@ export interface BrowserTelemetry extends Telemetry {
             durationMs?: number | null;
         },
     ): void;
+    /**
+     * A wallet button that was asked for and could not be offered.
+     *
+     * Separate from `error` because that seam is core's and carries only the
+     * error object — no `payment_method`, which is the one field this question
+     * needs. The unavailable path is also not a failure in the payment sense:
+     * on a genuinely unsupported device it is the correct outcome, and burying
+     * it in `SDK.WALLET_BUTTON_ERROR` is what made "Apple Pay never showed"
+     * indistinguishable from "Google Pay never showed" in the data.
+     */
+    walletUnavailable(context: {
+        paymentMethod: string;
+        reason: string;
+        capabilities?: Record<string, string | number | boolean | null>;
+    }): void;
 }
 
 /**
@@ -186,6 +215,7 @@ export const NO_BROWSER_TELEMETRY: BrowserTelemetry = {
     error: () => {},
     lifecycle: () => {},
     submit: () => {},
+    walletUnavailable: () => {},
 };
 
 export function createGwLoggerTelemetry(options: {
@@ -295,6 +325,27 @@ export function createGwLoggerTelemetry(options: {
                 payment_method: orUndefined(context?.paymentMethod),
                 flow: orUndefined(context?.flow),
                 duration: context?.durationMs ?? null,
+            }));
+        },
+
+        walletUnavailable({ paymentMethod, reason, capabilities }): void {
+            post('error', () => ({
+                ...base(),
+                event_type: 'api_call',
+                // A distinct action rather than another WALLET_BUTTON_ERROR:
+                // the two answer different questions and one must not drown
+                // the other in an aggregation.
+                action: 'SDK.WALLET_UNAVAILABLE',
+                target: '',
+                status_code: SDK_ERROR_STATUS,
+                duration: null,
+                payment_method: orUndefined(paymentMethod),
+                // Through the same scrub as an error message. Nothing here is
+                // free-form today, but the capping is what keeps a future
+                // field from silently widening what leaves the page.
+                res_body: safeErrorMessage(
+                    describeCapabilities(reason, capabilities),
+                ),
             }));
         },
 

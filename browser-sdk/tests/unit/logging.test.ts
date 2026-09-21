@@ -216,6 +216,40 @@ describe('createGwLoggerTelemetry()', () => {
         expect(event.res_body).toBe('[GoPayBrowserSDK] card [redacted] bad');
     });
 
+    it('labels an unavailable wallet with the payment method and the reason', async () => {
+        // payment_method is the field the question needs and the one `error()`
+        // cannot carry, since core's seam hands it only the error object.
+        makeTelemetry().walletUnavailable({
+            paymentMethod: 'applepay',
+            reason: 'unsupported-device',
+            capabilities: { ua_mobile: true, secure_context: true },
+        });
+
+        const event = await eventOf();
+        expect(event).toMatchObject({
+            status_code: 0,
+            action: 'SDK.WALLET_UNAVAILABLE',
+            payment_method: 'applepay',
+            target: '',
+        });
+        expect(event.res_body).toBe(
+            'unsupported-device; ua_mobile=true; secure_context=true',
+        );
+    });
+
+    it('leaves out a capability the browser does not answer', async () => {
+        // A null would read as "false" in a query; absent is the honest shape.
+        makeTelemetry().walletUnavailable({
+            paymentMethod: 'googlepay',
+            reason: 'library-missing',
+            capabilities: { ua_mobile: null, max_touch_points: 0 },
+        });
+
+        expect((await eventOf()).res_body).toBe(
+            'library-missing; max_touch_points=0',
+        );
+    });
+
     it('gives every event the same transaction id and a fresh trace id', async () => {
         const t = makeTelemetry();
         t.apiCall(GET_PAYMENT);

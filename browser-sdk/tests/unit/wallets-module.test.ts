@@ -984,11 +984,73 @@ describe('mountApplePayButton()', () => {
 
         expect(client.reportError).toHaveBeenCalledWith(
             expect.objectContaining({
-                message: expect.stringContaining(
-                    'Failed to load Apple Pay SDK script',
-                ),
+                message: expect.stringContaining('Apple Pay is not available'),
             }),
         );
+    });
+
+    it('names Apple Pay and the reason when the device gate turns it away', async () => {
+        // The whole point of the reason code: "a wallet was unavailable" is
+        // not an answer anyone can act on, and the sentence this replaces was
+        // emitted verbatim by both wallets.
+        MockApplePaySession.canMakePayments.mockReturnValue(false);
+        const telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+            walletUnavailable: vi.fn(),
+        };
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect.objectContaining({
+                paymentMethod: 'applepay',
+                reason: 'unsupported-device',
+            }),
+        );
+    });
+
+    it('carries the mobile flag that a DevTools device toolbar flips', async () => {
+        // There is no way to detect the toolbar itself. What is detectable is
+        // the flag it sets, which is the input Apple's non-Safari shim reads
+        // to turn the page away — so an internal repro stops reading as a
+        // shopper-facing outage.
+        Object.defineProperty(globalThis.navigator, 'userAgentData', {
+            value: { mobile: true },
+            configurable: true,
+        });
+        MockApplePaySession.canMakePayments.mockReturnValue(false);
+        const telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+            walletUnavailable: vi.fn(),
+        };
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect.objectContaining({
+                capabilities: expect.objectContaining({ ua_mobile: true }),
+            }),
+        );
+
+        Reflect.deleteProperty(globalThis.navigator, 'userAgentData');
     });
 
     it('reports the unavailable-device guard to onError', async () => {
@@ -1625,9 +1687,35 @@ describe('mountGooglePayButton()', () => {
 
         expect(client.reportError).toHaveBeenCalledWith(
             expect.objectContaining({
-                message: expect.stringContaining(
-                    'Failed to load Google Pay script',
-                ),
+                message: expect.stringContaining('Google Pay is not available'),
+            }),
+        );
+    });
+
+    it('names Google Pay, not just "a wallet", when its gate turns it away', async () => {
+        // The pair that makes the attribution real: same reason code, other
+        // payment_method. Before this both produced an identical line.
+        mockIsReadyToPay = vi.fn().mockResolvedValue({ result: false });
+        const telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+            walletUnavailable: vi.fn(),
+        };
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect.objectContaining({
+                paymentMethod: 'googlepay',
+                reason: 'unsupported-device',
             }),
         );
     });

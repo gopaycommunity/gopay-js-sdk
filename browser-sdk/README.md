@@ -217,6 +217,13 @@ const chargeResult = await googleCtrl.result;
 > `<script src="https://applepay.cdn-apple.com/...">` tag. If you already ship one you can
 > drop it.
 >
+> Debugging note: Chrome's DevTools **device toolbar** makes the browser report
+> itself as mobile, and Apple's shim turns mobile non-Safari away — so Apple Pay
+> correctly reports unavailable with the toolbar on. That is an artifact of the
+> emulation, never something a real shopper hits; turn the toolbar off before
+> concluding the button is broken. There is no way to detect the toolbar itself,
+> which is why the SDK reports the mobile flag it sets instead.
+>
 > One thing to check: if you run a strict Content-Security-Policy, allow
 > `https://applepay.cdn-apple.com` in `script-src`. Without it Apple Pay is simply reported
 > unavailable and `onUnavailable` fires, so your fallback UI still covers the customer.
@@ -636,6 +643,17 @@ IP address, as any HTTP request does, and the page URL the SDK is running on
 without its query string. The data is therefore pseudonymised personal data, not
 anonymous. GoPay processes it under legitimate interest to keep the payment
 integration working and diagnosable.
+
+**Wallet availability.** When an Apple Pay or Google Pay button is asked for and
+cannot be offered, the SDK reports which wallet it was, a reason code
+(`unsupported-device`, `script-blocked`, `button-unregistered`,
+`library-missing`, `readiness-check-failed`), and the few browser capabilities
+the availability check itself reads: whether the page is a secure context,
+whether the browser reports itself as mobile, the touch-point count, and —
+for Apple Pay — whether `ApplePaySession` and the button element are present.
+Deliberately **not** the user-agent string, the screen size or the pixel ratio:
+those are what a fingerprint is assembled from and none of them is what the
+check consults.
 
 **What you should do.** Reflect this in your own privacy notice — you are the
 controller for your checkout, and your customers' data is being processed on your
