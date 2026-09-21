@@ -1,5 +1,6 @@
 import {
     GoPayErrorCodes,
+    GoPayHTTPError,
     GoPaySDKError,
     type HttpClient,
 } from '@gopay-internal/core';
@@ -253,6 +254,37 @@ function makeNotAttachedController(client: HttpClient): WalletButtonController {
     return { result, unmount: () => {} };
 }
 
+/**
+ * Name a foreign wallet failure before reporting it.
+ *
+ * Neither wallet SDK throws our error type. Apple's non-Safari shim throws a
+ * bare `TypeError`, and Google Pay rejects `loadPaymentData` with a plain
+ * `{statusCode, statusMessage}` object that is not an `Error` at all — so
+ * `DEVELOPER_ERROR` and `MERCHANT_ACCOUNT_ERROR`, the two most common real
+ * Google Pay misconfigurations, used to reach neither `onError` nor any
+ * event. Core has a backstop for anything unnamed, but it can only report
+ * `SDK.UNKNOWN`; naming it here is what makes the event say `wallet`.
+ *
+ * The caller still rejects with the original — what an integrator catches is
+ * unchanged, only what gets reported is new.
+ */
+function asWalletError(cause: unknown): GoPaySDKError | GoPayHTTPError {
+    if (cause instanceof GoPaySDKError || cause instanceof GoPayHTTPError) {
+        return cause;
+    }
+    const detail =
+        typeof cause === 'object' && cause !== null
+            ? ((cause as { statusCode?: unknown }).statusCode ??
+              (cause as { message?: unknown }).message)
+            : cause;
+    return new GoPaySDKError(
+        `[GoPayBrowserSDK] Wallet payment failed: ${
+            typeof detail === 'string' ? detail : 'unknown wallet error'
+        }`,
+        { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR, cause },
+    );
+}
+
 function makeUnavailableController(
     client: HttpClient,
     onUnavailable: (() => void) | undefined,
@@ -480,7 +512,7 @@ export function createWalletsApi(
                         // without this the errors an integrator most wants to
                         // be alerted on — the charge flow itself failing — are
                         // the ones onError never sees.
-                        client.reportError(e);
+                        client.reportError(asWalletError(e));
                         rej(e);
                     };
                 },
@@ -766,7 +798,7 @@ export function createWalletsApi(
                         // without this the errors an integrator most wants to
                         // be alerted on — the charge flow itself failing — are
                         // the ones onError never sees.
-                        client.reportError(e);
+                        client.reportError(asWalletError(e));
                         rej(e);
                     };
                 },
@@ -790,11 +822,17 @@ export function createWalletsApi(
                         info.paymentDataRequest ?? {},
                     );
                 } catch (err) {
+                    // Not gated on `instanceof Error`: Google Pay rejects
+                    // with a plain object, and requiring an Error turned a
+                    // customer dismissing the sheet into a reported failure
+                    // with no onCancel. Broadening it cannot regress the
+                    // Error-shaped case, so it is right under either shape.
+                    const statusCode =
+                        typeof err === 'object' && err !== null
+                            ? (err as { statusCode?: unknown }).statusCode
+                            : undefined;
                     const isCancel =
-                        (err instanceof Error &&
-                            'statusCode' in err &&
-                            (err as { statusCode?: string }).statusCode ===
-                                'CANCELED') ||
+                        statusCode === 'CANCELED' ||
                         (err instanceof DOMException &&
                             err.name === 'AbortError');
                     if (isCancel) {

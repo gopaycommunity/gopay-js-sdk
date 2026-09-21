@@ -163,6 +163,46 @@ describe('telemetry from the HTTP client', () => {
         ).toBe(GoPayErrorCodes.AUTH_TOKEN_MISSING);
     });
 
+    it('reports a foreign error instead of dropping it in silence', () => {
+        // Anything that is not one of our two error types used to fall
+        // through reportError with no event and no onError. A wallet SDK
+        // throwing a bare TypeError, or Google Pay rejecting with a plain
+        // object, is exactly that shape.
+        const client = createHttpClient(
+            { baseUrl: 'https://example.com' },
+            undefined,
+            telemetry,
+        );
+
+        client.reportError({
+            statusCode: 'DEVELOPER_ERROR',
+            statusMessage: 'merchantId not recognised',
+        });
+
+        expect(telemetry.error).toHaveBeenCalledOnce();
+        const reported = telemetry.error.mock.calls[0]?.[0] as GoPaySDKError;
+        expect(reported.message).toContain('DEVELOPER_ERROR');
+        // No errorCode on purpose — core cannot know the subsystem, and the
+        // telemetry layer renders a missing code as SDK.UNKNOWN.
+        expect(reported.errorCode).toBeUndefined();
+    });
+
+    it('reports one foreign error once, however many times it is handed over', () => {
+        const client = createHttpClient(
+            { baseUrl: 'https://example.com' },
+            undefined,
+            telemetry,
+        );
+        const foreign = { statusCode: 'DEVELOPER_ERROR' };
+
+        client.reportError(foreign);
+        client.reportError(foreign);
+
+        // The wrapper is a new object each time, so the existing dedupe
+        // cannot see it — this needs its own.
+        expect(telemetry.error).toHaveBeenCalledOnce();
+    });
+
     it('works with no telemetry installed, which is what the server SDK does', async () => {
         const plain = createHttpClient({ baseUrl: 'https://example.com' });
         plain.tokenStore.set(storedTokens);

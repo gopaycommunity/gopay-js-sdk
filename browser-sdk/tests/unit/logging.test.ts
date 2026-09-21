@@ -253,6 +253,25 @@ describe('createGwLoggerTelemetry()', () => {
         expect(fetchMock).toHaveBeenCalledTimes(3);
     });
 
+    it('still reports errors after a poll flood has spent the api_call budget', () => {
+        const t = makeTelemetry();
+        for (let i = 0; i < 250; i += 1) {
+            t.apiCall(GET_PAYMENT);
+        }
+        fetchMock.mockClear();
+
+        // Errors travel as api_call events (gw-ui's convention, status_code
+        // 0), so on a shared counter the flood silenced the one kind of event
+        // nobody can afford to lose.
+        t.error(
+            new GoPaySDKError('[GoPayBrowserSDK] wallet died', {
+                errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+            }),
+        );
+
+        expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
     it('caps the lifecycle side too, so a runaway there cannot flood either', () => {
         const t = makeTelemetry();
         for (let i = 0; i < 80; i += 1) {

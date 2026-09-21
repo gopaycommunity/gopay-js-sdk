@@ -1049,7 +1049,14 @@ describe('mountApplePayButton()', () => {
         });
         await ctrl.result.catch(() => {});
 
-        expect(client.reportError).toHaveBeenCalledWith(chargeError);
+        // Reported as a named wallet failure rather than raw: an unnamed
+        // error is one core can only call SDK.UNKNOWN, and `reportError`
+        // used to drop it entirely. The original stays on `cause`, and
+        // `result` still rejects with it — only reporting changed.
+        const reported = client.reportError.mock.calls[0]?.[0] as GoPaySDKError;
+        expect(reported).toBeInstanceOf(GoPaySDKError);
+        expect(reported.errorCode).toBe(GoPayErrorCodes.WALLET_BUTTON_ERROR);
+        expect(reported.cause).toBe(chargeError);
     });
 
     it('reports missing payment data in the authorisation event to onError', async () => {
@@ -1679,7 +1686,74 @@ describe('mountGooglePayButton()', () => {
         await capturedOnClick!();
         await ctrl.result.catch(() => {});
 
-        expect(client.reportError).toHaveBeenCalledWith(chargeError);
+        // Reported as a named wallet failure rather than raw: an unnamed
+        // error is one core can only call SDK.UNKNOWN, and `reportError`
+        // used to drop it entirely. The original stays on `cause`, and
+        // `result` still rejects with it — only reporting changed.
+        const reported = client.reportError.mock.calls[0]?.[0] as GoPaySDKError;
+        expect(reported).toBeInstanceOf(GoPaySDKError);
+        expect(reported.errorCode).toBe(GoPayErrorCodes.WALLET_BUTTON_ERROR);
+        expect(reported.cause).toBe(chargeError);
+    });
+
+    it('reports the plain object Google Pay rejects with, which is not an Error', async () => {
+        // This is the real shape of a Google Pay misconfiguration, and it is
+        // not an Error — so `reportError`'s instanceof guard dropped it and
+        // DEVELOPER_ERROR / MERCHANT_ACCOUNT_ERROR reached nothing at all.
+        mockLoadPaymentData = vi.fn().mockRejectedValue({
+            statusCode: 'DEVELOPER_ERROR',
+            statusMessage: 'merchantId not recognised',
+        });
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        await capturedOnClick!();
+        await ctrl.result.catch(() => {});
+
+        const reported = client.reportError.mock.calls[0]?.[0] as GoPaySDKError;
+        expect(reported).toBeInstanceOf(GoPaySDKError);
+        expect(reported.errorCode).toBe(GoPayErrorCodes.WALLET_BUTTON_ERROR);
+        expect(reported.message).toContain('DEVELOPER_ERROR');
+    });
+
+    it('treats a plain object cancel as a cancel, not as a failure', async () => {
+        // Same shape, CANCELED. Gating the check on `instanceof Error` turned
+        // a customer dismissing the sheet into a reported error with no
+        // onCancel — and with the fix above it would have been reported twice
+        // as loudly.
+        mockLoadPaymentData = vi
+            .fn()
+            .mockRejectedValue({ statusCode: 'CANCELED' });
+        const onCancel = vi.fn();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container, { onCancel });
+        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
+        await capturedOnClick!();
+
+        expect(onCancel).toHaveBeenCalledOnce();
+        expect(client.reportError).not.toHaveBeenCalled();
+        // `result` stays pending: the customer may tap the button again.
+        let settled = false;
+        void ctrl.result.then(
+            () => {
+                settled = true;
+            },
+            () => {
+                settled = true;
+            },
+        );
+        await Promise.resolve();
+        expect(settled).toBe(false);
     });
 
     it('reports missing paymentMethodData to onError', async () => {

@@ -29,10 +29,18 @@ const REQUEST_TIMEOUT_MS = 2_000;
  *
  * The lifecycle side is bounded by design (a handful of markers per mount), so
  * its own small budget both caps a runaway and guarantees it can never be
- * crowded out by traffic.
+ * crowded out by traffic. Errors get a third budget for the same reason and
+ * with more force: they travel as `api_call` events (gw-ui's convention,
+ * status_code 0), so on a shared counter the flood would have silenced the
+ * one kind of event nobody can afford to lose.
  */
-const MAX_API_CALL_EVENTS = 200;
-const MAX_LIFECYCLE_EVENTS = 50;
+const EVENT_BUDGET = {
+    api_call: 200,
+    lifecycle: 50,
+    error: 50,
+} as const;
+
+type BudgetKind = keyof typeof EVENT_BUDGET;
 
 /**
  * `status_code` is nullable in the schema, which leaves three states worth
@@ -187,8 +195,11 @@ export function createGwLoggerTelemetry(options: {
     getPaymentId: () => string | undefined;
 }): BrowserTelemetry {
     const url = `${LOGGER_URLS[options.environment]}/events`;
-    let apiCallsSent = 0;
-    let lifecycleSent = 0;
+    const spent: Record<BudgetKind, number> = {
+        api_call: 0,
+        lifecycle: 0,
+        error: 0,
+    };
 
     /**
      * Fire and forget, in the strict sense: nothing here is awaited by a caller,
@@ -203,26 +214,18 @@ export function createGwLoggerTelemetry(options: {
      * thing being measured, so routing telemetry through it would emit an
      * api_call per api_call.
      */
-    function post(build: () => GwLoggerEvent): void {
+    function post(budget: BudgetKind, build: () => GwLoggerEvent): void {
         try {
+            if (spent[budget] >= EVENT_BUDGET[budget]) {
+                return;
+            }
             // Built inside the try, not passed in already built. `base()` reads
             // the page URL and the callers' getters, and an emitter is called
             // from a `finally` on the payment path — a throw while assembling
             // the event would replace the payment error the caller was about
             // to receive with a telemetry error. Logging is never worth that.
             const event = build();
-
-            if (event.event_type === 'api_call') {
-                if (apiCallsSent >= MAX_API_CALL_EVENTS) {
-                    return;
-                }
-                apiCallsSent += 1;
-            } else {
-                if (lifecycleSent >= MAX_LIFECYCLE_EVENTS) {
-                    return;
-                }
-                lifecycleSent += 1;
-            }
+            spent[budget] += 1;
 
             void fetch(
                 new Request(url, {
@@ -260,7 +263,7 @@ export function createGwLoggerTelemetry(options: {
 
     return {
         apiCall(record: ApiCallRecord): void {
-            post(() => ({
+            post('api_call', () => ({
                 ...base(),
                 event_type: 'api_call',
                 action: lastSegment(record.endpoint),
@@ -271,7 +274,7 @@ export function createGwLoggerTelemetry(options: {
         },
 
         lifecycle(navigationType, context): void {
-            post(() => ({
+            post('lifecycle', () => ({
                 ...base(),
                 event_type: 'navigation',
                 navigation_type: navigationType,
@@ -284,7 +287,7 @@ export function createGwLoggerTelemetry(options: {
         },
 
         submit(elementId, context): void {
-            post(() => ({
+            post('lifecycle', () => ({
                 ...base(),
                 event_type: 'interaction',
                 interaction_type: 'submit',
@@ -300,7 +303,7 @@ export function createGwLoggerTelemetry(options: {
                 'errorCode' in error && typeof error.errorCode === 'string'
                     ? error.errorCode
                     : 'UNKNOWN';
-            post(() => ({
+            post('error', () => ({
                 ...base(),
                 event_type: 'api_call',
                 action: `SDK.${code}`,

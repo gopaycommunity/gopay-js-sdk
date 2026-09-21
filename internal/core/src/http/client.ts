@@ -24,6 +24,38 @@ import type { RequestOptions } from './types.js';
  */
 const reportedErrors = new WeakSet<GoPaySDKError | GoPayHTTPError>();
 
+/**
+ * Foreign errors get a fresh wrapper each time they are reported, so the
+ * dedupe above cannot see them. Held weakly for the same reason.
+ */
+const wrappedForeignErrors = new WeakSet<object>();
+
+/**
+ * A short, safe description of something that is not one of our errors.
+ *
+ * Reads the shape Google Pay rejects with before falling back to the generic
+ * ones. Kept to a code and a message — the telemetry layer sanitizes what it
+ * sends, but there is no reason to hand it more than this in the first place.
+ */
+function describeForeign(error: unknown): string {
+    if (typeof error === 'object' && error !== null) {
+        const { statusCode, statusMessage, message, name } = error as Record<
+            string,
+            unknown
+        >;
+        const code = typeof statusCode === 'string' ? statusCode : undefined;
+        const text =
+            typeof statusMessage === 'string'
+                ? statusMessage
+                : typeof message === 'string'
+                  ? message
+                  : undefined;
+        const label = typeof name === 'string' ? name : 'object';
+        return [code ?? label, text].filter(Boolean).join(': ');
+    }
+    return typeof error === 'string' ? error : typeof error;
+}
+
 function reportOnce(
     config: CoreConfig,
     error: GoPaySDKError | GoPayHTTPError,
@@ -132,7 +164,34 @@ export function createHttpClient(
     function reportError(error: unknown): void {
         if (error instanceof GoPaySDKError || error instanceof GoPayHTTPError) {
             reportOnce(config, error, telemetry);
+            return;
         }
+
+        // Everything else used to be dropped here, in silence. That is not a
+        // rare shape: a wallet SDK throws a bare TypeError, and Google Pay
+        // rejects with a plain `{statusCode, statusMessage}` object that is
+        // not an Error at all — so its most common real failures
+        // (DEVELOPER_ERROR, MERCHANT_ACCOUNT_ERROR) reached neither onError
+        // nor any event. A backstop rather than the main fix: callers that
+        // know what they are reporting should name a real error code, and the
+        // wallets now do. This is what catches the ones that do not.
+        if (typeof error === 'object' && error !== null) {
+            if (wrappedForeignErrors.has(error)) {
+                return;
+            }
+            wrappedForeignErrors.add(error);
+        }
+        // No errorCode: the core cannot know which subsystem this came from,
+        // and inventing one would be worse than admitting it. Telemetry maps a
+        // missing code to `SDK.UNKNOWN`, which is exactly what this is.
+        reportOnce(
+            config,
+            new GoPaySDKError(
+                `[GoPaySDK] Unhandled failure: ${describeForeign(error)}`,
+                { cause: error },
+            ),
+            telemetry,
+        );
     }
 
     function emitError<E extends GoPaySDKError | GoPayHTTPError>(
