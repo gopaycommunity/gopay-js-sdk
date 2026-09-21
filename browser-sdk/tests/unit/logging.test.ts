@@ -6,7 +6,7 @@ import {
 } from '../../src/errors.js';
 import { createGoPayBrowserSDK } from '../../src/gopay-browser-sdk.js';
 import { createGwLoggerTelemetry } from '../../src/logging/gw-logger.js';
-import { getTransactionId } from '../../src/logging/ids.js';
+import { getTransactionId, newTraceId } from '../../src/logging/ids.js';
 import { registerLeaveBeacon } from '../../src/logging/leave-beacon.js';
 import { safeErrorMessage, safePageUrl } from '../../src/logging/sanitize.js';
 
@@ -716,5 +716,36 @@ describe('the leave beacon', () => {
         globalThis.dispatchEvent(new Event('pagehide'));
 
         expect(leaves()).toBe(1);
+    });
+});
+
+describe('id generation without randomUUID', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('falls back to the crypto byte source, not to Math.random', () => {
+        const getRandomValues = vi.fn((a: Uint8Array) => a.fill(0xab));
+        vi.stubGlobal('crypto', { getRandomValues });
+        const randomSpy = vi.spyOn(Math, 'random');
+
+        const id = newTraceId();
+
+        expect(getRandomValues).toHaveBeenCalled();
+        // A PRNG here is not a real weakness — these are correlation keys, not
+        // secrets — but a scanner cannot tell the two uses apart, and neither
+        // can a reader.
+        expect(randomSpy).not.toHaveBeenCalled();
+        expect(id).toMatch(/^txn-\d+-(ab){8}$/u);
+    });
+
+    it('still yields distinct ids where there is no Web Crypto at all', () => {
+        vi.stubGlobal('crypto', undefined);
+
+        const first = newTraceId();
+        const second = newTraceId();
+
+        expect(first).not.toBe(second);
+        expect(first).toMatch(/^txn-\d+-\d+$/u);
     });
 });

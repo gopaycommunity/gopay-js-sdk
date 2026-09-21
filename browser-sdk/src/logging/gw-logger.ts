@@ -112,7 +112,7 @@ type GwLoggerEvent = ApiCallEvent | NavigationEvent | InteractionEvent;
 
 /** Omitted rather than sent empty — see CommonFields. */
 function orUndefined(value: string | undefined): string | undefined {
-    return value ? value : undefined;
+    return value || undefined;
 }
 
 /**

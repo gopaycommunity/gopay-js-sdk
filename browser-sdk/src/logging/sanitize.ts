@@ -33,15 +33,15 @@ const QUERY_STRING = /\?\S*/gu;
  * A message safe to put in a log line: no PAN-shaped digits, no signed form
  * URL, no query string, bounded length.
  */
-export function safeErrorMessage(error: unknown): string {
-    const raw =
-        error instanceof Error
-            ? error.message
-            : typeof error === 'string'
-              ? error
-              : 'Unknown error';
+function rawMessage(error: unknown): string {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return typeof error === 'string' ? error : 'Unknown error';
+}
 
-    return raw
+export function safeErrorMessage(error: unknown): string {
+    return rawMessage(error)
         .replace(CARD_COMM_URL, `$1${REDACTED}`)
         .replace(QUERY_STRING, `?${REDACTED}`)
         .replace(PAN_LIKE, REDACTED)

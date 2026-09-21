@@ -22,10 +22,32 @@ const STORAGE_KEY = 'gopay.sdk.transaction_id';
 
 let memoryFallback: string | null = null;
 
+/** Only reached where the Web Crypto API is missing entirely. */
+let idCounter = 0;
+
+/**
+ * These ids are correlation keys, never secrets — but `Math.random()` in a
+ * payment SDK is worth not having at all, and a scanner cannot tell the two
+ * uses apart. `randomUUID` first; `getRandomValues` where only the UUID helper
+ * is missing (it needs a secure context, the byte source does not); and where
+ * there is no Web Crypto at all, a timestamp plus an in-page counter, which
+ * cannot collide inside the page that produced it — the only scope in which
+ * the id has to be unique.
+ */
 function newId(): string {
-    return globalThis.crypto?.randomUUID
-        ? globalThis.crypto.randomUUID()
-        : `txn-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const webCrypto = globalThis.crypto;
+    if (webCrypto?.randomUUID) {
+        return webCrypto.randomUUID();
+    }
+    if (webCrypto?.getRandomValues) {
+        const bytes = webCrypto.getRandomValues(new Uint8Array(8));
+        const hex = Array.from(bytes, (b) =>
+            b.toString(16).padStart(2, '0'),
+        ).join('');
+        return `txn-${Date.now()}-${hex}`;
+    }
+    idCounter += 1;
+    return `txn-${Date.now()}-${idCounter}`;
 }
 
 export function getTransactionId(): string {
