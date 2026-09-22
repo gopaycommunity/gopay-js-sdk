@@ -22,24 +22,46 @@ import type { BrowserTelemetry } from './gw-logger.js';
  * never fires it. That is a lost event rather than a wrong one, and the data
  * is documented as a lower bound.
  *
- * `once` rather than a latch, so the listener also removes itself — an SDK
- * built per step in an SPA would otherwise leave one live listener per
- * construction, each pinning its own telemetry closure.
- *
  * The event is a plain `fetch` with `keepalive` inside the telemetry emitter,
  * which is what lets it outlive the page — the same mechanism the charge event
  * relies on to survive the 3DS redirect.
  */
+/**
+ * The page ends once, however many SDK instances were built on it.
+ *
+ * One listener per instance is what this replaces, and live sandbox data is
+ * what showed it: an integrator that rebuilds the SDK when its configuration
+ * changes left every previous instance's listener registered, so one page
+ * teardown produced three `leave` events, and an earlier one produced five —
+ * some carrying a payment session, some from instances created before the
+ * attach. That inflates the abandonment count, which is the single number
+ * this beacon exists to produce.
+ *
+ * It also sent real events from the test suite. A test stubs `fetch`, builds
+ * an SDK, and restores `fetch` in its teardown while the listener stays
+ * behind; the next test to dispatch `pagehide` then woke every abandoned
+ * listener with the real `fetch` back in place, and the sandbox ingest has
+ * the `browser-sdk-test` rows to prove it.
+ *
+ * So: one listener, retargeted at whichever SDK was built last, which is the
+ * one the page is actually using. After it fires it is gone and a later
+ * instance may install a fresh one — a page restored from the back/forward
+ * cache is a second visit, not a continuation.
+ */
+let activeTelemetry: BrowserTelemetry | undefined;
+let listening = false;
+
+function onPageHide(): void {
+    listening = false;
+    activeTelemetry?.lifecycle('leave');
+}
+
 export function registerLeaveBeacon(telemetry: BrowserTelemetry): void {
-    if (typeof globalThis.addEventListener !== 'function') {
+    activeTelemetry = telemetry;
+
+    if (listening || typeof globalThis.addEventListener !== 'function') {
         return;
     }
-
-    globalThis.addEventListener(
-        'pagehide',
-        () => {
-            telemetry.lifecycle('leave');
-        },
-        { once: true },
-    );
+    listening = true;
+    globalThis.addEventListener('pagehide', onPageHide, { once: true });
 }
