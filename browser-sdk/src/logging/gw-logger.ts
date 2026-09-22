@@ -78,6 +78,12 @@ interface CommonFields {
 interface ApiCallEvent extends CommonFields {
     event_type: 'api_call';
     action: string;
+    /**
+     * Optional because the SDK's own failures travel as api_call events too
+     * (gw-ui's convention, status_code 0) and those are not HTTP calls. A
+     * verb on one of those would be a fiction.
+     */
+    http_method?: string;
     target: string;
     status_code: number | null;
     res_body?: string;
@@ -312,6 +318,10 @@ export function createGwLoggerTelemetry(options: {
                 ...base(),
                 event_type: 'api_call',
                 action: lastSegment(record.endpoint),
+                // Without it the POST that starts a charge and the GETs that
+                // poll its result are three rows with one action and one
+                // target between them, told apart only by their duration.
+                http_method: record.method,
                 target: record.endpoint,
                 status_code: record.statusCode,
                 duration: record.durationMs,
