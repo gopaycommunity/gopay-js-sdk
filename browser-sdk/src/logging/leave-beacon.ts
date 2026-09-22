@@ -47,21 +47,27 @@ import type { BrowserTelemetry } from './gw-logger.js';
  * one the page is actually using. After it fires it is gone and a later
  * instance may install a fresh one — a page restored from the back/forward
  * cache is a second visit, not a continuation.
+ *
+ * What keeps it to one listener is that `onPageHide` is a module-level
+ * reference: `addEventListener` ignores a repeat registration of the same
+ * function with the same options, so calling this per instance adds nothing.
+ * That is the load-bearing detail, and it is load-bearing invisibly — turn
+ * `onPageHide` into a closure built per call and every instance registers
+ * again, which is the bug this replaced. The guard is the test that dispatches
+ * one `pagehide` after several registrations and expects one `leave`; it fails
+ * on exactly that change.
  */
 let activeTelemetry: BrowserTelemetry | undefined;
-let listening = false;
 
 function onPageHide(): void {
-    listening = false;
     activeTelemetry?.lifecycle('leave');
 }
 
 export function registerLeaveBeacon(telemetry: BrowserTelemetry): void {
     activeTelemetry = telemetry;
 
-    if (listening || typeof globalThis.addEventListener !== 'function') {
+    if (typeof globalThis.addEventListener !== 'function') {
         return;
     }
-    listening = true;
     globalThis.addEventListener('pagehide', onPageHide, { once: true });
 }
