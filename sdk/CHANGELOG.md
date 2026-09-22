@@ -1,3 +1,34 @@
+# [1.22.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.21.0...1.22.0) (2026-09-22)
+
+
+### Bug Fixes
+
+* **browser-sdk:** stop a missing build constant from breaking the SDK GPOMA-2631 ([9c090b1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9c090b155a20cda5011078a55de125ded459e06a))
+* **logging:** drop Math.random from id generation GPOMA-2631 ([6acabd0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/6acabd006ee1d3fa61cd93503f475f10fa129ee6))
+* **logging:** guard the one integrator callback left unwrapped GPOMA-2631 ([9ce23b8](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9ce23b80444bc772bb817bbe15f2440eb60620dc))
+* **logging:** let the deferred rethrow be owned by the tests that cause it GPOMA-2631 ([2577808](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/25778082197baa67e257247abaf5430937657f0e))
+* **logging:** make the new scrub patterns linear GPOMA-2631 ([71dd0f6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/71dd0f6f0c73482fd3d68433081bbae7b8d0876e))
+* **logging:** redact a token that ends a sentence GPOMA-2631 ([3866c69](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3866c6923edb422d199a059847d203403abbd978))
+* **logging:** report one leave per page, not one per SDK instance GPOMA-2631 ([9a62b64](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9a62b64a46edfafb8c40b66dcd5db92256826590))
+* **logging:** report the wallet errors that were being dropped GPOMA-2631 ([28d52b8](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/28d52b8e01de98e3a6cf35610bd97bb1674e8786))
+* **logging:** stop foreign text from reaching the log GPOMA-2631 ([2e0e00c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2e0e00ccf84749968a513d007d5bf782da13d2e6))
+* **logging:** stop the telemetry reporting things that did not happen GPOMA-2631 ([6376e27](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/6376e27e22bba8a446e5f6535d2da8061c8266d4))
+* **logging:** stop trusting two things that only look constant GPOMA-2631 ([0db5508](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/0db5508e8d6ac87d328492194e139e4398fbe7df))
+
+
+### Features
+
+* **browser-sdk:** report lifecycle and diagnostic fields GPOMA-2631 ([a9fb22c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a9fb22cb350b397f413ab9001e4920c5524f3abc))
+* **browser-sdk:** send structured api_call and error events to gw-logger GPOMA-2631 ([1ed845d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1ed845d1191dd4c7be493ad62b89831d60433d77))
+* **core:** add a telemetry seam and time every HTTP call GPOMA-2631 ([5bc9848](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/5bc9848059e051dc8341d441786e0b688b6683f7))
+* **logging:** name the wallet and the reason when a button cannot be offered GPOMA-2631 ([1c7a24c](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1c7a24c6a65fe52d1604a94a1675dd42d2ec5125))
+* **logging:** record auth-handler calls and mark the payment attach GPOMA-2631 ([7120fec](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/7120fec72ba0ca6f9a1954363c459c63e223c532))
+* **logging:** report the card form submit and wallet authorisation GPOMA-2631 ([00b5444](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/00b54446d862d3448520a6c2d0a554c42ab9bf4a))
+* **logging:** send the HTTP method with each api_call GPOMA-2631 ([35f2db1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/35f2db12ded7920cd4543558879a19c6e2b906f4))
+* **logging:** stop swallowing the integrator's callback errors GPOMA-2631 ([a7be6a2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a7be6a2bdf7bd04b0ab69d6d29819b4300e392ca))
+* **wallets:** answer whether Apple Pay is available before mounting anything GPOMA-2631 ([051aa44](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/051aa44636f44cd7713d55a67074c9cd7f9fafe5))
+* **wallets:** tell a CSP refusal apart from an ad-blocker GPOMA-2631 ([b5dac3e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/b5dac3e61395f5a64620ddb5366d2046b8d866ff))
+
 # [1.21.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.20.0...1.21.0) (2026-09-21)
 
 
