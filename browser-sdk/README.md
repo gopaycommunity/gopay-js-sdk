@@ -227,6 +227,12 @@ const chargeResult = await googleCtrl.result;
 > One thing to check: if you run a strict Content-Security-Policy, allow
 > `https://applepay.cdn-apple.com` in `script-src`. Without it Apple Pay is simply reported
 > unavailable and `onUnavailable` fires, so your fallback UI still covers the customer.
+> You will not have to guess that this is what happened: a policy refusal and an
+> ad-blocker are the same bare `error` event on the script tag, so the SDK watches
+> for the policy violation itself and the error it hands `onError` says which of
+> the two it was — `script-blocked-csp`, naming the host and the directive to
+> allow, or plain `script-blocked` for an ad-blocker or a proxy. The same applies
+> to Google Pay and `https://pay.google.com`.
 
 ### Other Flow B methods (available after `attachPayment`)
 
@@ -683,14 +689,15 @@ integration working and diagnosable.
 
 **Wallet availability.** When an Apple Pay or Google Pay button is asked for and
 cannot be offered, the SDK reports which wallet it was, a reason code
-(`unsupported-device`, `script-blocked`, `button-unregistered`,
-`library-missing`, `readiness-check-failed`), and the few browser capabilities
-the availability check itself reads: whether the page is a secure context,
-whether the browser reports itself as mobile, the touch-point count, and —
-for Apple Pay — whether `ApplePaySession` and the button element are present.
-Deliberately **not** the user-agent string, the screen size or the pixel ratio:
-those are what a fingerprint is assembled from and none of them is what the
-check consults.
+(`unsupported-device`, `script-blocked`, `script-blocked-csp`,
+`button-unregistered`, `library-missing`, `readiness-check-failed`), and the few
+browser capabilities the availability check itself reads: whether the page is a
+secure context, whether the browser reports itself as mobile, the touch-point
+count, and — for Apple Pay — whether `ApplePaySession` and the button element
+are present. When your own Content-Security-Policy is what refused the wallet's
+script, the directive that refused it is reported too. Deliberately **not** the
+user-agent string, the screen size or the pixel ratio: those are what a
+fingerprint is assembled from and none of them is what the check consults.
 
 **What you should do.** Reflect this in your own privacy notice — you are the
 controller for your checkout, and your customers' data is being processed on your

@@ -94,6 +94,25 @@ function makeClient() {
     };
 }
 
+function makeTelemetry() {
+    return {
+        apiCall: vi.fn(),
+        error: vi.fn(),
+        lifecycle: vi.fn(),
+        submit: vi.fn(),
+        walletUnavailable: vi.fn(),
+        integratorError: vi.fn(),
+    };
+}
+
+/**
+ * Restated rather than imported: the module does not export it, and a test that
+ * quietly followed a change to it would stop testing the URL the CSP watcher is
+ * actually scoped to.
+ */
+const APPLE_PAY_SCRIPT_SRC =
+    'https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js';
+
 const validApplePaymentData = {
     data: 'V7Oc==',
     signature: 'MIAGCSqGSIb3==',
@@ -1123,6 +1142,128 @@ describe('mountApplePayButton()', () => {
         Reflect.deleteProperty(globalThis.navigator, 'userAgentData');
     });
 
+    it('separates a policy refusal from an ad-blocker, and says what to allow', async () => {
+        // The two are the same bare error on the script tag — a browser says
+        // nothing more about a cross-origin load it refused — so this is the
+        // one cause the data could never attribute. The violation is
+        // dispatched while the element is being blocked, ahead of the error
+        // that rejects the load, which is what makes reading it here sound.
+        vi.stubGlobal('ApplePaySession', undefined);
+        appleButtonRegistered = false;
+        mockLoadScriptOnce.mockImplementation(() => {
+            document.dispatchEvent(
+                Object.assign(new Event('securitypolicyviolation'), {
+                    blockedURI: APPLE_PAY_SCRIPT_SRC,
+                    effectiveDirective: 'script-src-elem',
+                }),
+            );
+            return Promise.reject(new Error('blocked'));
+        });
+        const telemetry = makeTelemetry();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect.objectContaining({
+                paymentMethod: 'applepay',
+                reason: 'script-blocked-csp',
+                capabilities: expect.objectContaining({
+                    csp_directive: 'script-src-elem',
+                }),
+            }),
+        );
+        // The remedy, not just the diagnosis: this is the one cause the
+        // integrator can fix outright, and it reaches their own monitoring
+        // through onError.
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message: expect.stringContaining(
+                    'allow https://applepay.cdn-apple.com in script-src-elem',
+                ),
+            }),
+        );
+    });
+
+    it('stays script-blocked when no policy refusal was reported', async () => {
+        // The absence of the violation is the evidence for the other two
+        // causes. Reporting a CSP here would send the merchant to look at a
+        // policy that is not the problem.
+        vi.stubGlobal('ApplePaySession', undefined);
+        appleButtonRegistered = false;
+        mockLoadScriptOnce.mockRejectedValue(new Error('blocked'));
+        const telemetry = makeTelemetry();
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect.objectContaining({ reason: 'script-blocked' }),
+        );
+    });
+
+    it('ignores a policy refusal of somebody else’s script', async () => {
+        // A merchant page with violations of its own is ordinary. Counting
+        // them would turn every ad-blocked wallet script into a CSP report —
+        // the exact confusion this exists to end.
+        vi.stubGlobal('ApplePaySession', undefined);
+        appleButtonRegistered = false;
+        mockLoadScriptOnce.mockImplementation(() => {
+            document.dispatchEvent(
+                Object.assign(new Event('securitypolicyviolation'), {
+                    blockedURI: 'https://analytics.example.com/tag.js',
+                    effectiveDirective: 'script-src-elem',
+                }),
+            );
+            return Promise.reject(new Error('blocked'));
+        });
+        const telemetry = makeTelemetry();
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect.objectContaining({ reason: 'script-blocked' }),
+        );
+    });
+
+    it('stops listening for violations once the script has settled', async () => {
+        // The window is kept as narrow as the load itself; a violation from
+        // anything else on the page afterwards is none of this SDK's business.
+        const removeListener = vi.spyOn(document, 'removeEventListener');
+        vi.stubGlobal('ApplePaySession', undefined);
+        appleButtonRegistered = false;
+        mockLoadScriptOnce.mockRejectedValue(new Error('blocked'));
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+        );
+
+        const ctrl = await api.mountApplePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(removeListener).toHaveBeenCalledWith(
+            'securitypolicyviolation',
+            expect.any(Function),
+        );
+    });
+
     it('reports the unavailable-device guard to onError', async () => {
         MockApplePaySession.canMakePayments.mockReturnValue(false);
         const client = makeClient();
@@ -1758,6 +1899,48 @@ describe('mountGooglePayButton()', () => {
         expect(client.reportError).toHaveBeenCalledWith(
             expect.objectContaining({
                 message: expect.stringContaining('Google Pay is not available'),
+            }),
+        );
+    });
+
+    it('separates a policy refusal from an ad-blocker on the Google Pay script too', async () => {
+        // The pair that keeps the two wallets symmetrical: same discrimination,
+        // other host. Google Pay has no shim and no custom element, so a
+        // blocked script is the only way it reaches this path at all.
+        mockLoadScriptOnce.mockImplementation(() => {
+            document.dispatchEvent(
+                Object.assign(new Event('securitypolicyviolation'), {
+                    blockedURI: 'https://pay.google.com/gp/p/js/pay.js',
+                    effectiveDirective: 'script-src-elem',
+                }),
+            );
+            return Promise.reject(new Error('blocked'));
+        });
+        const telemetry = makeTelemetry();
+        const client = makeClient();
+        const api = createWalletsApi(
+            client as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect.objectContaining({
+                paymentMethod: 'googlepay',
+                reason: 'script-blocked-csp',
+                capabilities: expect.objectContaining({
+                    csp_directive: 'script-src-elem',
+                }),
+            }),
+        );
+        expect(client.reportError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message: expect.stringContaining(
+                    'allow https://pay.google.com in script-src-elem',
+                ),
             }),
         );
     });

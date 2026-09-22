@@ -294,6 +294,7 @@ function asWalletError(cause: unknown): GoPaySDKError | GoPayHTTPError {
  */
 const WALLET_UNAVAILABLE = {
     scriptBlocked: 'script-blocked',
+    scriptBlockedCsp: 'script-blocked-csp',
     buttonUnregistered: 'button-unregistered',
     libraryMissing: 'library-missing',
     unsupportedDevice: 'unsupported-device',
@@ -313,13 +314,83 @@ const WALLET_LABEL: Record<WalletId, string> = {
 /** What a human reading `onError` needs; the code above is what a query needs. */
 const UNAVAILABLE_MESSAGE: Record<WalletUnavailableReason, string> = {
     'script-blocked':
-        'its SDK script could not be loaded — check CSP, an ad-blocker or a proxy',
+        'its SDK script could not be loaded, and no Content-Security-Policy refusal was reported — an ad-blocker or a proxy',
+    'script-blocked-csp':
+        "its SDK script was refused by this page's Content-Security-Policy",
     'button-unregistered':
         'its SDK script loaded but never registered the button element',
     'library-missing': 'its SDK script loaded but installed no global',
     'unsupported-device': 'this device or browser cannot offer it',
     'readiness-check-failed': 'the readiness check itself failed',
 };
+
+/** A policy refusal of one script: what refused it, and what to allow. */
+type CspRefusal = { origin: string; directive: string };
+
+/**
+ * Watches for a Content-Security-Policy refusal of one specific script while
+ * it loads.
+ *
+ * A policy refusal and an ad-blocker are the same event to the page: the
+ * `<script>` fires a bare `error` with nothing on it, because the browser
+ * deliberately says nothing about a cross-origin load it refused.
+ * `securitypolicyviolation` is the only thing that separates them, and it
+ * fires for the policy case whether the policy arrived in a header or a
+ * `<meta>` — so its absence is itself the evidence for the other two.
+ *
+ * Scoped to the script's own origin. A merchant page with unrelated
+ * violations of its own is common, and counting those would turn every
+ * ad-blocked wallet script into a policy report — the exact confusion this
+ * exists to end. Matched on the origin rather than the full URL because a
+ * user agent is allowed to strip a cross-origin `blockedURI` back to it.
+ *
+ * Registered before the load is started and stopped straight after, so a
+ * violation from anything else on the page has the narrowest possible window
+ * in which to be mistaken for this one.
+ */
+function watchCspViolation(src: string): {
+    blocked: () => CspRefusal | undefined;
+    stop: () => void;
+} {
+    const idle = { blocked: () => undefined, stop: () => {} };
+    const target = globalThis.document;
+    if (!target?.addEventListener) {
+        return idle;
+    }
+
+    let origin: string;
+    try {
+        origin = new URL(src).origin;
+    } catch {
+        return idle;
+    }
+
+    let refusal: CspRefusal | undefined;
+    const onViolation = (event: Event): void => {
+        const violation = event as SecurityPolicyViolationEvent;
+        const blockedUri = violation.blockedURI;
+        if (blockedUri !== origin && !blockedUri?.startsWith(`${origin}/`)) {
+            return;
+        }
+        // `effectiveDirective` is the modern name and the one that reports
+        // which directive actually did the blocking; `violatedDirective` is
+        // its long-standing alias, still the populated one on some engines.
+        refusal ??= {
+            origin,
+            directive:
+                violation.effectiveDirective ||
+                violation.violatedDirective ||
+                'script-src',
+        };
+    };
+
+    target.addEventListener('securitypolicyviolation', onViolation);
+    return {
+        blocked: () => refusal,
+        stop: () =>
+            target.removeEventListener('securitypolicyviolation', onViolation),
+    };
+}
 
 /**
  * The inputs the availability gate actually reads, and nothing beyond them.
@@ -370,8 +441,17 @@ function makeUnavailableController(args: {
     reason: WalletUnavailableReason;
     onUnavailable: (() => void) | undefined;
     cause?: unknown;
+    /**
+     * Set only when a policy refusal was observed for this wallet's own
+     * script. It goes two places on purpose: onto the event, where it is what
+     * separates a merchant's misconfiguration from a shopper's ad-blocker,
+     * and into the integrator's error, where it is the difference between
+     * "something blocked it" and the host and directive to change.
+     */
+    csp?: CspRefusal;
 }): WalletButtonController {
-    const { client, telemetry, wallet, reason, onUnavailable, cause } = args;
+    const { client, telemetry, wallet, reason, onUnavailable, cause, csp } =
+        args;
     // Guarded like every other integrator callback. This one is the easiest to
     // overlook — it is the only callback this path is guaranteed to invoke,
     // and it runs ahead of both the telemetry and the reportError below, so a
@@ -383,13 +463,20 @@ function makeUnavailableController(args: {
     telemetry.walletUnavailable({
         paymentMethod: wallet,
         reason,
-        capabilities: walletCapabilities(wallet),
+        capabilities: {
+            ...walletCapabilities(wallet),
+            ...(csp ? { csp_directive: csp.directive } : {}),
+        },
     });
     // Names the wallet as well as the reason. The single shared sentence this
     // replaces was emitted verbatim by both wallets, so neither the merchant's
     // onError nor the log line could say which button had gone missing.
+    // The remedy, not just the diagnosis: a policy refusal is the one cause
+    // here the integrator can fix outright, and naming the host and the
+    // directive is what turns their monitoring alert into a one-line change.
+    const remedy = csp ? ` — allow ${csp.origin} in ${csp.directive}` : '';
     const unavailable = new GoPaySDKError(
-        `[GoPayBrowserSDK] ${WALLET_LABEL[wallet]} is not available: ${UNAVAILABLE_MESSAGE[reason]} (${reason}).`,
+        `[GoPayBrowserSDK] ${WALLET_LABEL[wallet]} is not available: ${UNAVAILABLE_MESSAGE[reason]}${remedy} (${reason}).`,
         { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR, cause },
     );
     client.reportError(unavailable);
@@ -548,6 +635,7 @@ export function createWalletsApi(
                 !getApplePaySession();
 
             if (needsAppleSdk && !hasApplePayScriptTag()) {
+                const csp = watchCspViolation(APPLE_PAY_SCRIPT_SRC);
                 try {
                     await loadScriptOnce(APPLE_PAY_SCRIPT_SRC, {
                         crossOrigin: 'anonymous',
@@ -556,13 +644,25 @@ export function createWalletsApi(
                     // The SDK is the only thing loading this script now, so a
                     // blocked CDN (ad-blocker, CSP, proxy) has to reach the
                     // merchant's fallback UI rather than leave an empty slot.
+                    //
+                    // Which of the three it was is read here rather than
+                    // guessed: the policy refusal is dispatched while the
+                    // element is being blocked, ahead of the error event that
+                    // rejects this load, so by now it has either arrived or it
+                    // was never a policy at all.
+                    const blocked = csp.blocked();
                     return makeUnavailableController({
                         client,
                         telemetry,
                         wallet: 'applepay',
-                        reason: WALLET_UNAVAILABLE.scriptBlocked,
+                        reason: blocked
+                            ? WALLET_UNAVAILABLE.scriptBlockedCsp
+                            : WALLET_UNAVAILABLE.scriptBlocked,
+                        csp: blocked,
                         onUnavailable: options.onUnavailable,
                     });
+                } finally {
+                    csp.stop();
                 }
             }
 
@@ -848,19 +948,27 @@ export function createWalletsApi(
             }
 
             // Inject Google Pay JS library
+            const csp = watchCspViolation(GOOGLE_PAY_SCRIPT_SRC);
             try {
                 await loadScriptOnce(GOOGLE_PAY_SCRIPT_SRC);
             } catch {
                 // Same contract as the Apple Pay path and the availability
                 // checks below: a blocked CDN has to reach the merchant's
-                // fallback UI rather than leave an empty slot.
+                // fallback UI rather than leave an empty slot, and a policy
+                // refusal is told apart from an ad-blocker rather than guessed.
+                const blocked = csp.blocked();
                 return makeUnavailableController({
                     client,
                     telemetry,
                     wallet: 'googlepay',
-                    reason: WALLET_UNAVAILABLE.scriptBlocked,
+                    reason: blocked
+                        ? WALLET_UNAVAILABLE.scriptBlockedCsp
+                        : WALLET_UNAVAILABLE.scriptBlocked,
+                    csp: blocked,
                     onUnavailable: options.onUnavailable,
                 });
+            } finally {
+                csp.stop();
             }
 
             const googleGlobal = (
