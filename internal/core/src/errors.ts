@@ -43,6 +43,41 @@ export const GoPayErrorCodes = {
 export type GoPayErrorCode =
     (typeof GoPayErrorCodes)[keyof typeof GoPayErrorCodes];
 
+/**
+ * The built-in error constructors, and nothing else.
+ *
+ * `Error.name` is writable — `err.name = someCustomerEmail` is legal — and a
+ * custom error class can be named anything its author chose. Reporting it
+ * verbatim would be the same leak as reporting the message, through a field
+ * that merely looks like a constant.
+ */
+const BUILTIN_ERROR_NAMES: ReadonlySet<string> = new Set([
+    'AggregateError',
+    'DOMException',
+    'Error',
+    'EvalError',
+    'RangeError',
+    'ReferenceError',
+    'SyntaxError',
+    'TypeError',
+    'URIError',
+]);
+
+/**
+ * Name an error without quoting anything its author wrote.
+ *
+ * What leaves this SDK is meant to be text the SDK itself wrote; this is how
+ * a foreign error still gets described without breaking that. Anything not a
+ * built-in reports as its base class, and a non-Error reports as its `typeof`
+ * — a fixed vocabulary either way.
+ */
+export function safeErrorLabel(error: unknown): string {
+    if (!(error instanceof Error)) {
+        return typeof error;
+    }
+    return BUILTIN_ERROR_NAMES.has(error.name) ? error.name : 'Error';
+}
+
 export class GoPaySDKError extends Error {
     readonly name = 'GoPaySDKError';
     readonly errorCode: GoPayErrorCode | undefined;

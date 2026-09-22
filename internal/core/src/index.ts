@@ -3,7 +3,12 @@ export { awaitCharge } from './charge-polling.js';
 export type { CoreConfig, GoPayEnvironment } from './config.js';
 export { BASE_URLS, LOGGER_URLS } from './config.js';
 export type { GoPayErrorCode } from './errors.js';
-export { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from './errors.js';
+export {
+    GoPayErrorCodes,
+    GoPayHTTPError,
+    GoPaySDKError,
+    safeErrorLabel,
+} from './errors.js';
 export { buildUrl } from './http/build-url.js';
 export type { HttpClient } from './http/client.js';
 export { createHttpClient } from './http/client.js';

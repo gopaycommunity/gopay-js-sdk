@@ -1,3 +1,4 @@
+import { safeErrorLabel } from '@gopay-internal/core';
 import type { BrowserTelemetry } from '../logging/gw-logger.js';
 
 /**
@@ -17,34 +18,6 @@ import type { BrowserTelemetry } from '../logging/gw-logger.js';
  * owner for a bug in the page's own code, and it is why the SDK installs no
  * global handler of its own.
  */
-/**
- * `Error.name` is writable — `err.name = someCustomerEmail` is legal — and a
- * custom error class can be named anything its author likes. So the class
- * name is not the safe constant it looks like, and this event's whole promise
- * is that it carries nothing the merchant's code chose. An allowlist of the
- * built-ins makes that promise true instead of approximately true; anything
- * else reports as the base class it is.
- */
-const REPORTABLE_ERROR_NAMES: ReadonlySet<string> = new Set([
-    'AggregateError',
-    'DOMException',
-    'Error',
-    'EvalError',
-    'RangeError',
-    'ReferenceError',
-    'SyntaxError',
-    'TypeError',
-    'URIError',
-]);
-
-function safeErrorName(error: unknown): string {
-    if (!(error instanceof Error)) {
-        // A fixed vocabulary: 'string', 'object', 'undefined', …
-        return typeof error;
-    }
-    return REPORTABLE_ERROR_NAMES.has(error.name) ? error.name : 'Error';
-}
-
 export function callIntegrator(
     label: string,
     fn: () => void,
@@ -56,8 +29,9 @@ export function callIntegrator(
         setTimeout(() => {
             throw error;
         });
-        // Never the message, and never a name the merchant's code supplied
-        // — see safeErrorName.
-        telemetry?.integratorError(label, safeErrorName(error));
+        // Never the message, and never a name the merchant's code supplied:
+        // `safeErrorLabel` is core's one rule for that, shared so the SDK
+        // cannot end up with two answers to the same question.
+        telemetry?.integratorError(label, safeErrorLabel(error));
     }
 }

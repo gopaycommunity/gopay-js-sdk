@@ -1,5 +1,10 @@
 import type { CoreConfig } from '../config.js';
-import { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from '../errors.js';
+import {
+    GoPayErrorCodes,
+    GoPayHTTPError,
+    GoPaySDKError,
+    safeErrorLabel,
+} from '../errors.js';
 import {
     type ApiCallRecord,
     NO_TELEMETRY,
@@ -37,23 +42,29 @@ const wrappedForeignErrors = new WeakSet<object>();
  * ones. Kept to a code and a message — the telemetry layer sanitizes what it
  * sends, but there is no reason to hand it more than this in the first place.
  */
+/** A code, not prose: uppercase, underscores, bounded. */
+const FOREIGN_CODE = /^[A-Z][A-Z0-9_]{0,63}$/;
+
+/**
+ * Describe something that is not one of our errors, without quoting it.
+ *
+ * Codes yes, prose no. `statusCode` is the shape Google Pay rejects with and
+ * is a code like any other, so it is kept when it actually looks like one.
+ * `statusMessage` and `message` are free text written by somebody else's
+ * code, and the guarantee this SDK makes about what leaves the page is that
+ * the only free text in it is text the SDK wrote itself — a guarantee that
+ * has to hold at the call sites, not only in the scrubber downstream. The
+ * original object stays on `cause` for anyone debugging locally.
+ */
 function describeForeign(error: unknown): string {
-    if (typeof error === 'object' && error !== null) {
-        const { statusCode, statusMessage, message, name } = error as Record<
-            string,
-            unknown
-        >;
-        const code = typeof statusCode === 'string' ? statusCode : undefined;
-        const text =
-            typeof statusMessage === 'string'
-                ? statusMessage
-                : typeof message === 'string'
-                  ? message
-                  : undefined;
-        const label = typeof name === 'string' ? name : 'object';
-        return [code ?? label, text].filter(Boolean).join(': ');
+    if (typeof error !== 'object' || error === null) {
+        return typeof error;
     }
-    return typeof error === 'string' ? error : typeof error;
+    const { statusCode } = error as { statusCode?: unknown };
+    if (typeof statusCode === 'string' && FOREIGN_CODE.test(statusCode)) {
+        return statusCode;
+    }
+    return safeErrorLabel(error);
 }
 
 function reportOnce(
@@ -223,10 +234,17 @@ export function createHttpClient(
 
         if (err instanceof Error) {
             return emitError(
-                new GoPaySDKError(`[GoPaySDK] Network error: ${err.message}`, {
-                    cause: err,
-                    errorCode: GoPayErrorCodes.NETWORK_ERROR,
-                }),
+                // The label, never the message: a network error raised by
+                // the host carries text nobody here wrote, and it would go
+                // straight out through telemetry.error. `cause` keeps the
+                // original for a developer with a console open.
+                new GoPaySDKError(
+                    `[GoPaySDK] Network error (${safeErrorLabel(err)}).`,
+                    {
+                        cause: err,
+                        errorCode: GoPayErrorCodes.NETWORK_ERROR,
+                    },
+                ),
             );
         }
 

@@ -215,15 +215,26 @@ describe('HttpClient', () => {
             );
         });
 
-        it('re-throws non-HTTPError as-is', async () => {
-            fetchMock.mockRejectedValue(new TypeError('network failure'));
+        it('wraps a transport failure without quoting its message', async () => {
+            // The message of a foreign error is text nobody here wrote, and it
+            // leaves the page through telemetry.error. The class name says as
+            // much as it safely can; the original stays on `cause` for a
+            // developer with a console open.
+            const cause = new TypeError('network failure at 10.0.0.7:8443');
+            fetchMock.mockRejectedValue(cause);
 
             const client = createHttpClient({ baseUrl: 'https://example.com' });
-            await expect(
-                client.postForm('/oauth2/token', {
-                    grant_type: 'client_credentials',
-                }),
-            ).rejects.toThrow('network failure');
+            const err = await client
+                .postForm('/oauth2/token', { grant_type: 'client_credentials' })
+                .catch((e: unknown) => e);
+
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            const sdkError = err as GoPaySDKError;
+            expect(sdkError.errorCode).toBe(GoPayErrorCodes.NETWORK_ERROR);
+            expect(sdkError.message).not.toContain('network failure');
+            expect(sdkError.message).not.toContain('10.0.0.7');
+            expect(sdkError.message).toContain('TypeError');
+            expect(sdkError.cause).toBe(cause);
         });
     });
 
