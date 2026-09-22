@@ -224,15 +224,29 @@ const chargeResult = await googleCtrl.result;
 > concluding the button is broken. There is no way to detect the toolbar itself,
 > which is why the SDK reports the mobile flag it sets instead.
 >
-> One thing to check: if you run a strict Content-Security-Policy, allow
-> `https://applepay.cdn-apple.com` in `script-src`. Without it Apple Pay is simply reported
-> unavailable and `onUnavailable` fires, so your fallback UI still covers the customer.
-> You will not have to guess that this is what happened: a policy refusal and an
-> ad-blocker are the same bare `error` event on the script tag, so the SDK watches
-> for the policy violation itself and the error it hands `onError` says which of
-> the two it was — `script-blocked-csp`, naming the host and the directive to
-> allow, or plain `script-blocked` for an ad-blocker or a proxy. The same applies
-> to Google Pay and `https://pay.google.com`.
+> One thing to check: if you run a strict Content-Security-Policy, Apple's SDK needs
+> `https://applepay.cdn-apple.com` in **five** directives, not just the obvious one:
+>
+> ```
+> script-src       https://applepay.cdn-apple.com
+> script-src-elem  https://applepay.cdn-apple.com
+> img-src          https://applepay.cdn-apple.com
+> frame-src        https://applepay.cdn-apple.com
+> font-src         https://applepay.cdn-apple.com
+> ```
+>
+> Allowing only the script directives is the trap: the script then loads, the
+> availability check passes and the button mounts, so nothing reports unavailable —
+> and the sheet or the scan-code is what breaks instead. Allow all five.
+>
+> If the script itself is refused, Apple Pay is simply reported unavailable and
+> `onUnavailable` fires, so your fallback UI still covers the customer. You will not
+> have to guess that this is what happened: a policy refusal and an ad-blocker are the
+> same bare `error` event on the script tag, so the SDK watches for the policy
+> violation itself and the error it hands `onError` says which of the two it was —
+> `script-blocked-csp`, naming the host and the directive to allow, or plain
+> `script-blocked` for an ad-blocker or a proxy. The same applies to Google Pay and
+> `https://pay.google.com`.
 
 ### Other Flow B methods (available after `attachPayment`)
 
