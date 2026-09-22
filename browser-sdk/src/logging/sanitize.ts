@@ -38,16 +38,75 @@ const CARD_COMM_URL = /(\/gp-card-comm\/[a-z0-9]+\/)\S+/giu;
 const QUERY_OR_FRAGMENT = /[?#]\S*/gu;
 
 /**
- * A compact JWS/JWE: three to five base64url segments joined by dots. The
- * card payload is one of these, and so is an access token.
+ * A run long enough to *be* a compact JOSE token. One character class and one
+ * quantifier: whether it actually is one is decided in {@link isCompactJose}
+ * rather than by the pattern.
  *
- * Eight characters minimum per segment is what keeps it off ordinary prose —
- * a version number or a dotted hostname cannot reach it.
+ * Splitting it that way is not style. The obvious single regex —
+ * `[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]{8,}){2,4}` — backtracks character by
+ * character over every long run that turns out to have no dots in it, which
+ * is quadratic in the length of the message. The message can carry text from
+ * outside this SDK, so that is a denial of service in a payment page, reached
+ * by a long enough error string.
+ *
+ * 26 is the shortest a real one can be: three segments of eight, two dots.
  */
-const COMPACT_JOSE = /[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]{8,}){2,4}/gu;
+const JOSE_RUN = /[A-Za-z0-9._-]{26,}/gu;
 
-/** An e-mail address is personal data wherever it turns up. */
-const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/gu;
+/**
+ * Three to five base64url segments, each at least eight characters. Eight is
+ * what keeps it off ordinary prose — a version number or a dotted hostname
+ * cannot reach it.
+ */
+function isCompactJose(run: string): boolean {
+    const parts = run.split('.');
+    return (
+        parts.length >= 3 &&
+        parts.length <= 5 &&
+        parts.every((part) => part.length >= 8)
+    );
+}
+
+/**
+ * The domain half of an e-mail address, anchored on the `@`.
+ *
+ * Anchoring is the whole trick. Any pattern that begins with the local part —
+ * `[A-Za-z0-9._%+-]+@` — has to try every position in the message and
+ * backtrack the entire run at each one where no `@` follows. Measured on this
+ * branch: 1.7 ms for a 2 000-character message, 31 ms for 8 000, which is
+ * quadratic and reachable, because a message can carry text from outside this
+ * SDK. Starting on the literal `@` lets the engine skip to the next one.
+ */
+const EMAIL_DOMAIN = /@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/gu;
+
+/** What the local part of an address may be built from. */
+const EMAIL_LOCAL_CHAR = /[A-Za-z0-9._%+-]/u;
+
+/**
+ * An e-mail address is personal data wherever it turns up.
+ *
+ * The local part is walked backwards from the `@` rather than matched, which
+ * keeps the pass linear: the walk stops at the end of the previous match, so
+ * every character is visited at most once.
+ */
+function redactEmails(text: string): string {
+    let out = '';
+    let last = 0;
+    for (const match of text.matchAll(EMAIL_DOMAIN)) {
+        const at = match.index;
+        let start = at;
+        while (start > last && EMAIL_LOCAL_CHAR.test(text[start - 1] ?? '')) {
+            start -= 1;
+        }
+        if (start === at) {
+            // An `@` with nothing usable in front of it is not an address.
+            continue;
+        }
+        out += text.slice(last, start) + REDACTED;
+        last = at + match[0].length;
+    }
+    return out + text.slice(last);
+}
 
 /**
  * `name=value` for the names worth never printing, with no `?` in front of
@@ -76,13 +135,12 @@ function rawMessage(error: unknown): string {
 
 export function safeErrorMessage(error: unknown): string {
     return (
-        rawMessage(error)
+        redactEmails(rawMessage(error))
             .replace(CARD_COMM_URL, `$1${REDACTED}`)
             // Keeps the `?` or `#` so a reader can see what was dropped.
             .replace(QUERY_OR_FRAGMENT, (m) => `${m[0]}${REDACTED}`)
             .replace(SENSITIVE_PAIR, REDACTED)
-            .replace(COMPACT_JOSE, REDACTED)
-            .replace(EMAIL, REDACTED)
+            .replace(JOSE_RUN, (run) => (isCompactJose(run) ? REDACTED : run))
             // Last: the rules above leave `[redacted]` behind, and a PAN can
             // still be sitting in whatever text they did not match.
             .replace(PAN_LIKE, REDACTED)

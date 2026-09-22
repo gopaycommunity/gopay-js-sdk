@@ -41,6 +41,25 @@ describe('safeErrorMessage()', () => {
         expect(safeErrorMessage(new Error(input))).not.toContain(leak);
     });
 
+    it('scrubs a hostile message without stalling the page', () => {
+        // The message can carry text from outside the SDK, so a pattern that
+        // backtracks turns a long error string into a denial of service on a
+        // payment page. Both shapes below were quadratic before: a long run
+        // with no dots, and an `@` with no domain after it.
+        //
+        // The bound is deliberately enormous. Linear is sub-millisecond here;
+        // the quadratic versions measured 65 ms at 8 000 characters, so at
+        // 40 000 they are seconds. Anything between is a machine having a bad
+        // day, not a regression.
+        const runs = ['a'.repeat(40_000), `x@${'a.'.repeat(20_000)}`];
+
+        for (const run of runs) {
+            const started = performance.now();
+            safeErrorMessage(new Error(run));
+            expect(performance.now() - started).toBeLessThan(300);
+        }
+    });
+
     it('leaves an ordinary message alone', () => {
         // The guard on the guards: patterns aggressive enough to eat version
         // numbers or endpoint names would make every log line unreadable.
