@@ -139,6 +139,48 @@ const controller = await sdk.mountCardForm(container, {
 const chargeResult = await controller.result; // PaymentChargeStatusResponse
 ```
 
+### Offering Apple Pay only where it works
+
+Apple Pay is not available everywhere, and which browsers Apple allows is
+Apple's decision, not ours — so the SDK does not keep a list of them. It asks
+Apple's own SDK about the browser in front of you and tells you the answer.
+
+**If you show several payment methods at once**, you need do nothing. An
+unavailable Apple Pay button is simply never drawn, so the customer picks
+another method and the checkout carries on. Use `onUnavailable` if you also
+need to remove a heading or a tile you drew around it.
+
+**If you show one payment method at a time** — Apple Pay as the express button
+above the fold, or a wizard with a step per method — ask before you render,
+or the customer lands on a screen with nothing on it:
+
+```ts
+const apple = await sdk.getApplePayAvailability();
+if (apple.available) {
+    showApplePayStep();
+} else {
+    showCardStep();
+}
+// otherwise: { available: false, reason: 'unsupported-device' }
+```
+
+It needs no payment and no container, only `shareableKey`, so it works
+**before `attachPayment()`** — which is when that decision usually has to be
+made. The `reason` is the same code the operational data uses
+(`unsupported-device`, `script-blocked`, `script-blocked-csp`,
+`library-missing`).
+
+Situations where it will tell you Apple Pay is unavailable include an Android
+phone, Microsoft Edge, and desktop Chrome with device emulation switched on in
+DevTools — the last one catches people out during development, because the
+page is a normal desktop Chrome the moment the emulation is turned off.
+
+There is no Google Pay equivalent, and none is needed: Google Pay works
+practically anywhere a modern browser does — including Safari on iOS — so
+there is no class of device to rule out in advance. Show it. If its script is
+blocked on a particular page the button simply is not drawn and
+`onUnavailable` fires, exactly as for Apple Pay.
+
 ### Apple Pay & Google Pay buttons (Flow B)
 
 `mountApplePayButton` and `mountGooglePayButton` provide a one-call alternative
@@ -702,7 +744,8 @@ anonymous. GoPay processes it under legitimate interest to keep the payment
 integration working and diagnosable.
 
 **Wallet availability.** When an Apple Pay or Google Pay button is asked for and
-cannot be offered, the SDK reports which wallet it was, a reason code
+cannot be offered — or when `getApplePayAvailability()` answers no — the SDK
+reports which wallet it was, a reason code
 (`unsupported-device`, `script-blocked`, `script-blocked-csp`,
 `button-unregistered`, `library-missing`, `readiness-check-failed`), and the few
 browser capabilities the availability check itself reads: whether the page is a

@@ -301,8 +301,15 @@ const WALLET_UNAVAILABLE = {
     readinessCheckFailed: 'readiness-check-failed',
 } as const;
 
-type WalletUnavailableReason =
+export type WalletUnavailableReason =
     (typeof WALLET_UNAVAILABLE)[keyof typeof WALLET_UNAVAILABLE];
+
+/** What {@link createWalletsApi.getApplePayAvailability} answers. */
+export interface WalletAvailability {
+    available: boolean;
+    /** Present only when `available` is false. */
+    reason?: WalletUnavailableReason;
+}
 
 type WalletId = 'applepay' | 'googlepay';
 
@@ -432,6 +439,123 @@ function walletCapabilities(
         // Logging is never worth a thrown error in a payment flow.
         return {};
     }
+}
+
+/** What the availability gate concluded, before anything is done about it. */
+type WalletGate =
+    | { ok: true }
+    | { ok: false; reason: WalletUnavailableReason; csp?: CspRefusal };
+
+/**
+ * Load Apple's SDK if the page does not already have what it provides.
+ *
+ * Shared by the mount and by {@link createWalletsApi.getApplePayAvailability}
+ * so the two can never disagree about why Apple Pay is off — one of them
+ * silently drifting is exactly how a probe starts promising a button that
+ * will not mount.
+ */
+async function ensureApplePayLibrary(): Promise<WalletGate> {
+    // Loading on a missing button (rather than only on a missing
+    // ApplePaySession) is what lets Safari pages work without the host adding
+    // its own script tag — Safari has ApplePaySession built in, so the old
+    // condition never fired and the element stayed unregistered.
+    //
+    // Still loading when ApplePaySession is missing covers the reverse case: a
+    // host that already pulled in the older `v1` build, which registers the
+    // element but installs no shim. Stacking `1.latest` on top of `v1` is safe
+    // — both guard their registration with `customElements.get()` first.
+    const needsAppleSdk =
+        !globalThis.customElements?.get(APPLE_PAY_BUTTON_TAG) ||
+        !getApplePaySession();
+
+    if (!needsAppleSdk || hasApplePayScriptTag()) {
+        return { ok: true };
+    }
+
+    const csp = watchCspViolation(APPLE_PAY_SCRIPT_SRC);
+    try {
+        await loadScriptOnce(APPLE_PAY_SCRIPT_SRC, {
+            crossOrigin: 'anonymous',
+        });
+        return { ok: true };
+    } catch {
+        // The SDK is the only thing loading this script now, so a blocked CDN
+        // (ad-blocker, CSP, proxy) has to reach the merchant's fallback UI
+        // rather than leave an empty slot.
+        //
+        // Which of the three it was is read here rather than guessed: the
+        // policy refusal is dispatched while the element is being blocked,
+        // ahead of the error event that rejects this load, so by now it has
+        // either arrived or it was never a policy at all.
+        const blocked = csp.blocked();
+        return {
+            ok: false,
+            reason: blocked
+                ? WALLET_UNAVAILABLE.scriptBlockedCsp
+                : WALLET_UNAVAILABLE.scriptBlocked,
+            csp: blocked,
+        };
+    } finally {
+        csp.stop();
+    }
+}
+
+/**
+ * Can this browser pay with Apple Pay — without mounting anything.
+ *
+ * Two short circuits, because the common answers are knowable without
+ * fetching 58 kB from Apple's CDN:
+ *
+ * - `ApplePaySession` already present (Safari, every iOS WebView that has it)
+ *   — ask it directly.
+ * - a Chromium that reports itself as mobile and has no `ApplePaySession` —
+ *   an Android phone. Apple's non-Safari shim offers the scan-with-an-iPhone
+ *   flow on desktop only and turns mobile away, so the script would be fetched
+ *   only to be told the same thing.
+ *
+ * **The second one mirrors a rule that lives in Apple's shim, not in ours**,
+ * so it is the line to revisit if Apple ever extends the shim to mobile. It is
+ * deliberately narrow: `userAgentData.mobile` exists on Chromium only, so
+ * Safari and Firefox fall through to the honest path rather than being guessed
+ * about, and the shortcut only ever produces a *negative*.
+ *
+ * Answers "can this device pay", not "will a button render". Whether the
+ * custom element registers is the mount's problem, and the mount waits for it
+ * — a probe that waited too would spend ten seconds on a question the caller
+ * asked to be quick.
+ */
+async function resolveApplePayAvailability(): Promise<WalletGate> {
+    const present = getApplePaySession();
+    if (present) {
+        return present.canMakePayments()
+            ? { ok: true }
+            : { ok: false, reason: WALLET_UNAVAILABLE.unsupportedDevice };
+    }
+
+    if (globalThis.navigator) {
+        const nav = globalThis.navigator as Navigator & {
+            userAgentData?: { mobile?: boolean };
+        };
+        if (nav.userAgentData?.mobile === true) {
+            return {
+                ok: false,
+                reason: WALLET_UNAVAILABLE.unsupportedDevice,
+            };
+        }
+    }
+
+    const library = await ensureApplePayLibrary();
+    if (!library.ok) {
+        return library;
+    }
+
+    const session = getApplePaySession();
+    if (!session) {
+        return { ok: false, reason: WALLET_UNAVAILABLE.libraryMissing };
+    }
+    return session.canMakePayments()
+        ? { ok: true }
+        : { ok: false, reason: WALLET_UNAVAILABLE.unsupportedDevice };
 }
 
 function makeUnavailableController(args: {
@@ -588,6 +712,53 @@ export function createWalletsApi(
 
     return {
         /**
+         * Whether this browser can offer Apple Pay — asked before anything is
+         * mounted, and before `attachPayment`.
+         *
+         * This is the call that keeps an Apple Pay option off an Android
+         * phone's payment-method list entirely, rather than rendering it and
+         * retracting it through `onUnavailable` a moment later. It needs no
+         * payment and no container: only `shareableKey`, like
+         * `getBrowserData()`.
+         *
+         * ```ts
+         * const apple = await sdk.getApplePayAvailability();
+         * if (apple.available) showApplePayOption();
+         * // { available: false, reason: 'unsupported-device' }
+         * ```
+         *
+         * On an Android phone it answers without a network request at all —
+         * see {@link resolveApplePayAvailability} for the two short circuits
+         * and the one rule in them worth revisiting.
+         *
+         * It answers "can this device pay", not "will a button render":
+         * whether Apple's custom element registers is the mount's problem and
+         * the mount waits for it. So `available: true` is not a promise that
+         * `mountApplePayButton` cannot still report `button-unregistered`.
+         *
+         * A negative reports the same `walletUnavailable` event the mount
+         * would, with the same reason code — so asking first costs nothing in
+         * the data. It deliberately does **not** reach `onError`: the caller
+         * asked a question and got an answer, and an answer is not a failure.
+         */
+        async getApplePayAvailability(): Promise<WalletAvailability> {
+            const gate = await resolveApplePayAvailability();
+            if (gate.ok) {
+                return { available: true };
+            }
+
+            telemetry.walletUnavailable({
+                paymentMethod: 'applepay',
+                reason: gate.reason,
+                capabilities: {
+                    ...walletCapabilities('applepay'),
+                    ...(gate.csp ? { csp_directive: gate.csp.directive } : {}),
+                },
+            });
+            return { available: false, reason: gate.reason };
+        },
+
+        /**
          * Fetch Apple Pay configuration, auto-inject the Apple Pay JS SDK,
          * render an `<apple-pay-button>` into `container`, and return a
          * {@link WalletButtonController}.
@@ -618,52 +789,17 @@ export function createWalletsApi(
                 return { result, unmount: () => {} };
             }
 
-            // Inject the Apple Pay JS SDK unless both things it provides are already
-            // there: the <apple-pay-button> element and an ApplePaySession global.
-            //
-            // Loading on a missing button (rather than only on a missing
-            // ApplePaySession) is what lets Safari pages work without the host adding
-            // its own script tag — Safari has ApplePaySession built in, so the old
-            // condition never fired and the element stayed unregistered.
-            //
-            // Still loading when ApplePaySession is missing covers the reverse case: a
-            // host that already pulled in the older `v1` build, which registers the
-            // element but installs no shim. Stacking `1.latest` on top of `v1` is safe
-            // — both guard their registration with `customElements.get()` first.
-            const needsAppleSdk =
-                !globalThis.customElements?.get(APPLE_PAY_BUTTON_TAG) ||
-                !getApplePaySession();
-
-            if (needsAppleSdk && !hasApplePayScriptTag()) {
-                const csp = watchCspViolation(APPLE_PAY_SCRIPT_SRC);
-                try {
-                    await loadScriptOnce(APPLE_PAY_SCRIPT_SRC, {
-                        crossOrigin: 'anonymous',
-                    });
-                } catch {
-                    // The SDK is the only thing loading this script now, so a
-                    // blocked CDN (ad-blocker, CSP, proxy) has to reach the
-                    // merchant's fallback UI rather than leave an empty slot.
-                    //
-                    // Which of the three it was is read here rather than
-                    // guessed: the policy refusal is dispatched while the
-                    // element is being blocked, ahead of the error event that
-                    // rejects this load, so by now it has either arrived or it
-                    // was never a policy at all.
-                    const blocked = csp.blocked();
-                    return makeUnavailableController({
-                        client,
-                        telemetry,
-                        wallet: 'applepay',
-                        reason: blocked
-                            ? WALLET_UNAVAILABLE.scriptBlockedCsp
-                            : WALLET_UNAVAILABLE.scriptBlocked,
-                        csp: blocked,
-                        onUnavailable: options.onUnavailable,
-                    });
-                } finally {
-                    csp.stop();
-                }
+            // Same gate the availability probe uses, so the two cannot drift.
+            const library = await ensureApplePayLibrary();
+            if (!library.ok) {
+                return makeUnavailableController({
+                    client,
+                    telemetry,
+                    wallet: 'applepay',
+                    reason: library.reason,
+                    csp: library.csp,
+                    onUnavailable: options.onUnavailable,
+                });
             }
 
             try {

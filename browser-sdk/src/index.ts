@@ -32,7 +32,9 @@ export type {
 export type {
     ApplePayButtonOptions,
     GooglePayButtonOptions,
+    WalletAvailability,
     WalletButtonController,
+    WalletUnavailableReason,
 } from './modules/wallets/wallets.module.js';
 export type {
     BrowserData,

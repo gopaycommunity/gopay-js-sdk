@@ -1352,6 +1352,138 @@ describe('mountApplePayButton()', () => {
             }),
         );
     });
+
+    describe('getApplePayAvailability()', () => {
+        const makeTelemetry = () => ({
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+            walletUnavailable: vi.fn(),
+            integratorError: vi.fn(),
+        });
+
+        it('answers without an attached payment, which is the whole point', async () => {
+            // It is called to decide whether to render an Apple Pay option at
+            // all — before a payment exists, let alone is attached.
+            const api = createWalletsApi(makeClient() as never, () => null);
+
+            await expect(api.getApplePayAvailability()).resolves.toEqual({
+                available: true,
+            });
+        });
+
+        it('refuses an Android phone without fetching Apple’s script', async () => {
+            // The case this exists for. A Chromium reporting itself as mobile with
+            // no ApplePaySession is an Android phone, and Apple's shim would only
+            // be fetched to say the same thing — so 58 kB and a round trip are
+            // skipped and the method list can render immediately.
+            vi.stubGlobal('ApplePaySession', undefined);
+            vi.stubGlobal('navigator', {
+                ...navigator,
+                userAgentData: { mobile: true },
+            });
+            const api = createWalletsApi(makeClient() as never, () => null);
+
+            await expect(api.getApplePayAvailability()).resolves.toEqual({
+                available: false,
+                reason: 'unsupported-device',
+            });
+            expect(mockLoadScriptOnce).not.toHaveBeenCalled();
+        });
+
+        it('answers from Safari’s built-in session without fetching anything', async () => {
+            const api = createWalletsApi(makeClient() as never, () => null);
+
+            await expect(api.getApplePayAvailability()).resolves.toEqual({
+                available: true,
+            });
+            expect(mockLoadScriptOnce).not.toHaveBeenCalled();
+        });
+
+        it('does not guess on a desktop browser — it loads and asks', async () => {
+            // userAgentData is Chromium-only, so Safari and Firefox report
+            // nothing here. The shortcut is narrow on purpose: they fall through
+            // to the honest path rather than being guessed about.
+            vi.stubGlobal('ApplePaySession', undefined);
+            vi.stubGlobal('navigator', {
+                ...navigator,
+                userAgentData: undefined,
+            });
+            const api = createWalletsApi(makeClient() as never, () => null);
+
+            const result = await api.getApplePayAvailability();
+
+            expect(mockLoadScriptOnce).toHaveBeenCalled();
+            // The mocked script installs nothing, so the library is missing —
+            // which is a different answer from "this device cannot".
+            expect(result).toEqual({
+                available: false,
+                reason: 'library-missing',
+            });
+        });
+
+        it('reports the device gate turning it away', async () => {
+            MockApplePaySession.canMakePayments.mockReturnValue(false);
+            const api = createWalletsApi(makeClient() as never, () => null);
+
+            await expect(api.getApplePayAvailability()).resolves.toEqual({
+                available: false,
+                reason: 'unsupported-device',
+            });
+        });
+
+        it('separates a policy refusal from an ad-blocker, same as the mount', async () => {
+            vi.stubGlobal('ApplePaySession', undefined);
+            vi.stubGlobal('navigator', {
+                ...navigator,
+                userAgentData: undefined,
+            });
+            mockLoadScriptOnce.mockRejectedValue(new Error('blocked'));
+            const api = createWalletsApi(makeClient() as never, () => null);
+
+            await expect(api.getApplePayAvailability()).resolves.toEqual({
+                available: false,
+                reason: 'script-blocked',
+            });
+        });
+
+        it('reports the negative to telemetry but never as an error', async () => {
+            MockApplePaySession.canMakePayments.mockReturnValue(false);
+            const telemetry = makeTelemetry();
+            const client = makeClient();
+            const api = createWalletsApi(
+                client as never,
+                () => null,
+                telemetry as never,
+            );
+
+            await api.getApplePayAvailability();
+
+            expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    paymentMethod: 'applepay',
+                    reason: 'unsupported-device',
+                }),
+            );
+            // The caller asked a question and got an answer. An answer is not a
+            // failure, so onError must stay clean.
+            expect(client.reportError).not.toHaveBeenCalled();
+        });
+
+        it('stays silent when the answer is yes', async () => {
+            const telemetry = makeTelemetry();
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => null,
+                telemetry as never,
+            );
+
+            await api.getApplePayAvailability();
+
+            expect(telemetry.walletUnavailable).not.toHaveBeenCalled();
+        });
+    });
 });
 
 // ---------------------------------------------------------------------------
