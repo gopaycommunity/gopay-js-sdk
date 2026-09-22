@@ -28,6 +28,27 @@ describe('safeErrorMessage()', () => {
             'access_token=abc',
         ],
         [
+            // The case above is caught by the sensitive-name rule, not by the
+            // fragment one — reverting `[?#]` to `\?` left it green. This one
+            // has no sensitive name in it, so only the fragment rule can.
+            'anything else in the fragment, which no name rule would catch',
+            'redirect to https://x.test/cb#sid=SESSION-9f3a2b1c',
+            'SESSION-9f3a2b1c',
+        ],
+        [
+            // A greedy run swallows the full stop, which made `split` yield an
+            // empty part and the structural check fail. A token at the end of
+            // a sentence is the most ordinary shape a message has.
+            'a token ending a sentence, not only one mid-sentence',
+            'rejected payload eyJhbGciOiJSU0EtT0FFUCJ9.abcdefghij.klmnopqrst.uvwxyzabcd.efghijklmn.',
+            'eyJhbGciOiJ',
+        ],
+        [
+            'a three-segment JWS ending a sentence',
+            'token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27u.',
+            'eyJzdWIiOiI',
+        ],
+        [
             '3DS fields posted as a bare pair',
             'posted MD=abc123def&PaRes=eNrtWEuTo0YM',
             'MD=abc',
@@ -370,6 +391,30 @@ describe('createGwLoggerTelemetry()', () => {
         }
 
         expect(fetchMock).toHaveBeenCalledTimes(50);
+    });
+
+    it('carries the HTTP method, which is the only thing separating a POST from its polls', async () => {
+        // One charge is a POST that starts it and GETs that poll the result.
+        // They share an action and a target, so before this field they were
+        // indistinguishable rows differing only in duration.
+        makeTelemetry().apiCall({
+            method: 'POST',
+            endpoint: '/payments/{id}/charge',
+            statusCode: 201,
+            durationMs: 1_348,
+        });
+
+        expect((await eventOf()).http_method).toBe('POST');
+    });
+
+    it('omits the method on an SDK failure, which was never an HTTP call', async () => {
+        makeTelemetry().error(
+            new GoPaySDKError('[GoPayBrowserSDK] nope', {
+                errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+            }),
+        );
+
+        expect(await eventOf()).not.toHaveProperty('http_method');
     });
 
     it('names the action after the last segment that names something', async () => {
@@ -839,7 +884,32 @@ describe('the leave beacon', () => {
         expect(leaves()).toBe(1);
     });
 
-    it('fires once and removes itself, so an SPA cannot accumulate listeners', () => {
+    it('reports one leave per page, not one per SDK instance', () => {
+        // Measured on sandbox, not imagined: an integrator that rebuilds the
+        // SDK when its configuration changes produced three `leave` events
+        // for one teardown, and five for an earlier one. Every abandoned
+        // instance still had a listener.
+        registerLeaveBeacon(telemetrySpy as never);
+        registerLeaveBeacon(telemetrySpy as never);
+        registerLeaveBeacon(telemetrySpy as never);
+
+        globalThis.dispatchEvent(new Event('pagehide'));
+
+        expect(leaves()).toBe(1);
+    });
+
+    it('reports through the SDK built last, which is the one in use', () => {
+        const stale = { ...telemetrySpy, lifecycle: vi.fn() };
+        registerLeaveBeacon(stale as never);
+        registerLeaveBeacon(telemetrySpy as never);
+
+        globalThis.dispatchEvent(new Event('pagehide'));
+
+        expect(stale.lifecycle).not.toHaveBeenCalled();
+        expect(leaves()).toBe(1);
+    });
+
+    it('fires once per teardown, not on every later event', () => {
         registerLeaveBeacon(telemetrySpy as never);
 
         globalThis.dispatchEvent(new Event('pagehide'));

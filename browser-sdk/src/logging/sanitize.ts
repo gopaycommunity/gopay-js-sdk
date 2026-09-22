@@ -68,6 +68,31 @@ function isCompactJose(run: string): boolean {
 }
 
 /**
+ * Redact a run that turns out to be a token, keeping the punctuation around
+ * it.
+ *
+ * The trimming is the point. `JOSE_RUN` is greedy over dots, so the full stop
+ * ending a sentence joins the run, `split` then yields an empty last part and
+ * the structural check fails — which quietly stopped redacting any token at
+ * the end of a message, the most ordinary shape an error message has. The
+ * suite stayed green because its token sat mid-sentence.
+ */
+function redactJose(run: string): string {
+    let start = 0;
+    let end = run.length;
+    while (start < end && run[start] === '.') {
+        start += 1;
+    }
+    while (end > start && run[end - 1] === '.') {
+        end -= 1;
+    }
+    if (!isCompactJose(run.slice(start, end))) {
+        return run;
+    }
+    return run.slice(0, start) + REDACTED + run.slice(end);
+}
+
+/**
  * The domain half of an e-mail address, anchored on the `@`.
  *
  * Anchoring is the whole trick. Any pattern that begins with the local part —
@@ -140,7 +165,7 @@ export function safeErrorMessage(error: unknown): string {
             // Keeps the `?` or `#` so a reader can see what was dropped.
             .replace(QUERY_OR_FRAGMENT, (m) => `${m[0]}${REDACTED}`)
             .replace(SENSITIVE_PAIR, REDACTED)
-            .replace(JOSE_RUN, (run) => (isCompactJose(run) ? REDACTED : run))
+            .replace(JOSE_RUN, redactJose)
             // Last: the rules above leave `[redacted]` behind, and a PAN can
             // still be sitting in whatever text they did not match.
             .replace(PAN_LIKE, REDACTED)

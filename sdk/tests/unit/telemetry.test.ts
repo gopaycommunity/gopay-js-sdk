@@ -194,6 +194,46 @@ describe('telemetry from the HTTP client', () => {
         expect(reported.errorCode).toBeUndefined();
     });
 
+    it('reports a foreign code but never a foreign message', () => {
+        // This is the same path as the network-error wrap: the message it
+        // builds goes out through telemetry.error. A code is fine; the prose
+        // beside it is written by somebody else's code.
+        const client = createHttpClient(
+            { baseUrl: 'https://example.com' },
+            undefined,
+            telemetry,
+        );
+
+        client.reportError({
+            statusCode: 'DEVELOPER_ERROR',
+            statusMessage: 'merchant 4711 not recognised for jan@example.com',
+            message: 'and neither is this one',
+        });
+
+        const reported = telemetry.error.mock.calls[0]?.[0] as GoPaySDKError;
+        expect(reported.message).toContain('DEVELOPER_ERROR');
+        expect(reported.message).not.toContain('not recognised');
+        expect(reported.message).not.toContain('jan@example.com');
+        expect(reported.message).not.toContain('and neither');
+    });
+
+    it('does not mistake a sentence for a status code', () => {
+        // `statusCode` is only kept when it looks like a code. Without that
+        // test the pattern could be widened to anything and nothing would
+        // notice — which is how prose gets back in through the field that was
+        // meant to be the safe one.
+        const client = createHttpClient(
+            { baseUrl: 'https://example.com' },
+            undefined,
+            telemetry,
+        );
+
+        client.reportError({ statusCode: 'Card declined by issuer 4711' });
+
+        const reported = telemetry.error.mock.calls[0]?.[0] as GoPaySDKError;
+        expect(reported.message).not.toContain('declined by issuer');
+    });
+
     it('reports one foreign error once, however many times it is handed over', () => {
         const client = createHttpClient(
             { baseUrl: 'https://example.com' },
@@ -232,7 +272,7 @@ describe('telemetry from the HTTP client', () => {
         const client = createHttpClient(
             {
                 baseUrl: 'https://example.com',
-                onError: () => slowHandler as unknown as void,
+                onError: (): Promise<void> => slowHandler,
             },
             undefined,
             telemetry,
