@@ -274,10 +274,7 @@ function asWalletError(cause: unknown): GoPaySDKError | GoPayHTTPError {
         return cause;
     }
     const detail =
-        typeof cause === 'object' && cause !== null
-            ? ((cause as { statusCode?: unknown }).statusCode ??
-              (cause as { message?: unknown }).message)
-            : cause;
+        readProp(cause, 'statusCode') ?? readProp(cause, 'message') ?? cause;
     return new GoPaySDKError(
         `[GoPayBrowserSDK] Wallet payment failed: ${
             typeof detail === 'string' ? detail : 'unknown wallet error'
@@ -331,6 +328,21 @@ const UNAVAILABLE_MESSAGE: Record<WalletUnavailableReason, string> = {
     'readiness-check-failed': 'the readiness check itself failed',
 };
 
+/**
+ * Read one property off a value of unknown shape.
+ *
+ * `Reflect.get` takes an `object`, so the guard above it is what TypeScript
+ * narrows on — which is how this replaces four `as` casts without adding a
+ * fifth inside itself. CLAUDE.md allows `as` only for `as const`, and a cast
+ * per call site is also four chances to assert a shape that is not there.
+ */
+function readProp(value: unknown, key: string): unknown {
+    if (typeof value !== 'object' || value === null) {
+        return undefined;
+    }
+    return Reflect.get(value, key);
+}
+
 /** A policy refusal of one script: what refused it, and what to allow. */
 type CspRefusal = { origin: string; directive: string };
 
@@ -374,19 +386,23 @@ function watchCspViolation(src: string): {
 
     let refusal: CspRefusal | undefined;
     const onViolation = (event: Event): void => {
-        const violation = event as SecurityPolicyViolationEvent;
-        const blockedUri = violation.blockedURI;
-        if (blockedUri !== origin && !blockedUri?.startsWith(`${origin}/`)) {
+        const blockedUri = readProp(event, 'blockedURI');
+        if (typeof blockedUri !== 'string') {
+            return;
+        }
+        if (blockedUri !== origin && !blockedUri.startsWith(`${origin}/`)) {
             return;
         }
         // `effectiveDirective` is the modern name and the one that reports
         // which directive actually did the blocking; `violatedDirective` is
         // its long-standing alias, still the populated one on some engines.
+        const effective = readProp(event, 'effectiveDirective');
+        const violated = readProp(event, 'violatedDirective');
         refusal ??= {
             origin,
             directive:
-                violation.effectiveDirective ||
-                violation.violatedDirective ||
+                (typeof effective === 'string' && effective) ||
+                (typeof violated === 'string' && violated) ||
                 'script-src',
         };
     };
@@ -418,12 +434,11 @@ function walletCapabilities(
     wallet: WalletId,
 ): Record<string, string | number | boolean | null> {
     try {
-        const nav = globalThis.navigator as
-            | (Navigator & { userAgentData?: { mobile?: boolean } })
-            | undefined;
+        const nav = globalThis.navigator;
+        const mobile = readProp(readProp(nav, 'userAgentData'), 'mobile');
         const shared = {
             secure_context: globalThis.isSecureContext ?? null,
-            ua_mobile: nav?.userAgentData?.mobile ?? null,
+            ua_mobile: typeof mobile === 'boolean' ? mobile : null,
             max_touch_points: nav?.maxTouchPoints ?? null,
         };
         if (wallet !== 'applepay') {
@@ -532,16 +547,12 @@ async function resolveApplePayAvailability(): Promise<WalletGate> {
             : { ok: false, reason: WALLET_UNAVAILABLE.unsupportedDevice };
     }
 
-    if (globalThis.navigator) {
-        const nav = globalThis.navigator as Navigator & {
-            userAgentData?: { mobile?: boolean };
-        };
-        if (nav.userAgentData?.mobile === true) {
-            return {
-                ok: false,
-                reason: WALLET_UNAVAILABLE.unsupportedDevice,
-            };
-        }
+    const uaMobile = readProp(
+        readProp(globalThis.navigator, 'userAgentData'),
+        'mobile',
+    );
+    if (uaMobile === true) {
+        return { ok: false, reason: WALLET_UNAVAILABLE.unsupportedDevice };
     }
 
     const library = await ensureApplePayLibrary();
@@ -1227,10 +1238,7 @@ export function createWalletsApi(
                     // customer dismissing the sheet into a reported failure
                     // with no onCancel. Broadening it cannot regress the
                     // Error-shaped case, so it is right under either shape.
-                    const statusCode =
-                        typeof err === 'object' && err !== null
-                            ? (err as { statusCode?: unknown }).statusCode
-                            : undefined;
+                    const statusCode = readProp(err, 'statusCode');
                     const isCancel =
                         statusCode === 'CANCELED' ||
                         (err instanceof DOMException &&

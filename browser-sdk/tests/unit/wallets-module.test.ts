@@ -60,6 +60,18 @@ const mockChargeState = {
     return_url: 'https://example.com/return',
 };
 
+/**
+ * `!` needs a `biome-ignore` beside it, and CLAUDE.md does not allow one. This
+ * also says more when it fires: `!` on a missing element throws "cannot read
+ * click of null" a line later, while this names what was not there.
+ */
+function must<T>(value: T | null | undefined, what: string): T {
+    if (value === null || value === undefined) {
+        throw new Error(`[test] expected ${what} to be present`);
+    }
+    return value;
+}
+
 function makePaymentsApi(overrides?: Record<string, unknown>) {
     return {
         getApplePayInfo: vi.fn().mockResolvedValue(makeApplePayInfo()),
@@ -694,10 +706,14 @@ describe('mountApplePayButton()', () => {
         );
 
         const ctrl = await api.mountApplePayButton(container);
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
-        container.querySelector<HTMLElement>('apple-pay-button')!.click();
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        lastSession.onpaymentauthorized!({
+        must(
+            container.querySelector<HTMLElement>('apple-pay-button'),
+            'the apple-pay-button element',
+        ).click();
+        must(
+            lastSession.onpaymentauthorized,
+            'the onpaymentauthorized handler',
+        )({
             payment: { token: { paymentData: validApplePaymentData } },
         });
         await ctrl.result;
@@ -1700,8 +1716,7 @@ describe('mountGooglePayButton()', () => {
 
         const ctrl = await api.mountGooglePayButton(container);
         expect(capturedOnClick).toBeDefined();
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
 
         expect(paymentsApi.chargePayment).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -1733,8 +1748,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
         await ctrl.result;
 
         expect(telemetry.submit).toHaveBeenCalledWith('googlepay-button', {
@@ -1757,8 +1771,7 @@ describe('mountGooglePayButton()', () => {
 
         await api.mountGooglePayButton(container, { onCancel });
         expect(capturedOnClick).toBeDefined();
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
 
         expect(onCancel).toHaveBeenCalledOnce();
         expect(paymentsApi.chargePayment).not.toHaveBeenCalled();
@@ -1777,8 +1790,7 @@ describe('mountGooglePayButton()', () => {
 
         await api.mountGooglePayButton(container, { onCancel });
         expect(capturedOnClick).toBeDefined();
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
 
         expect(onCancel).toHaveBeenCalledOnce();
     });
@@ -1795,8 +1807,7 @@ describe('mountGooglePayButton()', () => {
 
         const ctrl = await api.mountGooglePayButton(container);
         expect(capturedOnClick).toBeDefined();
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
 
         const err = await ctrl.result.catch((e: unknown) => e);
         expect(err).toBe(networkError);
@@ -1813,8 +1824,7 @@ describe('mountGooglePayButton()', () => {
 
         const ctrl = await api.mountGooglePayButton(container);
         expect(capturedOnClick).toBeDefined();
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
 
         const err = await ctrl.result.catch((e: unknown) => e);
         expect((err as GoPaySDKError).errorCode).toBe(
@@ -1837,8 +1847,7 @@ describe('mountGooglePayButton()', () => {
 
         const ctrl = await api.mountGooglePayButton(container);
         expect(capturedOnClick).toBeDefined();
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
 
         const err = await ctrl.result.catch((e: unknown) => e);
         expect((err as GoPaySDKError).errorCode).toBe(
@@ -1875,8 +1884,7 @@ describe('mountGooglePayButton()', () => {
 
         const ctrl = await api.mountGooglePayButton(container);
         expect(capturedOnClick).toBeDefined();
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
         await ctrl.result;
 
         expect(() => ctrl.unmount()).not.toThrow();
@@ -1916,8 +1924,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
 
         const err = await ctrl.result.catch((e: unknown) => e);
         expect(err).toBe(chargeError);
@@ -1947,8 +1954,7 @@ describe('mountGooglePayButton()', () => {
         const ctrl = await api.mountGooglePayButton(container, {
             awaitOptions: { onStateChange },
         });
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
 
         await ctrl.result;
         expect(onStateChange).toHaveBeenCalledWith(
@@ -1969,8 +1975,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
         await ctrl.result;
 
         expect(mockIsReadyToPay).toHaveBeenCalledWith({});
@@ -2155,8 +2160,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
         await ctrl.result.catch(() => {});
 
         // Reported as a named wallet failure rather than raw: an unnamed
@@ -2184,8 +2188,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
         await ctrl.result.catch(() => {});
 
         const reported = client.reportError.mock.calls[0]?.[0] as GoPaySDKError;
@@ -2210,8 +2213,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container, { onCancel });
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
 
         expect(onCancel).toHaveBeenCalledOnce();
         expect(client.reportError).not.toHaveBeenCalled();
@@ -2238,8 +2240,7 @@ describe('mountGooglePayButton()', () => {
         );
 
         const ctrl = await api.mountGooglePayButton(container);
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        await capturedOnClick!();
+        await must(capturedOnClick, 'the Google Pay button onClick')();
         await ctrl.result.catch(() => {});
 
         expect(client.reportError).toHaveBeenCalledWith(
