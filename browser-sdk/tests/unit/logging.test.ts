@@ -11,6 +11,44 @@ import { registerLeaveBeacon } from '../../src/logging/leave-beacon.js';
 import { safeErrorMessage, safePageUrl } from '../../src/logging/sanitize.js';
 
 describe('safeErrorMessage()', () => {
+    // Every one of these reached the ingest unredacted before: measured on
+    // the branch, not imagined. The ticket names PII and the encrypted
+    // payload as hard prohibitions, so each is its own case rather than one
+    // table — a regression should name which shape came back.
+    it.each([
+        ['an e-mail address', 'failed for jan.novak@example.com', 'novak@'],
+        [
+            'a compact JOSE token in prose',
+            'payload eyJhbGciOiJSU0EtT0FFUCJ9.abcdefghij.klmnopqrst.uvwxyzabcd.efghijklmn rejected',
+            'eyJhbGciOiJ',
+        ],
+        [
+            'a token in the fragment, where there is no question mark to match',
+            'redirect to https://x.test/cb#access_token=abc123def456&state=z',
+            'access_token=abc',
+        ],
+        [
+            '3DS fields posted as a bare pair',
+            'posted MD=abc123def&PaRes=eNrtWEuTo0YM',
+            'MD=abc',
+        ],
+        [
+            'a payment secret written into the message',
+            'paymentSecret=abc123 was wrong',
+            'paymentSecret=abc',
+        ],
+    ])('redacts %s', (_label, input, leak) => {
+        expect(safeErrorMessage(new Error(input))).not.toContain(leak);
+    });
+
+    it('leaves an ordinary message alone', () => {
+        // The guard on the guards: patterns aggressive enough to eat version
+        // numbers or endpoint names would make every log line unreadable.
+        const message = 'Request timed out after 10000 ms (v1.2.3, api 4.0)';
+
+        expect(safeErrorMessage(new Error(message))).toBe(message);
+    });
+
     it('redacts a PAN-shaped digit run', () => {
         expect(
             safeErrorMessage(new Error('card 4111111111111111 declined')),
@@ -366,6 +404,26 @@ describe('createGwLoggerTelemetry()', () => {
         makeTelemetry().apiCall(GET_PAYMENT);
 
         expect(requests[0]?.keepalive).toBe(true);
+    });
+
+    it('abandons a hanging ingest instead of holding the payment open', () => {
+        // keepalive is tested next door and answers a different question: it
+        // keeps the request alive through unload. This is the half that ends
+        // it when the ingest never answers — remove the `signal` and the
+        // promise this SDK never awaits is still a socket it never closes.
+        const controller = new AbortController();
+        const timeoutSpy = vi
+            .spyOn(AbortSignal, 'timeout')
+            .mockReturnValue(controller.signal);
+
+        makeTelemetry().apiCall(GET_PAYMENT);
+
+        expect(timeoutSpy).toHaveBeenCalledWith(2_000);
+        // Identity is not assertable — Request derives its own signal from
+        // the one it is given — so follow the abort through instead. Drop the
+        // `signal` and the request gets a signal of its own that never fires.
+        controller.abort();
+        expect(requests[0]?.signal.aborted).toBe(true);
     });
 
     it('routes production to the production ingest', () => {

@@ -62,12 +62,17 @@ describe('telemetry from the HTTP client', () => {
     });
 
     it('measures a duration rather than reporting a placeholder', async () => {
+        // Freezing the clock is the point. `Number.isFinite` and `>= 0` are
+        // satisfied by any constant, so the previous version of this test
+        // passed with the subtraction replaced by 42 — it asserted exactly
+        // what its name says it rules out.
+        vi.spyOn(performance, 'now')
+            .mockReturnValueOnce(1_000)
+            .mockReturnValueOnce(1_150);
+
         await makeClient().get('/payments/300000001');
 
-        const durationMs = telemetry.apiCall.mock.calls[0]?.[0]
-            .durationMs as number;
-        expect(Number.isFinite(durationMs)).toBe(true);
-        expect(durationMs).toBeGreaterThanOrEqual(0);
+        expect(telemetry.apiCall.mock.calls[0]?.[0].durationMs).toBe(150);
     });
 
     it('records the HTTP status when the API refuses the call', async () => {
@@ -124,8 +129,10 @@ describe('telemetry from the HTTP client', () => {
 
         await expect(makeClient().get('/payments/1')).rejects.toThrow();
 
-        // handleError wraps it and emitError reports it; the WeakSet in
-        // reportOnce is what keeps that a single record.
+        // One failure, one record. This scenario reaches reportOnce by a
+        // single path, so it does not exercise the WeakSet — the dedupe is
+        // covered by the HTTP-error test below, and claiming it here made
+        // that coverage look like it was already accounted for.
         expect(telemetry.error).toHaveBeenCalledOnce();
     });
 
@@ -201,6 +208,43 @@ describe('telemetry from the HTTP client', () => {
         // The wrapper is a new object each time, so the existing dedupe
         // cannot see it — this needs its own.
         expect(telemetry.error).toHaveBeenCalledOnce();
+    });
+
+    it('finishes the call before a slow onError has settled', async () => {
+        // Ordering, not just completion. `onError` is declared `=> void` but
+        // TypeScript accepts an async function there, so the realistic
+        // regression is a handler that forwards to the integrator's own
+        // ingest and takes a network round trip to come back.
+        //
+        // Note the property is structural: nothing awaits `reportOnce`, so
+        // adding an `await` *inside* it changes nothing. What this catches is
+        // the awaited version — a call site that decides to wait for the
+        // report — and then it fails by hanging, exactly as a payment would.
+        let handlerSettled = false;
+        let release!: () => void;
+        const slowHandler = new Promise<void>((resolve) => {
+            release = () => {
+                handlerSettled = true;
+                resolve();
+            };
+        });
+        fetchMock.mockRejectedValue(new Error('network down'));
+        const client = createHttpClient(
+            {
+                baseUrl: 'https://example.com',
+                onError: () => slowHandler as unknown as void,
+            },
+            undefined,
+            telemetry,
+        );
+        client.tokenStore.set(storedTokens);
+
+        await expect(client.get('/payments/1')).rejects.toThrow();
+
+        expect(handlerSettled).toBe(false);
+        expect(telemetry.error).toHaveBeenCalledOnce();
+        release();
+        await slowHandler;
     });
 
     it('works with no telemetry installed, which is what the server SDK does', async () => {
