@@ -9,7 +9,11 @@ import {
     runLogout,
     updateAuthBadge,
 } from './auth.js';
-import { browserApplePayLoadInfo } from './browser-apple-pay.js';
+import {
+    browserApplePayCheckAvailability,
+    browserApplePayLoadInfo,
+    browserApplePayUnmount,
+} from './browser-apple-pay.js';
 import { runBrowserCharge } from './browser-charge.js';
 import { browserGooglePayLoadInfo } from './browser-google-pay.js';
 import {
@@ -244,6 +248,8 @@ window.cardPayExtSubmit = cardPayExtSubmit;
 window.runBrowserCharge = runBrowserCharge;
 window.browserGooglePayLoadInfo = browserGooglePayLoadInfo;
 window.browserApplePayLoadInfo = browserApplePayLoadInfo;
+window.browserApplePayCheckAvailability = browserApplePayCheckAvailability;
+window.browserApplePayUnmount = browserApplePayUnmount;
 window.browserQRPaymentInfo = browserQRPaymentInfo;
 window.browserGetChargeState = browserGetChargeState;
 window.browserGetStatus = browserGetStatus;

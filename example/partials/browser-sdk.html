@@ -96,8 +96,13 @@
             <p class="desc">
                 <code>mountApplePayButton()</code> — auto-fetches config, renders the <code>&lt;apple-pay-button&gt;</code>, handles merchant validation and the payment sheet, charges, and polls to completion. Requires an attached payment.
             </p>
+            <p class="desc">
+                <code>getApplePayAvailability()</code> — answers whether this browser can offer Apple Pay, before anything is mounted and <strong>without</strong> an attached payment. Returns <code>{ available: true }</code> or <code>{ available: false, reason }</code>.
+            </p>
             <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="browserApplePayCheckAvailability()">Check Availability</button>
                 <button type="button" onclick="browserApplePayLoadInfo()">Mount Apple Pay Button</button>
+                <button type="button" onclick="browserApplePayUnmount()">Unmount</button>
                 <div id="bapplepay-button-container" class="flex items-center gap-2"></div>
             </div>
             <pre id="bapplepay-output">—</pre>
