@@ -170,6 +170,45 @@ describe('telemetry from the HTTP client', () => {
         ).toBe(GoPayErrorCodes.AUTH_TOKEN_MISSING);
     });
 
+    it('honours the telemetry opt-out while still reaching onError', () => {
+        // A deliberate wallet teardown describes itself through its own event
+        // (walletUnmount). Routing it through SDK.WALLET_BUTTON_ERROR as well
+        // would count one occurrence twice and leave a merchant unmounting a
+        // button indistinguishable from a sheet that broke — so the operational
+        // event is suppressed while the integrator still hears about it.
+        const onError = vi.fn();
+        const client = createHttpClient(
+            { baseUrl: 'https://example.com', onError },
+            undefined,
+            telemetry,
+        );
+        const err = new GoPaySDKError('[GoPaySDK] button unmounted.', {
+            errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+        });
+
+        client.reportError(err, { telemetry: false });
+
+        expect(telemetry.error).not.toHaveBeenCalled();
+        expect(onError).toHaveBeenCalledWith(err);
+    });
+
+    it('still reports to telemetry when the opt-out is not asked for', () => {
+        // The guard against the suppression above leaking into the default.
+        const client = createHttpClient(
+            { baseUrl: 'https://example.com' },
+            undefined,
+            telemetry,
+        );
+
+        client.reportError(
+            new GoPaySDKError('[GoPaySDK] something broke', {
+                errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+            }),
+        );
+
+        expect(telemetry.error).toHaveBeenCalledOnce();
+    });
+
     it('reports a foreign error instead of dropping it in silence', () => {
         // Anything that is not one of our two error types used to fall
         // through reportError with no event and no onError. A wallet SDK

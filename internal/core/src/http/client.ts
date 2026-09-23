@@ -71,6 +71,13 @@ function reportOnce(
     config: CoreConfig,
     error: GoPaySDKError | GoPayHTTPError,
     telemetry: Telemetry,
+    /**
+     * False when the caller has already emitted an event that describes this
+     * better than `SDK.<code>` can. The integrator still hears about it through
+     * onError — only the operational event is suppressed, so the two do not
+     * count the same occurrence twice.
+     */
+    emitTelemetry = true,
 ): void {
     if (reportedErrors.has(error)) {
         return;
@@ -79,7 +86,7 @@ function reportOnce(
     // Behind the same dedupe as onError, so one failure is one record however
     // many layers it crossed. HTTP errors are skipped on purpose — they already
     // left through apiCall carrying their real status.
-    if (error instanceof GoPaySDKError) {
+    if (emitTelemetry && error instanceof GoPaySDKError) {
         telemetry.error(error);
     }
     // A throwing onError is the integrator's bug, and must not replace the
@@ -172,9 +179,13 @@ export function createHttpClient(
      * Ignores anything that is not an SDK error, so callers can hand it a bare
      * rejection reason.
      */
-    function reportError(error: unknown): void {
+    function reportError(
+        error: unknown,
+        options?: { telemetry?: boolean },
+    ): void {
+        const emitTelemetry = options?.telemetry !== false;
         if (error instanceof GoPaySDKError || error instanceof GoPayHTTPError) {
-            reportOnce(config, error, telemetry);
+            reportOnce(config, error, telemetry, emitTelemetry);
             return;
         }
 

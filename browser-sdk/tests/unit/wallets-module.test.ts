@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
+import {
+    GoPayErrorCodes,
+    GoPayHTTPError,
+    GoPaySDKError,
+} from '../../src/errors.js';
 import { createWalletsApi } from '../../src/modules/wallets/wallets.module.js';
 
 // ---------------------------------------------------------------------------
@@ -72,6 +76,68 @@ function must<T>(value: T | null | undefined, what: string): T {
     return value;
 }
 
+const PENDING = Symbol('still pending');
+
+/**
+ * The promise's outcome — its value or its rejection — or `PENDING` if it has
+ * none within `ms`. Several bugs below leave `result` pending forever, and
+ * awaiting it directly would fail on vitest's timeout, which names nothing.
+ */
+function outcomeWithin(promise: Promise<unknown>, ms = 50): Promise<unknown> {
+    return Promise.race([
+        promise.then(
+            (value) => value,
+            (error: unknown) => error,
+        ),
+        new Promise((resolve) => setTimeout(() => resolve(PENDING), ms)),
+    ]);
+}
+
+/**
+ * What a click handler throws never reaches the test: the DOM hands it to
+ * `window.onerror`, which is exactly where the Sentry event came from. This
+ * collects it there instead.
+ */
+function captureUncaught(): { errors: unknown[]; stop: () => void } {
+    const errors: unknown[] = [];
+    const onError = (event: ErrorEvent) => {
+        errors.push(event.error);
+        event.preventDefault();
+    };
+    window.addEventListener('error', onError);
+    return {
+        errors,
+        stop: () => window.removeEventListener('error', onError),
+    };
+}
+
+/**
+ * Run something that has to exhaust the ApplePaySession poll, without
+ * spending its ten seconds of wall clock.
+ *
+ * The poll matches gw-ui's (500 ms, 20 attempts), so any path where the script
+ * installs no session now takes ten seconds to reach its verdict — longer than
+ * vitest's per-test timeout, and pointless to sit through.
+ */
+async function withoutTheSessionWait<T>(run: () => Promise<T>): Promise<T> {
+    vi.useFakeTimers();
+    try {
+        const promise = run();
+        // Drains the chain rather than advancing a computed amount: the poll
+        // schedules each attempt from the previous one, and the last of them
+        // lands exactly on the bound, which is the wrong side of a boundary to
+        // be betting a test on.
+        await vi.runAllTimersAsync();
+        return await promise;
+    } finally {
+        vi.useRealTimers();
+    }
+}
+
+/** Sentry event 8dd085c3: Chrome Mobile iOS 153 on iOS 26.6 (UA frozen at 18_6). */
+const CHROME_IOS_UA =
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/153.0.7000.0 Mobile/15E148 Safari/604.1';
+
 function makePaymentsApi(overrides?: Record<string, unknown>) {
     return {
         getApplePayInfo: vi.fn().mockResolvedValue(makeApplePayInfo()),
@@ -114,6 +180,9 @@ function makeTelemetry() {
         submit: vi.fn(),
         walletUnavailable: vi.fn(),
         integratorError: vi.fn(),
+        walletUnmount: vi.fn(),
+        walletAvailability: vi.fn(),
+        walletStep: vi.fn(),
     };
 }
 
@@ -277,7 +346,9 @@ describe('mountApplePayButton()', () => {
             () => makePaymentsApi() as never,
         );
 
-        const ctrl = await api.mountApplePayButton(container);
+        const ctrl = await withoutTheSessionWait(() =>
+            api.mountApplePayButton(container),
+        );
         const err = await ctrl.result.catch((e: unknown) => e);
 
         expect((err as GoPaySDKError).errorCode).toBe(
@@ -692,12 +763,7 @@ describe('mountApplePayButton()', () => {
         // The wallet sheet is as opaque as the card form iframe: the customer
         // authorising is the one moment the SDK sees. Without it a dismissed
         // sheet and a charge that never fired are the same absence.
-        const telemetry = {
-            apiCall: vi.fn(),
-            error: vi.fn(),
-            lifecycle: vi.fn(),
-            submit: vi.fn(),
-        };
+        const telemetry = makeTelemetry();
         const paymentsApi = makePaymentsApi();
         const api = createWalletsApi(
             makeClient() as never,
@@ -923,38 +989,75 @@ describe('mountApplePayButton()', () => {
         expect(err).toBe(chargeError);
     });
 
-    it('removes spinner and forwards onStateChange when ACTION_REQUIRED fires with redirect_url in Apple Pay flow', async () => {
+    it('refuses a 3DS challenge on Apple Pay rather than navigating the page to it', async () => {
+        // GPOMA-2668 §3. The device already authenticated the token, so 3DS
+        // never applies — yet the flow was the card one, redirect mode
+        // included, and an ACTION_REQUIRED would have sent the page to an ACS
+        // while the sheet was still up. An error beats that, and beats silence.
+        const threeDsState = {
+            state: 'ACTION_REQUIRED',
+            action: { redirect_url: 'https://3ds.example.com' },
+        };
         const paymentsApi = makePaymentsApi({
-            awaitChargeState: vi
-                .fn()
-                .mockImplementation(
-                    async (opts: { onStateChange?: (s: unknown) => void }) => {
-                        opts.onStateChange?.({
-                            state: 'ACTION_REQUIRED',
-                            action: { redirect_url: 'https://3ds.example.com' },
-                        });
-                        return mockChargeState;
-                    },
-                ),
+            awaitChargeState: vi.fn(
+                (opts: {
+                    signal?: AbortSignal;
+                    onStateChange?: (s: unknown) => void;
+                    onActionRequired?: (url: string) => void;
+                }) => {
+                    opts.onStateChange?.(threeDsState);
+                    opts.onActionRequired?.(threeDsState.action.redirect_url);
+                    // What the real poll does after ACTION_REQUIRED: waits,
+                    // with no timeout, until it is aborted.
+                    return new Promise((_, reject) => {
+                        opts.signal?.addEventListener('abort', () =>
+                            reject(
+                                new GoPaySDKError(
+                                    '[GoPaySDK] Charge polling aborted.',
+                                    {
+                                        errorCode:
+                                            GoPayErrorCodes.CHARGE_FAILED,
+                                    },
+                                ),
+                            ),
+                        );
+                    });
+                },
+            ),
         });
         const onStateChange = vi.fn();
-        const client = makeClient();
         const api = createWalletsApi(
-            client as never,
+            makeClient() as never,
             () => paymentsApi as never,
         );
 
         const ctrl = await api.mountApplePayButton(container, {
             awaitOptions: { onStateChange },
         });
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing element should hard-fail, not silently no-op via ?.
-        container.querySelector<HTMLElement>('apple-pay-button')!.click();
-        // biome-ignore lint/style/noNonNullAssertion: tests should fail fast — missing handler should hard-fail, not silently no-op via ?.
-        lastSession.onpaymentauthorized!({
+        must(
+            container.querySelector<HTMLElement>('apple-pay-button'),
+            'the apple-pay-button element',
+        ).click();
+        must(
+            lastSession.onpaymentauthorized,
+            'the onpaymentauthorized handler',
+        )({
             payment: { token: { paymentData: validApplePaymentData } },
         });
 
-        await ctrl.result;
+        const err = await outcomeWithin(ctrl.result);
+        expect(err).toBeInstanceOf(GoPaySDKError);
+        expect((err as GoPaySDKError).errorCode).toBe(
+            GoPayErrorCodes.WALLET_BUTTON_ERROR,
+        );
+        // Never handed to the redirect: manual mode is what keeps the page.
+        expect(paymentsApi.awaitChargeState).toHaveBeenCalledWith(
+            expect.objectContaining({ threeDS: { mode: 'manual' } }),
+        );
+        expect(lastSession.completePayment).toHaveBeenCalledWith(
+            MockApplePaySession.STATUS_FAILURE,
+        );
+        // The integrator still sees the state it was refused on.
         expect(onStateChange).toHaveBeenCalledWith(
             expect.objectContaining({ state: 'ACTION_REQUIRED' }),
         );
@@ -1031,14 +1134,7 @@ describe('mountApplePayButton()', () => {
         // the very event added to explain why their button never drew.
         vi.useFakeTimers();
         MockApplePaySession.canMakePayments.mockReturnValue(false);
-        const telemetry = {
-            apiCall: vi.fn(),
-            error: vi.fn(),
-            lifecycle: vi.fn(),
-            submit: vi.fn(),
-            walletUnavailable: vi.fn(),
-            integratorError: vi.fn(),
-        };
+        const telemetry = makeTelemetry();
         const client = makeClient();
         const api = createWalletsApi(
             client as never,
@@ -1067,13 +1163,7 @@ describe('mountApplePayButton()', () => {
         // not an answer anyone can act on, and the sentence this replaces was
         // emitted verbatim by both wallets.
         MockApplePaySession.canMakePayments.mockReturnValue(false);
-        const telemetry = {
-            apiCall: vi.fn(),
-            error: vi.fn(),
-            lifecycle: vi.fn(),
-            submit: vi.fn(),
-            walletUnavailable: vi.fn(),
-        };
+        const telemetry = makeTelemetry();
         const api = createWalletsApi(
             makeClient() as never,
             () => makePaymentsApi() as never,
@@ -1098,21 +1188,16 @@ describe('mountApplePayButton()', () => {
         // script that did not finish loading, and they can do nothing about
         // the former.
         vi.stubGlobal('ApplePaySession', undefined);
-        const telemetry = {
-            apiCall: vi.fn(),
-            error: vi.fn(),
-            lifecycle: vi.fn(),
-            submit: vi.fn(),
-            walletUnavailable: vi.fn(),
-            integratorError: vi.fn(),
-        };
+        const telemetry = makeTelemetry();
         const api = createWalletsApi(
             makeClient() as never,
             () => makePaymentsApi() as never,
             telemetry as never,
         );
 
-        const ctrl = await api.mountApplePayButton(container);
+        const ctrl = await withoutTheSessionWait(() =>
+            api.mountApplePayButton(container),
+        );
         ctrl.result.catch(() => {});
 
         expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
@@ -1133,13 +1218,7 @@ describe('mountApplePayButton()', () => {
             configurable: true,
         });
         MockApplePaySession.canMakePayments.mockReturnValue(false);
-        const telemetry = {
-            apiCall: vi.fn(),
-            error: vi.fn(),
-            lifecycle: vi.fn(),
-            submit: vi.fn(),
-            walletUnavailable: vi.fn(),
-        };
+        const telemetry = makeTelemetry();
         const api = createWalletsApi(
             makeClient() as never,
             () => makePaymentsApi() as never,
@@ -1369,6 +1448,515 @@ describe('mountApplePayButton()', () => {
         );
     });
 
+    // -----------------------------------------------------------------------
+    // Production Sentry (GPOMA-2668)
+    // -----------------------------------------------------------------------
+
+    describe('the session the shopper taps into', () => {
+        const authorise = () =>
+            must(
+                lastSession.onpaymentauthorized,
+                'the onpaymentauthorized handler',
+            )({
+                payment: { token: { paymentData: validApplePaymentData } },
+            });
+
+        const tap = () =>
+            must(
+                container.querySelector<HTMLElement>('apple-pay-button'),
+                'the apple-pay-button element',
+            ).click();
+
+        it('ignores a second tap while the first sheet is still opening', async () => {
+            // Sentry 8dd085c3: two taps 1.32 s apart, no merchant validation
+            // between them. The second tap built a second session, its
+            // begin() threw InvalidAccessError into window.onerror, and
+            // onError never heard of it.
+            //
+            // WebKit allows one payment session per page; the plain mock
+            // does not model that, so this one does.
+            let open: object | null = null;
+            class OnePerPageSession extends MockApplePaySession {
+                begin = vi.fn(() => {
+                    if (open) {
+                        throw new DOMException(
+                            'Page already has an active payment session.',
+                            'InvalidAccessError',
+                        );
+                    }
+                    open = this;
+                });
+            }
+            vi.stubGlobal('ApplePaySession', OnePerPageSession);
+            const uncaught = captureUncaught();
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => makePaymentsApi() as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            tap();
+            const first = lastSession;
+            tap();
+            uncaught.stop();
+
+            expect(uncaught.errors).toEqual([]);
+            expect(applePayCtorArgs).toHaveLength(1);
+            // The sheet that did open is still the one the shopper pays in.
+            lastSession = first;
+            authorise();
+            await expect(ctrl.result).resolves.toEqual(mockChargeState);
+        });
+
+        it('reports a begin() that throws to onError as WALLET_BUTTON_ERROR', async () => {
+            // The constructor was guarded, begin() was not — so its throw
+            // skipped onError and cleanup and left `result` pending.
+            const refusal = new DOMException(
+                'Page already has an active payment session.',
+                'InvalidAccessError',
+            );
+            class RefusingSession extends MockApplePaySession {
+                begin = vi.fn(() => {
+                    throw refusal;
+                });
+            }
+            vi.stubGlobal('ApplePaySession', RefusingSession);
+            const uncaught = captureUncaught();
+            const client = makeClient();
+            const api = createWalletsApi(
+                client as never,
+                () => makePaymentsApi() as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            tap();
+            uncaught.stop();
+
+            const err = await outcomeWithin(ctrl.result);
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.WALLET_BUTTON_ERROR,
+            );
+            expect((err as GoPaySDKError).cause).toBe(refusal);
+            expect(client.reportError).toHaveBeenCalledWith(err);
+            expect(uncaught.errors).toEqual([]);
+        });
+
+        it('unmount() aborts a sheet the shopper still has open', async () => {
+            // The only abort() in the SDK was the failed-merchant-validation
+            // branch, so tearing the button down left the session active —
+            // and with it every later begin() on the page.
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => makePaymentsApi() as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            ctrl.result.catch(() => {});
+            tap();
+            ctrl.unmount();
+
+            expect(lastSession.abort).toHaveBeenCalledOnce();
+        });
+
+        it('reports a teardown as an unmount, not as a wallet error', async () => {
+            // unmount() reached gw-logger only as SDK.WALLET_BUTTON_ERROR, so
+            // a merchant tearing the button down when the shopper stepped back
+            // through the checkout looked exactly like a sheet that broke —
+            // and spent the error budget saying so.
+            const telemetry = makeTelemetry();
+            const client = makeClient();
+            const api = createWalletsApi(
+                client as never,
+                () => makePaymentsApi() as never,
+                telemetry as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            ctrl.result.catch(() => {});
+            tap();
+            ctrl.unmount();
+
+            expect(telemetry.walletUnmount).toHaveBeenCalledWith({
+                paymentMethod: 'applepay',
+                sheetOpen: true,
+                chargeInFlight: false,
+            });
+            // One teardown is one event: the rejection still carries the error
+            // to onError, but asks for no second event describing it worse.
+            expect(client.reportError).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                }),
+                { telemetry: false },
+            );
+        });
+
+        it('reports an idle teardown as idle, with no sheet and no charge', async () => {
+            const telemetry = makeTelemetry();
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => makePaymentsApi() as never,
+                telemetry as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            ctrl.result.catch(() => {});
+            ctrl.unmount();
+
+            expect(telemetry.walletUnmount).toHaveBeenCalledWith({
+                paymentMethod: 'applepay',
+                sheetOpen: false,
+                chargeInFlight: false,
+            });
+        });
+
+        it('records the tap and the dismissal, so the funnel has a middle', async () => {
+            // The gap the Sentry case fell through. `ready` said the button
+            // drew and the next event was whatever the charge did; a shopper
+            // who tapped and got no sheet produced nothing at all. gw-ui logs
+            // begin and cancel for its wallets and that is what this matches.
+            const telemetry = makeTelemetry();
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => makePaymentsApi() as never,
+                telemetry as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            ctrl.result.catch(() => {});
+            tap();
+            must(lastSession.oncancel, 'the oncancel handler')({});
+
+            expect(telemetry.walletStep.mock.calls.map(([c]) => c)).toEqual([
+                { paymentMethod: 'applepay', step: 'begin', status: 'start' },
+                { paymentMethod: 'applepay', step: 'cancel', status: 'info' },
+            ]);
+        });
+
+        it('reports one event for a teardown that interrupts a charge', async () => {
+            // Review measured the opposite: `rejectResult` set `settled` and
+            // never read it, so unmount() during a charge settled twice — once
+            // for the teardown (with the telemetry opt-out) and again when the
+            // aborted charge came back as a failure (without it). One teardown,
+            // two SDK.WALLET_BUTTON_ERROR events and two onError calls. The old
+            // unmount tests all ran with no charge in flight, which is why they
+            // never saw it.
+            const paymentsApi = makePaymentsApi({
+                awaitChargeState: vi.fn(
+                    (opts: { signal?: AbortSignal }) =>
+                        new Promise((_, reject) => {
+                            opts.signal?.addEventListener('abort', () =>
+                                reject(
+                                    new GoPaySDKError(
+                                        '[GoPaySDK] Charge polling aborted.',
+                                        {
+                                            errorCode:
+                                                GoPayErrorCodes.CHARGE_FAILED,
+                                        },
+                                    ),
+                                ),
+                            );
+                        }),
+                ),
+            });
+            const telemetry = makeTelemetry();
+            const client = makeClient();
+            const api = createWalletsApi(
+                client as never,
+                () => paymentsApi as never,
+                telemetry as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            ctrl.result.catch(() => {});
+            tap();
+            authorise();
+            await vi.waitFor(() =>
+                expect(paymentsApi.awaitChargeState).toHaveBeenCalled(),
+            );
+
+            ctrl.unmount();
+            await ctrl.result.catch(() => {});
+            // `result` rejects on the teardown itself, so awaiting it returns
+            // before the aborted charge has unwound. The second settle attempt
+            // — the one that used to slip through — happens a tick later, when
+            // awaitChargeState rejects and runChargeFlow hands back { ok:false }.
+            // Without this the assertion below passes either way.
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            expect(telemetry.walletUnmount).toHaveBeenCalledWith({
+                paymentMethod: 'applepay',
+                sheetOpen: true,
+                chargeInFlight: true,
+            });
+            // One teardown is one event — the assertion that was true only
+            // while nothing was being charged.
+            expect(client.reportError).toHaveBeenCalledTimes(1);
+            expect(client.reportError).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                }),
+                { telemetry: false },
+            );
+        });
+
+        it('refuses a second authorisation, the v4 charge being terminal', async () => {
+            // Reported from a live FAILED charge (fail_reason _5009): the sheet
+            // stayed up and offered another card. Apple treats a failure result
+            // as correctable, so `onpaymentauthorized` fires again — and
+            // nothing stopped that from starting a second chargePayment on a
+            // payment v4 had already settled, which cannot succeed and tells
+            // the shopper a different story than the page.
+            const paymentsApi = makePaymentsApi({
+                awaitChargeState: vi.fn().mockRejectedValue(
+                    new GoPaySDKError('[GoPaySDK] Charge failed', {
+                        errorCode: GoPayErrorCodes.CHARGE_FAILED,
+                    }),
+                ),
+            });
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => paymentsApi as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            ctrl.result.catch(() => {});
+            tap();
+            const session = lastSession;
+            authorise();
+            await ctrl.result.catch(() => {});
+
+            expect(session.completePayment).toHaveBeenCalledWith(
+                MockApplePaySession.STATUS_FAILURE,
+            );
+            // Dismissed, rather than left holding out an offer we cannot meet.
+            expect(session.abort).toHaveBeenCalledOnce();
+
+            // And if the sheet authorises anyway, the charge is not repeated.
+            lastSession = session;
+            authorise();
+            expect(paymentsApi.chargePayment).toHaveBeenCalledOnce();
+        });
+
+        it('lets the shopper tap again after merchant validation fails', async () => {
+            // Raised in review of this change, and real: merchant validation
+            // failing calls session.abort(), and WebKit's abort() reaches the
+            // session's final state WITHOUT dispatching a cancel event. So
+            // oncancel never runs, the tap guard added above goes on holding a
+            // session that no longer exists, and one failed
+            // /apple-pay/validate — a blip is enough — takes the button out
+            // for the rest of the page's life, every later tap ignored.
+            const failure = new GoPayHTTPError(502, { errors: [] });
+            const paymentsApi = makePaymentsApi({
+                startApplePaySession: vi.fn(
+                    (
+                        session: { begin: () => void },
+                        callbacks?: {
+                            onvalidationfailure?: (error: unknown) => void;
+                        },
+                    ) => {
+                        session.begin();
+                        callbacks?.onvalidationfailure?.(failure);
+                    },
+                ),
+            });
+            const client = makeClient();
+            const api = createWalletsApi(
+                client as never,
+                () => paymentsApi as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            ctrl.result.catch(() => {});
+            tap();
+
+            // Not silence: the sheet vanished and the merchant hears why.
+            expect(client.reportError).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                    cause: failure,
+                }),
+            );
+
+            // And the button still works — the failure may well be transient,
+            // so the next tap has to build a fresh session rather than be
+            // swallowed by the guard.
+            tap();
+            expect(applePayCtorArgs).toHaveLength(2);
+        });
+
+        it('does not tell the sheet the payment succeeded before the charge has', async () => {
+            // §2: STATUS_SUCCESS went out before chargePayment was even
+            // called, so the sheet showed a green tick and closed however
+            // the charge then ended.
+            let settleCharge: (state: unknown) => void = () => {};
+            const paymentsApi = makePaymentsApi({
+                awaitChargeState: vi.fn(
+                    () =>
+                        new Promise((resolve) => {
+                            settleCharge = resolve;
+                        }),
+                ),
+            });
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => paymentsApi as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            tap();
+            authorise();
+            await vi.waitFor(() =>
+                expect(paymentsApi.awaitChargeState).toHaveBeenCalled(),
+            );
+
+            expect(lastSession.completePayment).not.toHaveBeenCalled();
+
+            settleCharge(mockChargeState);
+            await ctrl.result;
+            expect(lastSession.completePayment).toHaveBeenCalledOnce();
+            expect(lastSession.completePayment).toHaveBeenCalledWith(
+                MockApplePaySession.STATUS_SUCCESS,
+            );
+        });
+
+        it.each([
+            [
+                'the gateway reports the charge FAILED',
+                {
+                    awaitChargeState: vi.fn().mockRejectedValue(
+                        new GoPaySDKError('[GoPaySDK] Charge failed', {
+                            errorCode: GoPayErrorCodes.CHARGE_FAILED,
+                        }),
+                    ),
+                },
+            ],
+            [
+                'the charge request itself is refused',
+                {
+                    chargePayment: vi
+                        .fn()
+                        .mockRejectedValue(
+                            new GoPayHTTPError(422, { errors: [] }),
+                        ),
+                },
+            ],
+        ])('tells the sheet the payment failed when %s', async (_label, overrides) => {
+            const paymentsApi = makePaymentsApi(overrides);
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => paymentsApi as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            tap();
+            authorise();
+            await ctrl.result.catch(() => {});
+
+            expect(lastSession.completePayment).toHaveBeenCalledOnce();
+            expect(lastSession.completePayment).toHaveBeenCalledWith(
+                MockApplePaySession.STATUS_FAILURE,
+            );
+        });
+
+        it('leaves a trace when completePayment throws, instead of swallowing it', async () => {
+            // Apple gives up on a session it has waited on too long, and
+            // completePayment then throws. The empty catch around it meant
+            // nobody would ever learn the sheet showed a failure for a charge
+            // that went through.
+            const expired = new DOMException(
+                'The payment session is no longer active.',
+                'InvalidAccessError',
+            );
+            class ExpiredSession extends MockApplePaySession {
+                completePayment = vi.fn(() => {
+                    throw expired;
+                });
+            }
+            vi.stubGlobal('ApplePaySession', ExpiredSession);
+            const telemetry = makeTelemetry();
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => makePaymentsApi() as never,
+                telemetry as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            tap();
+            authorise();
+
+            // The charge went through, and that is still what the page hears.
+            await expect(ctrl.result).resolves.toEqual(mockChargeState);
+            expect(telemetry.error).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                    cause: expired,
+                }),
+            );
+        });
+
+        it('offers Apple Pay on Chrome for iOS, where the shim has a flow to show', async () => {
+            // Reversed on purpose. An earlier revision read the browser out of
+            // the user agent and refused these, on the reasoning that Apple Pay
+            // JS is Safari-only on iOS — but the shim does load there and
+            // offers its scan-with-an-iPhone flow, so the rule suppressed a
+            // button that had something to show. Nothing decides availability
+            // from a browser name any more: the session answers for itself,
+            // which is what gw-ui does and has mileage on.
+            vi.stubGlobal('navigator', {
+                ...navigator,
+                userAgent: CHROME_IOS_UA,
+            });
+            const onUnavailable = vi.fn();
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => makePaymentsApi() as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container, {
+                onUnavailable,
+            });
+            ctrl.result.catch(() => {});
+
+            expect(container.querySelector('apple-pay-button')).not.toBeNull();
+            expect(onUnavailable).not.toHaveBeenCalled();
+        });
+
+        it('names the function that asked, so a probe is not filed as a mount', async () => {
+            // §4: the event becomes a js_event, and function_name is the
+            // field that says which call turned Apple Pay away.
+            MockApplePaySession.canMakePayments.mockReturnValue(false);
+            const telemetry = makeTelemetry();
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => makePaymentsApi() as never,
+                telemetry as never,
+            );
+
+            await api.getApplePayAvailability();
+            const ctrl = await api.mountApplePayButton(container);
+            ctrl.result.catch(() => {});
+
+            // The probe has an event of its own, reported either way; the
+            // mount keeps walletUnavailable, which fires only when a button
+            // that was asked for could not be offered.
+            expect(telemetry.walletAvailability).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    functionName: 'getApplePayAvailability',
+                    available: false,
+                }),
+            );
+            expect(telemetry.walletUnavailable.mock.calls).toEqual([
+                [
+                    expect.objectContaining({
+                        functionName: 'mountApplePayButton',
+                    }),
+                ],
+            ]);
+        });
+    });
+
     describe('getApplePayAvailability()', () => {
         const makeTelemetry = () => ({
             apiCall: vi.fn(),
@@ -1377,6 +1965,9 @@ describe('mountApplePayButton()', () => {
             submit: vi.fn(),
             walletUnavailable: vi.fn(),
             integratorError: vi.fn(),
+            walletUnmount: vi.fn(),
+            walletAvailability: vi.fn(),
+            walletStep: vi.fn(),
         });
 
         it('answers without an attached payment, which is the whole point', async () => {
@@ -1389,11 +1980,13 @@ describe('mountApplePayButton()', () => {
             });
         });
 
-        it('refuses an Android phone without fetching Apple’s script', async () => {
-            // The case this exists for. A Chromium reporting itself as mobile with
-            // no ApplePaySession is an Android phone, and Apple's shim would only
-            // be fetched to say the same thing — so 58 kB and a round trip are
-            // skipped and the method list can render immediately.
+        it('asks rather than guessing on an Android phone', async () => {
+            // The userAgentData.mobile shortcut went with the browser-name
+            // gate. Deciding a wallet is unavailable from the user agent is
+            // what suppressed Apple Pay on Chrome for iOS, and the shortcut
+            // rested on the same assumption about Apple's shim. gw-ui does not
+            // guess either: it loads, waits, and lets Apple answer. Android
+            // reaches the same verdict, it just costs a script to get there.
             vi.stubGlobal('ApplePaySession', undefined);
             vi.stubGlobal('navigator', {
                 ...navigator,
@@ -1401,11 +1994,31 @@ describe('mountApplePayButton()', () => {
             });
             const api = createWalletsApi(makeClient() as never, () => null);
 
-            await expect(api.getApplePayAvailability()).resolves.toEqual({
+            const result = await withoutTheSessionWait(() =>
+                api.getApplePayAvailability(),
+            );
+
+            expect(mockLoadScriptOnce).toHaveBeenCalled();
+            expect(result).toEqual({
                 available: false,
-                reason: 'unsupported-device',
+                reason: 'library-missing',
             });
-            expect(mockLoadScriptOnce).not.toHaveBeenCalled();
+        });
+
+        it('answers for Chrome on iOS from the session, not the user agent', async () => {
+            // The counterpart to the mount above: one rule, one answer. The
+            // user agent is Chrome Mobile iOS 153 (Sentry 8dd085c3) and it no
+            // longer enters into it — ApplePaySession is present and reports
+            // the device can pay, so that is what both callers are told.
+            vi.stubGlobal('navigator', {
+                ...navigator,
+                userAgent: CHROME_IOS_UA,
+            });
+            const api = createWalletsApi(makeClient() as never, () => null);
+
+            await expect(api.getApplePayAvailability()).resolves.toEqual({
+                available: true,
+            });
         });
 
         it('answers from Safari’s built-in session without fetching anything', async () => {
@@ -1428,7 +2041,9 @@ describe('mountApplePayButton()', () => {
             });
             const api = createWalletsApi(makeClient() as never, () => null);
 
-            const result = await api.getApplePayAvailability();
+            const result = await withoutTheSessionWait(() =>
+                api.getApplePayAvailability(),
+            );
 
             expect(mockLoadScriptOnce).toHaveBeenCalled();
             // The mocked script installs nothing, so the library is missing —
@@ -1476,15 +2091,41 @@ describe('mountApplePayButton()', () => {
 
             await api.getApplePayAvailability();
 
-            expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect(telemetry.walletAvailability).toHaveBeenCalledWith(
                 expect.objectContaining({
                     paymentMethod: 'applepay',
+                    available: false,
                     reason: 'unsupported-device',
                 }),
             );
             // The caller asked a question and got an answer. An answer is not a
             // failure, so onError must stay clean.
             expect(client.reportError).not.toHaveBeenCalled();
+        });
+
+        it('reports the positive too, so the number has a denominator', async () => {
+            // gw-ui logs its readyToPay probe whichever way it goes, and this
+            // is why: without the successes, "unavailable 200 times" cannot be
+            // told apart from "200 out of 210" or "200 out of 20 000".
+            const telemetry = makeTelemetry();
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => null,
+                telemetry as never,
+            );
+
+            await expect(api.getApplePayAvailability()).resolves.toEqual({
+                available: true,
+            });
+
+            expect(telemetry.walletAvailability).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    paymentMethod: 'applepay',
+                    available: true,
+                    reason: undefined,
+                }),
+            );
+            expect(telemetry.walletUnavailable).not.toHaveBeenCalled();
         });
 
         it('stays silent when the answer is yes', async () => {
@@ -1734,12 +2375,7 @@ describe('mountGooglePayButton()', () => {
     });
 
     it('reports the authorisation as a submit, ahead of the charge', async () => {
-        const telemetry = {
-            apiCall: vi.fn(),
-            error: vi.fn(),
-            lifecycle: vi.fn(),
-            submit: vi.fn(),
-        };
+        const telemetry = makeTelemetry();
         const paymentsApi = makePaymentsApi();
         const api = createWalletsApi(
             makeClient() as never,
@@ -2086,13 +2722,7 @@ describe('mountGooglePayButton()', () => {
         // The pair that makes the attribution real: same reason code, other
         // payment_method. Before this both produced an identical line.
         mockIsReadyToPay = vi.fn().mockResolvedValue({ result: false });
-        const telemetry = {
-            apiCall: vi.fn(),
-            error: vi.fn(),
-            lifecycle: vi.fn(),
-            submit: vi.fn(),
-            walletUnavailable: vi.fn(),
-        };
+        const telemetry = makeTelemetry();
         const api = createWalletsApi(
             makeClient() as never,
             () => makePaymentsApi() as never,
@@ -2107,6 +2737,65 @@ describe('mountGooglePayButton()', () => {
                 paymentMethod: 'googlepay',
                 reason: 'unsupported-device',
             }),
+        );
+    });
+
+    it('lets Google Pay take a 3DS challenge, unlike Apple Pay', async () => {
+        // Adding `refuseActionRequired: true` to the Google Pay charge left the
+        // whole file green — nothing pinned the difference. It matters:
+        // `allowedAuthMethods` includes PAN_ONLY, a card held in the Google
+        // account with no device cryptogram, for which a challenge is the
+        // correct next step and refusing it would break real payments.
+        const threeDsState = {
+            state: 'ACTION_REQUIRED',
+            action: { redirect_url: 'https://3ds.example.com' },
+        };
+        const onStateChange = vi.fn();
+        const paymentsApi = makePaymentsApi({
+            awaitChargeState: vi.fn(
+                async (opts: { onStateChange?: (s: unknown) => void }) => {
+                    opts.onStateChange?.(threeDsState);
+                    return mockChargeState;
+                },
+            ),
+        });
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container, {
+            awaitOptions: { onStateChange },
+        });
+        await must(capturedOnClick, 'the Google Pay button onClick')();
+
+        // Not forced to manual: the redirect is Google Pay's to take.
+        expect(paymentsApi.awaitChargeState).toHaveBeenCalledWith(
+            expect.not.objectContaining({ threeDS: { mode: 'manual' } }),
+        );
+        expect(onStateChange).toHaveBeenCalledWith(
+            expect.objectContaining({ state: 'ACTION_REQUIRED' }),
+        );
+        // And it resolves rather than being refused, which is what Apple Pay
+        // does with the same state.
+        await expect(ctrl.result).resolves.toEqual(mockChargeState);
+    });
+
+    it('names mountGooglePayButton as the function that turned it away', async () => {
+        // GPOMA-2668 §4: function_name is what the js_event is filed under.
+        mockIsReadyToPay = vi.fn().mockResolvedValue({ result: false });
+        const telemetry = makeTelemetry();
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        ctrl.result.catch(() => {});
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect.objectContaining({ functionName: 'mountGooglePayButton' }),
         );
     });
 

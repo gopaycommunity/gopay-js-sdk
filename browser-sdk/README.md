@@ -591,7 +591,7 @@ collected in the browser.
 | `WALLET_BUTTON_ERROR` | `mountApplePayButton` / `mountGooglePayButton` — unavailable, script load failure, or session error |
 | `AUTH_INVALID_RESPONSE` | `/oauth2/token` response missing required fields |
 | `CHARGE_TIMEOUT` | Charge polling exceeded initial timeout |
-| `CHARGE_FAILED` | Payment reached terminal `FAILED` state |
+| `CHARGE_FAILED` | The charge reached the terminal `FAILED` state. The payment cannot be charged again — a charge rejected at authorisation moves the payment itself to `CANCELED` — so to let the customer try once more, create a new payment and call `attachPayment()` with it. |
 
 For shared error types (`GoPaySDKError`, `GoPayHTTPError`, network codes) see the [server SDK README § Errors](../sdk/README.md).
 

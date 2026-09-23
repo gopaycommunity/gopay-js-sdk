@@ -4,6 +4,7 @@ import {
     type GoPayHTTPError,
     type GoPaySDKError,
     LOGGER_URLS,
+    safeErrorLabel,
     type Telemetry,
 } from '@gopay-internal/core';
 import { SDK_VERSION } from '../version.js';
@@ -30,9 +31,8 @@ const REQUEST_TIMEOUT_MS = 2_000;
  * The lifecycle side is bounded by design (a handful of markers per mount), so
  * its own small budget both caps a runaway and guarantees it can never be
  * crowded out by traffic. Errors get a third budget for the same reason and
- * with more force: they travel as `api_call` events (gw-ui's convention,
- * status_code 0), so on a shared counter the flood would have silenced the
- * one kind of event nobody can afford to lose.
+ * with more force: on a shared counter a flood of polls would have silenced
+ * the one kind of event nobody can afford to lose.
  */
 const EVENT_BUDGET = {
     api_call: 200,
@@ -41,20 +41,6 @@ const EVENT_BUDGET = {
 } as const;
 
 type BudgetKind = keyof typeof EVENT_BUDGET;
-
-/**
- * `status_code` is nullable in the schema, which leaves three states worth
- * telling apart downstream:
- *
- * - a real HTTP status — the request reached the API and it answered
- * - `null` — the request was issued and produced no response (timeout, network)
- * - `SDK_ERROR_STATUS` — never an HTTP call at all: argument validation, a
- *   config guard, a card form or wallet button giving up
- *
- * The third is gw-ui's convention (`useSdkEventLogger`), reused rather than
- * invented so both producers read the same way in OpenSearch.
- */
-const SDK_ERROR_STATUS = 0;
 
 /**
  * Carried by every event. gw-logger requires an attribution key — one of
@@ -75,16 +61,28 @@ interface CommonFields {
     duration: number | null;
 }
 
+/**
+ * A request the SDK actually issued — and, since GPOMA-2668, nothing else.
+ *
+ * Three other things used to travel as `api_call` (gw-ui's convention: status
+ * code 0, empty target) although none of them touched the network: an SDK
+ * error, an unavailable wallet, and an integrator callback that threw. That
+ * put them in the one event type built for HTTP, where every aggregation over
+ * it — API error rate, calls per session — counted them, and where the only
+ * field carrying anything useful was the one a request-shaped column layout
+ * does not show. They are {@link JsEvent} now.
+ */
 interface ApiCallEvent extends CommonFields {
     event_type: 'api_call';
     action: string;
-    /**
-     * Optional because the SDK's own failures travel as api_call events too
-     * (gw-ui's convention, status_code 0) and those are not HTTP calls. A
-     * verb on one of those would be a fiction.
-     */
-    http_method?: string;
+    /** Every event of this type is a real request, so the verb is known. */
+    http_method: string;
     target: string;
+    /**
+     * A real HTTP status, or `null` when the request was issued and produced
+     * no response at all (timeout, network). There is no third state: `0`
+     * used to mean "never a request", and nothing reports that here any more.
+     */
     status_code: number | null;
     res_body?: string;
 }
@@ -122,7 +120,38 @@ interface InteractionEvent extends CommonFields {
     element_id: string;
 }
 
-type GwLoggerEvent = ApiCallEvent | NavigationEvent | InteractionEvent;
+/**
+ * Something the SDK did that was not an HTTP call: it failed, it refused to
+ * offer a wallet, or a callback the integrator supplied threw.
+ *
+ * gw-ui's shape, reused rather than invented (`sendEvent` in its gp-api
+ * component) so both producers read the same way in OpenSearch. gw-logger maps
+ * `function_name` to ECS `event.action`, `params` to `labels.params`,
+ * `return_value` to `message` and `error_code` to `error.code`.
+ *
+ * `event.action` is the same field an api_call's `action` lands in, so the
+ * three of these that used to be api_calls are still found the same way —
+ * what changes is that an aggregation over api_call no longer counts them.
+ */
+interface JsEvent extends CommonFields {
+    event_type: 'js_event';
+    /**
+     * What ran: the SDK function for the wallet and callback events, the error
+     * code for an SDK error. gw-ui puts plain function names in the same
+     * field, so this reads the same way across both producers.
+     */
+    function_name: string;
+    /** The machine-readable half of an error, in the field ECS has for it. */
+    error_code?: string;
+    params?: string;
+    return_value?: string;
+}
+
+type GwLoggerEvent =
+    | ApiCallEvent
+    | NavigationEvent
+    | InteractionEvent
+    | JsEvent;
 
 /** Omitted rather than sent empty — see CommonFields. */
 function orUndefined(value: string | undefined): string | undefined {
@@ -145,18 +174,96 @@ const INTEGRATION: string =
         ? __GOPAY_INTEGRATION__
         : 'browser-sdk-unknown';
 
+/** The schema's cap on `params`. */
+const MAX_PARAMS_LENGTH = 4096;
+
 /**
- * `reason; key=value; key=value` — flat on purpose, so it reads in OpenSearch
- * without a JSON parse and stays inside the message cap.
+ * A JSON object, which is gw-ui's shape for `params` and therefore ours:
+ * `JSON.stringify({ origin, messageType })` in its gp-api component. One
+ * shape means one way to read `labels.params` in OpenSearch whichever
+ * producer wrote the row.
+ *
+ * Absent values are dropped rather than rendered, so a capability the browser
+ * would not answer reads as missing instead of as the string "null" — which
+ * in a query is indistinguishable from `false`.
+ *
+ * String values go through the message scrub; numbers and booleans cannot
+ * carry anything to scrub. Nothing here is free-form today, but that is what
+ * keeps a field added later from silently widening what leaves the page.
  */
-function describeCapabilities(
-    reason: string,
-    capabilities: Record<string, string | number | boolean | null> | undefined,
-): string {
-    const parts = Object.entries(capabilities ?? {})
-        .filter(([, value]) => value !== null && value !== undefined)
-        .map(([key, value]) => `${key}=${String(value)}`);
-    return [reason, ...parts].join('; ');
+function describeParams(
+    fields: Record<string, string | number | boolean | null | undefined>,
+): string | undefined {
+    const kept: Record<string, string | number | boolean> = {};
+    for (const [key, value] of Object.entries(fields)) {
+        if (value === null || value === undefined) {
+            continue;
+        }
+        kept[key] = typeof value === 'string' ? safeErrorMessage(value) : value;
+    }
+    if (Object.keys(kept).length === 0) {
+        return undefined;
+    }
+    const json = JSON.stringify(kept);
+    // Cutting JSON at a byte offset produces something no reader can parse,
+    // so an over-long object reports its size instead of half of itself.
+    return json.length <= MAX_PARAMS_LENGTH
+        ? json
+        : JSON.stringify({ truncated: json.length });
+}
+
+/**
+ * The context an error carries in its own fields and the api_call shape had
+ * nowhere to put.
+ *
+ * A GoPayHTTPError knows the status, the verb and the id-collapsed endpoint of
+ * the request that failed; all three were dropped on the way out, because
+ * `target` was hardcoded empty and `status_code` to 0. A 409 on charge reached
+ * OpenSearch as `SDK.CHARGE_FAILED` with no 409 and no `/payments/{id}/charge`
+ * anywhere on the row.
+ *
+ * Read by shape rather than by `instanceof`: this is handed whatever was
+ * reported, and a cross-realm error (an iframe, a bundled second copy of core)
+ * fails an identity check while still carrying the fields.
+ *
+ * Only values the SDK itself produced — never a message, and never the cause's
+ * own message: those hold whatever their author put in them. The cause is
+ * named by class, through the same allowlist core uses.
+ */
+function describeErrorContext(
+    error: GoPaySDKError | GoPayHTTPError,
+): string | undefined {
+    const fields: Record<string, string | number | undefined> = {};
+    if ('status' in error && typeof error.status === 'number') {
+        fields.status = error.status;
+    }
+    if ('method' in error && typeof error.method === 'string') {
+        fields.method = error.method;
+    }
+    if ('endpoint' in error && typeof error.endpoint === 'string') {
+        fields.endpoint = error.endpoint;
+    }
+    if ('cause' in error && error.cause !== undefined) {
+        fields.cause = safeErrorLabel(error.cause);
+    }
+    return describeParams(fields);
+}
+
+/**
+ * What the teardown interrupted, most significant first.
+ *
+ * Written out rather than chained: CLAUDE.md does not allow chained ternaries,
+ * and the order is the point — a sheet open in front of the shopper outranks a
+ * charge they can no longer see.
+ */
+function describeUnmount(sheetOpen: boolean, chargeInFlight: boolean): string {
+    if (sheetOpen) {
+        return 'sheet-aborted';
+    }
+    if (chargeInFlight) {
+        return 'charge-aborted';
+    }
+    return 'idle';
 }
 
 /** `/payments/{id}/charge` → `charge`; gw-ui's action convention. */
@@ -204,6 +311,14 @@ export interface BrowserTelemetry extends Telemetry {
      * indistinguishable from "Google Pay never showed" in the data.
      */
     walletUnavailable(context: {
+        /**
+         * The SDK function that decided there would be no button. The mount
+         * and the availability probe both report this event with the same
+         * reason codes, and without the name they are one undifferentiated
+         * pile — a merchant asking first cannot be told apart from a merchant
+         * whose button failed to draw.
+         */
+        functionName: string;
         paymentMethod: string;
         reason: string;
         capabilities?: Record<string, string | number | boolean | null>;
@@ -222,6 +337,74 @@ export interface BrowserTelemetry extends Telemetry {
      * data; a class name cannot.
      */
     integratorError(label: string, errorName: string): void;
+    /**
+     * A step in a wallet flow that is neither a request nor a failure.
+     *
+     * gw-ui logs its wallet SDKs step by step — begin, cancel,
+     * validateMerchant, paymentAuthorized, completePayment, abort — and that
+     * is what lets it see where a payment stopped. This SDK reported the ends
+     * of the flow and almost nothing in between, so the case this ticket opened
+     * with was invisible in the data: the shopper tapped the button, no sheet
+     * came up, and nothing anywhere recorded that a tap had happened at all.
+     *
+     * `step` uses gw-ui's vocabulary so the two read the same way; `status` is
+     * its start / success / failure / info. Failures that already have an event
+     * of their own — an SDK error, an unavailable wallet, a teardown — are not
+     * repeated here.
+     */
+    walletStep(context: {
+        paymentMethod: string;
+        step: string;
+        status: 'start' | 'success' | 'failure' | 'info';
+        detail?: string;
+    }): void;
+    /**
+     * The answer an availability probe reached — whichever way it went.
+     *
+     * Reported on success as well as refusal, which is gw-ui's shape
+     * (`readyToPay` in useSdkEventLogger, logged with `available` either way)
+     * and the reason it can state an availability *rate*. Only ever emitting
+     * the negative, as this did, gives a numerator with no denominator:
+     * "Apple Pay unavailable 200 times" reads the same whether that is out of
+     * 210 probes or out of 20 000.
+     *
+     * Kept a js_event rather than gw-ui's api_call envelope: that one carries
+     * status_code 0 and an empty target for a call that never happened, which
+     * is what GPOMA-2668 removed.
+     */
+    walletAvailability(context: {
+        functionName: string;
+        paymentMethod: string;
+        available: boolean;
+        /** Why not, when it is not. */
+        reason?: string;
+        capabilities?: Record<string, string | number | boolean | null>;
+    }): void;
+    /**
+     * A wallet button torn down by the integrator.
+     *
+     * It was already reaching gw-logger before this existed — as
+     * `SDK.WALLET_BUTTON_ERROR`, because the teardown rejects the controller's
+     * promise and every rejection is reported. So a merchant unmounting the
+     * button when the shopper steps back through the checkout was
+     * indistinguishable from a sheet that genuinely broke, and it spent the
+     * error budget doing it.
+     *
+     * A deliberate teardown is not a failure. It is reported here instead, and
+     * the error event for the same unmount is suppressed at the call site, so
+     * one teardown is one event.
+     *
+     * It also completes a pair: `ready` says the button reached the page, and
+     * until now nothing said it left. A `ready` with neither a terminal charge
+     * nor an unmount after it is the funnel gap worth looking at.
+     */
+    walletUnmount(context: {
+        paymentMethod: string;
+        /** A payment sheet was open and has been aborted. */
+        sheetOpen: boolean;
+        /** A charge was in flight and has been aborted. */
+        chargeInFlight: boolean;
+    }): void;
 }
 
 /**
@@ -237,6 +420,9 @@ export const NO_BROWSER_TELEMETRY: BrowserTelemetry = {
     submit: () => {},
     walletUnavailable: () => {},
     integratorError: () => {},
+    walletUnmount: () => {},
+    walletAvailability: () => {},
+    walletStep: () => {},
 };
 
 export function createGwLoggerTelemetry(options: {
@@ -353,36 +539,98 @@ export function createGwLoggerTelemetry(options: {
             }));
         },
 
-        walletUnavailable({ paymentMethod, reason, capabilities }): void {
+        walletUnavailable({
+            functionName,
+            paymentMethod,
+            reason,
+            capabilities,
+        }): void {
             post('error', () => ({
                 ...base(),
-                event_type: 'api_call',
-                // A distinct action rather than another WALLET_BUTTON_ERROR:
-                // the two answer different questions and one must not drown
-                // the other in an aggregation.
-                action: 'SDK.WALLET_UNAVAILABLE',
-                target: '',
-                status_code: SDK_ERROR_STATUS,
+                event_type: 'js_event',
+                function_name: functionName,
                 duration: null,
                 payment_method: orUndefined(paymentMethod),
-                // Through the same scrub as an error message. Nothing here is
-                // free-form today, but the capping is what keeps a future
-                // field from silently widening what leaves the page.
-                res_body: safeErrorMessage(
-                    describeCapabilities(reason, capabilities),
-                ),
+                // The reason is the answer to "why was there no button", so it
+                // goes where a js_event's message lives rather than into a
+                // label nobody reads by default.
+                return_value: safeErrorMessage(reason),
+                params: describeParams(capabilities ?? {}),
             }));
         },
 
         integratorError(label, errorName): void {
             post('error', () => ({
                 ...base(),
-                event_type: 'api_call',
-                action: 'SDK.INTEGRATOR_CALLBACK',
-                target: '',
-                status_code: SDK_ERROR_STATUS,
+                event_type: 'js_event',
+                // The callback the merchant supplied — the function that threw
+                // really is the subject of this event, which is exactly what
+                // the field is for.
+                function_name: label,
                 duration: null,
-                res_body: `${label}: ${errorName}`,
+                return_value: errorName,
+            }));
+        },
+
+        walletStep({ paymentMethod, step, status, detail }): void {
+            post('lifecycle', () => ({
+                ...base(),
+                event_type: 'js_event',
+                // gw-ui writes `<sdk>.<step>` into the same ECS field and
+                // carries the wallet separately too; the step alone keeps
+                // event.action readable and payment_method does that job here.
+                function_name: step,
+                duration: null,
+                payment_method: orUndefined(paymentMethod),
+                return_value: safeErrorMessage(detail ?? status),
+                params: describeParams({ status }),
+            }));
+        },
+
+        walletAvailability({
+            functionName,
+            paymentMethod,
+            available,
+            reason,
+            capabilities,
+        }): void {
+            // The lifecycle budget: a probe is a bounded, ordinary step, and
+            // an answer of "no" is the correct outcome on a device that
+            // cannot pay — not a failure, and not something to spend the
+            // error budget on.
+            post('lifecycle', () => ({
+                ...base(),
+                event_type: 'js_event',
+                function_name: functionName,
+                duration: null,
+                payment_method: orUndefined(paymentMethod),
+                // `available` on its own would need a second field to say why
+                // not; the reason is the more useful of the two and carries
+                // the answer with it.
+                return_value: available
+                    ? 'available'
+                    : safeErrorMessage(reason ?? 'unavailable'),
+                params: describeParams({ available, ...capabilities }),
+            }));
+        },
+
+        walletUnmount({ paymentMethod, sheetOpen, chargeInFlight }): void {
+            // The lifecycle budget, not the error one: this is a bounded
+            // marker — a handful per mount — and it is emitted precisely
+            // because a teardown is not a failure.
+            post('lifecycle', () => ({
+                ...base(),
+                event_type: 'js_event',
+                // The function the integrator actually called. Which wallet it
+                // was is payment_method's job, as everywhere else.
+                function_name: 'unmount',
+                duration: null,
+                payment_method: orUndefined(paymentMethod),
+                return_value: describeUnmount(sheetOpen, chargeInFlight),
+                params: describeParams({
+                    sheet_open: sheetOpen,
+                    charge_in_flight: chargeInFlight,
+                }),
             }));
         },
 
@@ -393,14 +641,20 @@ export function createGwLoggerTelemetry(options: {
                     : 'UNKNOWN';
             post('error', () => ({
                 ...base(),
-                event_type: 'api_call',
-                action: `SDK.${code}`,
-                // No endpoint to name: these are raised before a request, or
-                // instead of one.
-                target: '',
-                status_code: SDK_ERROR_STATUS,
+                event_type: 'js_event',
+                // Bare, not the `SDK.` prefix the api_call `action` carried.
+                // The prefix would have bought continuity for dashboards
+                // matching `SDK.*` on event.action — but any such dashboard
+                // also filters on the event type, and that filter breaks here
+                // whatever this field says. So it buys nothing, and gw-ui
+                // writes plain names into the same field.
+                function_name: code,
+                // The same value in the field ECS has for it (error.code),
+                // which is where a machine should read it from.
+                error_code: code,
                 duration: null,
-                res_body: safeErrorMessage(error),
+                params: describeErrorContext(error),
+                return_value: safeErrorMessage(error),
             }));
         },
     };

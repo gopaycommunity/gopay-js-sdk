@@ -441,6 +441,9 @@ describe('createCardsApi() — browser SDK', () => {
                 submit: vi.fn(),
                 walletUnavailable: vi.fn(),
                 integratorError: vi.fn(),
+                walletUnmount: vi.fn(),
+                walletAvailability: vi.fn(),
+                walletStep: vi.fn(),
             };
             const cards = createCardsApi(
                 client,

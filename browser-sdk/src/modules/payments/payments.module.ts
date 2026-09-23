@@ -69,6 +69,27 @@ function assertHttpsUrl(url: string): void {
     }
 }
 
+/**
+ * How long a 3DS redirect gets to actually take the page away before the SDK
+ * stops waiting for it.
+ *
+ * In redirect mode the documented contract is that the promise stays pending
+ * as the page unloads. When the page does not unload — a webview that blocks
+ * or silently drops a top-level navigation — nothing settles it, ever.
+ * `CHARGE_TIMEOUT` cannot cover this: it is deliberately cancelled the moment
+ * `ACTION_REQUIRED` is seen, because a customer answering a 3DS challenge has
+ * no time limit. So the failure is pure silence, which is what the 22.09.
+ * report "went into 3DS, confirmed it, never finished" looked like.
+ *
+ * 30 s, matching the initial charge timeout rather than undercutting it. The
+ * page stays alive until the *next* document starts committing, so this is
+ * racing the ACS's first response over the customer's connection — and a
+ * tighter bound would report a redirect that is merely slow on mobile data as
+ * one that never happened. Nothing is lost by waiting: the alternative to a
+ * late answer here is no answer at all.
+ */
+const THREE_DS_REDIRECT_TIMEOUT_MS = 30_000;
+
 function handle3DS(
     threeDS: ThreeDSConfig | undefined,
     redirectUrl: string,
@@ -213,30 +234,98 @@ export function createPaymentsApi(
          *
          * Resolves on `SUCCEEDED`. Rejects with `CHARGE_FAILED` on `FAILED`,
          * or `CHARGE_TIMEOUT` if the charge does not leave `REQUESTED`/
-         * `PROCESSING` within `initialTimeoutMs` (default 30 s).
+         * `PROCESSING` within `initialTimeoutMs` (default 30 s) — or if a 3DS
+         * redirect was issued and the page was still here 30 s later, which
+         * means the navigation never happened.
          */
         awaitChargeState(
             options?: AwaitChargeOptions,
         ): Promise<PaymentChargeStatusResponse> {
             const effectiveThreeDS = options?.threeDS ?? defaultThreeDS;
+            // Manual mode is excluded deliberately: there the integrator was
+            // handed the URL and the page is *supposed* to stay, so a
+            // watchdog would report their working integration as broken.
+            const redirects = effectiveThreeDS?.mode !== 'manual';
 
-            return awaitCharge(
+            let stall: ReturnType<typeof setTimeout> | undefined;
+            let giveUp!: (error: unknown) => void;
+            const stalled = new Promise<never>((_, reject) => {
+                giveUp = reject;
+            });
+
+            // Racing settles the promise the caller holds; it cancels nothing.
+            // Without a controller of its own the poll would carry on hitting
+            // /payments/{id}/charge every couple of seconds for as long as the
+            // page stayed open — after the SDK had already announced it had
+            // given up. So this call gets its own, chained to the caller's.
+            const polling = new AbortController();
+            const abortPolling = () => polling.abort();
+            if (options?.signal?.aborted) {
+                polling.abort();
+            } else {
+                options?.signal?.addEventListener('abort', abortPolling, {
+                    once: true,
+                });
+            }
+
+            const stopWatching = () => {
+                clearTimeout(stall);
+                if (typeof globalThis.removeEventListener === 'function') {
+                    globalThis.removeEventListener('pagehide', stopWatching);
+                }
+                options?.signal?.removeEventListener('abort', abortPolling);
+            };
+
+            const settled = awaitCharge(
                 () =>
                     client.get<PaymentChargeStatusResponse>(
                         `/payments/${pid}/charge`,
-                        { signal: options?.signal },
+                        { signal: polling.signal },
                     ),
                 {
                     ...options,
+                    signal: polling.signal,
                     onActionRequired: (redirectUrl) => {
                         handle3DS(
                             effectiveThreeDS,
                             redirectUrl,
                             options?.onActionRequired,
                         );
+                        if (!redirects || stall !== undefined) {
+                            return;
+                        }
+                        // The page leaving is the success case, and it takes
+                        // the timer with it. Listening as well covers the page
+                        // that is frozen into the back/forward cache instead
+                        // of destroyed: it would otherwise come back to life
+                        // with an expired timer and report a stall for a
+                        // navigation that did happen.
+                        if (typeof globalThis.addEventListener === 'function') {
+                            globalThis.addEventListener(
+                                'pagehide',
+                                stopWatching,
+                                { once: true },
+                            );
+                        }
+                        stall = setTimeout(() => {
+                            giveUp(
+                                new GoPaySDKError(
+                                    '[GoPayBrowserSDK] The 3DS redirect did not navigate the page away. The charge cannot complete here; some embedded browsers block top-level navigation.',
+                                    {
+                                        errorCode:
+                                            GoPayErrorCodes.CHARGE_TIMEOUT,
+                                    },
+                                ),
+                            );
+                            // Rejected first, so the race settles on this and
+                            // not on the aborted poll's own CHARGE_FAILED.
+                            polling.abort();
+                        }, THREE_DS_REDIRECT_TIMEOUT_MS);
                     },
                 },
             );
+
+            return Promise.race([settled, stalled]).finally(stopWatching);
         },
 
         /**
@@ -281,7 +370,17 @@ export function createPaymentsApi(
                 abort(): void;
                 begin(): void;
             },
-            callbacks?: { oncancel?: (event: unknown) => void },
+            callbacks?: {
+                oncancel?: (event: unknown) => void;
+                /**
+                 * Merchant validation failed and the session below was
+                 * aborted. WebKit's `abort()` takes the session to its final
+                 * state without dispatching a cancel event, so `oncancel`
+                 * never runs and this is the only notice the caller gets that
+                 * the sheet is gone.
+                 */
+                onvalidationfailure?: (error: unknown) => void;
+            },
         ): void {
             session.onvalidatemerchant = (event: unknown) => {
                 const validationURL =
@@ -297,7 +396,10 @@ export function createPaymentsApi(
                     .then((merchantSession) =>
                         session.completeMerchantValidation(merchantSession),
                     )
-                    .catch(() => session.abort());
+                    .catch((error: unknown) => {
+                        session.abort();
+                        callbacks?.onvalidationfailure?.(error);
+                    });
             };
             session.oncancel = (event) => {
                 callbacks?.oncancel?.(event);

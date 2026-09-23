@@ -277,7 +277,20 @@ describe('createGwLoggerTelemetry()', () => {
         expect((await eventOf()).status_code).toBeNull();
     });
 
-    it('reports an SDK error as status 0 with a scrubbed message', async () => {
+    // GPOMA-2668 §4: three of the builders made no request, yet travelled as
+    // api_call with status_code 0 and an empty target — polluting every "API
+    // error rate" or "calls per session" aggregation. They are js_events now,
+    // shaped like gw-ui's (postMessage.tsx): function_name, params,
+    // return_value. The HTTP-only fields must be gone, not just zeroed.
+    const HTTP_ONLY_FIELDS = [
+        'action',
+        'http_method',
+        'target',
+        'status_code',
+        'res_body',
+    ] as const;
+
+    it('reports an SDK error as a js_event with a scrubbed message', async () => {
         makeTelemetry().error(
             new GoPaySDKError('[GoPayBrowserSDK] card 4111111111111111 bad', {
                 errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
@@ -286,18 +299,21 @@ describe('createGwLoggerTelemetry()', () => {
 
         const event = await eventOf();
         expect(event).toMatchObject({
-            status_code: 0,
-            action: `SDK.${GoPayErrorCodes.INVALID_ARGUMENT}`,
-            target: '',
+            event_type: 'js_event',
+            function_name: GoPayErrorCodes.INVALID_ARGUMENT,
+            return_value: '[GoPayBrowserSDK] card [redacted] bad',
             duration: null,
         });
-        expect(event.res_body).toBe('[GoPayBrowserSDK] card [redacted] bad');
+        for (const field of HTTP_ONLY_FIELDS) {
+            expect(event).not.toHaveProperty(field);
+        }
     });
 
-    it('labels an unavailable wallet with the payment method and the reason', async () => {
+    it('labels an unavailable wallet with the function, the payment method and the reason', async () => {
         // payment_method is the field the question needs and the one `error()`
         // cannot carry, since core's seam hands it only the error object.
         makeTelemetry().walletUnavailable({
+            functionName: 'mountApplePayButton',
             paymentMethod: 'applepay',
             reason: 'unsupported-device',
             capabilities: { ua_mobile: true, secure_context: true },
@@ -305,27 +321,87 @@ describe('createGwLoggerTelemetry()', () => {
 
         const event = await eventOf();
         expect(event).toMatchObject({
-            status_code: 0,
-            action: 'SDK.WALLET_UNAVAILABLE',
+            event_type: 'js_event',
+            function_name: 'mountApplePayButton',
             payment_method: 'applepay',
-            target: '',
+            return_value: 'unsupported-device',
         });
-        expect(event.res_body).toBe(
-            'unsupported-device; ua_mobile=true; secure_context=true',
-        );
+        expect(JSON.parse(String(event.params))).toEqual({
+            ua_mobile: true,
+            secure_context: true,
+        });
+        for (const field of HTTP_ONLY_FIELDS) {
+            expect(event).not.toHaveProperty(field);
+        }
+    });
+
+    it('scrubs what goes into params and return_value, not just messages', async () => {
+        // Both scrubs could be deleted and this file stayed green: nothing
+        // handed either one a value worth scrubbing. Capabilities and reason
+        // codes are fixed strings today, but their type is `string`, and the
+        // whole point of the scrub is the field somebody adds later.
+        makeTelemetry().walletUnavailable({
+            functionName: 'mountApplePayButton',
+            paymentMethod: 'applepay',
+            reason: 'script-blocked for 4111111111111111',
+            capabilities: { probe: 'failed at https://x.test/p?token=abc' },
+        });
+
+        const event = await eventOf();
+        expect(String(event.return_value)).not.toContain('4111111111111111');
+        const params = JSON.parse(String(event.params));
+        expect(String(params.probe)).not.toContain('token=abc');
     });
 
     it('leaves out a capability the browser does not answer', async () => {
         // A null would read as "false" in a query; absent is the honest shape.
         makeTelemetry().walletUnavailable({
+            functionName: 'mountGooglePayButton',
             paymentMethod: 'googlepay',
             reason: 'library-missing',
             capabilities: { ua_mobile: null, max_touch_points: 0 },
         });
 
-        expect((await eventOf()).res_body).toBe(
-            'library-missing; max_touch_points=0',
+        expect(JSON.parse(String((await eventOf()).params))).toEqual({
+            max_touch_points: 0,
+        });
+    });
+
+    it('reports a throwing integrator callback as a js_event named after the callback', async () => {
+        makeTelemetry().integratorError('onError', 'TypeError');
+
+        const event = await eventOf();
+        expect(event).toMatchObject({
+            event_type: 'js_event',
+            function_name: 'onError',
+            return_value: 'TypeError',
+        });
+        for (const field of HTTP_ONLY_FIELDS) {
+            expect(event).not.toHaveProperty(field);
+        }
+    });
+
+    it('sends nothing but real HTTP calls as api_call', async () => {
+        // The acceptance criterion, stated once over every builder.
+        const t = makeTelemetry();
+        t.error(
+            new GoPaySDKError('[GoPayBrowserSDK] nope', {
+                errorCode: GoPayErrorCodes.CHARGE_FAILED,
+            }),
         );
+        t.walletUnavailable({
+            functionName: 'getApplePayAvailability',
+            paymentMethod: 'applepay',
+            reason: 'unsupported-device',
+        });
+        t.integratorError('onCancel', 'Error');
+        t.apiCall(GET_PAYMENT);
+
+        const events = await Promise.all(requests.map((_, i) => eventOf(i)));
+        const apiCalls = events.filter((e) => e.event_type === 'api_call');
+        expect(apiCalls).toHaveLength(1);
+        expect(apiCalls[0]).toMatchObject({ http_method: 'GET' });
+        expect(events.filter((e) => e.status_code === 0)).toEqual([]);
     });
 
     it('gives every event the same transaction id and a fresh trace id', async () => {
@@ -506,7 +582,7 @@ describe('createGwLoggerTelemetry()', () => {
         // apiCall with its real status — but the shape must not throw if it did.
         makeTelemetry().error(new GoPayHTTPError(500, { err: 'x' }));
 
-        expect((await eventOf()).action).toBe('SDK.UNKNOWN');
+        expect((await eventOf()).function_name).toBe('UNKNOWN');
     });
 });
 

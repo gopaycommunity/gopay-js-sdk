@@ -793,5 +793,143 @@ describe('createPaymentsApi() — browser SDK', () => {
 
             expect(location.href).toBe('https://3ds.example.com');
         });
+
+        const stall3ds = () =>
+            fetchMock.mockImplementation(async (req: Request) =>
+                respond(req, {
+                    state: 'ACTION_REQUIRED',
+                    action: { redirect_url: 'https://3ds.example.com' },
+                }),
+            );
+
+        it('leaves the watchdog off in manual mode, where the page is meant to stay', async () => {
+            // Mutating `redirects` to a constant true left this file 34/34
+            // green. It matters: in manual mode the integrator was handed the
+            // URL and the page staying is the whole point, so a watchdog would
+            // hand a working integration a CHARGE_TIMEOUT after 30 s.
+            vi.useFakeTimers();
+            try {
+                vi.stubGlobal('location', { href: '' });
+                stall3ds();
+
+                let outcome: unknown = 'pending';
+                api.awaitChargeState({
+                    intervalMs: 2_000,
+                    threeDS: { mode: 'manual' },
+                }).then(
+                    (value) => {
+                        outcome = value;
+                    },
+                    (error: unknown) => {
+                        outcome = error;
+                    },
+                );
+
+                await vi.advanceTimersByTimeAsync(100);
+                // Manual mode does not navigate; that is the caller's job.
+                expect(location.href).toBe('');
+
+                await vi.advanceTimersByTimeAsync(31_000);
+                expect(outcome).toBe('pending');
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('cancels the watchdog once the page is actually leaving', async () => {
+            // pagehide is the signal that the navigation did happen. Nothing
+            // dispatched it, so the cancellation was never exercised — and it
+            // is what keeps a page frozen into the back/forward cache from
+            // waking up with an expired timer and reporting a stall for a
+            // redirect that worked.
+            vi.useFakeTimers();
+            try {
+                vi.stubGlobal('location', { href: '' });
+                stall3ds();
+
+                let outcome: unknown = 'pending';
+                api.awaitChargeState({ intervalMs: 2_000 }).then(
+                    (value) => {
+                        outcome = value;
+                    },
+                    (error: unknown) => {
+                        outcome = error;
+                    },
+                );
+
+                await vi.advanceTimersByTimeAsync(100);
+                expect(location.href).toBe('https://3ds.example.com');
+
+                window.dispatchEvent(new Event('pagehide'));
+                await vi.advanceTimersByTimeAsync(60_000);
+
+                expect(outcome).toBe('pending');
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('reports a 3DS redirect that never left the page instead of waiting forever', async () => {
+            // GPOMA-2668 §3. In a webview a top-level navigation can be
+            // blocked or swallowed, and then nothing happens: the promise is
+            // documented to stay pending "as the page unloads", the page never
+            // unloads, and CHARGE_TIMEOUT stops counting at ACTION_REQUIRED.
+            // Seen 22.09. as "3DS started, never finished, no message".
+            vi.useFakeTimers();
+            try {
+                // A location that ignores the assignment — what a webview
+                // that swallows the navigation looks like from inside.
+                vi.stubGlobal('location', { href: '' });
+                fetchMock.mockImplementation(async (req: Request) =>
+                    respond(req, {
+                        state: 'ACTION_REQUIRED',
+                        action: { redirect_url: 'https://3ds.example.com' },
+                    }),
+                );
+
+                let outcome: unknown = 'pending';
+                api.awaitChargeState({ intervalMs: 2_000 }).then(
+                    (value) => {
+                        outcome = value;
+                    },
+                    (error: unknown) => {
+                        outcome = error;
+                    },
+                );
+
+                // The redirect is issued on the first poll; the watchdog
+                // starts counting from there.
+                await vi.advanceTimersByTimeAsync(100);
+                expect(location.href).toBe('https://3ds.example.com');
+
+                // Just short of the deadline, and still waiting: a redirect
+                // that is merely slow must not be reported as one that never
+                // happened. Asserting this is what pins the 30 s — a bound
+                // that drifted down would start failing real payments.
+                await vi.advanceTimersByTimeAsync(29_000);
+                expect(outcome).toBe('pending');
+
+                await vi.advanceTimersByTimeAsync(2_000);
+                expect(outcome).toBeInstanceOf(GoPaySDKError);
+                expect((outcome as GoPaySDKError).errorCode).toBe(
+                    GoPayErrorCodes.CHARGE_TIMEOUT,
+                );
+
+                // And the poll it gave up on actually stopped. Promise.race
+                // settles the caller's promise but cancels nothing, so without
+                // an abort this would go on requesting the charge every two
+                // seconds for as long as the page stayed open — after the SDK
+                // had announced it had given up.
+                const polls = () =>
+                    fetchMock.mock.calls.filter((c: unknown[]) =>
+                        String((c[0] as Request).url).endsWith('/charge'),
+                    ).length;
+                const settledAt = polls();
+                await vi.advanceTimersByTimeAsync(60_000);
+                expect(polls()).toBe(settledAt);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
     });
 });
