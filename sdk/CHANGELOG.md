@@ -1,3 +1,16 @@
+# [1.23.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.22.0...1.23.0) (2026-09-23)
+
+
+### Bug Fixes
+
+* **browser-sdk:** Apple Pay availability and session handling, the 3DS watchdog, and js_event telemetry GPOMA-2668 ([ef01ead](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ef01ead7858a4bd0e43ba08afdaba6d446386003))
+* **logging:** drop the leave-beacon flag that guards nothing GPOMA-2668 ([00e6638](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/00e6638f5fdb1f3f19a8c3f0eb80bdb5ff96ea24))
+
+
+### Features
+
+* **example:** try Apple Pay availability and unmount from the demo page GPOMA-2668 ([024e361](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/024e361441b3730c23841eedc4d010ff9723f3ba))
+
 # [1.22.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.21.0...1.22.0) (2026-09-22)
 
 
