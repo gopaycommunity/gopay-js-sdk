@@ -19,6 +19,13 @@ let currentSubmitMode = 'internal';
 let currentFlow = 'return-payload';
 let cardFormController = null;
 let cardFormMounting = false;
+/**
+ * `cardFormController` exists only once `mountCardForm()` has resolved, and
+ * that call fetches the card form URL first — so there is a window in which the
+ * form is being mounted and there is nothing to unmount yet. A click in it is
+ * remembered and taken when the mount lands, as the Apple Pay button does.
+ */
+let cardFormUnmountRequested = false;
 
 export function cardPaySetLang(lang) {
     currentLang = lang;
@@ -83,10 +90,41 @@ export function cardPayExtSubmit() {
     cardFormController?.submit();
 }
 
+/**
+ * Tear the form down the way an integrator would when the shopper leaves the
+ * step. `unmount()` otherwise never ran on this page — the form only went away
+ * by being submitted or by the page unloading — so the teardown, what it does
+ * to `result`, and the card form height summary it sends could not be tried.
+ */
+export function cardPayUnmount() {
+    const pre = document.getElementById('cardpay-output');
+
+    if (!cardFormController) {
+        if (cardFormMounting) {
+            cardFormUnmountRequested = true;
+            appendOutput(
+                pre,
+                '\n\n── unmount() requested — mount still in flight, will tear down on arrival ──',
+            );
+            return;
+        }
+        pre.textContent =
+            '── nothing mounted — click "Open Card Payment" first ──';
+        return;
+    }
+
+    // Left in place rather than cleared: unmount() rejects `result`, and the
+    // handler in cardPayOpenIframe only reports a rejection — and hides the
+    // container — for the controller it still considers current.
+    appendOutput(pre, '\n\n── unmount() — removing the card form ──');
+    cardFormController.unmount();
+}
+
 export async function cardPayOpenIframe() {
     if (cardFormMounting || cardFormController) {
         return;
     }
+    cardFormUnmountRequested = false;
     const pre = document.getElementById('cardpay-output');
     const container = document.getElementById('cardpay-iframe-container');
     const extSubmitBtn = document.getElementById('cardpay-ext-submit');
@@ -157,6 +195,16 @@ export async function cardPayOpenIframe() {
             );
         }
 
+        if (cardFormUnmountRequested) {
+            cardFormUnmountRequested = false;
+            appendOutput(
+                pre,
+                '\n\n── unmount() — the mount landed after the click and was torn down at once ──',
+            );
+            // `result` rejects and is awaited below, so the catch reports it.
+            controller.unmount();
+        }
+
         const result = await controller.result;
         if (cardFormController !== controller) {
             return;
@@ -178,6 +226,7 @@ export async function cardPayOpenIframe() {
         }
     } catch (err) {
         cardFormMounting = false;
+        cardFormUnmountRequested = false;
         if (controller !== null && cardFormController !== controller) {
             // A newer mountCardForm call has taken over; don't disrupt its state.
             return;

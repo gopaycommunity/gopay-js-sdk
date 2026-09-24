@@ -30,6 +30,7 @@ import {
     cardPaySetLang,
     cardPaySetSubmitMode,
     cardPaySetTheme,
+    cardPayUnmount,
 } from './card-pay.js';
 import { prefillPaymentId, updateBrowserBadge } from './helpers.js';
 import {
@@ -230,6 +231,7 @@ window.clearCharge = clearCharge;
 window.runQRPaymentInfo = runQRPaymentInfo;
 window.runGetGooglePayInfo = runGetGooglePayInfo;
 window.cardPayOpenIframe = cardPayOpenIframe;
+window.cardPayUnmount = cardPayUnmount;
 window.cardPaySetLang = cardPaySetLang;
 window.cardPaySetTheme = cardPaySetTheme;
 window.cardPaySetSubmitMode = cardPaySetSubmitMode;
