@@ -405,6 +405,26 @@ export interface BrowserTelemetry extends Telemetry {
         /** A charge was in flight and has been aborted. */
         chargeInFlight: boolean;
     }): void;
+    /**
+     * What the card form's reported height did while it was mounted.
+     *
+     * Two phases, both bounded to one per mount: `oscillation` the moment the
+     * height starts reversing direction faster than a customer could cause,
+     * and `summary` when the form goes away. Never one event per height
+     * message — a height that genuinely oscillates would send dozens a second
+     * and spend the lifecycle budget the funnel markers need.
+     *
+     * Layout measurements only. The iframe's height moves with validation
+     * messages and text wrapping, never with what was typed into a field, and
+     * the values are the ones the SDK itself writes into `iframe.style.height`.
+     */
+    cardFormHeight(context: {
+        phase: 'oscillation' | 'summary';
+        flow: string;
+        /** Since the form became ready; null when it never did. */
+        durationMs: number | null;
+        measurements: Record<string, string | number | boolean | null>;
+    }): void;
 }
 
 /**
@@ -423,6 +443,7 @@ export const NO_BROWSER_TELEMETRY: BrowserTelemetry = {
     walletUnmount: () => {},
     walletAvailability: () => {},
     walletStep: () => {},
+    cardFormHeight: () => {},
 };
 
 export function createGwLoggerTelemetry(options: {
@@ -631,6 +652,26 @@ export function createGwLoggerTelemetry(options: {
                     sheet_open: sheetOpen,
                     charge_in_flight: chargeInFlight,
                 }),
+            }));
+        },
+
+        cardFormHeight({ phase, flow, durationMs, measurements }): void {
+            // The lifecycle budget: at most two of these per mount, and the
+            // oscillation is exactly the case the budget split exists for — a
+            // flood of anything must not silence the funnel.
+            post('lifecycle', () => ({
+                ...base(),
+                event_type: 'js_event',
+                // The protocol message being described, in the field gw-ui
+                // fills with a function name; one name for both phases keeps
+                // them in one query.
+                function_name: 'card-form-height',
+                // The schema's duration is an integer.
+                duration: durationMs === null ? null : Math.round(durationMs),
+                payment_method: 'card',
+                flow: orUndefined(flow),
+                return_value: phase,
+                params: describeParams(measurements),
             }));
         },
 

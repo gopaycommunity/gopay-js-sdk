@@ -24,6 +24,7 @@ import type {
     ThreeDSConfig,
 } from '../payments/payments.module.js';
 import { DEFAULT_CARD_FORM_THEME } from './card-form-themes.js';
+import { createHeightTracker } from './height-tracker.js';
 import type {
     CardFormConfig,
     CardFormErrorCode,
@@ -40,6 +41,15 @@ type PaymentChargeStatusResponse =
     components['schemas']['Payment-Charge-Status-Response'];
 
 type PaymentsApi = ReturnType<typeof createPaymentsApi>;
+
+/** How a mounted card form went away; carried by its height summary. */
+type CardFormEnd =
+    | 'encrypted'
+    | 'encrypt-error'
+    | 'load-error'
+    | 'timeout'
+    | 'unmount'
+    | 'leave';
 
 /**
  * The protocol values `GOPAY_CARD_FORM_ERRORS` may carry. Declared as records
@@ -434,9 +444,68 @@ export function createCardsApi(
                 };
             });
 
+            /**
+             * The heights the iframe reports, tracked for telemetry only —
+             * applying them is unchanged. See height-tracker.ts.
+             */
+            const heights = createHeightTracker(nowMs);
+            let heightSummarySent = false;
+
+            const sinceReady = () =>
+                readyAt === null ? null : nowMs() - readyAt;
+
+            /**
+             * The frame itself, not just the messages: its width is what the
+             * form wraps its text to, and a fractional one is what GWUICC4-24
+             * turned out to be. The pixel ratio carries the browser zoom,
+             * which is what GWUICC4-26 needed to reproduce.
+             */
+            const heightMeasurements = () => ({
+                ...heights.stats(),
+                iframe_width:
+                    Math.round(iframe.getBoundingClientRect().width * 100) /
+                    100,
+                device_pixel_ratio: globalThis.devicePixelRatio ?? null,
+            });
+
+            /**
+             * Once per mount, and only for a form that reached the page: one
+             * that never loaded has no height to describe, and its failure is
+             * reported on its own.
+             */
+            const sendHeightSummary = (ended: CardFormEnd) => {
+                window.removeEventListener('pagehide', onHeightPageHide);
+                if (heightSummarySent || readyAt === null) {
+                    return;
+                }
+                heightSummarySent = true;
+                telemetry.cardFormHeight({
+                    phase: 'summary',
+                    flow: options.flow,
+                    durationMs: sinceReady(),
+                    measurements: { ...heightMeasurements(), ended },
+                });
+            };
+
+            /**
+             * A customer who leaves with the form still mounted never reaches
+             * cleanup(), and that visit is as likely as any to be the one where
+             * the height misbehaved. Registered per mount and removed with it,
+             * unlike the page-wide leave beacon: it describes this form, not
+             * the page.
+             */
+            const onHeightPageHide = () => {
+                sendHeightSummary('leave');
+            };
+            window.addEventListener('pagehide', onHeightPageHide, {
+                once: true,
+            });
+
             let iframeLoadTimeout: ReturnType<typeof setTimeout> | undefined;
 
-            const cleanup = () => {
+            const cleanup = (ended: CardFormEnd) => {
+                // First, while the iframe is still in the document to measure.
+                sendHeightSummary(ended);
                 iframeMounted = false;
                 releaseSession();
                 clearTimeout(iframeLoadTimeout);
@@ -480,7 +549,7 @@ export function createCardsApi(
             };
 
             iframe.onerror = () => {
-                cleanup();
+                cleanup('load-error');
                 rejectResult(
                     new GoPaySDKError(
                         '[GoPayBrowserSDK] Card form iframe failed to load.',
@@ -490,7 +559,7 @@ export function createCardsApi(
             };
 
             iframeLoadTimeout = setTimeout(() => {
-                cleanup();
+                cleanup('timeout');
                 rejectResult(
                     new GoPaySDKError(
                         '[GoPayBrowserSDK] Card form iframe timed out.',
@@ -596,6 +665,15 @@ export function createCardsApi(
             const handleHeightMessage = (height: number) => {
                 if (Number.isFinite(height) && height >= 0) {
                     iframe.style.height = `${height}px`;
+                    // After the resize, so nothing here can delay or block it.
+                    if (heights.record(height)) {
+                        telemetry.cardFormHeight({
+                            phase: 'oscillation',
+                            flow: options.flow,
+                            durationMs: sinceReady(),
+                            measurements: heightMeasurements(),
+                        });
+                    }
                 }
             };
 
@@ -659,7 +737,7 @@ export function createCardsApi(
                         handleFieldErrorsMessage(event.data.errors);
                         return;
                     case 'GOPAY_CARD_ENCRYPT_ERROR':
-                        cleanup();
+                        cleanup('encrypt-error');
                         rejectResult(
                             new GoPaySDKError(
                                 `[GoPayBrowserSDK] Card form error: ${event.data.error}`,
@@ -668,7 +746,7 @@ export function createCardsApi(
                         );
                         return;
                     case 'GOPAY_CARD_ENCRYPT_RESULT':
-                        cleanup();
+                        cleanup('encrypted');
                         await handleEncryptResult(event.data.card_token);
                         return;
                     default:
@@ -731,7 +809,7 @@ export function createCardsApi(
                         return;
                     }
                     chargeAbortController.abort();
-                    cleanup();
+                    cleanup('unmount');
                     const unmountError = new GoPaySDKError(
                         '[GoPayBrowserSDK] Card form unmounted.',
                         { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },

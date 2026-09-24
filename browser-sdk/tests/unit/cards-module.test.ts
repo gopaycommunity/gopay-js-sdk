@@ -444,6 +444,7 @@ describe('createCardsApi() — browser SDK', () => {
                 walletUnmount: vi.fn(),
                 walletAvailability: vi.fn(),
                 walletStep: vi.fn(),
+                cardFormHeight: vi.fn(),
             };
             const cards = createCardsApi(
                 client,
@@ -1662,6 +1663,7 @@ describe('the card form submit is reported', () => {
             error: vi.fn(),
             lifecycle: vi.fn(),
             submit: vi.fn(),
+            cardFormHeight: vi.fn(),
         } as unknown as typeof telemetry;
     });
 
@@ -1762,5 +1764,211 @@ describe('the card form submit is reported', () => {
         await ctrl.result;
 
         expect(telemetry.submit.mock.calls[0]?.[1]?.durationMs).toBeNull();
+    });
+});
+
+/**
+ * The height the iframe reports is applied as it arrives and was never
+ * recorded, so a height jumping up and down — suspected while the customer
+ * fills the form — left nothing behind to measure. What it reports now is
+ * bounded on purpose: at most one event when the height starts oscillating
+ * and one summary when the form goes away, never one per message.
+ */
+describe('the card form height is reported', () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+    let client: ReturnType<typeof createHttpClient>;
+    let container: HTMLDivElement;
+    let telemetry: BrowserTelemetry & {
+        cardFormHeight: ReturnType<typeof vi.fn>;
+    };
+    let mounted: { unmount: () => void }[];
+
+    beforeEach(() => {
+        fetchMock = vi
+            .fn()
+            .mockResolvedValue(makeResponse({ card_form_url: CARD_FORM_URL }));
+        vi.stubGlobal('fetch', fetchMock);
+        client = makeClient();
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+            walletUnavailable: vi.fn(),
+            integratorError: vi.fn(),
+            walletUnmount: vi.fn(),
+            walletAvailability: vi.fn(),
+            walletStep: vi.fn(),
+            cardFormHeight: vi.fn(),
+        } as unknown as typeof telemetry;
+        mounted = [];
+    });
+
+    afterEach(() => {
+        // Each mount registers its own pagehide listener; unmounting is what
+        // removes it, so one test's form cannot answer the next test's event.
+        for (const ctrl of mounted) {
+            ctrl.unmount();
+        }
+        container.remove();
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    const mount = async ({ loaded = true } = {}) => {
+        const cards = createCardsApi(client, () => null, telemetry);
+        const ctrl = await cards.mountCardForm(container, {
+            flow: 'return-payload',
+        });
+        ctrl.result.catch(() => {});
+        mounted.push(ctrl);
+        const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+        if (loaded) {
+            iframe.onload?.(new Event('load'));
+        }
+        const sendHeights = (...heights: number[]) => {
+            for (const height of heights) {
+                simulateMessage(iframe, {
+                    type: 'GOPAY_CARD_FORM_HEIGHT',
+                    height,
+                });
+            }
+        };
+        return { ctrl, iframe, sendHeights };
+    };
+
+    /** What each cardFormHeight call was given, in order. */
+    const reports = () =>
+        telemetry.cardFormHeight.mock.calls.map(
+            (call) =>
+                call[0] as {
+                    phase: string;
+                    flow: string;
+                    durationMs: number | null;
+                    measurements: Record<string, unknown>;
+                },
+        );
+
+    it('sends nothing per message, however many arrive', async () => {
+        const { iframe, sendHeights } = await mount();
+        for (let height = 100; height < 150; height += 1) {
+            sendHeights(height);
+        }
+
+        expect(telemetry.cardFormHeight).not.toHaveBeenCalled();
+        // Applying the height is what the tracking must never get in the way of.
+        expect(iframe.style.height).toBe('149px');
+    });
+
+    it('reports an oscillation the moment it happens, and only once', async () => {
+        const { iframe, sendHeights } = await mount();
+        sendHeights(178, 194, 178, 194, 178);
+
+        expect(reports()).toHaveLength(1);
+        expect(reports()[0]).toMatchObject({
+            phase: 'oscillation',
+            flow: 'return-payload',
+            measurements: {
+                reversals: 3,
+                min: 178,
+                max: 194,
+                recent: '178,194,178,194,178',
+                oscillated: true,
+            },
+        });
+        expect(reports()[0]?.durationMs).toEqual(expect.any(Number));
+
+        sendHeights(194, 178, 194, 178, 194, 178);
+        expect(reports()).toHaveLength(1);
+        expect(iframe.style.height).toBe('178px');
+    });
+
+    it('summarises the heights once when the form is unmounted', async () => {
+        const { ctrl, sendHeights } = await mount();
+        sendHeights(178, 218, 178);
+
+        ctrl.unmount();
+        ctrl.unmount();
+        window.dispatchEvent(new Event('pagehide'));
+
+        expect(reports()).toHaveLength(1);
+        expect(reports()[0]).toMatchObject({
+            phase: 'summary',
+            flow: 'return-payload',
+            measurements: {
+                messages: 3,
+                changes: 2,
+                reversals: 1,
+                min: 178,
+                max: 218,
+                last: 178,
+                recent: '178,218,178',
+                oscillated: false,
+                ended: 'unmount',
+            },
+        });
+    });
+
+    it('summarises when the card is submitted', async () => {
+        const { ctrl, iframe, sendHeights } = await mount();
+        sendHeights(178);
+        simulateMessage(iframe, {
+            type: 'GOPAY_CARD_ENCRYPT_RESULT',
+            card_token: 'enc_token_abc',
+        });
+        await ctrl.result;
+
+        expect(reports()).toHaveLength(1);
+        expect(reports()[0]?.measurements).toMatchObject({
+            messages: 1,
+            ended: 'encrypted',
+        });
+        // The payload is the one thing that must never ride along.
+        expect(JSON.stringify(reports())).not.toContain('enc_token_abc');
+    });
+
+    it('summarises when the customer leaves with the form still mounted', async () => {
+        const { ctrl, sendHeights } = await mount();
+        sendHeights(178, 194);
+
+        window.dispatchEvent(new Event('pagehide'));
+        ctrl.unmount();
+
+        expect(reports()).toHaveLength(1);
+        expect(reports()[0]?.measurements).toMatchObject({
+            messages: 2,
+            ended: 'leave',
+        });
+    });
+
+    it('sends nothing for a form that never loaded', async () => {
+        const { ctrl } = await mount({ loaded: false });
+
+        ctrl.unmount();
+        window.dispatchEvent(new Event('pagehide'));
+
+        expect(telemetry.cardFormHeight).not.toHaveBeenCalled();
+    });
+
+    it('measures the frame while it is still in the document', async () => {
+        // The summary is sent from cleanup(), which also removes the iframe; a
+        // detached frame measures 0 wide, which would read as a real width.
+        vi.spyOn(
+            HTMLIFrameElement.prototype,
+            'getBoundingClientRect',
+        ).mockImplementation(function (this: HTMLIFrameElement) {
+            return { width: this.isConnected ? 518.1818 : 0 } as DOMRect;
+        });
+        const { ctrl, sendHeights } = await mount();
+        sendHeights(176);
+
+        ctrl.unmount();
+
+        expect(reports()[0]?.measurements).toMatchObject({
+            iframe_width: 518.18,
+            device_pixel_ratio: globalThis.devicePixelRatio,
+        });
     });
 });

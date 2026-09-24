@@ -469,6 +469,30 @@ describe('createGwLoggerTelemetry()', () => {
         expect(fetchMock).toHaveBeenCalledTimes(50);
     });
 
+    it('spends the lifecycle budget on the card form height, never the error one', () => {
+        const t = makeTelemetry();
+        // A form remounted in a loop, each mount oscillating. The cap is what
+        // stops that from flooding; the error budget is what must survive it.
+        for (let i = 0; i < 60; i += 1) {
+            t.cardFormHeight({
+                phase: 'oscillation',
+                flow: 'return-payload',
+                durationMs: null,
+                measurements: {},
+            });
+        }
+        expect(fetchMock).toHaveBeenCalledTimes(50);
+        fetchMock.mockClear();
+
+        t.error(
+            new GoPaySDKError('[GoPayBrowserSDK] Card form error: x', {
+                errorCode: GoPayErrorCodes.CARD_FORM_ERROR,
+            }),
+        );
+
+        expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
     it('carries the HTTP method, which is the only thing separating a POST from its polls', async () => {
         // One charge is a POST that starts it and GETs that poll the result.
         // They share an action and a target, so before this field they were
@@ -705,6 +729,39 @@ describe('lifecycle events', () => {
             'trace_id',
             'transaction_id',
         ]);
+    });
+
+    it('sends the card form height as a js_event the ingest accepts', async () => {
+        telemetry('3273103424').cardFormHeight({
+            phase: 'summary',
+            flow: 'direct-charge',
+            durationMs: 1234.6,
+            measurements: {
+                reversals: 1,
+                recent: '178,218,178',
+                oscillated: false,
+                min: null,
+            },
+        });
+
+        const event = await readEvent(0);
+        expect(event).toMatchObject({
+            event_type: 'js_event',
+            function_name: 'card-form-height',
+            return_value: 'summary',
+            payment_method: 'card',
+            flow: 'direct-charge',
+            // The schema's duration is an integer; a fractional one is
+            // rejected, and in production a rejection is a silent 204.
+            duration: 1235,
+            payment_session_id: '3273103424',
+        });
+        // An absent value is dropped rather than rendered as "null".
+        expect(JSON.parse(event.params as string)).toEqual({
+            reversals: 1,
+            recent: '178,218,178',
+            oscillated: false,
+        });
     });
 
     it('reports payment_session_id once a payment is attached', async () => {

@@ -17,6 +17,7 @@ describe('callIntegrator()', () => {
         walletUnmount: vi.fn(),
         walletAvailability: vi.fn(),
         walletStep: vi.fn(),
+        cardFormHeight: vi.fn(),
     });
 
     afterEach(() => {

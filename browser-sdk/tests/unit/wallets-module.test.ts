@@ -183,6 +183,7 @@ function makeTelemetry() {
         walletUnmount: vi.fn(),
         walletAvailability: vi.fn(),
         walletStep: vi.fn(),
+        cardFormHeight: vi.fn(),
     };
 }
 
@@ -1968,6 +1969,7 @@ describe('mountApplePayButton()', () => {
             walletUnmount: vi.fn(),
             walletAvailability: vi.fn(),
             walletStep: vi.fn(),
+            cardFormHeight: vi.fn(),
         });
 
         it('answers without an attached payment, which is the whole point', async () => {
