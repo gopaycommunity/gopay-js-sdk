@@ -2128,6 +2128,76 @@ describe('unmounting the card form is reported as an unmount, not an error', () 
         expect(coreTelemetry.error).not.toHaveBeenCalled();
     });
 
+    /**
+     * The terminal `idle` is emitted before `result` settles, and the
+     * integrator's callback runs synchronously — so an unmount() from inside
+     * it must not describe a charge whose outcome is already known as still
+     * in flight.
+     */
+    const unmountFromTerminalIdle = async (
+        awaitChargeState: () => Promise<unknown>,
+    ) => {
+        const paymentsApi = {
+            chargePayment: vi.fn().mockResolvedValue({}),
+            awaitChargeState: vi.fn(awaitChargeState),
+        } as unknown as ReturnType<typeof createPaymentsApi>;
+        const cards = createCardsApi(client, () => paymentsApi, telemetry);
+        let ctrl: Awaited<ReturnType<typeof cards.mountCardForm>> | undefined;
+        let previous: string | undefined;
+        ctrl = await cards.mountCardForm(container, {
+            flow: 'direct-charge',
+            threeDS: { mode: 'manual' },
+            onLoadingStateChange: (state) => {
+                // Recorded first: unmount() emits `idle` again from its own
+                // teardown, and that nested call must not unmount a second
+                // time.
+                const was = previous;
+                previous = state;
+                if (state === 'idle' && was === 'polling-charge-state') {
+                    ctrl?.unmount();
+                }
+            },
+        });
+        const iframe = loadedIframe();
+        simulateMessage(iframe, {
+            type: 'GOPAY_CARD_ENCRYPT_RESULT',
+            card_token: 'enc_token_abc',
+        });
+        await ctrl.result.catch(() => {});
+        return telemetry.unmount.mock.calls[0]?.[0];
+    };
+
+    it('does not call a charge that succeeded in flight', async () => {
+        const reported = await unmountFromTerminalIdle(() =>
+            Promise.resolve({ state: 'SUCCEEDED', id: 'pay_001' }),
+        );
+        expect(reported).toMatchObject({ chargeInFlight: false });
+    });
+
+    it('does not call a charge that terminally failed in flight', async () => {
+        const reported = await unmountFromTerminalIdle(() =>
+            Promise.reject(
+                new GoPaySDKError('[GoPaySDK] Charge failed', {
+                    errorCode: GoPayErrorCodes.CHARGE_FAILED,
+                    chargeState: { state: 'FAILED' },
+                }),
+            ),
+        );
+        expect(reported).toMatchObject({ chargeInFlight: false });
+    });
+
+    it('keeps a charge whose outcome is unknown in flight', async () => {
+        // A timeout carries no state: the charge may still complete at GoPay.
+        const reported = await unmountFromTerminalIdle(() =>
+            Promise.reject(
+                new GoPaySDKError('[GoPaySDK] Charge did not progress', {
+                    errorCode: GoPayErrorCodes.CHARGE_TIMEOUT,
+                }),
+            ),
+        );
+        expect(reported).toMatchObject({ chargeInFlight: true });
+    });
+
     it('still reports a card form that genuinely failed as an error', async () => {
         const cards = createCardsApi(client, () => null, telemetry);
         const ctrl = await cards.mountCardForm(container, {

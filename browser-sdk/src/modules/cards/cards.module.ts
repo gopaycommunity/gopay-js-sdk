@@ -412,8 +412,9 @@ export function createCardsApi(
              * Whether the direct-charge flow has handed the card to the charge.
              * Read by unmount(), which is the one point where tearing down
              * leaves the outcome unknown: the charge can still succeed at
-             * GoPay after `result` rejects. Never reset — the charge ends by
-             * settling `result`, and unmount() is a no-op from then on.
+             * GoPay after `result` rejects. Cleared only once the outcome is
+             * known — before the terminal `idle`, whose callback runs ahead of
+             * `result` settling and may call unmount() itself.
              */
             let charging = false;
             let onMessage:
@@ -710,10 +711,20 @@ export function createCardsApi(
                     });
 
                     clearSpinner();
+                    charging = false;
                     emitLoadingState('idle');
                     resolveResult(chargeState);
                 } catch (err) {
                     clearSpinner();
+                    // Only a terminal FAILED carries the state it failed in.
+                    // An abort, a timeout or a failed request does not, and
+                    // for those the charge may still complete at GoPay.
+                    if (
+                        err instanceof GoPaySDKError &&
+                        err.chargeState !== undefined
+                    ) {
+                        charging = false;
+                    }
                     emitLoadingState('idle');
                     rejectResult(err);
                 }
