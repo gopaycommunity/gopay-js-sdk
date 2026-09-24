@@ -180,7 +180,7 @@ function makeTelemetry() {
         submit: vi.fn(),
         walletUnavailable: vi.fn(),
         integratorError: vi.fn(),
-        walletUnmount: vi.fn(),
+        unmount: vi.fn(),
         walletAvailability: vi.fn(),
         walletStep: vi.fn(),
         cardFormHeight: vi.fn(),
@@ -854,7 +854,7 @@ describe('mountApplePayButton()', () => {
         expect(onCancel).toHaveBeenCalledOnce();
     });
 
-    it('unmount() rejects result and calls client.emitError when not yet settled', async () => {
+    it('unmount() rejects result and reports it once, without an error event, when not yet settled', async () => {
         const paymentsApi = makePaymentsApi();
         const client = makeClient();
         const api = createWalletsApi(
@@ -870,7 +870,14 @@ describe('mountApplePayButton()', () => {
         expect((err as GoPaySDKError).errorCode).toBe(
             GoPayErrorCodes.WALLET_BUTTON_ERROR,
         );
-        expect(client.emitError).toHaveBeenCalledOnce();
+        // The rejection is what carries it to onError; the unmount event has
+        // already described it, so no SDK error event on top. A second
+        // emitError after it could only ever be deduped away.
+        expect(client.reportError).toHaveBeenCalledOnce();
+        expect(client.reportError).toHaveBeenCalledWith(err, {
+            telemetry: false,
+        });
+        expect(client.emitError).not.toHaveBeenCalled();
     });
 
     it('unmount() is a no-op when result is already settled', async () => {
@@ -1578,7 +1585,7 @@ describe('mountApplePayButton()', () => {
             tap();
             ctrl.unmount();
 
-            expect(telemetry.walletUnmount).toHaveBeenCalledWith({
+            expect(telemetry.unmount).toHaveBeenCalledWith({
                 paymentMethod: 'applepay',
                 sheetOpen: true,
                 chargeInFlight: false,
@@ -1605,7 +1612,7 @@ describe('mountApplePayButton()', () => {
             ctrl.result.catch(() => {});
             ctrl.unmount();
 
-            expect(telemetry.walletUnmount).toHaveBeenCalledWith({
+            expect(telemetry.unmount).toHaveBeenCalledWith({
                 paymentMethod: 'applepay',
                 sheetOpen: false,
                 chargeInFlight: false,
@@ -1686,7 +1693,7 @@ describe('mountApplePayButton()', () => {
             // Without this the assertion below passes either way.
             await new Promise((resolve) => setTimeout(resolve, 10));
 
-            expect(telemetry.walletUnmount).toHaveBeenCalledWith({
+            expect(telemetry.unmount).toHaveBeenCalledWith({
                 paymentMethod: 'applepay',
                 sheetOpen: true,
                 chargeInFlight: true,
@@ -1966,7 +1973,7 @@ describe('mountApplePayButton()', () => {
             submit: vi.fn(),
             walletUnavailable: vi.fn(),
             integratorError: vi.fn(),
-            walletUnmount: vi.fn(),
+            unmount: vi.fn(),
             walletAvailability: vi.fn(),
             walletStep: vi.fn(),
             cardFormHeight: vi.fn(),
@@ -2493,7 +2500,7 @@ describe('mountGooglePayButton()', () => {
         );
     });
 
-    it('unmount() rejects result and calls client.emitError when not yet settled', async () => {
+    it('unmount() rejects result and reports it once, without an error event, when not yet settled', async () => {
         const paymentsApi = makePaymentsApi();
         const client = makeClient();
         const api = createWalletsApi(
@@ -2509,7 +2516,14 @@ describe('mountGooglePayButton()', () => {
         expect((err as GoPaySDKError).errorCode).toBe(
             GoPayErrorCodes.WALLET_BUTTON_ERROR,
         );
-        expect(client.emitError).toHaveBeenCalledOnce();
+        // The rejection is what carries it to onError; the unmount event has
+        // already described it, so no SDK error event on top. A second
+        // emitError after it could only ever be deduped away.
+        expect(client.reportError).toHaveBeenCalledOnce();
+        expect(client.reportError).toHaveBeenCalledWith(err, {
+            telemetry: false,
+        });
+        expect(client.emitError).not.toHaveBeenCalled();
     });
 
     it('unmount() is a no-op when result is already settled', async () => {

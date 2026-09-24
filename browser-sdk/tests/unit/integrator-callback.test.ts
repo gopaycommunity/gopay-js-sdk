@@ -14,7 +14,7 @@ describe('callIntegrator()', () => {
         submit: vi.fn(),
         walletUnavailable: vi.fn(),
         integratorError: vi.fn(),
-        walletUnmount: vi.fn(),
+        unmount: vi.fn(),
         walletAvailability: vi.fn(),
         walletStep: vi.fn(),
         cardFormHeight: vi.fn(),

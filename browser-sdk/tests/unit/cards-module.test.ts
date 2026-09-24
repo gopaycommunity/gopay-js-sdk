@@ -441,7 +441,7 @@ describe('createCardsApi() — browser SDK', () => {
                 submit: vi.fn(),
                 walletUnavailable: vi.fn(),
                 integratorError: vi.fn(),
-                walletUnmount: vi.fn(),
+                unmount: vi.fn(),
                 walletAvailability: vi.fn(),
                 walletStep: vi.fn(),
                 cardFormHeight: vi.fn(),
@@ -1798,7 +1798,7 @@ describe('the card form height is reported', () => {
             submit: vi.fn(),
             walletUnavailable: vi.fn(),
             integratorError: vi.fn(),
-            walletUnmount: vi.fn(),
+            unmount: vi.fn(),
             walletAvailability: vi.fn(),
             walletStep: vi.fn(),
             cardFormHeight: vi.fn(),
@@ -1970,5 +1970,152 @@ describe('the card form height is reported', () => {
             iframe_width: 518.18,
             device_pixel_ratio: globalThis.devicePixelRatio,
         });
+    });
+});
+
+/**
+ * Tearing the form down on purpose is not a failure. It used to reach
+ * gw-logger as SDK.CARD_FORM_ERROR — the same event as an iframe that never
+ * loaded — while the wallet buttons already reported theirs as an unmount
+ * (GPOMA-2668). The integrator's side is deliberately unchanged: `result`
+ * still rejects and onError still fires.
+ */
+describe('unmounting the card form is reported as an unmount, not an error', () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+    let container: HTMLDivElement;
+    let onError: ReturnType<typeof vi.fn<(error: unknown) => void>>;
+    /** Core's seam: where SDK errors become events. */
+    let coreTelemetry: {
+        apiCall: ReturnType<typeof vi.fn>;
+        error: ReturnType<typeof vi.fn>;
+    };
+    let telemetry: BrowserTelemetry & { unmount: ReturnType<typeof vi.fn> };
+    let client: ReturnType<typeof createHttpClient>;
+
+    beforeEach(() => {
+        fetchMock = vi
+            .fn()
+            .mockResolvedValue(makeResponse({ card_form_url: CARD_FORM_URL }));
+        vi.stubGlobal('fetch', fetchMock);
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        onError = vi.fn<(error: unknown) => void>();
+        coreTelemetry = { apiCall: vi.fn(), error: vi.fn() };
+        client = createHttpClient(
+            {
+                baseUrl: 'https://example.com',
+                shareableKey: 'pk_test',
+                onError,
+            },
+            undefined,
+            coreTelemetry as never,
+        );
+        client.setClientId('cid_test');
+        telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            submit: vi.fn(),
+            walletUnavailable: vi.fn(),
+            integratorError: vi.fn(),
+            unmount: vi.fn(),
+            walletAvailability: vi.fn(),
+            walletStep: vi.fn(),
+            cardFormHeight: vi.fn(),
+        } as unknown as typeof telemetry;
+    });
+
+    afterEach(() => {
+        container.remove();
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    const loadedIframe = () => {
+        const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+        iframe.onload?.(new Event('load'));
+        return iframe;
+    };
+
+    it('reports an idle unmount as its own event and no error event', async () => {
+        const cards = createCardsApi(client, () => null, telemetry);
+        const ctrl = await cards.mountCardForm(container, {
+            flow: 'return-payload',
+        });
+        loadedIframe();
+
+        ctrl.unmount();
+
+        await expect(ctrl.result).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.CARD_FORM_ERROR,
+        });
+        expect(telemetry.unmount).toHaveBeenCalledOnce();
+        expect(telemetry.unmount).toHaveBeenCalledWith({
+            paymentMethod: 'card',
+            sheetOpen: false,
+            chargeInFlight: false,
+        });
+        // One teardown is one event.
+        expect(coreTelemetry.error).not.toHaveBeenCalled();
+        // The integrator still hears about it, exactly once.
+        expect(onError).toHaveBeenCalledOnce();
+        expect(onError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                errorCode: GoPayErrorCodes.CARD_FORM_ERROR,
+            }),
+        );
+    });
+
+    it('marks an unmount during the direct charge as a charge in flight', async () => {
+        // The one teardown that leaves the outcome unknown: the charge can
+        // still succeed at GoPay after `result` rejects.
+        const paymentsApi = {
+            chargePayment: vi.fn(() => new Promise(() => {})),
+            awaitChargeState: vi.fn(),
+        } as unknown as ReturnType<typeof createPaymentsApi>;
+        const cards = createCardsApi(client, () => paymentsApi, telemetry);
+        const ctrl = await cards.mountCardForm(container, {
+            flow: 'direct-charge',
+            threeDS: { mode: 'manual' },
+        });
+        ctrl.result.catch(() => {});
+        const iframe = loadedIframe();
+        simulateMessage(iframe, {
+            type: 'GOPAY_CARD_ENCRYPT_RESULT',
+            card_token: 'enc_token_abc',
+        });
+        expect(paymentsApi.chargePayment).toHaveBeenCalledOnce();
+
+        ctrl.unmount();
+
+        expect(telemetry.unmount).toHaveBeenCalledWith({
+            paymentMethod: 'card',
+            sheetOpen: false,
+            chargeInFlight: true,
+        });
+        expect(coreTelemetry.error).not.toHaveBeenCalled();
+    });
+
+    it('still reports a card form that genuinely failed as an error', async () => {
+        const cards = createCardsApi(client, () => null, telemetry);
+        const ctrl = await cards.mountCardForm(container, {
+            flow: 'return-payload',
+        });
+        ctrl.result.catch(() => {});
+        const iframe = loadedIframe();
+
+        simulateMessage(iframe, {
+            type: 'GOPAY_CARD_ENCRYPT_ERROR',
+            error: 'Encryption failed',
+            code: 'ENCRYPTION_FAILED',
+        });
+
+        expect(coreTelemetry.error).toHaveBeenCalledOnce();
+        expect(coreTelemetry.error).toHaveBeenCalledWith(
+            expect.objectContaining({
+                errorCode: GoPayErrorCodes.CARD_FORM_ERROR,
+            }),
+        );
+        expect(telemetry.unmount).not.toHaveBeenCalled();
     });
 });

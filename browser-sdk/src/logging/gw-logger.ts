@@ -381,26 +381,31 @@ export interface BrowserTelemetry extends Telemetry {
         capabilities?: Record<string, string | number | boolean | null>;
     }): void;
     /**
-     * A wallet button torn down by the integrator.
+     * A wallet button or the card form torn down by the integrator.
      *
      * It was already reaching gw-logger before this existed — as
-     * `SDK.WALLET_BUTTON_ERROR`, because the teardown rejects the controller's
-     * promise and every rejection is reported. So a merchant unmounting the
-     * button when the shopper steps back through the checkout was
-     * indistinguishable from a sheet that genuinely broke, and it spent the
-     * error budget doing it.
+     * `SDK.WALLET_BUTTON_ERROR` or `SDK.CARD_FORM_ERROR`, because the teardown
+     * rejects the controller's promise and every rejection is reported. So a
+     * merchant unmounting the button when the shopper steps back through the
+     * checkout was indistinguishable from a sheet that genuinely broke, and it
+     * spent the error budget doing it. The card form kept doing that after the
+     * wallets stopped (GPOMA-2668) until GPOMA-2679.
      *
      * A deliberate teardown is not a failure. It is reported here instead, and
      * the error event for the same unmount is suppressed at the call site, so
      * one teardown is one event.
      *
-     * It also completes a pair: `ready` says the button reached the page, and
-     * until now nothing said it left. A `ready` with neither a terminal charge
-     * nor an unmount after it is the funnel gap worth looking at.
+     * It also completes a pair: `ready` says the button or form reached the
+     * page, and until now nothing said it left. A `ready` with neither a
+     * terminal charge nor an unmount after it is the funnel gap worth looking
+     * at.
      */
-    walletUnmount(context: {
+    unmount(context: {
         paymentMethod: string;
-        /** A payment sheet was open and has been aborted. */
+        /**
+         * A payment sheet was open and has been aborted. Always false for the
+         * card form, which has no sheet — kept so one query reads all three.
+         */
         sheetOpen: boolean;
         /** A charge was in flight and has been aborted. */
         chargeInFlight: boolean;
@@ -440,7 +445,7 @@ export const NO_BROWSER_TELEMETRY: BrowserTelemetry = {
     submit: () => {},
     walletUnavailable: () => {},
     integratorError: () => {},
-    walletUnmount: () => {},
+    unmount: () => {},
     walletAvailability: () => {},
     walletStep: () => {},
     cardFormHeight: () => {},
@@ -635,15 +640,16 @@ export function createGwLoggerTelemetry(options: {
             }));
         },
 
-        walletUnmount({ paymentMethod, sheetOpen, chargeInFlight }): void {
+        unmount({ paymentMethod, sheetOpen, chargeInFlight }): void {
             // The lifecycle budget, not the error one: this is a bounded
             // marker — a handful per mount — and it is emitted precisely
             // because a teardown is not a failure.
             post('lifecycle', () => ({
                 ...base(),
                 event_type: 'js_event',
-                // The function the integrator actually called. Which wallet it
-                // was is payment_method's job, as everywhere else.
+                // The function the integrator actually called. Which wallet —
+                // or the card form — it was is payment_method's job, as
+                // everywhere else.
                 function_name: 'unmount',
                 duration: null,
                 payment_method: orUndefined(paymentMethod),

@@ -1440,7 +1440,7 @@ export function createWalletsApi(
                     // reported as its own event rather than as the rejection
                     // below, because tearing a button down on purpose is not a
                     // failure and should not read as one.
-                    telemetry.walletUnmount({
+                    telemetry.unmount({
                         paymentMethod: 'applepay',
                         sheetOpen: activeSession !== undefined,
                         chargeInFlight: charging,
@@ -1452,11 +1452,6 @@ export function createWalletsApi(
                         { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
                     );
                     rejectResult(unmountError, { telemetry: false });
-                    try {
-                        client.emitError(unmountError);
-                    } catch {
-                        // emitError throws after firing onError — swallow here
-                    }
                 },
             };
         },
@@ -1738,7 +1733,7 @@ export function createWalletsApi(
                     if (isSettled()) {
                         return;
                     }
-                    telemetry.walletUnmount({
+                    telemetry.unmount({
                         paymentMethod: 'googlepay',
                         sheetOpen,
                         chargeInFlight: charging,
@@ -1750,11 +1745,6 @@ export function createWalletsApi(
                         { errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR },
                     );
                     rejectResult(unmountError, { telemetry: false });
-                    try {
-                        client.emitError(unmountError);
-                    } catch {
-                        // emitError throws after firing onError — swallow here
-                    }
                 },
             };
         },

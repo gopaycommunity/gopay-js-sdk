@@ -408,6 +408,14 @@ export function createCardsApi(
              * or one off by hours.
              */
             let readyAt: number | null = null;
+            /**
+             * Whether the direct-charge flow has handed the card to the charge.
+             * Read by unmount(), which is the one point where tearing down
+             * leaves the outcome unknown: the charge can still succeed at
+             * GoPay after `result` rejects. Never reset — the charge ends by
+             * settling `result`, and unmount() is a no-op from then on.
+             */
+            let charging = false;
             let onMessage:
                 | ((e: MessageEvent<OutboundMessage>) => Promise<void>)
                 | undefined;
@@ -417,7 +425,10 @@ export function createCardsApi(
             let resolveResult!: (
                 value: EncryptedCardPayload | PaymentChargeStatusResponse,
             ) => void;
-            let rejectResult!: (reason: unknown) => void;
+            let rejectResult!: (
+                reason: unknown,
+                options?: { telemetry?: boolean },
+            ) => void;
             const result = new Promise<
                 EncryptedCardPayload | PaymentChargeStatusResponse
             >((res, rej) => {
@@ -430,7 +441,7 @@ export function createCardsApi(
                     settled = true;
                     res(value);
                 };
-                rejectResult = (reason) => {
+                rejectResult = (reason, options) => {
                     if (settled) {
                         return;
                     }
@@ -439,7 +450,13 @@ export function createCardsApi(
                     // rather than by throwing, so without this the errors an
                     // integrator most wants to be alerted on — the card form
                     // itself failing — are the ones onError never sees.
-                    client.reportError(reason);
+                    // `options` carries the telemetry opt-out, passed only
+                    // when there is one, as the wallets do.
+                    if (options) {
+                        client.reportError(reason, options);
+                    } else {
+                        client.reportError(reason);
+                    }
                     rej(reason);
                 };
             });
@@ -612,6 +629,7 @@ export function createCardsApi(
                     spinner: options.spinner,
                 });
 
+                charging = true;
                 try {
                     const { threeDS, awaitOptions } = options;
 
@@ -808,18 +826,28 @@ export function createCardsApi(
                     if (settled) {
                         return;
                     }
+                    // Its own event rather than the rejection below: tearing the
+                    // form down on purpose is not a failure, and read as
+                    // SDK.CARD_FORM_ERROR it was indistinguishable from an
+                    // iframe that never loaded. The wallet buttons do the same
+                    // since GPOMA-2668.
+                    telemetry.unmount({
+                        paymentMethod: 'card',
+                        sheetOpen: false,
+                        chargeInFlight: charging,
+                    });
                     chargeAbortController.abort();
                     cleanup('unmount');
-                    const unmountError = new GoPaySDKError(
-                        '[GoPayBrowserSDK] Card form unmounted.',
-                        { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                    // The integrator still hears about it through onError and
+                    // the rejection; only the operational error event is
+                    // suppressed, so one teardown is one event.
+                    rejectResult(
+                        new GoPaySDKError(
+                            '[GoPayBrowserSDK] Card form unmounted.',
+                            { errorCode: GoPayErrorCodes.CARD_FORM_ERROR },
+                        ),
+                        { telemetry: false },
                     );
-                    rejectResult(unmountError);
-                    try {
-                        client.emitError(unmountError);
-                    } catch {
-                        // emitError throws after firing onError — swallow here
-                    }
                 },
             };
         },
