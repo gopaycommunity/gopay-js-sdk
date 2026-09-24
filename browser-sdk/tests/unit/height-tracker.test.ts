@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { safeErrorMessage } from '../../src/logging/sanitize.js';
 import { createHeightTracker } from '../../src/modules/cards/height-tracker.js';
 
 /** A clock the test moves by hand, so the one-second window is exact. */
@@ -116,6 +117,22 @@ describe('createHeightTracker()', () => {
             reversals: 3,
             oscillated: false,
         });
+    });
+
+    it('keeps a zoomed, fractional height readable through the PAN scrub', () => {
+        // What a page zoom produces. Thirteen fraction digits are a PAN to the
+        // scrub every `params` string goes through, so unrounded this whole
+        // pattern would arrive as [redacted].
+        const tracker = createHeightTracker(() => 0);
+        tracker.record(178.3333282470703);
+        tracker.record(194);
+        tracker.record(178.3333282470703);
+
+        const { recent, last } = tracker.stats();
+        expect(recent).toBe('178.33,194,178.33');
+        expect(safeErrorMessage(recent)).toBe(recent);
+        // The number fields are not strings and are never scrubbed.
+        expect(last).toBe(178.3333282470703);
     });
 
     it('keeps only the most recent values, oldest first', () => {

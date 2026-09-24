@@ -84,7 +84,13 @@ export function createHeightTracker(now: () => number): HeightTracker {
             if (previous === height) {
                 return false;
             }
-            recent.push(height);
+            // Rounded, because `recent` travels as a string and every string
+            // in `params` goes through the PAN scrub: under page zoom a height
+            // arrives as 178.3333282470703, whose 13 fraction digits read as a
+            // card number and came out as `[redacted]` — the pattern lost in
+            // exactly the zoom case it exists for. Two places keep a
+            // sub-pixel difference visible and cannot form a 12-digit run.
+            recent.push(Math.round(height * 100) / 100);
             if (recent.length > RECENT_VALUES) {
                 recent.shift();
             }

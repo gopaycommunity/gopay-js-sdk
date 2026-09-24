@@ -427,7 +427,7 @@ export function createCardsApi(
             ) => void;
             let rejectResult!: (
                 reason: unknown,
-                options?: { telemetry?: boolean },
+                reportOptions?: { telemetry?: boolean },
             ) => void;
             const result = new Promise<
                 EncryptedCardPayload | PaymentChargeStatusResponse
@@ -441,7 +441,7 @@ export function createCardsApi(
                     settled = true;
                     res(value);
                 };
-                rejectResult = (reason, options) => {
+                rejectResult = (reason, reportOptions) => {
                     if (settled) {
                         return;
                     }
@@ -450,10 +450,10 @@ export function createCardsApi(
                     // rather than by throwing, so without this the errors an
                     // integrator most wants to be alerted on — the card form
                     // itself failing — are the ones onError never sees.
-                    // `options` carries the telemetry opt-out, passed only
-                    // when there is one, as the wallets do.
-                    if (options) {
-                        client.reportError(reason, options);
+                    // `reportOptions` carries the telemetry opt-out, passed
+                    // only when there is one, as the wallets do.
+                    if (reportOptions) {
+                        client.reportError(reason, reportOptions);
                     } else {
                         client.reportError(reason);
                     }
@@ -465,8 +465,14 @@ export function createCardsApi(
              * The heights the iframe reports, tracked for telemetry only —
              * applying them is unchanged. See height-tracker.ts.
              */
-            const heights = createHeightTracker(nowMs);
+            let heights = createHeightTracker(nowMs);
             let heightSummarySent = false;
+            /**
+             * Whether a pageshow listener is waiting for a back/forward-cache
+             * restore, so teardown removes only what was added — every
+             * listener this module adds is balanced by exactly one removal.
+             */
+            let restoreArmed = false;
 
             const sinceReady = () =>
                 readyAt === null ? null : nowMs() - readyAt;
@@ -511,9 +517,38 @@ export function createCardsApi(
              * unlike the page-wide leave beacon: it describes this form, not
              * the page.
              */
-            const onHeightPageHide = () => {
+            const onHeightPageHide = (event: PageTransitionEvent) => {
                 sendHeightSummary('leave');
+                if (event.persisted) {
+                    restoreArmed = true;
+                    window.addEventListener('pageshow', onHeightPageShow, {
+                        once: true,
+                    });
+                }
             };
+
+            /**
+             * Back from the back/forward cache with the form still mounted.
+             * The summary already went out at pagehide and can be the last
+             * word if the page is never restored, so it stays; what follows is
+             * a second visit — the leave beacon reads it the same way — with
+             * its own heights and its own summary. Without this the `once`
+             * listener was spent and heightSummarySent latched, so the real
+             * end of the visit and every height after the restore went
+             * unreported.
+             */
+            const onHeightPageShow = (event: PageTransitionEvent) => {
+                restoreArmed = false;
+                if (!event.persisted || !iframeMounted) {
+                    return;
+                }
+                heights = createHeightTracker(nowMs);
+                heightSummarySent = false;
+                window.addEventListener('pagehide', onHeightPageHide, {
+                    once: true,
+                });
+            };
+
             window.addEventListener('pagehide', onHeightPageHide, {
                 once: true,
             });
@@ -523,6 +558,10 @@ export function createCardsApi(
             const cleanup = (ended: CardFormEnd) => {
                 // First, while the iframe is still in the document to measure.
                 sendHeightSummary(ended);
+                if (restoreArmed) {
+                    restoreArmed = false;
+                    window.removeEventListener('pageshow', onHeightPageShow);
+                }
                 iframeMounted = false;
                 releaseSession();
                 clearTimeout(iframeLoadTimeout);

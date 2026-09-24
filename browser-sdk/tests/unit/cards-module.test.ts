@@ -1943,6 +1943,38 @@ describe('the card form height is reported', () => {
         });
     });
 
+    it('treats a page restored from the back/forward cache as a second visit', async () => {
+        const pageTransition = (type: string, persisted: boolean) => {
+            const event = new Event(type);
+            Object.defineProperty(event, 'persisted', { value: persisted });
+            return event;
+        };
+        const { ctrl, sendHeights } = await mount();
+        sendHeights(178, 194);
+
+        // Into the cache: the summary goes out, since the page may never
+        // come back and this is then the last word.
+        window.dispatchEvent(pageTransition('pagehide', true));
+        expect(reports()).toHaveLength(1);
+        expect(reports()[0]?.measurements).toMatchObject({
+            messages: 2,
+            ended: 'leave',
+        });
+
+        // Back again, form still mounted: its heights and its end are the
+        // second visit's, not lost behind the first summary.
+        window.dispatchEvent(pageTransition('pageshow', true));
+        sendHeights(231);
+        ctrl.unmount();
+
+        expect(reports()).toHaveLength(2);
+        expect(reports()[1]?.measurements).toMatchObject({
+            messages: 1,
+            last: 231,
+            ended: 'unmount',
+        });
+    });
+
     it('sends nothing for a form that never loaded', async () => {
         const { ctrl } = await mount({ loaded: false });
 
