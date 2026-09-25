@@ -178,6 +178,13 @@ const INTEGRATION: string =
 const MAX_PARAMS_LENGTH = 4096;
 
 /**
+ * One value in a `params` object: primitives only, so describeParams can scrub
+ * the strings and pass the rest through as they are. `null` means the browser
+ * did not answer, and is dropped rather than rendered.
+ */
+type ParamValue = string | number | boolean | null;
+
+/**
  * A JSON object, which is gw-ui's shape for `params` and therefore ours:
  * `JSON.stringify({ origin, messageType })` in its gp-api component. One
  * shape means one way to read `labels.params` in OpenSearch whichever
@@ -321,7 +328,7 @@ export interface BrowserTelemetry extends Telemetry {
         functionName: string;
         paymentMethod: string;
         reason: string;
-        capabilities?: Record<string, string | number | boolean | null>;
+        capabilities?: Record<string, ParamValue>;
     }): void;
     /**
      * A callback the integrator supplied threw.
@@ -378,7 +385,7 @@ export interface BrowserTelemetry extends Telemetry {
         available: boolean;
         /** Why not, when it is not. */
         reason?: string;
-        capabilities?: Record<string, string | number | boolean | null>;
+        capabilities?: Record<string, ParamValue>;
     }): void;
     /**
      * A wallet button or the card form torn down by the integrator.
@@ -428,7 +435,7 @@ export interface BrowserTelemetry extends Telemetry {
         flow: string;
         /** Since the form became ready; null when it never did. */
         durationMs: number | null;
-        measurements: Record<string, string | number | boolean | null>;
+        measurements: Record<string, ParamValue>;
     }): void;
 }
 
