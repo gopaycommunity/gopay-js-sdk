@@ -11,9 +11,11 @@ import type {
     SpinnerConfig,
 } from '../../internal/loading-spinner.js';
 import { showSpinnerIn } from '../../internal/loading-spinner.js';
+import { reportFailure } from '../../internal/report-failure.js';
 import {
     type BrowserTelemetry,
     NO_BROWSER_TELEMETRY,
+    type ParamValue,
 } from '../../logging/gw-logger.js';
 import type { components } from '../../types/generated.js';
 import type {
@@ -512,9 +514,7 @@ function watchCspViolation(src: string): {
  * it flips is the thing the gate read, and with it on the event an internal
  * report stops looking like a shopper-facing outage.
  */
-function walletCapabilities(
-    wallet: WalletId,
-): Record<string, string | number | boolean | null> {
+function walletCapabilities(wallet: WalletId): Record<string, ParamValue> {
     try {
         const nav = globalThis.navigator;
         const mobile = readProp(readProp(nav, 'userAgentData'), 'mobile');
@@ -698,27 +698,6 @@ function makeUnavailableController(args: {
 }
 
 /**
- * Report a wallet failure, passing the telemetry opt-out only when there is
- * one.
- *
- * `reportError(err, undefined)` and `reportError(err)` mean the same thing to
- * core, but they are not the same call, and every caller that has no opinion
- * about telemetry should look like it has none.
- */
-function reportWalletFailure(
-    client: HttpClient,
-    error: unknown,
-    options?: { telemetry?: boolean },
-): void {
-    const walletError = asWalletError(error);
-    if (options) {
-        client.reportError(walletError, options);
-        return;
-    }
-    client.reportError(walletError);
-}
-
-/**
  * The controller's promise, and the once-only settling around it.
  *
  * Both wallets kept their own copy of this, and both had the same hole:
@@ -770,7 +749,7 @@ function createWalletResult(
             // failing — are the ones onError never sees. `options` carries the
             // telemetry opt-out: an unmount has already described itself
             // better than SDK.WALLET_BUTTON_ERROR can.
-            reportWalletFailure(client, error, options);
+            reportFailure(client, asWalletError(error), options);
             rej(error);
         };
     });

@@ -182,7 +182,7 @@ const MAX_PARAMS_LENGTH = 4096;
  * the strings and pass the rest through as they are. `null` means the browser
  * did not answer, and is dropped rather than rendered.
  */
-type ParamValue = string | number | boolean | null;
+export type ParamValue = string | number | boolean | null;
 
 /**
  * A JSON object, which is gw-ui's shape for `params` and therefore ours:
@@ -199,7 +199,7 @@ type ParamValue = string | number | boolean | null;
  * keeps a field added later from silently widening what leaves the page.
  */
 function describeParams(
-    fields: Record<string, string | number | boolean | null | undefined>,
+    fields: Record<string, ParamValue | undefined>,
 ): string | undefined {
     const kept: Record<string, string | number | boolean> = {};
     for (const [key, value] of Object.entries(fields)) {
@@ -420,9 +420,11 @@ export interface BrowserTelemetry extends Telemetry {
     /**
      * What the card form's reported height did while it was mounted.
      *
-     * Two phases, both bounded to one per mount: `oscillation` the moment the
+     * Two phases, both bounded to one per visit: `oscillation` the moment the
      * height starts reversing direction faster than a customer could cause,
-     * and `summary` when the form goes away. Never one event per height
+     * and `summary` when the form goes away. A visit is one mount, or the
+     * part of it after a restore from the back/forward cache, which starts
+     * another with its own pair. Never one event per height
      * message — a height that genuinely oscillates would send dozens a second
      * and spend the lifecycle budget the funnel markers need.
      *
@@ -433,7 +435,10 @@ export interface BrowserTelemetry extends Telemetry {
     cardFormHeight(context: {
         phase: 'oscillation' | 'summary';
         flow: string;
-        /** Since the form became ready; null when it never did. */
+        /**
+         * Since the form became ready, or since the restore that started this
+         * visit; null when it never became ready.
+         */
         durationMs: number | null;
         measurements: Record<string, ParamValue>;
     }): void;

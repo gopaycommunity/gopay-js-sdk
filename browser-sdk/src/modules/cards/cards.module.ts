@@ -12,6 +12,7 @@ import type {
     SpinnerConfig,
 } from '../../internal/loading-spinner.js';
 import { showSpinnerIn } from '../../internal/loading-spinner.js';
+import { reportFailure } from '../../internal/report-failure.js';
 import {
     type BrowserTelemetry,
     NO_BROWSER_TELEMETRY,
@@ -451,13 +452,8 @@ export function createCardsApi(
                     // rather than by throwing, so without this the errors an
                     // integrator most wants to be alerted on — the card form
                     // itself failing — are the ones onError never sees.
-                    // `reportOptions` carries the telemetry opt-out, passed
-                    // only when there is one, as the wallets do.
-                    if (reportOptions) {
-                        client.reportError(reason, reportOptions);
-                    } else {
-                        client.reportError(reason);
-                    }
+                    // `reportOptions` carries the telemetry opt-out.
+                    reportFailure(client, reason, reportOptions);
                     rej(reason);
                 };
             });
@@ -469,14 +465,21 @@ export function createCardsApi(
             let heights = createHeightTracker(nowMs);
             let heightSummarySent = false;
             /**
+             * Where the height events' `duration` counts from: the form
+             * becoming ready, and again from a back/forward-cache restore,
+             * which starts a second visit. Not `readyAt` itself, which the
+             * submit event reads as how long the form had been on the page.
+             */
+            let heightsSince: number | null = null;
+            /**
              * Whether a pageshow listener is waiting for a back/forward-cache
              * restore, so teardown removes only what was added — every
              * listener this module adds is balanced by exactly one removal.
              */
             let restoreArmed = false;
 
-            const sinceReady = () =>
-                readyAt === null ? null : nowMs() - readyAt;
+            const sinceVisit = () =>
+                heightsSince === null ? null : nowMs() - heightsSince;
 
             /**
              * The frame itself, not just the messages: its width is what the
@@ -493,8 +496,9 @@ export function createCardsApi(
             });
 
             /**
-             * Once per mount, and only for a form that reached the page: one
-             * that never loaded has no height to describe, and its failure is
+             * Once per visit — a mount restored from the back/forward cache
+             * has two — and only for a form that reached the page: one that
+             * never loaded has no height to describe, and its failure is
              * reported on its own.
              */
             const sendHeightSummary = (ended: CardFormEnd) => {
@@ -506,7 +510,7 @@ export function createCardsApi(
                 telemetry.cardFormHeight({
                     phase: 'summary',
                     flow: options.flow,
-                    durationMs: sinceReady(),
+                    durationMs: sinceVisit(),
                     measurements: { ...heightMeasurements(), ended },
                 });
             };
@@ -545,6 +549,7 @@ export function createCardsApi(
                 }
                 heights = createHeightTracker(nowMs);
                 heightSummarySent = false;
+                heightsSince = nowMs();
                 window.addEventListener('pagehide', onHeightPageHide, {
                     once: true,
                 });
@@ -599,6 +604,7 @@ export function createCardsApi(
                 // that protocol is shared with gw-ui-cc-v4. "The form is on the
                 // page" is what this claims, and it is what it can prove.
                 readyAt = nowMs();
+                heightsSince = readyAt;
                 telemetry.lifecycle('ready', {
                     paymentMethod: 'card',
                     flow: options.flow,
@@ -738,7 +744,7 @@ export function createCardsApi(
                         telemetry.cardFormHeight({
                             phase: 'oscillation',
                             flow: options.flow,
-                            durationMs: sinceReady(),
+                            durationMs: sinceVisit(),
                             measurements: heightMeasurements(),
                         });
                     }

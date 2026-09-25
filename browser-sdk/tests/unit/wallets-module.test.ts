@@ -2526,6 +2526,108 @@ describe('mountGooglePayButton()', () => {
         expect(client.emitError).not.toHaveBeenCalled();
     });
 
+    describe('unmount telemetry', () => {
+        // Apple Pay pins all three states; Google Pay's teardown went through
+        // the same rename and the same opt-out with nothing holding it.
+        it('reports an idle teardown as idle, and no error event for it', async () => {
+            const telemetry = makeTelemetry();
+            const client = makeClient();
+            const api = createWalletsApi(
+                client as never,
+                () => makePaymentsApi() as never,
+                telemetry as never,
+            );
+
+            const ctrl = await api.mountGooglePayButton(container);
+            ctrl.result.catch(() => {});
+            ctrl.unmount();
+
+            expect(telemetry.unmount).toHaveBeenCalledOnce();
+            expect(telemetry.unmount).toHaveBeenCalledWith({
+                paymentMethod: 'googlepay',
+                sheetOpen: false,
+                chargeInFlight: false,
+            });
+            expect(client.reportError).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                }),
+                { telemetry: false },
+            );
+        });
+
+        it('reports the sheet as open while loadPaymentData is pending', async () => {
+            mockLoadPaymentData = vi.fn(() => new Promise(() => {}));
+            const telemetry = makeTelemetry();
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => makePaymentsApi() as never,
+                telemetry as never,
+            );
+
+            const ctrl = await api.mountGooglePayButton(container);
+            ctrl.result.catch(() => {});
+            void must(capturedOnClick, 'the Google Pay button onClick')();
+            await vi.waitFor(() =>
+                expect(mockLoadPaymentData).toHaveBeenCalled(),
+            );
+            ctrl.unmount();
+
+            expect(telemetry.unmount).toHaveBeenCalledWith({
+                paymentMethod: 'googlepay',
+                sheetOpen: true,
+                chargeInFlight: false,
+            });
+        });
+
+        it('reports a charge in flight once the sheet has handed over', async () => {
+            const paymentsApi = makePaymentsApi({
+                awaitChargeState: vi.fn(
+                    (opts: { signal?: AbortSignal }) =>
+                        new Promise((_, reject) => {
+                            opts.signal?.addEventListener('abort', () =>
+                                reject(
+                                    new GoPaySDKError(
+                                        '[GoPaySDK] Charge polling aborted.',
+                                        {
+                                            errorCode:
+                                                GoPayErrorCodes.CHARGE_FAILED,
+                                        },
+                                    ),
+                                ),
+                            );
+                        }),
+                ),
+            });
+            const telemetry = makeTelemetry();
+            const client = makeClient();
+            const api = createWalletsApi(
+                client as never,
+                () => paymentsApi as never,
+                telemetry as never,
+            );
+
+            const ctrl = await api.mountGooglePayButton(container);
+            ctrl.result.catch(() => {});
+            void must(capturedOnClick, 'the Google Pay button onClick')();
+            await vi.waitFor(() =>
+                expect(paymentsApi.awaitChargeState).toHaveBeenCalled(),
+            );
+            ctrl.unmount();
+            await ctrl.result.catch(() => {});
+            // The aborted charge unwinds a tick after the rejection; without
+            // this the one-event assertion below passes either way.
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            expect(telemetry.unmount).toHaveBeenCalledWith({
+                paymentMethod: 'googlepay',
+                sheetOpen: false,
+                chargeInFlight: true,
+            });
+            expect(client.reportError).toHaveBeenCalledTimes(1);
+        });
+    });
+
     it('unmount() is a no-op when result is already settled', async () => {
         const paymentsApi = makePaymentsApi();
         const client = makeClient();

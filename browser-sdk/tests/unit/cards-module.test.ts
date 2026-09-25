@@ -1975,6 +1975,54 @@ describe('the card form height is reported', () => {
         });
     });
 
+    it("times a restored visit's summary from the restore, not from the first ready", async () => {
+        // The second visit is its own: counting from the original ready would
+        // add the first visit and the time the page sat in the cache.
+        let clock = 1_000;
+        vi.spyOn(performance, 'now').mockImplementation(() => clock);
+        const pageTransition = (type: string, persisted: boolean) => {
+            const event = new Event(type);
+            Object.defineProperty(event, 'persisted', { value: persisted });
+            return event;
+        };
+        const { ctrl, sendHeights } = await mount();
+        sendHeights(178);
+
+        clock = 5_000;
+        window.dispatchEvent(pageTransition('pagehide', true));
+        clock = 65_000;
+        window.dispatchEvent(pageTransition('pageshow', true));
+        sendHeights(194);
+        clock = 67_000;
+        ctrl.unmount();
+
+        expect(reports().map((r) => r.durationMs)).toEqual([4_000, 2_000]);
+    });
+
+    it('removes the restore listener when the form is unmounted before any restore', async () => {
+        // Into the cache and torn down in the same pagehide — an integrator's
+        // own pagehide handler can do that — so the pageshow listener armed
+        // for a restore must not outlive the form.
+        const pageTransition = (type: string, persisted: boolean) => {
+            const event = new Event(type);
+            Object.defineProperty(event, 'persisted', { value: persisted });
+            return event;
+        };
+        const { ctrl, sendHeights } = await mount();
+        sendHeights(178);
+        const removeListener = vi.spyOn(window, 'removeEventListener');
+
+        window.dispatchEvent(pageTransition('pagehide', true));
+        ctrl.unmount();
+
+        expect(removeListener).toHaveBeenCalledWith(
+            'pageshow',
+            expect.any(Function),
+        );
+        window.dispatchEvent(pageTransition('pageshow', true));
+        expect(reports()).toHaveLength(1);
+    });
+
     it('sends nothing for a form that never loaded', async () => {
         const { ctrl } = await mount({ loaded: false });
 
