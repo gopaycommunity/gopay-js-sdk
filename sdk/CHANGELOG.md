@@ -1,3 +1,16 @@
+## [1.23.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.0...1.23.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **example:** unmount the card form from the demo page GPOMA-2679 ([32a826d](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/32a826df8df6d67229282c9c0313c746f20853b2))
+* **logging:** address David Kolář's review on PR [#67](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issues/67) GPOMA-2679 ([e25b047](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e25b0479b6122fbb99bf452c8e5712e5dd1be509))
+* **logging:** keep the card form height summary readable under zoom and the back/forward cache GPOMA-2679 ([dd2dab4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/dd2dab44ee01e9bc8e9e7c79287fad16c2dfd27d))
+* **logging:** name the params value type once GPOMA-2679 ([de22dc7](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/de22dc75411d760e0bd58270cf025e9a67104fbc))
+* **logging:** report a card form unmount as an unmount, not an error GPOMA-2679 ([2d22738](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2d22738427e34e42bac808b568809b93b559582a))
+* **logging:** report how the card form's height behaves GPOMA-2679 ([6fa6b02](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/6fa6b0273fa03cfcc46b8f7b37f7825e97c3a756))
+* **logging:** stop calling a finished charge in flight at the terminal idle GPOMA-2679 ([811898a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/811898aeb1593a08b472ca382f49c8c607105941))
+
 # [1.23.0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.22.0...1.23.0) (2026-09-23)
 
 
