@@ -157,6 +157,12 @@ definitions:
           # { environment: 'sandbox' } and the suite would create real payments on the public
           # sandbox while the step name still said "chosen env".
           - if [ -z "$TARGET_BASE_URL" ]; then echo "TARGET_BASE_URL is empty - pick a target"; exit 1; fi
+          # TARGET_BASE_URL is free text, so nothing constrains it before the run starts. Refuse
+          # production here rather than let it reach the example's own assertNotProduction():
+          # this costs a second, that costs an install and two builds first.
+          # Lowercased first: DNS is case-insensitive, so https://GATE.GOPAY.COM reaches production
+          # while failing a case-sensitive test. assertNotProduction() widens the same way.
+          - case "$(printf '%s' "$TARGET_BASE_URL" | tr '[:upper:]' '[:lower:]')" in *gate.gopay.com*) echo "refusing to run against production"; exit 1 ;; esac
           - export GOPAY_PAYMENTS_V4_BASE_URL="$TARGET_BASE_URL"
           # Only the URL is swapped. GOPAY_PAYMENTS_V4_CLIENT_ID/_CLIENT_SECRET/_GOID stay on the
           # workspace set, and an OAuth client belongs to one gateway - so until per-environment
@@ -265,24 +271,27 @@ pipelines:
           - step: *docker-build-dry-run
       - step: *sonar
   custom:
-    # Pipelines -> Run pipeline -> pick a branch and "e2e-on-env", then choose the target.
-    # allowed-values pins the gateway before the run starts. The guard that actually refuses a
-    # production host on this path is assertNotProduction() in example/runtime-config.js, which
-    # serve.js calls at boot; sdk/tests/e2e/_helpers.ts guards the vitest suite, which
-    # `yarn test:e2e` (playwright, testDir sdk/tests/browser) never loads.
+    # Pipelines -> Run pipeline -> pick a branch and "e2e-on-env", then type the gateway to hit.
+    # TARGET_BASE_URL is free text rather than a dropdown so a freshly started personal
+    # environment needs no change here. Nothing constrains it up front, so the step refuses a
+    # production host itself; assertNotProduction() in example/runtime-config.js is the backstop,
+    # and it does fire on this path - vite.config.ts serves /env.js through the same emitter as
+    # serve.js. (sdk/tests/e2e/_helpers.ts guards the vitest suite, which `yarn test:e2e` -
+    # playwright over sdk/tests/browser - never loads.)
+    #
+    # Known-good values to paste:
+    #   dev cluster - works today with the workspace credentials, verified against jmuller:
+    #     https://gw.alpha9.dev.gopay.com/api/merchant/payments/4.0
+    #     https://gw.<user>.dev.gopay.com/api/merchant/payments/4.0
+    #   aws-test - public and up 24/7, but 401s until a secured variable holds its own client:
+    #     https://gate.test.gopay.com/gp-gw/api/4.0
+    #
+    # The dev cluster serves v4 under a different path than test does, so the two are not
+    # interchangeable. alpha8 is not listed: it was renumbered to alpha9 and the certificate no
+    # longer covers the old name, so it fails at the TLS handshake. The public sandbox is not
+    # listed either - no credentials for it exist yet.
     e2e-on-env:
       - variables:
           - name: TARGET_BASE_URL
             default: https://gate.test.gopay.com/gp-gw/api/4.0
-            allowed-values:
-              # Public and up 24/7, but each has its own OAuth client - see the note on the
-              # step: they authenticate only once secured variables exist for them.
-              - https://gate.test.gopay.com/gp-gw/api/4.0
-              - https://gw.sandbox.gopay.com/gp-gw/api/4.0
-              # Dev cluster: different path for v4, and switched off at night and at weekends -
-              # out of hours the whole environment 404s, including /oauth2/token. alpha8 is not
-              # offered: it was renumbered to alpha9 and the certificate no longer covers the
-              # old name, so it fails at the TLS handshake before auth.
-              - https://gw.alpha9.dev.gopay.com/api/merchant/payments/4.0
-              - https://gw.jmuller.dev.gopay.com/api/merchant/payments/4.0
       - step: *test-playwright-on-env
