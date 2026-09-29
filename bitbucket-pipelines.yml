@@ -170,9 +170,18 @@ definitions:
           # Both bundles, for the reason spelled out on *test-playwright above.
           - yarn workspace @gopaycz/gopay-js-sdk run build
           - yarn workspace @gopaycz/gopay-js-sdk-browser run build
-          - yarn test:e2e
+          # The API suite first: it is where the breadth is - refunds and the whole recurrence
+          # lifecycle are exercised here and by nothing in the browser specs - and it fails in
+          # seconds on a bad gateway or bad credentials, before a browser is ever started.
+          - yarn workspace @gopaycz/gopay-js-sdk run test:e2e
+          # --project=gateway drops the specs that never call the gateway (bundle exports,
+          # output-panel scrolling). Those pass identically against every environment and already
+          # run on each PR via *test-playwright, so including them here only made a red run
+          # ambiguous - it should mean the chosen environment is broken, nothing else.
+          - yarn test:e2e --project=gateway
         artifacts:
           - playwright-report/**
+          - sdk/test-results/**
 
     - step: &release
         name: Release
