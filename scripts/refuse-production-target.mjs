@@ -22,8 +22,12 @@ if (!raw) {
 let hostname;
 try {
     const url = new URL(raw);
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-        console.error(`TARGET_BASE_URL is not an http(s) URL - ${raw}`);
+    // https only. The step keeps the secured workspace client id and secret, and authenticate()
+    // sends them as HTTP Basic - over http: that is a cleartext credential on the wire. Nothing
+    // legitimate is lost: every documented target is https, and the gopay.com rule below already
+    // excludes the localhost and mock endpoints that http: would otherwise be wanted for.
+    if (url.protocol !== 'https:') {
+        console.error(`TARGET_BASE_URL is not an https URL - ${raw}`);
         process.exit(1);
     }
     // The trailing root dot is dropped before comparing: `gate.gopay.com.` is the same DNS name
