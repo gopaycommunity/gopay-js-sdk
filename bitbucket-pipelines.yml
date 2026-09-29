@@ -279,19 +279,19 @@ pipelines:
     # serve.js. (sdk/tests/e2e/_helpers.ts guards the vitest suite, which `yarn test:e2e` -
     # playwright over sdk/tests/browser - never loads.)
     #
-    # Known-good values to paste:
-    #   dev cluster - works today with the workspace credentials, verified against jmuller:
-    #     https://gw.alpha9.dev.gopay.com/api/merchant/payments/4.0
-    #     https://gw.<user>.dev.gopay.com/api/merchant/payments/4.0
-    #   aws-test - public and up 24/7, but 401s until a secured variable holds its own client:
-    #     https://gate.test.gopay.com/gp-gw/api/4.0
+    # Values to paste - dev cluster only, because that is where the workspace credentials
+    # authenticate (verified end to end against jmuller, build #438):
+    #   https://gw.alpha9.dev.gopay.com/api/merchant/payments/4.0
+    #   https://gw.<user>.dev.gopay.com/api/merchant/payments/4.0
     #
-    # The dev cluster serves v4 under a different path than test does, so the two are not
-    # interchangeable. alpha8 is not listed: it was renumbered to alpha9 and the certificate no
-    # longer covers the old name, so it fails at the TLS handshake. The public sandbox is not
-    # listed either - no credentials for it exist yet.
+    # aws-test (gate.test.gopay.com) and the public sandbox are deliberately not offered: each
+    # has its own OAuth client and no secured variable holds one yet, so both can only 401. They
+    # need no code change once those variables exist - the field takes any URL. Mind the shape
+    # when that day comes: the dev cluster serves v4 under /api/merchant/payments/4.0 while test
+    # and sandbox use /gp-gw/api/4.0. alpha8 is gone as well, renumbered to alpha9, and the
+    # certificate no longer covers the old name.
     e2e-on-env:
       - variables:
           - name: TARGET_BASE_URL
-            default: https://gate.test.gopay.com/gp-gw/api/4.0
+            default: https://gw.alpha9.dev.gopay.com/api/merchant/payments/4.0
       - step: *test-playwright-on-env
