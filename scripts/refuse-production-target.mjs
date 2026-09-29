@@ -20,10 +20,23 @@ if (!raw) {
 
 let hostname;
 try {
-    hostname = new URL(raw).hostname.toLowerCase();
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+        console.error(`TARGET_BASE_URL is not an http(s) URL - ${raw}`);
+        process.exit(1);
+    }
+    // The trailing root dot is dropped before comparing: `gate.gopay.com.` is the same DNS name
+    // as `gate.gopay.com`, and the parser keeps the dot, so without this the comparison below
+    // misses it and the run starts against production.
+    hostname = url.hostname.toLowerCase().replace(/\.$/, '');
 } catch {
     // An unparseable value cannot be shown to be safe, so it is refused rather than passed on.
     console.error(`TARGET_BASE_URL is not a URL - ${raw}`);
+    process.exit(1);
+}
+
+if (!hostname) {
+    console.error(`TARGET_BASE_URL has no host - ${raw}`);
     process.exit(1);
 }
 
