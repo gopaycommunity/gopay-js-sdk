@@ -158,14 +158,13 @@ definitions:
           # sandbox while the step name still said "chosen env".
           - if [ -z "$TARGET_BASE_URL" ]; then echo "TARGET_BASE_URL is empty - pick a target"; exit 1; fi
           - export GOPAY_PAYMENTS_V4_BASE_URL="$TARGET_BASE_URL"
-          # The OAuth client and the GOID belong to one gateway: the workspace set authenticates
-          # against the environment it was provisioned for and 401s everywhere else, so swapping
-          # only the URL cannot work across targets. Blank leaves the workspace set in place.
-          # These are custom-pipeline variables and are NOT masked in the log, so only dev
-          # credentials belong in that form - never a sandbox or production secret.
-          - if [ -n "$TARGET_CLIENT_ID" ]; then export GOPAY_PAYMENTS_V4_CLIENT_ID="$TARGET_CLIENT_ID"; fi
-          - if [ -n "$TARGET_CLIENT_SECRET" ]; then export GOPAY_PAYMENTS_V4_CLIENT_SECRET="$TARGET_CLIENT_SECRET"; fi
-          - if [ -n "$TARGET_GOID" ]; then export GOPAY_PAYMENTS_V4_GOID="$TARGET_GOID"; fi
+          # Only the URL is swapped. GOPAY_PAYMENTS_V4_CLIENT_ID/_CLIENT_SECRET/_GOID stay on the
+          # workspace set, and an OAuth client belongs to one gateway - so until per-environment
+          # secured variables exist (the GOPAY_PAYMENTS_V4_SANDBOX_* pattern demo-site already
+          # uses), every target except the one that set was provisioned for fails on 401 at
+          # /oauth2/token. Deliberately not overridable from the run form: custom-pipeline
+          # variables are not masked in the log, so a secret typed there would be published in
+          # plain text.
           # Both bundles, for the reason spelled out on *test-playwright above.
           - yarn workspace @gopaycz/gopay-js-sdk run build
           - yarn workspace @gopaycz/gopay-js-sdk-browser run build
@@ -276,7 +275,8 @@ pipelines:
           - name: TARGET_BASE_URL
             default: https://gate.test.gopay.com/gp-gw/api/4.0
             allowed-values:
-              # Public and up 24/7. Both need credentials of their own, see TARGET_CLIENT_ID.
+              # Public and up 24/7, but each has its own OAuth client - see the note on the
+              # step: they authenticate only once secured variables exist for them.
               - https://gate.test.gopay.com/gp-gw/api/4.0
               - https://gw.sandbox.gopay.com/gp-gw/api/4.0
               # Dev cluster: different path for v4, and switched off at night and at weekends -
@@ -285,12 +285,4 @@ pipelines:
               # old name, so it fails at the TLS handshake before auth.
               - https://gw.alpha9.dev.gopay.com/api/merchant/payments/4.0
               - https://gw.jmuller.dev.gopay.com/api/merchant/payments/4.0
-          # Blank keeps the workspace credentials. Fill these in when the chosen target has its
-          # own client. Not masked in the log - dev credentials only.
-          - name: TARGET_CLIENT_ID
-            default: ""
-          - name: TARGET_CLIENT_SECRET
-            default: ""
-          - name: TARGET_GOID
-            default: ""
       - step: *test-playwright-on-env
