@@ -10,6 +10,7 @@
  * example/runtime-config.js is the backstop when the page is actually served.
  */
 const PRODUCTION_HOST = 'gate.gopay.com';
+const GOPAY_SUFFIX = 'gopay.com';
 
 const raw = process.argv[2];
 
@@ -43,6 +44,20 @@ if (!hostname) {
 if (hostname === PRODUCTION_HOST || hostname.endsWith(`.${PRODUCTION_HOST}`)) {
     console.error(
         `refusing to run against production - ${raw} resolves to host ${hostname}`,
+    );
+    process.exit(1);
+}
+
+// Everything else must still be a GoPay host. The pipeline copies TARGET_BASE_URL into
+// GOPAY_PAYMENTS_V4_BASE_URL while keeping the secured workspace client id and secret, so the
+// token request carries them to whatever host is named here. Secured variables are masked in the
+// log precisely so they cannot be read; a free-text target with only a production denylist would
+// route straight around that, by pointing a run at a host the runner does not control. An
+// allowlist by suffix keeps every GoPay environment typeable - including ones that do not exist
+// yet - while refusing to hand the credentials to anything outside the estate.
+if (hostname !== GOPAY_SUFFIX && !hostname.endsWith(`.${GOPAY_SUFFIX}`)) {
+    console.error(
+        `refusing a target outside ${GOPAY_SUFFIX} - ${raw} resolves to host ${hostname}`,
     );
     process.exit(1);
 }
