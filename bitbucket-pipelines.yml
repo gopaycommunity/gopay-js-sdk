@@ -151,18 +151,14 @@ definitions:
         script:
           - corepack enable
           - yarn install --immutable
-          # Refuse a blank target rather than degrade into a different one. Exporting an empty
-          # GOPAY_PAYMENTS_V4_BASE_URL clobbers the workspace value, and example/src/sdk.js
-          # resolves it with `??`, which does not catch '' - it then falls through to
-          # { environment: 'sandbox' } and the suite would create real payments on the public
-          # sandbox while the step name still said "chosen env".
-          - if [ -z "$TARGET_BASE_URL" ]; then echo "TARGET_BASE_URL is empty - pick a target"; exit 1; fi
-          # TARGET_BASE_URL is free text, so nothing constrains it before the run starts. Refuse
-          # production here rather than let it reach the example's own assertNotProduction():
-          # this costs a second, that costs an install and two builds first.
-          # Lowercased first: DNS is case-insensitive, so https://GATE.GOPAY.COM reaches production
-          # while failing a case-sensitive test. assertNotProduction() widens the same way.
-          - case "$(printf '%s' "$TARGET_BASE_URL" | tr '[:upper:]' '[:lower:]')" in *gate.gopay.com*) echo "refusing to run against production"; exit 1 ;; esac
+          # TARGET_BASE_URL is free text, so this is the first thing that looks at it: it refuses
+          # an empty value, an unparseable one, and any production host. Empty matters because
+          # exporting it clobbers the workspace value, and example/src/sdk.js resolves that with
+          # `??`, which does not catch '' - the suite would fall through to
+          # { environment: 'sandbox' } and create real payments there while still reporting the
+          # chosen env. Production is compared by parsed hostname rather than by substring; the
+          # script says why. Runs before the install and the two builds, so it costs a second.
+          - node scripts/refuse-production-target.mjs "$TARGET_BASE_URL"
           - export GOPAY_PAYMENTS_V4_BASE_URL="$TARGET_BASE_URL"
           # Only the URL is swapped. GOPAY_PAYMENTS_V4_CLIENT_ID/_CLIENT_SECRET/_GOID stay on the
           # workspace set, and an OAuth client belongs to one gateway - so until per-environment
@@ -285,7 +281,10 @@ pipelines:
     #   https://gw.<user>.dev.gopay.com/api/merchant/payments/4.0
     #
     # aws-test (gate.test.gopay.com) and the public sandbox are deliberately not offered: each
-    # has its own OAuth client and no secured variable holds one yet, so both can only 401. They
+    # has its own OAuth client and no secured variable holds one yet, so both fail at the token
+    # call. (That is the first thing they fail at, not the only thing they could - the callback
+    # URLs the example sends are localhost, which a WAF in front of a public gateway may reject
+    # once the credentials do work.) They
     # need no code change once those variables exist - the field takes any URL. Mind the shape
     # when that day comes: the dev cluster serves v4 under /api/merchant/payments/4.0 while test
     # and sandbox use /gp-gw/api/4.0. alpha8 is gone as well, renumbered to alpha9, and the
