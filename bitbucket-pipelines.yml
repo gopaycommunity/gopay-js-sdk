@@ -131,6 +131,37 @@ definitions:
         artifacts:
           - playwright-report/**
 
+    # Manual, on-demand counterpart to *test-playwright: the same suite, but the gateway comes
+    # from the run form instead of the workspace variable. Triggered by hand from any branch,
+    # so a change to it can be exercised before the branch is merged.
+    #
+    # runs-on: [cypress] for every target, not only the private ones. alpha* and the personal
+    # environments answer inside the dev network and that runner is the only executor that
+    # reaches them; gate.test and sandbox are public, so they work from there too and a single
+    # step covers both. Congestion on that runner is accepted rather than split across two
+    # pipelines, because runs-on takes no variable.
+    - step: &test-playwright-on-env
+        name: Browser E2E against chosen env
+        image: mcr.microsoft.com/playwright:v1.59.1-noble
+        runs-on:
+          - cypress
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          - corepack enable
+          - yarn install --immutable
+          # Overrides the workspace-wide GOPAY_PAYMENTS_V4_BASE_URL for this run only. The example
+          # app the suite drives reads it through Vite's envPrefix, so the dev server Playwright
+          # starts picks it up from here; credentials keep coming from the secured variables.
+          - export GOPAY_PAYMENTS_V4_BASE_URL="$TARGET_BASE_URL"
+          # Both bundles, for the reason spelled out on *test-playwright above.
+          - yarn workspace @gopaycz/gopay-js-sdk run build
+          - yarn workspace @gopaycz/gopay-js-sdk-browser run build
+          - yarn test:e2e
+        artifacts:
+          - playwright-report/**
+
     - step: &release
         name: Release
         deployment: production
@@ -223,3 +254,20 @@ pipelines:
           - step: *test-playwright
           - step: *docker-build-dry-run
       - step: *sonar
+  custom:
+    # Pipelines -> Run pipeline -> pick a branch and "e2e-on-env", then choose the target.
+    # allowed-values is the safety rail: it pins the gateway before the suite ever sees it, so a
+    # hand-typed production URL never gets as far as the prod guard in sdk/tests/e2e/_helpers.ts.
+    e2e-on-env:
+      - variables:
+          - name: TARGET_BASE_URL
+            default: https://gate.test.gopay.com/gp-gw/api/4.0
+            allowed-values:
+              # aws-test and sandbox: public, and the only targets here that run 24/7.
+              - https://gate.test.gopay.com/gp-gw/api/4.0
+              - https://gw.sandbox.gopay.com/gp-gw/api/4.0
+              # Dev cluster serves v4 under a different path than test and sandbox do.
+              - https://gw.alpha9.dev.gopay.com/api/merchant/payments/4.0
+              - https://gw.alpha8.dev.gopay.com/api/merchant/payments/4.0
+              - https://gw.jmuller.dev.gopay.com/api/merchant/payments/4.0
+      - step: *test-playwright-on-env
