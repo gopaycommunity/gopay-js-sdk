@@ -65,29 +65,32 @@ describe('AuthModule', () => {
             { ...validTokenPair, access_token: undefined },
         ],
         ['missing expires_in', { ...validTokenPair, expires_in: undefined }],
-    ])('throws GoPaySDKError on invalid token response: %s', async (_, partial) => {
-        fetchMock.mockImplementation(async (req: Request) => {
-            await req.text();
-            return makeResponse(partial);
-        });
+    ])(
+        'throws GoPaySDKError on invalid token response: %s',
+        async (_, partial) => {
+            fetchMock.mockImplementation(async (req: Request) => {
+                await req.text();
+                return makeResponse(partial);
+            });
 
-        const err = await auth
-            .authenticate({
-                grant_type: 'client_credentials',
-                client_id: 'id',
-                client_secret: 'secret',
-                scope: 'payment:write',
-            })
-            .catch((e: unknown) => e);
+            const err = await auth
+                .authenticate({
+                    grant_type: 'client_credentials',
+                    client_id: 'id',
+                    client_secret: 'secret',
+                    scope: 'payment:write',
+                })
+                .catch((e: unknown) => e);
 
-        expect(err).toBeInstanceOf(GoPaySDKError);
-        expect((err as GoPaySDKError).message).toContain(
-            'Invalid token response: missing required fields.',
-        );
-        expect((err as GoPaySDKError).errorCode).toBe(
-            GoPayErrorCodes.AUTH_INVALID_RESPONSE,
-        );
-    });
+            expect(err).toBeInstanceOf(GoPaySDKError);
+            expect((err as GoPaySDKError).message).toContain(
+                'Invalid token response: missing required fields.',
+            );
+            expect((err as GoPaySDKError).errorCode).toBe(
+                GoPayErrorCodes.AUTH_INVALID_RESPONSE,
+            );
+        },
+    );
 
     it('does not populate token store when token response is invalid', async () => {
         fetchMock.mockImplementation(async (req: Request) => {

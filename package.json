@@ -21,7 +21,7 @@
         "docker:start": "docker run --name gopay-js-sdk -e GP_DEBUG=true --env-file sdk/.env -p 8080:8080 gopay-js-sdk:latest"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.4.13",
+        "@biomejs/biome": "^2.5.14",
         "@commitlint/cli": "^20.5.2",
         "@commitlint/config-conventional": "^20.5.0",
         "@playwright/test": "^1.59.1",
@@ -47,9 +47,9 @@
         }
     },
     "resolutions": {
-        "brace-expansion@^5.0.2": "5.0.9",
-        "fast-uri": "3.1.6",
-        "ip-address": "10.7.0",
+        "brace-expansion@^5.0.2": "5.0.12",
+        "fast-uri": "3.1.8",
+        "ip-address": "10.7.2",
         "js-yaml@4.1.1": "4.3.2",
         "js-yaml@^4.1.0": "4.3.2",
         "tar": "7.5.22"

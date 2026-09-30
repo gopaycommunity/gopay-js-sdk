@@ -482,25 +482,28 @@ describe('mountApplePayButton()', () => {
             'with ?components=',
             'https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js?components=apple-pay-button',
         ],
-    ])('does not inject the script when the page already carries the same SDK tag (%s)', async (_label, src) => {
-        // Element registered by the host tag, shim not installed yet — so the
-        // load is wanted, and only the DOM check suppresses it.
-        vi.stubGlobal('ApplePaySession', undefined);
-        const tag = document.createElement('script');
-        tag.src = src;
-        document.head.appendChild(tag);
+    ])(
+        'does not inject the script when the page already carries the same SDK tag (%s)',
+        async (_label, src) => {
+            // Element registered by the host tag, shim not installed yet — so the
+            // load is wanted, and only the DOM check suppresses it.
+            vi.stubGlobal('ApplePaySession', undefined);
+            const tag = document.createElement('script');
+            tag.src = src;
+            document.head.appendChild(tag);
 
-        const client = makeClient();
-        const api = createWalletsApi(
-            client as never,
-            () => makePaymentsApi() as never,
-        );
+            const client = makeClient();
+            const api = createWalletsApi(
+                client as never,
+                () => makePaymentsApi() as never,
+            );
 
-        const ctrl = await api.mountApplePayButton(container);
-        ctrl.result.catch(() => {});
+            const ctrl = await api.mountApplePayButton(container);
+            ctrl.result.catch(() => {});
 
-        expect(mockLoadScriptOnce).not.toHaveBeenCalled();
-    });
+            expect(mockLoadScriptOnce).not.toHaveBeenCalled();
+        },
+    );
 
     it('injects the script when the page carries only the older v1 tag', async () => {
         // v1 registers the element but installs no shim, so 1.latest must still load.
@@ -1850,23 +1853,26 @@ describe('mountApplePayButton()', () => {
                         ),
                 },
             ],
-        ])('tells the sheet the payment failed when %s', async (_label, overrides) => {
-            const paymentsApi = makePaymentsApi(overrides);
-            const api = createWalletsApi(
-                makeClient() as never,
-                () => paymentsApi as never,
-            );
+        ])(
+            'tells the sheet the payment failed when %s',
+            async (_label, overrides) => {
+                const paymentsApi = makePaymentsApi(overrides);
+                const api = createWalletsApi(
+                    makeClient() as never,
+                    () => paymentsApi as never,
+                );
 
-            const ctrl = await api.mountApplePayButton(container);
-            tap();
-            authorise();
-            await ctrl.result.catch(() => {});
+                const ctrl = await api.mountApplePayButton(container);
+                tap();
+                authorise();
+                await ctrl.result.catch(() => {});
 
-            expect(lastSession.completePayment).toHaveBeenCalledOnce();
-            expect(lastSession.completePayment).toHaveBeenCalledWith(
-                MockApplePaySession.STATUS_FAILURE,
-            );
-        });
+                expect(lastSession.completePayment).toHaveBeenCalledOnce();
+                expect(lastSession.completePayment).toHaveBeenCalledWith(
+                    MockApplePaySession.STATUS_FAILURE,
+                );
+            },
+        );
 
         it('leaves a trace when completePayment throws, instead of swallowing it', async () => {
             // Apple gives up on a session it has waited on too long, and

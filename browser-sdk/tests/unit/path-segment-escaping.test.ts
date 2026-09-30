@@ -67,25 +67,29 @@ describe('payment id cannot escape its endpoint', () => {
         vi.unstubAllGlobals();
     });
 
-    it.each(
-        HOSTILE_IDS,
-    )('keeps getStatus() inside /payments for %s', async (_name, raw, encoded) => {
-        const api = createPaymentsApi(client, raw);
+    it.each(HOSTILE_IDS)(
+        'keeps getStatus() inside /payments for %s',
+        async (_name, raw, encoded) => {
+            const api = createPaymentsApi(client, raw);
 
-        await api.getStatus();
+            await api.getStatus();
 
-        expect(capturedUrl).toBe(`${BASE}/payments/${encoded}`);
-    });
+            expect(capturedUrl).toBe(`${BASE}/payments/${encoded}`);
+        },
+    );
 
-    it.each(
-        HOSTILE_IDS,
-    )('keeps getGooglePayInfo() inside /payments for %s', async (_name, raw, encoded) => {
-        const api = createPaymentsApi(client, raw);
+    it.each(HOSTILE_IDS)(
+        'keeps getGooglePayInfo() inside /payments for %s',
+        async (_name, raw, encoded) => {
+            const api = createPaymentsApi(client, raw);
 
-        await api.getGooglePayInfo();
+            await api.getGooglePayInfo();
 
-        expect(capturedUrl).toBe(`${BASE}/payments/${encoded}/google-pay/info`);
-    });
+            expect(capturedUrl).toBe(
+                `${BASE}/payments/${encoded}/google-pay/info`,
+            );
+        },
+    );
 
     /**
      * The query-string case is the one this endpoint can get wrong on its own:

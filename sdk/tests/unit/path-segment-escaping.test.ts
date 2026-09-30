@@ -259,27 +259,29 @@ describe('modules do not let a path segment escape its endpoint', () => {
 
     for (const [label, call, template] of CALLS) {
         describe(label, () => {
-            it.each(
-                HOSTILE_IDS,
-            )(`keeps ${template} intact against %s`, async (_name, raw, encoded) => {
-                await call(raw);
+            it.each(HOSTILE_IDS)(
+                `keeps ${template} intact against %s`,
+                async (_name, raw, encoded) => {
+                    await call(raw);
 
-                expect(capturedUrl).toBe(
-                    BASE + template.replace(/\{id\}/g, encoded),
-                );
-            });
+                    expect(capturedUrl).toBe(
+                        BASE + template.replace(/\{id\}/g, encoded),
+                    );
+                },
+            );
 
-            it.each(
-                DOT_SEGMENTS,
-            )('rejects "%s" and sends nothing', async (raw) => {
-                const err = await call(raw).catch((e: unknown) => e);
+            it.each(DOT_SEGMENTS)(
+                'rejects "%s" and sends nothing',
+                async (raw) => {
+                    const err = await call(raw).catch((e: unknown) => e);
 
-                expect(err).toBeInstanceOf(GoPaySDKError);
-                expect((err as GoPaySDKError).errorCode).toBe(
-                    GoPayErrorCodes.INVALID_ARGUMENT,
-                );
-                expect(fetchMock).not.toHaveBeenCalled();
-            });
+                    expect(err).toBeInstanceOf(GoPaySDKError);
+                    expect((err as GoPaySDKError).errorCode).toBe(
+                        GoPayErrorCodes.INVALID_ARGUMENT,
+                    );
+                    expect(fetchMock).not.toHaveBeenCalled();
+                },
+            );
         });
     }
 });

@@ -264,25 +264,30 @@ describe('HttpClient', () => {
         it.each([
             ['true', 'true'],
             ['0', '0'],
-        ])('keeps text/plain body %s as a raw string (not parsed as JSON)', async (bodyText, expected) => {
-            fetchMock.mockResolvedValue(
-                new Response(bodyText, {
-                    status: 502,
-                    statusText: 'Bad Gateway',
-                    headers: { 'content-type': 'text/plain' },
-                }),
-            );
+        ])(
+            'keeps text/plain body %s as a raw string (not parsed as JSON)',
+            async (bodyText, expected) => {
+                fetchMock.mockResolvedValue(
+                    new Response(bodyText, {
+                        status: 502,
+                        statusText: 'Bad Gateway',
+                        headers: { 'content-type': 'text/plain' },
+                    }),
+                );
 
-            const client = createHttpClient({
-                baseUrl: 'https://example.com',
-            });
-            client.tokenStore.set(storedTokens);
+                const client = createHttpClient({
+                    baseUrl: 'https://example.com',
+                });
+                client.tokenStore.set(storedTokens);
 
-            const err = await client.get('/resource').catch((e: unknown) => e);
-            expect(err).toBeInstanceOf(GoPayHTTPError);
-            expect(typeof (err as GoPayHTTPError).body).toBe('string');
-            expect((err as GoPayHTTPError).body).toBe(expected);
-        });
+                const err = await client
+                    .get('/resource')
+                    .catch((e: unknown) => e);
+                expect(err).toBeInstanceOf(GoPayHTTPError);
+                expect(typeof (err as GoPayHTTPError).body).toBe('string');
+                expect((err as GoPayHTTPError).body).toBe(expected);
+            },
+        );
     });
 
     // -------------------------------------------------------------------------

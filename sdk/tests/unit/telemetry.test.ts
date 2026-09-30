@@ -165,9 +165,14 @@ describe('telemetry from the HTTP client', () => {
         expect(fetchMock).not.toHaveBeenCalled();
         expect(telemetry.apiCall).not.toHaveBeenCalled();
         expect(telemetry.error).toHaveBeenCalledOnce();
-        expect(
-            (telemetry.error.mock.calls[0]?.[0] as GoPaySDKError).errorCode,
-        ).toBe(GoPayErrorCodes.AUTH_TOKEN_MISSING);
+        // Destructured rather than optional-chained into the cast: a missing call
+        // used to short-circuit to undefined and then throw a TypeError on
+        // .errorCode, which reads as a crash instead of a failed expectation.
+        const [loggedError] = telemetry.error.mock.calls[0] ?? [];
+        expect(loggedError).toBeInstanceOf(GoPaySDKError);
+        expect((loggedError as GoPaySDKError).errorCode).toBe(
+            GoPayErrorCodes.AUTH_TOKEN_MISSING,
+        );
     });
 
     it('honours the telemetry opt-out while still reaching onError', () => {
