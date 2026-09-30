@@ -43,6 +43,7 @@
     "scripts": {
         "build": "yarn workspace @gopay-internal/core build && tsup",
         "test": "vitest run --coverage",
+        "test:e2e": "vitest run --config vitest.e2e.config.ts",
         "test:stress": "vitest run --config vitest.stress.config.ts",
         "test:watch": "vitest",
         "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",

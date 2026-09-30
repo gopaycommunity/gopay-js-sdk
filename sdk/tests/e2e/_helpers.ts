@@ -1,4 +1,8 @@
-import { createGoPaySDK, type GoPaySDK } from '../../src/index.js';
+import {
+    createGoPaySDK,
+    GoPayHTTPError,
+    type GoPaySDK,
+} from '../../src/index.js';
 
 /**
  * Shared guards for the write-capable E2E suites.
@@ -60,13 +64,47 @@ export async function createSandboxSdk(
     }
 
     const sdk = createGoPaySDK(baseUrl ? { baseUrl } : { environment });
-    await sdk.authenticate({
-        grant_type: 'client_credentials',
-        client_id: clientId,
-        client_secret: clientSecret,
-        scope,
-    });
+    try {
+        await sdk.authenticate({
+            grant_type: 'client_credentials',
+            client_id: clientId,
+            client_secret: clientSecret,
+            scope,
+        });
+    } catch (error) {
+        throw describeAuthFailure(
+            error,
+            baseUrl ?? `environment=${environment}`,
+        );
+    }
     return { sdk, goid };
+}
+
+/**
+ * Say why the token exchange failed, instead of letting a bare status through.
+ *
+ * Every suite here authenticates in `beforeAll`, so one unreachable gateway fails
+ * all six files at once and vitest reports six failures with the ~85 tests behind
+ * those hooks merely skipped. That reads as a broken SDK and is usually a sleeping
+ * environment, so the message has to name the difference.
+ */
+function describeAuthFailure(error: unknown, target: string): Error {
+    if (!(error instanceof GoPayHTTPError)) {
+        return new Error(
+            `Could not reach ${target} to exchange credentials (${String(error)}). A TLS or DNS failure at this point is the environment, not the SDK: dev certificates are reissued often, and a wildcard covers one label only - '*.dev.gopay.com' does not match 'gw.<env>.dev.gopay.com'.`,
+        );
+    }
+    if (error.status === 404) {
+        return new Error(
+            `Token exchange 404'd at ${target}. A 404 from the whole host means the environment is not serving rather than that the endpoint moved - alpha and the personal namespaces are switched off overnight and at weekends. Start it, or point GOPAY_PAYMENTS_V4_BASE_URL at one that is up.`,
+        );
+    }
+    if (error.status === 401) {
+        return new Error(
+            `Token exchange was rejected at ${target} with 401: ${JSON.stringify(error.body)}. That is not always the credential pair - a gateway that has lost its database connection reports the same status, with the reason in 'detail'. Read it before changing any credentials.`,
+        );
+    }
+    return error;
 }
 
 /** Payment body every suite reuses; `overrides` tweak one field at a time. */

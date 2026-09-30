@@ -2,7 +2,12 @@
     "extends": "./tsconfig.json",
     "compilerOptions": {
         "noEmit": true,
-        "rootDir": "."
+        "rootDir": ".",
+        // Node types for the test pass only. The package itself is browser-only and
+        // tsconfig.json deliberately omits them, which still governs the build and
+        // `tsc --noEmit` over src; the tests run under vitest in node and the e2e
+        // harness reads credentials from process.env.
+        "types": ["node"]
     },
     // The base config excludes `tests`, and `exclude` is inherited rather than
     // merged — repeating it here without them is what actually brings them in.

@@ -35,7 +35,9 @@ export default defineConfig({
     test: {
         unstubGlobals: true,
         environment: 'jsdom',
-        exclude: ['tests/stress/**', 'node_modules/**'],
+        // tests/e2e needs a live gateway and runs from vitest.e2e.config.ts, so the
+        // unit suite stays green when no environment is reachable.
+        exclude: ['tests/stress/**', 'tests/e2e/**', 'node_modules/**'],
         reporters: ['verbose', 'junit'],
         outputFile: { junit: 'test-results/junit.xml' },
         coverage: {

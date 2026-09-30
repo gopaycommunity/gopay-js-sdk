@@ -176,6 +176,10 @@ definitions:
           # lifecycle are exercised here and by nothing in the browser specs - and it fails in
           # seconds on a bad gateway or bad credentials, before a browser is ever started.
           - yarn workspace @gopaycz/gopay-js-sdk run test:e2e
+          # The browser SDK authenticates differently - shareable key plus a payment-scoped
+          # secret - so its own endpoints were only ever mocked. apple-pay/app-info exists
+          # nowhere else, and this is the only thing that calls it against a real gateway.
+          - yarn workspace @gopaycz/gopay-js-sdk-browser run test:e2e
           # --project=gateway drops the specs that never call the gateway (bundle exports,
           # output-panel scrolling). Those pass identically against every environment and already
           # run on each PR via *test-playwright, so including them here only made a red run
@@ -184,6 +188,7 @@ definitions:
         artifacts:
           - playwright-report/**
           - sdk/test-results/**
+          - browser-sdk/test-results/**
 
     - step: &release
         name: Release
