@@ -149,18 +149,18 @@ definitions:
           - yarn-global
           - yarn-cache
         script:
+          # First, ahead of corepack: the script is plain node with no dependencies, so an unusable
+          # target costs a second here rather than an install and two builds. It refuses an empty
+          # value, an unparseable one, a non-https one, every production host, and anything outside
+          # the .dev / .sandbox / .test zones - the step keeps the secured workspace credentials
+          # while swapping only the URL, so an arbitrary target would be handed them in the token
+          # request. Empty matters on its own: exporting it clobbers the workspace value, and
+          # example/src/sdk.js resolves that with `??`, which does not catch '' - the suite would
+          # fall through to { environment: 'sandbox' } and create real payments there while still
+          # reporting the chosen env. Hosts are compared parsed, not by substring; the script says why.
+          - node scripts/refuse-production-target.mjs "$TARGET_BASE_URL"
           - corepack enable
           - yarn install --immutable
-          # TARGET_BASE_URL is free text, so this is the first thing that looks at it: it refuses
-          # an empty value, an unparseable one, any production host, and any host outside
-          # gopay.com - the step keeps the secured workspace credentials while swapping the URL,
-          # so an arbitrary target would be handed them in the token request. Empty matters because
-          # exporting it clobbers the workspace value, and example/src/sdk.js resolves that with
-          # `??`, which does not catch '' - the suite would fall through to
-          # { environment: 'sandbox' } and create real payments there while still reporting the
-          # chosen env. Production is compared by parsed hostname rather than by substring; the
-          # script says why. Runs before the install and the two builds, so it costs a second.
-          - node scripts/refuse-production-target.mjs "$TARGET_BASE_URL"
           - export GOPAY_PAYMENTS_V4_BASE_URL="$TARGET_BASE_URL"
           # Only the URL is swapped. GOPAY_PAYMENTS_V4_CLIENT_ID/_CLIENT_SECRET/_GOID stay on the
           # workspace set, and an OAuth client belongs to one gateway - so until per-environment
@@ -281,9 +281,10 @@ pipelines:
     # Pipelines -> Run pipeline -> pick a branch and "e2e-on-env", then type the gateway to hit.
     # TARGET_BASE_URL is free text rather than a dropdown so a freshly started personal
     # environment needs no change here. Nothing constrains it up front, so the step vets it
-    # itself: production is refused and so is any host outside gopay.com, which keeps the secured
-    # workspace credentials inside the estate while leaving every GoPay environment typeable -
-    # including ones that do not exist yet. assertNotProduction() in example/runtime-config.js is
+    # itself: every production host is refused, and so is anything outside the .dev, .sandbox and
+    # .test zones - production is not one host (the repo names gate, lx and secure), so zones put
+    # all of it outside by construction. Personal environments, present and future, still match
+    # .dev.gopay.com with no code change. assertNotProduction() in example/runtime-config.js is
     # a further backstop,
     # and it does fire on this path - vite.config.ts serves /env.js through the same emitter as
     # serve.js. (sdk/tests/e2e/_helpers.ts guards the vitest suite, which `yarn test:e2e` -
