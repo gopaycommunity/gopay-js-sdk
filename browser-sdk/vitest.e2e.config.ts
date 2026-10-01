@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
-// @ts-expect-error - plain ESM helper shared with sdk/vitest.config.ts
+// Plain ESM helper shared with sdk/vitest.config.ts; typed by scripts/load-test-env.d.mts.
 import { loadTestEnv } from '../scripts/load-test-env.mjs';
 
 const pkg: { version: string } = JSON.parse(
