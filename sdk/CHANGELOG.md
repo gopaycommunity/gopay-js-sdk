@@ -1,3 +1,25 @@
+## [1.23.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.1...1.23.2) (2026-10-01)
+
+
+### Bug Fixes
+
+* **ci:** add manual pipeline to run browser E2E against a chosen env GPOMA-2682 ([1636e0a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1636e0a5220a5d839c4fc644747c15544b29a6a6))
+* **ci:** allow only non-production zones as the e2e-on-env target GPOMA-2682 ([8a4ccb7](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8a4ccb70a7c04dfd655aba1b5f6e1c193fd52283))
+* **ci:** drop the root dot and check the scheme before refusing production GPOMA-2682 ([cb32e71](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/cb32e710ef41f429734b42330f1a37a7dc3dbd6e))
+* **ci:** make the e2e-on-env target free text GPOMA-2682 ([df67859](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/df67859eadbd0ba152484792659e6e5eac4ec2df))
+* **ci:** offer only dev-cluster targets in e2e-on-env GPOMA-2682 ([993db0e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/993db0efade616ddea1f34ff3a304e53bdd987a8))
+* **ci:** only allow a gopay.com host as the e2e-on-env target GPOMA-2682 ([1bfce98](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1bfce98af24693512262312bee8bc802c3ba1e95))
+* **ci:** pair credentials with the chosen gateway in e2e-on-env GPOMA-2682 ([d4ed1ee](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d4ed1eea8d87ff42c47303f6cbbbd1ac7b49a72e))
+* **ci:** refuse a production target by parsed host, not by substring GPOMA-2682 ([9385a12](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9385a12a6f635b5483086949af1800ea0c553280))
+* **ci:** require https for the e2e-on-env target GPOMA-2682 ([d96440f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/d96440f804e1c191a882bafa950bb57b93d6159f))
+* **ci:** run the API e2e suite in e2e-on-env, browser gateway specs only GPOMA-2682 ([3e5db58](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3e5db585c12f9121c994bca045753844bb1590f1))
+* **ci:** take credentials off the e2e-on-env run form GPOMA-2682 ([9489e6e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/9489e6e7d7703dc6eae754411dde3aabb7df52dc))
+* **deps:** refresh stale resolution pins and in-range devDependencies GPOMA-2682 ([8f5f66a](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8f5f66a8a6b4ff1bcc0ec8125795de31649e09dd))
+* **test:** address David Kolář's review on PR [#68](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issues/68) GPOMA-2682 ([a0fb9bd](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/a0fb9bdf64d1fcc325990d4b54b00712029949ce))
+* **test:** cover the last two v4 operations and name an environment outage GPOMA-2682 ([8fafb0f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/8fafb0f7759611529d68c57ea150d0fc94e64b41))
+* **test:** type the shared test-env helper instead of silencing the import GPOMA-2682 ([1867514](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1867514b394b04999a3d44337854b72e066c104e))
+* **types:** ship declarations a consumer can actually resolve GPOMA-2682 ([1ad39f0](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1ad39f033b0f83d08485b996a895101cd0888e31))
+
 ## [1.23.1](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.0...1.23.1) (2026-09-25)
 
 
