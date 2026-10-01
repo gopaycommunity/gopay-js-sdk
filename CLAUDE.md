@@ -34,7 +34,7 @@ cd internal/core
 SPEC_SOURCE=https://payments-api.beta.gopay.com/spec/en/payments.yaml yarn codegen
 
 # 2. sideload from a spec repo checkout
-SPEC_SOURCE=../../../gopay-payments-api-v4/spec/payments.yaml yarn codegen
+SPEC_SOURCE=../../../gopay-payments-api-v4/spec/en/payments.yaml yarn codegen
 
 # outputs: internal/core/src/types/generated.ts
 ```
@@ -139,7 +139,7 @@ Two separate npm packages:
 
 ## `cards` module — iframe-based card tokenization
 
-`sdk.mountCardForm(container, options?)` fetches the hosted iframe URL from `GET /encryption/card-form-url`, mounts the GoPay-hosted card encryption iframe, and returns `Promise<CardFormController>`:
+`sdk.mountCardForm(container, options?)` fetches the hosted iframe URL from `GET /cards/card-form-url`, mounts the GoPay-hosted card encryption iframe, and returns `Promise<CardFormController>`:
 
 - **`result`** — `Promise<CardTokenResponse>` that resolves with the card token on success, rejects on error or cancellation.
 - **`setTheme(theme)`** / **`setLocale(locale)`** — send runtime updates to the iframe via `postMessage`.
@@ -149,7 +149,7 @@ Two separate npm packages:
 **postMessage protocol** is defined in `browser-sdk/src/modules/cards/iframe-protocol.ts`. This file is intentionally duplicated between this repo and `gw-ui-cc-v4`. Keep both in sync manually — types and type aliases only, no imports or logic.
 
 **Init flow:**
-1. `mountCardForm` calls `GET /encryption/card-form-url` internally to obtain the iframe URL.
+1. `mountCardForm` calls `GET /cards/card-form-url` internally to obtain the iframe URL.
 2. The SDK appends the iframe (`sandbox="allow-scripts allow-forms allow-same-origin"`). `allow-same-origin` keeps the real origin so `postMessage(targetOrigin)` works; the absent `allow-top-navigation` and `allow-popups` deny those vectors.
 3. On `iframe.onload`, the SDK posts `GOPAY_CARD_FORM_INIT` with tokens, environment, theme, locale, and submit mode. Target origin is the iframe's origin (derived from the card-form URL).
 4. The iframe posts back `GOPAY_CARD_ENCRYPT_RESULT` (carrying the JWE payload), then the SDK calls `POST /cards/tokens` internally and resolves `result`.

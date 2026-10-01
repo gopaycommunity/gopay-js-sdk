@@ -41,7 +41,7 @@ if (!source) {
             'Set SPEC_SOURCE to the next spec. It may be a URL or a local path:',
             '',
             "  SPEC_SOURCE='https://…/spec/en/payments.yaml' yarn codegen   # internal feed",
-            "  SPEC_SOURCE='../../../gopay-payments-api-v4/spec/payments.yaml' yarn codegen   # sideload",
+            "  SPEC_SOURCE='../../../gopay-payments-api-v4/spec/en/payments.yaml' yarn codegen   # sideload",
             '',
             'See CLAUDE.md ("API Spec & Code Generation") for both sources.',
         ].join('\n'),
