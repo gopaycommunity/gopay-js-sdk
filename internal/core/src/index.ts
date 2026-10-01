@@ -1,3 +1,8 @@
+// Re-exported by name rather than with `export type *` so the surface stays the list
+// below: the published packages route their own types/generated.ts through this root
+// specifier, because a dts bundler resolves `types`/`main` but not an `exports` map,
+// and the subpath form was left unresolved in every published .d.ts.
+
 export type { AwaitChargeOptions } from './charge-polling.js';
 export { awaitCharge } from './charge-polling.js';
 export type { CoreConfig, GoPayEnvironment } from './config.js';
@@ -26,6 +31,13 @@ export type {
     BrowserData,
     BrowserDataDetected,
 } from './types/browser-data.js';
+export type {
+    $defs,
+    components,
+    operations,
+    paths,
+    webhooks,
+} from './types/generated.js';
 export {
     assertHttpsOrigin,
     requireNonEmptyString,

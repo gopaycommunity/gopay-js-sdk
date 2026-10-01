@@ -105,6 +105,11 @@ definitions:
           - yarn install --immutable
           - yarn workspace @gopaycz/gopay-js-sdk run build
           - yarn workspace @gopaycz/gopay-js-sdk-browser run build
+          # The declarations are emitted by the bundler, so a reference to the private
+          # @gopay-internal/core appears in no diff and nobody reviews it. Published that way
+          # it is TS2307 for a consumer with skipLibCheck off, and a silent `any` for every
+          # core-derived type with it on - which is the usual setup.
+          - yarn check:published-types
         artifacts:
           - sdk/dist/**
           - browser-sdk/dist/**

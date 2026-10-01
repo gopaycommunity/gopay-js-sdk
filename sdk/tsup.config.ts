@@ -12,7 +12,13 @@ const { version } = pkg;
 export default defineConfig({
     entry: { index: 'src/index.ts' },
     format: ['esm', 'cjs'],
-    dts: true,
+    // dts.resolve inlines @gopay-internal/core's types into the emitted .d.ts.
+    // Without it the declarations `import ... from '@gopay-internal/core'`, a package
+    // that is private and never published, so a consumer gets TS2307 with
+    // skipLibCheck off and - far worse - every core-derived type silently becomes
+    // `any` with it on, which is the usual setup. noExternal already inlines the
+    // JavaScript; this is the same thing for the types.
+    dts: { resolve: true },
     clean: true,
     sourcemap: true,
     outDir: 'dist',

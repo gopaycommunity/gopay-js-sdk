@@ -2,14 +2,27 @@
     "name": "@gopay-internal/core",
     "private": true,
     "version": "0.0.0",
+    "types": "./dist/index.d.ts",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "typesVersions": {
+        "*": {
+            "types/generated.js": [
+                "./dist/types/generated.d.ts"
+            ],
+            "types/generated": [
+                "./dist/types/generated.d.ts"
+            ]
+        }
+    },
     "type": "module",
     "exports": {
         ".": {
-            "types": "./src/index.ts",
+            "types": "./dist/index.d.ts",
             "import": "./dist/index.js"
         },
         "./types/generated.js": {
-            "types": "./src/types/generated.ts",
+            "types": "./dist/types/generated.d.ts",
             "import": "./dist/types/generated.js"
         }
     },

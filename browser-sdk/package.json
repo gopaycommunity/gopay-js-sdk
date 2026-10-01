@@ -37,8 +37,7 @@
         "access": "public"
     },
     "files": [
-        "dist",
-        "src"
+        "dist"
     ],
     "scripts": {
         "build": "yarn workspace @gopay-internal/core build && tsup",
@@ -46,7 +45,7 @@
         "test:e2e": "vitest run --config vitest.e2e.config.ts",
         "test:stress": "vitest run --config vitest.stress.config.ts",
         "test:watch": "vitest",
-        "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
+        "typecheck": "yarn workspace @gopay-internal/core build && tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
         "check:circular": "madge --circular --extensions ts --ts-config tsconfig.json src/",
         "check:exports": "ts-unused-exports tsconfig.json --excludePathsFromReport='src/index' --ignoreFiles='types/generated|modules/cards/iframe-protocol'"
     },
