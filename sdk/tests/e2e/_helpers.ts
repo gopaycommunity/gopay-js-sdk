@@ -43,11 +43,16 @@ export async function createSandboxSdk(
             'Missing required environment variables: set GOPAY_PAYMENTS_V4_ENVIRONMENT=sandbox or GOPAY_PAYMENTS_V4_BASE_URL for a mock/alpha endpoint',
         );
     }
-    // A custom base URL is meant for mocks and alpha envs; catch the obvious
-    // production host so the override cannot smuggle these writes into prod.
-    if (baseUrl?.includes('gate.gopay.com')) {
+    // A custom base URL is meant for mocks and dev envs, so production is refused here.
+    // By parsed hostname rather than by substring: `https://%67ate.gopay.com` and
+    // `https://gate.gopay.com.` both reach production while containing the literal string
+    // nowhere, and all three production hosts are named because the repo has three -
+    // gate (API) and lx (logger) in internal/core/src/config.ts, secure (card form) in
+    // browser-sdk/src/config.ts. Matches browser-sdk/tests/e2e/_helpers.ts.
+    const productionHost = baseUrl && productionHostOf(baseUrl);
+    if (productionHost) {
         throw new Error(
-            `These E2E tests must not target production. GOPAY_PAYMENTS_V4_BASE_URL was: '${baseUrl}'`,
+            `These E2E tests must not target production. GOPAY_PAYMENTS_V4_BASE_URL resolves to host '${productionHost}'.`,
         );
     }
     if (!clientId || !clientSecret) {
@@ -142,3 +147,22 @@ export const PROBE_BROWSER_DATA = {
     javascript_enabled: true,
     ip: '192.0.2.42',
 } as const;
+
+/** Production hosts this repo declares; returns the matching host, or undefined. */
+function productionHostOf(raw: string): string | undefined {
+    const PRODUCTION_HOSTS = [
+        'gate.gopay.com',
+        'secure.gopay.com',
+        'lx.gopay.com',
+    ];
+    let hostname: string;
+    try {
+        hostname = new URL(raw).hostname.toLowerCase().replace(/\.$/, '');
+    } catch {
+        // Unparseable cannot be shown to be safe, so it is treated as refusable.
+        return raw;
+    }
+    return PRODUCTION_HOSTS.find(
+        (host) => hostname === host || hostname.endsWith(`.${host}`),
+    );
+}

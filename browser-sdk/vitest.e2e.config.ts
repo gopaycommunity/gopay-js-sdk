@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+// @ts-expect-error - plain ESM helper shared with sdk/vitest.config.ts
+import { loadTestEnv } from '../scripts/load-test-env.mjs';
 
 const pkg: { version: string } = JSON.parse(
     readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'),
@@ -47,40 +49,14 @@ export default defineConfig({
         testTimeout: 30_000,
         reporters: ['verbose', 'junit'],
         outputFile: { junit: 'test-results/e2e-junit.xml' },
-        env: loadSharedEnv(),
+        // sdk/.env is the one credentials file in this repo; CI supplies the same
+        // names as workspace variables and has no file at all.
+        env: loadTestEnv(resolve(import.meta.dirname, '../sdk/.env'), [
+            'GOPAY_PAYMENTS_V4_CLIENT_ID',
+            'GOPAY_PAYMENTS_V4_CLIENT_SECRET',
+            'GOPAY_PAYMENTS_V4_GOID',
+            'GOPAY_PAYMENTS_V4_SHAREABLE_KEY',
+            'GOPAY_PAYMENTS_V4_BASE_URL',
+        ]),
     },
 });
-
-/**
- * Read `sdk/.env` for local runs and let the real environment win over it, so a
- * shell override works the way it does for every other tool. Missing file is not
- * an error: in CI the values arrive as workspace variables and there is no file.
- */
-function loadSharedEnv(): Record<string, string> {
-    const file = resolve(import.meta.dirname, '../sdk/.env');
-    const fromFile: Record<string, string> = {};
-    try {
-        for (const line of readFileSync(file, 'utf-8').split('\n')) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith('#')) {
-                continue;
-            }
-            const eq = trimmed.indexOf('=');
-            if (eq === -1) {
-                continue;
-            }
-            fromFile[trimmed.slice(0, eq).trim()] = trimmed
-                .slice(eq + 1)
-                .trim();
-        }
-    } catch {
-        // No local .env - CI supplies the values directly.
-    }
-    for (const key of Object.keys(fromFile)) {
-        const live = process.env[key];
-        if (live) {
-            fromFile[key] = live;
-        }
-    }
-    return fromFile;
-}

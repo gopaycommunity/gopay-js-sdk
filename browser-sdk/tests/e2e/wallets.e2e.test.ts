@@ -49,20 +49,29 @@ describe('wallet info — browser E2E', () => {
 
     it('getApplePayInfo() names this merchant', async () => {
         const info = await attached.sdk.getApplePayInfo();
-        expect(info).toBeTypeOf('object');
-        expect(info).not.toBeNull();
+        // The title promises a merchant, so the merchant is what is asserted - an object
+        // check would pass on any shape the gateway happened to return.
+        expect(info.merchantIdentifier).toBeTypeOf('string');
+        expect(info.merchantIdentifier).not.toBe('');
+        expect(info.applePayPaymentRequest).toBeTypeOf('object');
     });
 
     it('getGooglePayInfo() returns a payment data request', async () => {
         const info = await attached.sdk.getGooglePayInfo();
-        expect(info).toBeTypeOf('object');
-        expect(info).not.toBeNull();
+        expect(info.paymentDataRequest).toBeTypeOf('object');
+        expect(info.paymentDataRequest).not.toBeNull();
+        // Never PRODUCTION from a dev or test gateway.
+        expect(info.environment).toBe('TEST');
     });
 
     it('getQRPaymentInfo() returns QR data for the attached payment', async () => {
         const info = await attached.sdk.getQRPaymentInfo();
-        expect(info).toBeTypeOf('object');
-        expect(info).not.toBeNull();
+        // The payment was created as 100 CZK by the harness.
+        expect(info.amount).toBe(100);
+        expect(info.currency).toBe('CZK');
+        // SPAYD is the CZK code; the EUR path returns PayBySquare instead.
+        expect(info.qr_code?.spayd).toBeTypeOf('string');
+        expect(info.recipient).toBeTypeOf('object');
     });
 
     it('refuses every wallet read before a payment is attached', async () => {
