@@ -1,3 +1,14 @@
+## [1.23.3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.2...1.23.3) (2026-10-07)
+
+
+### Bug Fixes
+
+* **browser:** keep a rejected retry for a replaced payment from clearing the new token GPOMA-2713 ([3ae2f31](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/3ae2f3108c9d4e31dc42c832e60d1a727837082a))
+* **browser:** keep a replaced payment's requests off the newly attached one GPOMA-2713 ([f3d96b3](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/f3d96b3335fea674a2efc75bc8fddd9f6647e16d))
+* **browser:** keep an overtaken attach or refresh from touching the current payment GPOMA-2713 ([1d69c95](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1d69c95fabaabf618eb3007c8bece8622cce5503))
+* **browser:** re-acquire the payment token after it expires GPOMA-2713 ([659ae39](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/659ae392200ce0b82db159071a51a557dcf99497))
+* **deps:** pick up http-cache-semantics 4.3.0 for the max-stale advisory GPOMA-2713 ([76a0f7b](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/76a0f7b34823f22cb93bf9faf0163a40b27ffd65))
+
 ## [1.23.2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.1...1.23.2) (2026-10-01)
 
 
