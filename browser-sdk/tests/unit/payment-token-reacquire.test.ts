@@ -38,7 +38,12 @@ describe('payment token re-acquisition', () => {
     let seen: Seen[];
     let tokenResponses: Array<() => Response | Promise<Response>>;
     let paymentStatus: number[];
+    let paymentHolds: Array<Promise<void>>;
     let rejected: Set<string>;
+    // Which payment each issued token belongs to. The gateway rejects a token
+    // used for another payment, which is what turns a request sent with the
+    // wrong payment's token into a 401 instead of a silent success.
+    let tokenOwner: Map<string, string>;
     let issued: number;
     let onError: Mock<(error: unknown) => void>;
     let sdk: ReturnType<typeof createGoPayBrowserSDK>;
@@ -53,7 +58,9 @@ describe('payment token re-acquisition', () => {
         seen = [];
         tokenResponses = [];
         paymentStatus = [];
+        paymentHolds = [];
         rejected = new Set();
+        tokenOwner = new Map();
         issued = 0;
         vi.stubGlobal(
             'fetch',
@@ -68,22 +75,44 @@ describe('payment token re-acquisition', () => {
                 seen.push(entry);
                 entry.body = await req.clone().text();
                 if (req.url.includes('/oauth2/token')) {
+                    const owner = atob(
+                        (entry.auth ?? '').replace('Basic ', ''),
+                    ).split(':')[0];
                     const next = tokenResponses.shift();
+                    let res: Response;
                     if (next) {
-                        return next();
+                        res = await next();
+                    } else {
+                        issued += 1;
+                        res = makeResponse({
+                            access_token: `jwt-${issued}`,
+                            expires_in: 900,
+                            token_type: 'bearer',
+                        });
                     }
-                    issued += 1;
-                    return makeResponse({
-                        access_token: `jwt-${issued}`,
-                        expires_in: 900,
-                        token_type: 'bearer',
-                    });
+                    const body = (await res
+                        .clone()
+                        .json()
+                        .catch(() => ({}))) as { access_token?: string };
+                    if (body.access_token) {
+                        tokenOwner.set(body.access_token, owner);
+                    }
+                    return res;
                 }
                 if (req.url.includes('/payments/')) {
+                    const hold = paymentHolds.shift();
+                    if (hold) {
+                        await hold;
+                    }
                     const auth = req.headers.get('Authorization') ?? '';
-                    const status = rejected.has(auth)
-                        ? 401
-                        : (paymentStatus.shift() ?? 200);
+                    const owner = tokenOwner.get(auth.replace('Bearer ', ''));
+                    const status =
+                        rejected.has(auth) ||
+                        auth.startsWith('Basic ') ||
+                        (owner !== undefined &&
+                            !req.url.includes(`/payments/${owner}`))
+                            ? 401
+                            : (paymentStatus.shift() ?? 200);
                     return status === 200
                         ? makeResponse({ id: 'pay-A', state: 'CREATED' })
                         : makeResponse({ error: 'unauthorized' }, status);
@@ -209,7 +238,9 @@ describe('payment token re-acquisition', () => {
         await expect(sdk.getStatus()).rejects.toMatchObject({
             errorCode: GoPayErrorCodes.AUTH_REFRESH_FAILED,
         });
-        expect(sdk.isAuthenticated()).toBe(false);
+        // Still attached: the next call obtains another token on its own, so
+        // an integrator acting on isAuthenticated() must not re-attach.
+        expect(sdk.isAuthenticated()).toBe(true);
 
         // The shareable-key calls still identify the merchant…
         await sdk.getBrowserData().catch(() => {});
@@ -287,7 +318,11 @@ describe('payment token re-acquisition', () => {
         await vi.waitFor(() => expect(tokenCalls()).toHaveLength(1));
         await sdk.attachPayment({ paymentId: 'pay-B', paymentSecret: 'sec-B' });
         releaseA();
-        await attachA;
+        // Not a success: the caller would go on to charge a payment it did
+        // not attach.
+        await expect(attachA).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
 
         await sdk.getStatus();
         const latest = last(paymentCalls());
@@ -382,9 +417,178 @@ describe('payment token re-acquisition', () => {
         sdk.logout();
         vi.setSystemTime(JUST_BEFORE_EXPIRY);
 
-        await sdk.getStatus().catch(() => {});
+        await expect(sdk.getStatus()).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
 
         expect(tokenCalls()).toHaveLength(1);
+        expect(sdk.isAuthenticated()).toBe(false);
+    });
+
+    it('does not let an attach pending across logout() restore the session', async () => {
+        let releaseA!: () => void;
+        tokenResponses.push(
+            () =>
+                new Promise<Response>((resolve) => {
+                    releaseA = () =>
+                        resolve(
+                            makeResponse({
+                                access_token: 'jwt-late-A',
+                                expires_in: 900,
+                                token_type: 'bearer',
+                            }),
+                        );
+                }),
+        );
+        const attachA = sdk.attachPayment({
+            paymentId: 'pay-A',
+            paymentSecret: 'sec-A',
+        });
+        await vi.waitFor(() => expect(tokenCalls()).toHaveLength(1));
+        sdk.logout();
+        releaseA();
+
+        await expect(attachA).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
+        expect(sdk.isAuthenticated()).toBe(false);
+        await expect(sdk.getStatus()).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
+        vi.setSystemTime(JUST_BEFORE_EXPIRY);
+        await sdk.getStatus().catch(() => {});
+        expect(tokenCalls()).toHaveLength(1);
+    });
+
+    it('rejects a request whose refresh a later attach discarded, instead of sending it with the new token', async () => {
+        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec-A' });
+        vi.setSystemTime(JUST_BEFORE_EXPIRY);
+        let releaseA!: () => void;
+        tokenResponses.push(
+            () =>
+                new Promise<Response>((resolve) => {
+                    releaseA = () =>
+                        resolve(
+                            makeResponse({
+                                access_token: 'jwt-stale-A',
+                                expires_in: 900,
+                                token_type: 'bearer',
+                            }),
+                        );
+                }),
+        );
+        const callA = sdk.getStatus();
+        await vi.waitFor(() => expect(tokenCalls()).toHaveLength(2));
+        await sdk.attachPayment({ paymentId: 'pay-B', paymentSecret: 'sec-B' });
+        releaseA();
+
+        await expect(callA).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
+        // A's request never went out on B's token, so B keeps it.
+        expect(
+            paymentCalls().filter((r) => r.auth === 'Bearer jwt-2'),
+        ).toHaveLength(0);
+        expect(sdk.isAuthenticated()).toBe(true);
+        await expect(sdk.getStatus()).resolves.toBeDefined();
+        expect(last(paymentCalls())?.url).toContain('/payments/pay-B');
+        expect(last(paymentCalls())?.auth).toBe('Bearer jwt-2');
+        expect(tokenCalls()).toHaveLength(3);
+        const codes = onError.mock.calls.map(
+            ([e]) => (e as { errorCode?: string }).errorCode,
+        );
+        expect(codes).not.toContain(GoPayErrorCodes.AUTH_UNAUTHORIZED);
+    });
+
+    it('keeps the later payment when the discarded re-exchange fails, and does not report it as a failed refresh', async () => {
+        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec-A' });
+        vi.setSystemTime(JUST_BEFORE_EXPIRY);
+        let failA!: () => void;
+        tokenResponses.push(
+            () =>
+                new Promise<Response>((resolve) => {
+                    failA = () =>
+                        resolve(makeResponse({ error: 'unavailable' }, 503));
+                }),
+        );
+        const callA = sdk.getStatus();
+        await vi.waitFor(() => expect(tokenCalls()).toHaveLength(2));
+        await sdk.attachPayment({ paymentId: 'pay-B', paymentSecret: 'sec-B' });
+        failA();
+
+        await expect(callA).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
+        expect(sdk.isAuthenticated()).toBe(true);
+        await expect(sdk.getStatus()).resolves.toBeDefined();
+        expect(last(paymentCalls())?.auth).toBe('Bearer jwt-2');
+        expect(tokenCalls()).toHaveLength(3);
+        const codes = onError.mock.calls.map(
+            ([e]) => (e as { errorCode?: string }).errorCode,
+        );
+        expect(codes).not.toContain(GoPayErrorCodes.AUTH_REFRESH_FAILED);
+    });
+
+    it('does not refresh the later payment for a 401 on a request sent before it was attached', async () => {
+        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec-A' });
+        let releaseA!: () => void;
+        paymentHolds.push(
+            new Promise<void>((resolve) => {
+                releaseA = resolve;
+            }),
+        );
+        paymentStatus.push(401);
+        const callA = sdk.getStatus();
+        await vi.waitFor(() => expect(paymentCalls()).toHaveLength(1));
+        await sdk.attachPayment({ paymentId: 'pay-B', paymentSecret: 'sec-B' });
+        releaseA();
+
+        await expect(callA).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
+        expect(tokenCalls()).toHaveLength(2);
+        expect(paymentCalls()).toHaveLength(1);
+        await expect(sdk.getStatus()).resolves.toBeDefined();
+        expect(last(paymentCalls())?.auth).toBe('Bearer jwt-2');
+    });
+
+    it('forgets payment credentials the token endpoint refuses for good, instead of resending them with every call', async () => {
+        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec-A' });
+        vi.setSystemTime(JUST_BEFORE_EXPIRY);
+        tokenResponses.push(() =>
+            makeResponse(
+                { error: 'Invalid payment_id or payment_secret' },
+                401,
+            ),
+        );
+
+        await expect(sdk.getStatus()).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.AUTH_REFRESH_FAILED,
+        });
+        expect(sdk.isAuthenticated()).toBe(false);
+
+        await sdk.getStatus().catch(() => {});
+        await sdk.getStatus().catch(() => {});
+        expect(tokenCalls()).toHaveLength(2);
+        const refreshFailures = onError.mock.calls.filter(
+            ([e]) =>
+                (e as { errorCode?: string }).errorCode ===
+                GoPayErrorCodes.AUTH_REFRESH_FAILED,
+        );
+        expect(refreshFailures).toHaveLength(1);
+    });
+
+    it('treats a rate-limited re-exchange as temporary and retries with the same credentials', async () => {
+        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec-A' });
+        vi.setSystemTime(JUST_BEFORE_EXPIRY);
+        tokenResponses.push(() => makeResponse({ error: 'slow down' }, 429));
+
+        await expect(sdk.getStatus()).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.AUTH_REFRESH_FAILED,
+        });
+        expect(sdk.isAuthenticated()).toBe(true);
+        await expect(sdk.getStatus()).resolves.toBeDefined();
+        expect(last(tokenCalls())?.auth).toBe(basic('pay-A', 'sec-A'));
     });
 
     it('never puts the payment secret anywhere but the token request', async () => {

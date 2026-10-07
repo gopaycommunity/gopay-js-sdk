@@ -87,10 +87,16 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
 
     let paymentsApi: PaymentsApi | null = null;
     const getPaymentsApi = () => paymentsApi;
-    // Bumped by every attachPayment(). Two attaches may overlap while no card
-    // form is mounted, and the one called last is the one that counts — not
-    // whichever exchange happens to answer last.
+    // Bumped by every attachPayment() and by logout(). Two attaches may overlap
+    // while no card form is mounted, and the one called last is the one that
+    // counts — not whichever exchange happens to answer last. A logout counts
+    // the same way, or an attach pending across it would answer and undo it.
     let attachAttempt = 0;
+    const detach = () => {
+        attachAttempt += 1;
+        paymentsApi = null;
+        attachedPaymentId = undefined;
+    };
 
     const { isCardFormMounted, ...cardsApi } = createCardsApi(
         client,
@@ -103,7 +109,7 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
     // just the ones the HTTP client raises itself.
     return reportErrors(client, {
         version: SDK_VERSION,
-        ...createAuthApi(client),
+        ...createAuthApi(client, detach),
 
         /**
          * Exchange a `payment_secret` for a payment-scoped JWT and unlock
@@ -152,9 +158,14 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
                 }
                 throw error;
             }
-            // Overtaken by a later attachPayment(): that one owns the session.
+            // Overtaken by a later attachPayment() or a logout(): that one owns
+            // the session. Resolving would tell the caller this payment is
+            // attached, and the next charge would go to a different one.
             if (!isCurrent()) {
-                return;
+                throw new GoPaySDKError(
+                    '[GoPayBrowserSDK] attachPayment() was overtaken by a later attachPayment() or logout(); this payment is not attached.',
+                    { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
+                );
             }
             paymentsApi = createPaymentsApi(client, pid, threeDS);
             // The attach has no HTTP call of its own to stand for it: the

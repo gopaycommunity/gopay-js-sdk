@@ -300,6 +300,11 @@ export function createHttpClient(
             tokenStore.setPaymentCredentials(credentials);
         },
 
+        /** Whether a payment's credentials are held to re-exchange. */
+        hasPaymentCredentials(): boolean {
+            return tokenStore.getPaymentCredentials() !== null;
+        },
+
         setClientCredentials(
             clientId: string,
             clientSecret: string,
@@ -342,6 +347,11 @@ export function createHttpClient(
 
         getEnvironment(): NonNullable<CoreConfig['environment']> {
             return config.environment ?? 'sandbox';
+        },
+
+        /** Drop the access token alone, keeping whatever can obtain another. */
+        clearToken(): void {
+            tokenStore.clearToken();
         },
 
         clearTokens(): void {

@@ -31,7 +31,7 @@ export async function exchangePaymentCredentials(
     // begun, and a failed attach must not leave it behind, still looking
     // authenticated.
     client.setPaymentCredentials(null);
-    client.tokenStore.clearToken();
+    client.clearToken();
 
     const form: Record<string, string> = {
         grant_type: 'payment_credentials',
@@ -71,15 +71,25 @@ export async function exchangePaymentCredentials(
     client.setPaymentCredentials({ paymentId, paymentSecret, scope });
 }
 
-export function createAuthApi(client: HttpClient) {
+/**
+ * `onLogout` lets the SDK retire what lives outside the client: an attach
+ * still in flight would otherwise store its token and credentials back once
+ * its exchange answers, undoing the logout.
+ */
+export function createAuthApi(client: HttpClient, onLogout?: () => void) {
     return {
-        /** Returns `true` if a payment-scoped token is currently stored. */
+        /**
+         * Returns `true` while a payment is attached. A token that a failed
+         * re-exchange cost does not count against it: the payment's
+         * credentials are still held and the next call obtains another.
+         */
         isAuthenticated(): boolean {
-            return client.isAuthenticated();
+            return client.isAuthenticated() || client.hasPaymentCredentials();
         },
 
-        /** Clear all stored tokens. After calling this, payment-scoped calls will throw. */
+        /** Detach the payment. After calling this, payment-scoped calls will throw. */
         logout(): void {
+            onLogout?.();
             client.clearTokens();
         },
     };

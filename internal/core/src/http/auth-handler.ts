@@ -50,6 +50,33 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
      * form URL) still need, and its payment credentials can obtain the next
      * token — so it loses the token alone.
      */
+    /**
+     * A request or refresh for a payment that a later attach has replaced.
+     * Rejecting it is the point: resolving would send the request on with the
+     * newer payment's token, whose 401 then costs that payment its token too.
+     */
+    function paymentReplaced(): GoPaySDKError {
+        return new GoPaySDKError(
+            '[GoPaySDK] The payment was replaced by a later attachPayment() before this request completed.',
+            { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
+        );
+    }
+
+    /**
+     * Whether the token endpoint turned the credentials down for good — the
+     * payment is finished or expired — rather than failing for now. Timeouts
+     * and rate limits are 4xx too but say nothing about the credentials.
+     */
+    function isPermanentRejection(cause: unknown): boolean {
+        return (
+            cause instanceof GoPayHTTPError &&
+            cause.status >= 400 &&
+            cause.status < 500 &&
+            cause.status !== 408 &&
+            cause.status !== 429
+        );
+    }
+
     function dropAfterAuthFailure(): void {
         if (deps.store.getClientSecret()) {
             deps.store.clear();
@@ -123,6 +150,9 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         const combinedSignal = signal
             ? AbortSignal.any([signal, timeoutSignal])
             : timeoutSignal;
+        // The payment this request was sent for. Another one attached while it
+        // was out must not be refreshed and retried on its behalf.
+        const payment = store.getPaymentCredentials();
 
         let response = await fetchWithRetry(url, init, combinedSignal);
         debugLogResponse(response);
@@ -131,6 +161,9 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
             return response;
         }
 
+        if (payment && store.getPaymentCredentials() !== payment) {
+            return emitError(paymentReplaced());
+        }
         await refresh();
 
         const fresh = store.get();
@@ -232,6 +265,7 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
             );
         }
 
+        let token: { access_token: string; expires_in: number };
         try {
             const url = buildUrl(baseUrl, AUTH_PATH);
             const credentials = globalThis.btoa(grant.basic);
@@ -275,34 +309,42 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
                     { errorCode: GoPayErrorCodes.AUTH_INVALID_RESPONSE },
                 );
             }
-            // A payment attached while this exchange was in flight has already
-            // stored its own token. Storing this one would put the previous
-            // payment's token in its place.
-            if (store.getPaymentCredentials() !== payment) {
-                return;
-            }
-            store.set({
-                access_token,
-                expires_in,
-                token_type: 'bearer',
-            });
+            token = { access_token, expires_in };
         } catch (cause) {
+            // Whatever happened to it, the exchange belonged to a payment that
+            // is no longer attached: the attached one keeps its token, and the
+            // caller learns its payment is gone rather than that a refresh failed.
+            if (payment && store.getPaymentCredentials() !== payment) {
+                return emitError(paymentReplaced());
+            }
             // A failed payment re-exchange costs the token only. Clearing the
             // whole store would take the client id with it, which the
             // shareable-key calls (browser data, card-form URL) still need, and
-            // the payment credentials, which the next call can retry with.
+            // the payment credentials, which the next call can retry with —
+            // unless the token endpoint refused them for good, when retrying
+            // would only resend a dead secret with every call.
             if (!payment) {
                 store.clear();
-            } else if (store.getPaymentCredentials() === payment) {
+            } else {
                 store.clearToken();
+                if (isPermanentRejection(cause)) {
+                    store.setPaymentCredentials(null);
+                }
             }
-            emitError(
+            return emitError(
                 new GoPaySDKError(
                     `[GoPaySDK] Token refresh failed. ${reAuth}`,
                     { cause, errorCode: GoPayErrorCodes.AUTH_REFRESH_FAILED },
                 ),
             );
         }
+        // A payment attached while this exchange was in flight has already
+        // stored its own token. Storing this one would put the previous
+        // payment's token in its place.
+        if (payment && store.getPaymentCredentials() !== payment) {
+            return emitError(paymentReplaced());
+        }
+        store.set({ ...token, token_type: 'bearer' });
     }
 
     return { injectAuth, fetchAndHandle401, refresh };
