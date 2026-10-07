@@ -18,7 +18,10 @@ export { buildUrl } from './http/build-url.js';
 export type { HttpClient } from './http/client.js';
 export { createHttpClient } from './http/client.js';
 export { SDK_ACCEPT_HEADER } from './http/constants.js';
-export type { StoredTokenPair } from './http/token-store.js';
+export type {
+    PaymentCredentials,
+    StoredTokenPair,
+} from './http/token-store.js';
 export { createTokenStore } from './http/token-store.js';
 export type { ApiCallRecord, Telemetry } from './logging/telemetry.js';
 export { NO_TELEMETRY, nowMs } from './logging/telemetry.js';

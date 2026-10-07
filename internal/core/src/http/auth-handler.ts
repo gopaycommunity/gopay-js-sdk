@@ -4,7 +4,7 @@ import { buildUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
 import { fetchWithRetry } from './fetch-with-retry.js';
 import { parseBody } from './response.js';
-import type { TokenStore } from './token-store.js';
+import type { PaymentCredentials, TokenStore } from './token-store.js';
 import type { RequestOptions } from './types.js';
 
 const AUTH_PATH = '/oauth2/token';
@@ -37,6 +37,21 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
     const reAuth = deps.reAuthAction ?? 'Call authenticate() again.';
     let refreshPromise: Promise<void> | null = null;
 
+    /**
+     * What an authentication failure costs. A server forgets its credentials
+     * and has to authenticate() again. A browser holds no client secret: its
+     * client id is configuration the shareable-key calls (browser data, card
+     * form URL) still need, and its payment credentials can obtain the next
+     * token — so it loses the token alone.
+     */
+    function dropAfterAuthFailure(): void {
+        if (deps.store.getClientSecret()) {
+            deps.store.clear();
+        } else {
+            deps.store.clearToken();
+        }
+    }
+
     async function injectAuth(
         headers: Headers,
         url: string,
@@ -60,7 +75,13 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
             return;
         }
 
-        if (deps.store.isExpiringSoon()) {
+        // No token at all but payment credentials held means an earlier
+        // re-exchange failed: try again rather than fall through to the
+        // shareable-key header, which no payment-scoped endpoint accepts.
+        if (
+            deps.store.isExpiringSoon() ||
+            (!deps.store.get() && deps.store.getPaymentCredentials())
+        ) {
             await refresh();
         }
 
@@ -131,7 +152,7 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         debugLogResponse(response);
 
         if (response.status === 401) {
-            store.clear();
+            dropAfterAuthFailure();
             emitError(
                 new GoPaySDKError(
                     '[GoPaySDK] Request unauthorized after token refresh. Check OAuth2 scopes.',
@@ -153,15 +174,46 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         return refreshPromise;
     }
 
-    async function doRefresh(): Promise<void> {
-        const { store, baseUrl, emitError, getTimeoutMs } = deps;
-
+    /**
+     * The grant to re-run. A browser that attached a payment holds that
+     * payment's credentials and re-exchanges them — the grant issues no refresh
+     * token, so this is how a checkout outlives its fifteen-minute token. A
+     * server holds client credentials and re-runs `client_credentials`.
+     */
+    function grantFor(payment: PaymentCredentials | null): {
+        form: Record<string, string>;
+        basic: string;
+    } | null {
+        const { store } = deps;
+        if (payment) {
+            return {
+                form: {
+                    grant_type: 'payment_credentials',
+                    scope: payment.scope,
+                },
+                basic: `${payment.paymentId}:${payment.paymentSecret}`,
+            };
+        }
         const clientId = store.getClientId();
         const clientSecret = store.getClientSecret();
         const storedScope = store.getScope();
-
         if (!clientId || !clientSecret || !storedScope) {
-            store.clear();
+            return null;
+        }
+        return {
+            form: { grant_type: 'client_credentials', scope: storedScope },
+            basic: `${clientId}:${clientSecret}`,
+        };
+    }
+
+    async function doRefresh(): Promise<void> {
+        const { store, baseUrl, emitError, getTimeoutMs } = deps;
+
+        const payment = store.getPaymentCredentials();
+        const grant = grantFor(payment);
+
+        if (!grant) {
+            dropAfterAuthFailure();
             return emitError(
                 new GoPaySDKError(
                     `[GoPaySDK] Access token expired and no client credentials available. ${reAuth}`,
@@ -172,11 +224,7 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
 
         try {
             const url = buildUrl(baseUrl, AUTH_PATH);
-            const form: Record<string, string> = {
-                grant_type: 'client_credentials',
-                scope: storedScope,
-            };
-            const credentials = globalThis.btoa(`${clientId}:${clientSecret}`);
+            const credentials = globalThis.btoa(grant.basic);
             const headers = new Headers({
                 'Content-Type': 'application/x-www-form-urlencoded',
                 Accept: SDK_ACCEPT_HEADER,
@@ -191,7 +239,7 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
                     new Request(url, {
                         method: 'POST',
                         headers,
-                        body: new URLSearchParams(form).toString(),
+                        body: new URLSearchParams(grant.form).toString(),
                         signal: AbortSignal.timeout(getTimeoutMs()),
                     }),
                 );
@@ -217,13 +265,27 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
                     { errorCode: GoPayErrorCodes.AUTH_INVALID_RESPONSE },
                 );
             }
+            // A payment attached while this exchange was in flight has already
+            // stored its own token. Storing this one would put the previous
+            // payment's token in its place.
+            if (store.getPaymentCredentials() !== payment) {
+                return;
+            }
             store.set({
                 access_token,
                 expires_in,
                 token_type: 'bearer',
             });
         } catch (cause) {
-            store.clear();
+            // A failed payment re-exchange costs the token only. Clearing the
+            // whole store would take the client id with it, which the
+            // shareable-key calls (browser data, card-form URL) still need, and
+            // the payment credentials, which the next call can retry with.
+            if (!payment) {
+                store.clear();
+            } else if (store.getPaymentCredentials() === payment) {
+                store.clearToken();
+            }
             emitError(
                 new GoPaySDKError(
                     `[GoPaySDK] Token refresh failed. ${reAuth}`,

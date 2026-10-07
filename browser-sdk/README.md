@@ -349,6 +349,8 @@ attachPayment(args: {
 
 Exchanges `paymentSecret` for a payment-scoped JWT (`payment_credentials` grant, scopes `payment:read payment:charge`). Must be called before `mountCardForm({ flow: 'direct-charge' })` or any payment-action methods.
 
+The JWT is valid for fifteen minutes and the grant issues no refresh token. The SDK therefore keeps `paymentId` and `paymentSecret` in memory while the payment stays attached, and exchanges them again when the token is about to expire or is rejected — a customer who takes longer than that at the checkout needs no `attachPayment()` from you. Nothing is written to browser storage, and the secret never reaches the SDK's monitoring.
+
 Throws `GoPaySDKError(PAYMENT_NOT_ATTACHED)` if these methods are called first.
 
 ### `sdk.isAuthenticated()` / `sdk.logout()`

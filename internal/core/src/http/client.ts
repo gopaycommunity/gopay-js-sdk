@@ -16,7 +16,11 @@ import { buildUrl, resolveBaseUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
 import { normalizeEndpoint } from './endpoint.js';
 import { parseBody } from './response.js';
-import { createTokenStore, type StoredTokenPair } from './token-store.js';
+import {
+    createTokenStore,
+    type PaymentCredentials,
+    type StoredTokenPair,
+} from './token-store.js';
 import type { RequestOptions } from './types.js';
 
 /**
@@ -289,6 +293,11 @@ export function createHttpClient(
 
         setClientId(clientId: string): void {
             tokenStore.setClientId(clientId);
+        },
+
+        /** What an expired payment token is re-exchanged with; `null` forgets it. */
+        setPaymentCredentials(credentials: PaymentCredentials | null): void {
+            tokenStore.setPaymentCredentials(credentials);
         },
 
         setClientCredentials(

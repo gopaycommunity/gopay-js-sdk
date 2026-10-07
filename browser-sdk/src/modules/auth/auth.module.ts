@@ -21,6 +21,13 @@ export async function exchangePaymentCredentials(
     paymentSecret: string,
     scope = DEFAULT_PAYMENT_SCOPE,
 ): Promise<void> {
+    // The previous payment goes first, token and credentials both: a
+    // re-exchange still in flight for it must not land once this attach has
+    // begun, and a failed attach must not leave it behind, still looking
+    // authenticated.
+    client.setPaymentCredentials(null);
+    client.tokenStore.clearToken();
+
     const form: Record<string, string> = {
         grant_type: 'payment_credentials',
         scope,
@@ -49,6 +56,11 @@ export async function exchangePaymentCredentials(
         token_type: 'bearer',
     };
     client.setToken(tokenData);
+    // Kept, in memory only, so an expired token can be exchanged again: the
+    // grant issues no refresh token and the token lives fifteen minutes, which
+    // a customer filling the card form can outlast. The merchant already holds
+    // the secret in this page, so keeping it here exposes nothing new.
+    client.setPaymentCredentials({ paymentId, paymentSecret, scope });
 }
 
 export function createAuthApi(client: HttpClient) {
