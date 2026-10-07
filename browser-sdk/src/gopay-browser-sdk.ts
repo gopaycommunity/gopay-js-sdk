@@ -87,6 +87,10 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
 
     let paymentsApi: PaymentsApi | null = null;
     const getPaymentsApi = () => paymentsApi;
+    // Bumped by every attachPayment(). Two attaches may overlap while no card
+    // form is mounted, and the one called last is the one that counts — not
+    // whichever exchange happens to answer last.
+    let attachAttempt = 0;
 
     const { isCardFormMounted, ...cardsApi } = createCardsApi(
         client,
@@ -124,6 +128,8 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
                 paymentSecret,
                 'paymentSecret',
             );
+            const attempt = ++attachAttempt;
+            const isCurrent = () => attempt === attachAttempt;
             paymentsApi = null;
             // Set before the exchange rather than after it. The token call
             // that performs the attach is emitted while it runs, and so is the
@@ -133,10 +139,22 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
             // "never claim a session the SDK did not get" guarantee back.
             attachedPaymentId = pid;
             try {
-                await exchangePaymentCredentials(client, pid, secret);
+                await exchangePaymentCredentials(
+                    client,
+                    pid,
+                    secret,
+                    undefined,
+                    isCurrent,
+                );
             } catch (error) {
-                attachedPaymentId = undefined;
+                if (isCurrent()) {
+                    attachedPaymentId = undefined;
+                }
                 throw error;
+            }
+            // Overtaken by a later attachPayment(): that one owns the session.
+            if (!isCurrent()) {
+                return;
             }
             paymentsApi = createPaymentsApi(client, pid, threeDS);
             // The attach has no HTTP call of its own to stand for it: the

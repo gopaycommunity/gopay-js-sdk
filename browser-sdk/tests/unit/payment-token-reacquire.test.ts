@@ -38,6 +38,7 @@ describe('payment token re-acquisition', () => {
     let seen: Seen[];
     let tokenResponses: Array<() => Response | Promise<Response>>;
     let paymentStatus: number[];
+    let rejected: Set<string>;
     let issued: number;
     let onError: Mock<(error: unknown) => void>;
     let sdk: ReturnType<typeof createGoPayBrowserSDK>;
@@ -52,15 +53,20 @@ describe('payment token re-acquisition', () => {
         seen = [];
         tokenResponses = [];
         paymentStatus = [];
+        rejected = new Set();
         issued = 0;
         vi.stubGlobal(
             'fetch',
             vi.fn(async (req: Request) => {
-                seen.push({
+                // Recorded before the first await, so the order of `seen` is
+                // the order the SDK issued the requests in.
+                const entry: Seen = {
                     url: req.url,
                     auth: req.headers.get('Authorization'),
-                    body: await req.clone().text(),
-                });
+                    body: '',
+                };
+                seen.push(entry);
+                entry.body = await req.clone().text();
                 if (req.url.includes('/oauth2/token')) {
                     const next = tokenResponses.shift();
                     if (next) {
@@ -74,7 +80,10 @@ describe('payment token re-acquisition', () => {
                     });
                 }
                 if (req.url.includes('/payments/')) {
-                    const status = paymentStatus.shift() ?? 200;
+                    const auth = req.headers.get('Authorization') ?? '';
+                    const status = rejected.has(auth)
+                        ? 401
+                        : (paymentStatus.shift() ?? 200);
                     return status === 200
                         ? makeResponse({ id: 'pay-A', state: 'CREATED' })
                         : makeResponse({ error: 'unauthorized' }, status);
@@ -254,6 +263,118 @@ describe('payment token re-acquisition', () => {
         await sdk.getStatus();
 
         expect(last(tokenCalls())?.auth).toBe(basic('pay-B', 'sec-B'));
+    });
+
+    it('lets the attach called last win when an earlier one answers after it', async () => {
+        let releaseA!: () => void;
+        tokenResponses.push(
+            () =>
+                new Promise<Response>((resolve) => {
+                    releaseA = () =>
+                        resolve(
+                            makeResponse({
+                                access_token: 'jwt-late-A',
+                                expires_in: 900,
+                                token_type: 'bearer',
+                            }),
+                        );
+                }),
+        );
+        const attachA = sdk.attachPayment({
+            paymentId: 'pay-A',
+            paymentSecret: 'sec-A',
+        });
+        await vi.waitFor(() => expect(tokenCalls()).toHaveLength(1));
+        await sdk.attachPayment({ paymentId: 'pay-B', paymentSecret: 'sec-B' });
+        releaseA();
+        await attachA;
+
+        await sdk.getStatus();
+        const latest = last(paymentCalls());
+        expect(latest?.url).toContain('/payments/pay-B');
+        expect(latest?.auth).toBe('Bearer jwt-1');
+
+        vi.setSystemTime(JUST_BEFORE_EXPIRY);
+        await sdk.getStatus();
+        expect(last(tokenCalls())?.auth).toBe(basic('pay-B', 'sec-B'));
+    });
+
+    it('keeps the later attach when the one it overtook fails afterwards', async () => {
+        let failA!: () => void;
+        tokenResponses.push(
+            () =>
+                new Promise<Response>((resolve) => {
+                    failA = () =>
+                        resolve(makeResponse({ error: 'unauthorized' }, 401));
+                }),
+        );
+        const attachA = sdk
+            .attachPayment({ paymentId: 'pay-A', paymentSecret: 'wrong' })
+            .then(
+                () => 'resolved',
+                () => 'rejected',
+            );
+        await vi.waitFor(() => expect(tokenCalls()).toHaveLength(1));
+        await sdk.attachPayment({ paymentId: 'pay-B', paymentSecret: 'sec-B' });
+        failA();
+        expect(await attachA).toBe('rejected');
+
+        await sdk.getStatus();
+        expect(sdk.isAuthenticated()).toBe(true);
+        expect(last(paymentCalls())?.url).toContain('/payments/pay-B');
+        // The status call's event still carries B's session.
+        await vi.waitFor(() => {
+            const statusEvent = last(
+                seen.filter(
+                    (r) =>
+                        r.url.endsWith('/events') &&
+                        r.body.includes('"target":"/payments/'),
+                ),
+            );
+            expect(statusEvent?.body).toContain('"payment_session_id":"pay-B"');
+        });
+    });
+
+    it("refreshes the newly attached payment on its own while the previous payment's refresh is pending", async () => {
+        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec-A' });
+        vi.setSystemTime(JUST_BEFORE_EXPIRY);
+        let releaseA!: () => void;
+        tokenResponses.push(
+            () =>
+                new Promise<Response>((resolve) => {
+                    releaseA = () =>
+                        resolve(
+                            makeResponse({
+                                access_token: 'jwt-stale-A',
+                                expires_in: 900,
+                                token_type: 'bearer',
+                            }),
+                        );
+                }),
+        );
+        const staleCall = sdk.getStatus().catch(() => {});
+        await vi.waitFor(() => expect(tokenCalls()).toHaveLength(2));
+        await sdk.attachPayment({ paymentId: 'pay-B', paymentSecret: 'sec-B' });
+
+        // B's token gets rejected while A's refresh is still out.
+        rejected.add('Bearer jwt-2');
+        const callB = sdk.getStatus();
+        await vi.waitFor(() =>
+            expect(
+                paymentCalls().some((r) => r.url.includes('/payments/pay-B')),
+            ).toBe(true),
+        );
+        releaseA();
+        await staleCall;
+
+        await expect(callB).resolves.toBeDefined();
+        const callsB = paymentCalls().filter((r) =>
+            r.url.includes('/payments/pay-B'),
+        );
+        expect(last(callsB)?.auth).toBe('Bearer jwt-3');
+        expect(
+            tokenCalls().filter((r) => r.auth === basic('pay-B', 'sec-B')),
+        ).toHaveLength(2);
     });
 
     it('forgets the credentials on logout()', async () => {

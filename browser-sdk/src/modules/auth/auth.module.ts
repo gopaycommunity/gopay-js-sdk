@@ -14,12 +14,17 @@ const DEFAULT_PAYMENT_SCOPE = 'payment:read payment:charge';
 /**
  * Exchange a payment_id + payment_secret for a payment-scoped token pair.
  * Called internally by attachPayment() — not exposed on the public API.
+ *
+ * `isCurrent` lets the caller retire an exchange that a later attach has
+ * overtaken: its token and credentials are then dropped instead of stored
+ * over the newer payment's.
  */
 export async function exchangePaymentCredentials(
     client: HttpClient,
     paymentId: string,
     paymentSecret: string,
     scope = DEFAULT_PAYMENT_SCOPE,
+    isCurrent: () => boolean = () => true,
 ): Promise<void> {
     // The previous payment goes first, token and credentials both: a
     // re-exchange still in flight for it must not land once this attach has
@@ -50,6 +55,9 @@ export async function exchangePaymentCredentials(
         );
     }
 
+    if (!isCurrent()) {
+        return;
+    }
     const tokenData: Omit<StoredTokenPair, 'issued_at'> = {
         access_token: tokenPair.access_token,
         expires_in: tokenPair.expires_in,

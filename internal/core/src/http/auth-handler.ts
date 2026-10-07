@@ -35,7 +35,13 @@ interface AuthHandlerDeps {
 
 export function createAuthHandler(deps: AuthHandlerDeps) {
     const reAuth = deps.reAuthAction ?? 'Call authenticate() again.';
-    let refreshPromise: Promise<void> | null = null;
+    /**
+     * One pending refresh per set of credentials, not one overall. A request
+     * for a newly attached payment must not join the refresh still running
+     * for the previous one: that refresh is discarded when it lands, so the
+     * request would resolve without a token and retry with the rejected one.
+     */
+    const refreshes = new Map<PaymentCredentials | null, Promise<void>>();
 
     /**
      * What an authentication failure costs. A server forgets its credentials
@@ -165,13 +171,16 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
     }
 
     async function refresh(): Promise<void> {
-        if (refreshPromise) {
-            return refreshPromise;
+        const payment = deps.store.getPaymentCredentials();
+        const pending = refreshes.get(payment);
+        if (pending) {
+            return pending;
         }
-        refreshPromise = doRefresh().finally(() => {
-            refreshPromise = null;
+        const started = doRefresh(payment).finally(() => {
+            refreshes.delete(payment);
         });
-        return refreshPromise;
+        refreshes.set(payment, started);
+        return started;
     }
 
     /**
@@ -206,10 +215,11 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         };
     }
 
-    async function doRefresh(): Promise<void> {
+    async function doRefresh(
+        payment: PaymentCredentials | null,
+    ): Promise<void> {
         const { store, baseUrl, emitError, getTimeoutMs } = deps;
 
-        const payment = store.getPaymentCredentials();
         const grant = grantFor(payment);
 
         if (!grant) {
