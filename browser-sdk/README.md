@@ -349,7 +349,7 @@ attachPayment(args: {
 
 Exchanges `paymentSecret` for a payment-scoped JWT (`payment_credentials` grant, scopes `payment:read payment:charge`). Must be called before `mountCardForm({ flow: 'direct-charge' })` or any payment-action methods.
 
-The JWT is valid for fifteen minutes and the grant issues no refresh token. The SDK therefore keeps `paymentId` and `paymentSecret` in memory while the payment stays attached, and exchanges them again when the token is about to expire or is rejected — a customer who takes longer than that at the checkout needs no `attachPayment()` from you. Nothing is written to browser storage, and the secret never reaches the SDK's monitoring.
+Once `attachPayment()` resolves, the payment stays usable however long the customer spends at checkout — you don't need to call it again. If a later `attachPayment()` or `logout()` overtakes it before it resolves, it rejects with `PAYMENT_NOT_ATTACHED` instead.
 
 Throws `GoPaySDKError(PAYMENT_NOT_ATTACHED)` if these methods are called first.
 
@@ -360,9 +360,9 @@ isAuthenticated(): boolean
 logout(): void
 ```
 
-`isAuthenticated()` returns `true` if a payment-scoped token is currently stored (i.e. `attachPayment` has succeeded and the token has not been cleared).
+`isAuthenticated()` returns `true` while a payment is attached — from the moment `attachPayment()` resolves until `logout()`, or until GoPay no longer accepts the payment.
 
-`logout()` clears all stored tokens. After calling it, payment-scoped methods will throw until `attachPayment` is called again.
+`logout()` detaches the payment. After calling it, payment-scoped methods throw `PAYMENT_NOT_ATTACHED` until `attachPayment()` is called again.
 
 ### `sdk.mountCardForm(container, options)`
 
@@ -587,7 +587,7 @@ collected in the browser.
 
 | Code | Thrown by |
 |---|---|
-| `PAYMENT_NOT_ATTACHED` | Payment-action methods called before `attachPayment()` |
+| `PAYMENT_NOT_ATTACHED` | Payment-action methods called before `attachPayment()` or after `logout()`, or the payment was replaced by a later `attachPayment()` |
 | `CARD_FORM_ERROR` | Iframe error or untrusted card-form origin |
 | `CARD_FORM_ALREADY_MOUNTED` | `mountCardForm()` called while a session is already active — call `unmount()` on the existing controller first |
 | `WALLET_BUTTON_ERROR` | `mountApplePayButton` / `mountGooglePayButton` — unavailable, script load failure, or session error |
