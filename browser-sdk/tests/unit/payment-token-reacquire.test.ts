@@ -552,6 +552,34 @@ describe('payment token re-acquisition', () => {
         expect(last(paymentCalls())?.auth).toBe('Bearer jwt-2');
     });
 
+    it('does not cost the later payment its token when the retry for the previous one is rejected', async () => {
+        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec-A' });
+        let releaseRetry!: () => void;
+        paymentHolds.push(
+            Promise.resolve(),
+            new Promise<void>((resolve) => {
+                releaseRetry = resolve;
+            }),
+        );
+        paymentStatus.push(401, 401);
+        const callA = sdk.getStatus();
+        await vi.waitFor(() => expect(paymentCalls()).toHaveLength(2));
+        await sdk.attachPayment({ paymentId: 'pay-B', paymentSecret: 'sec-B' });
+        releaseRetry();
+
+        await expect(callA).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
+        expect(sdk.isAuthenticated()).toBe(true);
+        await expect(sdk.getStatus()).resolves.toBeDefined();
+        expect(last(paymentCalls())?.url).toContain('/payments/pay-B');
+        expect(last(paymentCalls())?.auth).toBe('Bearer jwt-3');
+        const codes = onError.mock.calls.map(
+            ([e]) => (e as { errorCode?: string }).errorCode,
+        );
+        expect(codes).not.toContain(GoPayErrorCodes.AUTH_UNAUTHORIZED);
+    });
+
     it('forgets payment credentials the token endpoint refuses for good, instead of resending them with every call', async () => {
         await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec-A' });
         vi.setSystemTime(JUST_BEFORE_EXPIRY);

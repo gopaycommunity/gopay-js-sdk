@@ -191,6 +191,11 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         debugLogResponse(response);
 
         if (response.status === 401) {
+            // The retry is a wait of its own: a payment attached meanwhile
+            // holds a token this 401 says nothing about.
+            if (payment && store.getPaymentCredentials() !== payment) {
+                return emitError(paymentReplaced());
+            }
             dropAfterAuthFailure();
             emitError(
                 new GoPaySDKError(
