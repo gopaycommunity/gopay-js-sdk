@@ -606,18 +606,29 @@ describe('payment token re-acquisition', () => {
         expect(refreshFailures).toHaveLength(1);
     });
 
-    it('treats a rate-limited re-exchange as temporary and retries with the same credentials', async () => {
-        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec-A' });
-        vi.setSystemTime(JUST_BEFORE_EXPIRY);
-        tokenResponses.push(() => makeResponse({ error: 'slow down' }, 429));
+    // Both are 4xx and neither says anything about the credentials; without the
+    // exception in isPermanentRejection each would cost the payment its token.
+    it.each([
+        [429, 'slow down'],
+        [408, 'request timeout'],
+    ])(
+        'treats a %i re-exchange as temporary and retries with the same credentials',
+        async (status, error) => {
+            await sdk.attachPayment({
+                paymentId: 'pay-A',
+                paymentSecret: 'sec-A',
+            });
+            vi.setSystemTime(JUST_BEFORE_EXPIRY);
+            tokenResponses.push(() => makeResponse({ error }, status));
 
-        await expect(sdk.getStatus()).rejects.toMatchObject({
-            errorCode: GoPayErrorCodes.AUTH_REFRESH_FAILED,
-        });
-        expect(sdk.isAuthenticated()).toBe(true);
-        await expect(sdk.getStatus()).resolves.toBeDefined();
-        expect(last(tokenCalls())?.auth).toBe(basic('pay-A', 'sec-A'));
-    });
+            await expect(sdk.getStatus()).rejects.toMatchObject({
+                errorCode: GoPayErrorCodes.AUTH_REFRESH_FAILED,
+            });
+            expect(sdk.isAuthenticated()).toBe(true);
+            await expect(sdk.getStatus()).resolves.toBeDefined();
+            expect(last(tokenCalls())?.auth).toBe(basic('pay-A', 'sec-A'));
+        },
+    );
 
     it('never puts the payment secret anywhere but the token request', async () => {
         await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec-A' });

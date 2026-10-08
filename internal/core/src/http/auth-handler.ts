@@ -4,6 +4,7 @@ import { buildUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
 import { fetchWithRetry } from './fetch-with-retry.js';
 import { parseBody } from './response.js';
+import { timeoutSignal } from './timeout-signal.js';
 import type { PaymentCredentials, TokenStore } from './token-store.js';
 import type { RequestOptions } from './types.js';
 
@@ -26,6 +27,7 @@ interface AuthHandlerDeps {
         path: string,
         started: number,
         statusCode: number | null,
+        bodies?: { request?: unknown; response?: unknown },
     ) => void;
     getShareableKey?: () => string | undefined;
     getClientId?: () => string | null;
@@ -43,13 +45,6 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
      */
     const refreshes = new Map<PaymentCredentials | null, Promise<void>>();
 
-    /**
-     * What an authentication failure costs. A server forgets its credentials
-     * and has to authenticate() again. A browser holds no client secret: its
-     * client id is configuration the shareable-key calls (browser data, card
-     * form URL) still need, and its payment credentials can obtain the next
-     * token — so it loses the token alone.
-     */
     /**
      * A request or refresh for a payment that a later attach has replaced.
      * Rejecting it is the point: resolving would send the request on with the
@@ -77,6 +72,13 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         );
     }
 
+    /**
+     * What an authentication failure costs. A server forgets its credentials
+     * and has to authenticate() again. A browser holds no client secret: its
+     * client id is configuration the shareable-key calls (browser data, card
+     * form URL) still need, and its payment credentials can obtain the next
+     * token — so it loses the token alone.
+     */
     function dropAfterAuthFailure(): void {
         if (deps.store.getClientSecret()) {
             deps.store.clear();
@@ -145,11 +147,9 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         signal?: AbortSignal,
     ): Promise<Response> {
         const { getTimeoutMs, debugLogResponse, store, emitError } = deps;
-        const timeoutMs = getTimeoutMs();
-        const timeoutSignal = AbortSignal.timeout(timeoutMs);
-        const combinedSignal = signal
-            ? AbortSignal.any([signal, timeoutSignal])
-            : timeoutSignal;
+        // Not released here: the caller reads the body after this returns,
+        // and the timeout has to cover that read as well.
+        const combinedSignal = timeoutSignal(getTimeoutMs(), signal).signal;
         // The payment this request was sent for. Another one attached while it
         // was out must not be refreshed and retried on its behalf.
         const payment = store.getPaymentCredentials();
@@ -289,12 +289,17 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
                         method: 'POST',
                         headers,
                         body: new URLSearchParams(grant.form).toString(),
-                        signal: AbortSignal.timeout(getTimeoutMs()),
+                        signal: timeoutSignal(getTimeoutMs()).signal,
                     }),
                 );
                 status = response.status;
             } finally {
-                deps.recordApiCall('POST', AUTH_PATH, started, status);
+                // The form only. Its response is a token pair, which the
+                // telemetry would redact down to nothing, and reading it here
+                // would spend the stream the parse below needs.
+                deps.recordApiCall('POST', AUTH_PATH, started, status, {
+                    request: grant.form,
+                });
             }
             if (!response.ok) {
                 throw new GoPayHTTPError(

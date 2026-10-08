@@ -743,6 +743,90 @@ describe('HttpClient', () => {
         });
     });
 
+    // AbortSignal.any is Safari 17.4 / Chrome 116 / Firefox 124, and the
+    // browser bundle runs wherever the customer's browser is. Called bare it
+    // threw before the request was built, taking the charge down with it.
+    describe('on an engine without AbortSignal.timeout / any', () => {
+        let realTimeout: typeof AbortSignal.timeout;
+        let realAny: typeof AbortSignal.any;
+
+        beforeEach(() => {
+            realTimeout = AbortSignal.timeout;
+            realAny = AbortSignal.any;
+            // biome-ignore lint/suspicious/noExplicitAny: simulating an older engine
+            (AbortSignal as any).timeout = undefined;
+            // biome-ignore lint/suspicious/noExplicitAny: simulating an older engine
+            (AbortSignal as any).any = undefined;
+        });
+
+        afterEach(() => {
+            AbortSignal.timeout = realTimeout;
+            AbortSignal.any = realAny;
+            vi.useRealTimers();
+        });
+
+        it('still sends GET, POST and the form-encoded token request', async () => {
+            fetchMock.mockImplementation(async () =>
+                makeResponse({ ok: true }),
+            );
+            const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.tokenStore.set(storedTokens);
+            const caller = new AbortController();
+
+            await client.get('/data', { signal: caller.signal });
+            await client.post('/data', { a: 1 });
+            await client.postForm(
+                '/oauth2/token',
+                { grant_type: 'client_credentials' },
+                { signal: caller.signal },
+            );
+
+            expect(fetchMock).toHaveBeenCalledTimes(3);
+        });
+
+        it('still times a request out, as NETWORK_TIMEOUT', async () => {
+            vi.useFakeTimers();
+            fetchMock.mockImplementation(
+                (req: Request) =>
+                    new Promise((_resolve, reject) => {
+                        req.signal.addEventListener('abort', () =>
+                            reject(req.signal.reason),
+                        );
+                    }),
+            );
+            const client = createHttpClient({
+                baseUrl: 'https://example.com',
+                requestTimeoutMs: 1_000,
+            });
+            client.tokenStore.set(storedTokens);
+
+            const pending = client.get('/data').catch((e: unknown) => e);
+            await vi.advanceTimersByTimeAsync(1_000);
+
+            expect(await pending).toMatchObject({
+                errorCode: GoPayErrorCodes.NETWORK_TIMEOUT,
+            });
+        });
+
+        it('forwards the caller’s abort', async () => {
+            let captured!: Request;
+            fetchMock.mockImplementation((req: Request) => {
+                captured = req;
+                return new Promise(() => {});
+            });
+            const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.tokenStore.set(storedTokens);
+            const caller = new AbortController();
+
+            void client.get('/data', { signal: caller.signal }).catch(() => {});
+            await Promise.resolve();
+            await Promise.resolve();
+            expect(captured.signal.aborted).toBe(false);
+            caller.abort();
+            expect(captured.signal.aborted).toBe(true);
+        });
+    });
+
     // -------------------------------------------------------------------------
     // Security: baseUrl scheme validation
     // -------------------------------------------------------------------------

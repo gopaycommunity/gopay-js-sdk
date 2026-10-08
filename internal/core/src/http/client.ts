@@ -16,6 +16,7 @@ import { buildUrl, resolveBaseUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
 import { normalizeEndpoint } from './endpoint.js';
 import { parseBody } from './response.js';
+import { timeoutSignal } from './timeout-signal.js';
 import {
     createTokenStore,
     type PaymentCredentials,
@@ -124,14 +125,26 @@ export function createHttpClient(
         path: string,
         started: number,
         statusCode: number | null,
+        bodies?: { request?: unknown; response?: unknown },
     ): void {
         const rec: ApiCallRecord = {
             method,
             endpoint: normalizeEndpoint(path),
             statusCode,
             durationMs: Math.round(nowMs() - started),
+            requestBody: bodies?.request,
+            responseBody: bodies?.response,
         };
         telemetry.apiCall(rec);
+    }
+
+    /**
+     * The body a failed request came back with. throwIfNotOk has already
+     * parsed it into the error, so it is read from there rather than from a
+     * response whose stream is spent.
+     */
+    function errorBody(err: unknown): unknown {
+        return err instanceof GoPayHTTPError ? err.body : undefined;
     }
 
     // resolveBaseUrl validates config.baseUrl and throws on a bad one. It runs
@@ -380,6 +393,7 @@ export function createHttpClient(
             // endpoint nothing ever called, next to the SDK.<CODE> event
             // that already described the same failure correctly.
             let issued = false;
+            let responseBody: unknown;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({ Accept: SDK_ACCEPT_HEADER });
@@ -393,12 +407,16 @@ export function createHttpClient(
                 );
                 status = response.status;
                 await throwIfNotOk(response, 'GET', path);
-                return (await response.json()) as T;
+                responseBody = await response.json();
+                return responseBody as T;
             } catch (err) {
+                responseBody = errorBody(err);
                 return handleError(err);
             } finally {
                 if (issued) {
-                    record('GET', path, started, status);
+                    record('GET', path, started, status, {
+                        response: responseBody,
+                    });
                 }
             }
         },
@@ -418,6 +436,7 @@ export function createHttpClient(
             // endpoint nothing ever called, next to the SDK.<CODE> event
             // that already described the same failure correctly.
             let issued = false;
+            let responseBody: unknown;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
@@ -434,12 +453,17 @@ export function createHttpClient(
                 );
                 status = response.status;
                 await throwIfNotOk(response, 'POST', path);
-                return (await response.json()) as T;
+                responseBody = await response.json();
+                return responseBody as T;
             } catch (err) {
+                responseBody = errorBody(err);
                 return handleError(err);
             } finally {
                 if (issued) {
-                    record('POST', path, started, status);
+                    record('POST', path, started, status, {
+                        request: body,
+                        response: responseBody,
+                    });
                 }
             }
         },
@@ -455,6 +479,7 @@ export function createHttpClient(
             // endpoint nothing ever called, next to the SDK.<CODE> event
             // that already described the same failure correctly.
             let issued = false;
+            let responseBody: unknown;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers();
@@ -469,10 +494,13 @@ export function createHttpClient(
                 status = response.status;
                 await throwIfNotOk(response, 'DELETE', path);
             } catch (err) {
+                responseBody = errorBody(err);
                 return handleError(err);
             } finally {
                 if (issued) {
-                    record('DELETE', path, started, status);
+                    record('DELETE', path, started, status, {
+                        response: responseBody,
+                    });
                 }
             }
         },
@@ -492,6 +520,7 @@ export function createHttpClient(
             // endpoint nothing ever called, next to the SDK.<CODE> event
             // that already described the same failure correctly.
             let issued = false;
+            let responseBody: unknown;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
@@ -512,23 +541,24 @@ export function createHttpClient(
                         method: 'POST',
                         headers,
                         body: bodyStr,
-                        signal: options?.signal
-                            ? AbortSignal.any([
-                                  options.signal,
-                                  AbortSignal.timeout(timeoutMs()),
-                              ])
-                            : AbortSignal.timeout(timeoutMs()),
+                        signal: timeoutSignal(timeoutMs(), options?.signal)
+                            .signal,
                     }),
                 );
                 debugLogResponse(response);
                 status = response.status;
                 await throwIfNotOk(response, 'POST', path);
-                return (await response.json()) as T;
+                responseBody = await response.json();
+                return responseBody as T;
             } catch (err) {
+                responseBody = errorBody(err);
                 return handleError(err);
             } finally {
                 if (issued) {
-                    record('POST', path, started, status);
+                    record('POST', path, started, status, {
+                        request: form,
+                        response: responseBody,
+                    });
                 }
             }
         },

@@ -13,6 +13,15 @@ export interface ApiCallRecord {
     /** HTTP status, or `null` when the request never produced a response. */
     statusCode: number | null;
     durationMs: number;
+    /**
+     * What was sent and what came back, exactly as the caller had them — the
+     * object passed to the verb method and the parsed JSON (or a failed
+     * response's parsed body). Raw on purpose: core never decides what may
+     * leave, so it hands over everything and the telemetry that ships it
+     * redacts. Absent when there was no body, or none that parsed.
+     */
+    requestBody?: unknown;
+    responseBody?: unknown;
 }
 
 /**

@@ -6,6 +6,7 @@ import {
     type HttpClient,
     nowMs,
     SDK_ACCEPT_HEADER,
+    timeoutSignal,
 } from '@gopay-internal/core';
 import type { BrowserData, BrowserDataDetected } from '../../types/index.js';
 
@@ -109,48 +110,6 @@ function isBrowserDataDetected(value: unknown): value is BrowserDataDetected {
 }
 
 /**
- * Combine the caller's signal with a request timeout.
- *
- * `AbortSignal.timeout` and especially `AbortSignal.any` are far newer than the
- * ES2020 baseline this package is built for, and the CDN bundle runs in whatever
- * browser the merchant's customer brought. Where they are missing, an
- * `AbortController` is wired by hand rather than letting a card charge die on a
- * `TypeError`.
- */
-function timeoutSignal(callerSignal?: AbortSignal): {
-    signal: AbortSignal;
-    release: () => void;
-} {
-    if (
-        typeof AbortSignal.timeout === 'function' &&
-        typeof AbortSignal.any === 'function'
-    ) {
-        const timeout = AbortSignal.timeout(BROWSER_DATA_TIMEOUT_MS);
-        return {
-            signal: callerSignal
-                ? AbortSignal.any([callerSignal, timeout])
-                : timeout,
-            release: () => {},
-        };
-    }
-
-    const controller = new AbortController();
-    if (callerSignal?.aborted) {
-        controller.abort();
-    }
-    const timer = setTimeout(() => controller.abort(), BROWSER_DATA_TIMEOUT_MS);
-    const forwardAbort = () => controller.abort();
-    callerSignal?.addEventListener('abort', forwardAbort);
-    return {
-        signal: controller.signal,
-        release: () => {
-            clearTimeout(timer);
-            callerSignal?.removeEventListener('abort', forwardAbort);
-        },
-    };
-}
-
-/**
  * Fetch the browser data fields the page cannot determine on its own from
  * `GET /cards/browser-data`, and merge them over the locally collected ones.
  *
@@ -196,7 +155,10 @@ export async function fetchBrowserData(
     // store — including the client id — leaving the SDK instance unable to charge
     // the payment that was about to be charged. A plain request keeps the failure
     // local, and keeps a tolerated 404 from firing the merchant's onError.
-    const { signal, release } = timeoutSignal(options?.signal);
+    const { signal, release } = timeoutSignal(
+        BROWSER_DATA_TIMEOUT_MS,
+        options?.signal,
+    );
     // The timeout has to outlive the headers: fetch() resolves as soon as they
     // arrive, so a response that then stalls its body would hang the charge if
     // the timer were already cleared here.
