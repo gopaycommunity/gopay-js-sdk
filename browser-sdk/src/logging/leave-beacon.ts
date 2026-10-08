@@ -1,4 +1,5 @@
 import type { BrowserTelemetry } from './gw-logger.js';
+import { hasLeft, resetLeft } from './leave-latch.js';
 
 /**
  * Reports the visit ending, once.
@@ -60,11 +61,16 @@ import type { BrowserTelemetry } from './gw-logger.js';
 let activeTelemetry: BrowserTelemetry | undefined;
 
 function onPageHide(): void {
+    // A 3DS redirect already reported this departure, with its target.
+    if (hasLeft()) {
+        return;
+    }
     activeTelemetry?.lifecycle('leave');
 }
 
 export function registerLeaveBeacon(telemetry: BrowserTelemetry): void {
     activeTelemetry = telemetry;
+    resetLeft();
 
     if (typeof globalThis.addEventListener !== 'function') {
         return;

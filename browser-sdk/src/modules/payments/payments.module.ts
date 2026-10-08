@@ -7,8 +7,14 @@ import {
     GoPayHTTPError,
     GoPaySDKError,
     type HttpClient,
+    nowMs,
     requirePathSegment,
 } from '@gopay-internal/core';
+import {
+    type BrowserTelemetry,
+    describeFailure,
+    NO_BROWSER_TELEMETRY,
+} from '../../logging/gw-logger.js';
 import type { components } from '../../types/generated.js';
 import { collectBrowserData, fetchBrowserData } from './browser-data.js';
 
@@ -94,10 +100,16 @@ function handle3DS(
     threeDS: ThreeDSConfig | undefined,
     redirectUrl: string,
     onActionRequired: ((url: string) => void) | undefined,
+    telemetry: BrowserTelemetry,
 ): void {
     assertHttpsUrl(redirectUrl);
     onActionRequired?.(redirectUrl);
     if (threeDS?.mode !== 'manual') {
+        // Reported before the navigation, while the page can still send it,
+        // and as the visit's leave: it is the one departure that is part of
+        // the payment rather than the end of it. Manual mode leaves the page
+        // to the integrator, who may never navigate at all.
+        telemetry.redirect({ target: redirectUrl, flow: '3ds-redirect' });
         globalThis.location.href = redirectUrl;
     }
 }
@@ -106,6 +118,7 @@ export function createPaymentsApi(
     client: HttpClient,
     paymentId: string,
     defaultThreeDS?: ThreeDSConfig,
+    telemetry: BrowserTelemetry = NO_BROWSER_TELEMETRY,
 ) {
     // Validated and encoded once here rather than at each of the twelve
     // interpolations below. buildUrl resolves a relative path with
@@ -290,6 +303,7 @@ export function createPaymentsApi(
                             effectiveThreeDS,
                             redirectUrl,
                             options?.onActionRequired,
+                            telemetry,
                         );
                         if (!redirects || stall !== undefined) {
                             return;
@@ -392,11 +406,29 @@ export function createPaymentsApi(
                         ? ((event as Record<string, unknown>)
                               .validationURL as string)
                         : undefined;
+                // gw-ui's validateMerchant step, timed from Apple asking for it
+                // to the session being handed back. The request itself is an
+                // api_call of its own; this says whether the sheet got what it
+                // needed, which a 200 with an unusable body would not.
+                const startedAt = nowMs();
                 validateApplePayMerchant(validationURL)
-                    .then((merchantSession) =>
-                        session.completeMerchantValidation(merchantSession),
-                    )
+                    .then((merchantSession) => {
+                        session.completeMerchantValidation(merchantSession);
+                        telemetry.walletStep({
+                            paymentMethod: 'applepay',
+                            step: 'validateMerchant',
+                            status: 'success',
+                            startedAt,
+                        });
+                    })
                     .catch((error: unknown) => {
+                        telemetry.walletStep({
+                            paymentMethod: 'applepay',
+                            step: 'validateMerchant',
+                            status: 'failure',
+                            detail: describeFailure(error),
+                            startedAt,
+                        });
                         session.abort();
                         callbacks?.onvalidationfailure?.(error);
                     });

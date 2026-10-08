@@ -605,7 +605,7 @@ export function createCardsApi(
                 // page" is what this claims, and it is what it can prove.
                 readyAt = nowMs();
                 heightsSince = readyAt;
-                telemetry.lifecycle('ready', {
+                telemetry.ready({
                     paymentMethod: 'card',
                     flow: options.flow,
                 });

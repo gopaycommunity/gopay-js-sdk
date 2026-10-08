@@ -933,3 +933,125 @@ describe('createPaymentsApi() — browser SDK', () => {
         });
     });
 });
+
+describe('createPaymentsApi() — telemetry', () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+    let client: ReturnType<typeof createHttpClient>;
+    let telemetry: {
+        redirect: ReturnType<typeof vi.fn>;
+        walletStep: ReturnType<typeof vi.fn>;
+    };
+
+    const ACS =
+        'https://acs.example-bank.com/challenge/step?creq=eyJhbGciOi&MD=123';
+
+    beforeEach(() => {
+        fetchMock = vi
+            .fn()
+            .mockImplementation(async (req: Request) => respond(req));
+        vi.stubGlobal('fetch', fetchMock);
+        client = createHttpClient({
+            baseUrl: 'https://example.com',
+            shareableKey: 'pk_test',
+        });
+        client.setClientId('cid_test');
+        client.setToken(storedToken);
+        telemetry = { redirect: vi.fn(), walletStep: vi.fn() };
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    const api = () =>
+        createPaymentsApi(client, PAYMENT_ID, undefined, telemetry as never);
+
+    const actionRequiredThenSucceeded = () =>
+        fetchMock
+            .mockResolvedValueOnce(
+                makeResponse({
+                    state: 'ACTION_REQUIRED',
+                    action: { redirect_url: ACS },
+                }),
+            )
+            .mockResolvedValue(makeResponse({ state: 'SUCCEEDED' }));
+
+    it('reports the 3DS redirect as the leave, before the page goes', async () => {
+        const location = { href: '' };
+        vi.stubGlobal('location', location);
+        actionRequiredThenSucceeded();
+        let hrefAtReport: string | undefined;
+        telemetry.redirect.mockImplementation(() => {
+            hrefAtReport = location.href;
+        });
+
+        await api().awaitChargeState({ intervalMs: 5, initialTimeoutMs: 5000 });
+
+        expect(telemetry.redirect).toHaveBeenCalledWith({
+            target: ACS,
+            flow: '3ds-redirect',
+        });
+        // Sent while the page could still send it.
+        expect(hrefAtReport).toBe('');
+        expect(location.href).toBe(ACS);
+    });
+
+    it('reports no redirect in manual mode, where the page may never leave', async () => {
+        actionRequiredThenSucceeded();
+
+        await api().awaitChargeState({
+            threeDS: { mode: 'manual' },
+            intervalMs: 5,
+            initialTimeoutMs: 5000,
+        });
+
+        expect(telemetry.redirect).not.toHaveBeenCalled();
+    });
+
+    function makeMockSession() {
+        return {
+            onvalidatemerchant: null as ((event: unknown) => void) | null,
+            oncancel: null as ((event: unknown) => void) | null,
+            completeMerchantValidation: vi.fn(),
+            abort: vi.fn(),
+            begin: vi.fn(),
+        };
+    }
+
+    it('times merchant validation as gw-ui’s validateMerchant step', async () => {
+        fetchMock.mockImplementation(async () => makeResponse({ ms: 1 }));
+        const session = makeMockSession();
+        api().startApplePaySession(session);
+
+        session.onvalidatemerchant?.({ validationURL: 'https://apple.com/v' });
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(telemetry.walletStep).toHaveBeenCalledWith({
+            paymentMethod: 'applepay',
+            step: 'validateMerchant',
+            status: 'success',
+            startedAt: expect.any(Number),
+        });
+    });
+
+    it('reports a failed merchant validation with its status, never its message', async () => {
+        fetchMock.mockImplementation(
+            async () => new Response(null, { status: 502 }),
+        );
+        const session = makeMockSession();
+        api().startApplePaySession(session);
+
+        session.onvalidatemerchant?.({});
+        await new Promise((r) => setTimeout(r, 10));
+
+        expect(telemetry.walletStep).toHaveBeenCalledWith({
+            paymentMethod: 'applepay',
+            step: 'validateMerchant',
+            status: 'failure',
+            detail: 'HTTP_502',
+            startedAt: expect.any(Number),
+        });
+        expect(session.abort).toHaveBeenCalledOnce();
+    });
+});

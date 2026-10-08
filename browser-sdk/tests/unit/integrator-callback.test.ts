@@ -11,6 +11,8 @@ describe('callIntegrator()', () => {
         apiCall: vi.fn(),
         error: vi.fn(),
         lifecycle: vi.fn(),
+        ready: vi.fn(),
+        redirect: vi.fn(),
         submit: vi.fn(),
         walletUnavailable: vi.fn(),
         integratorError: vi.fn(),

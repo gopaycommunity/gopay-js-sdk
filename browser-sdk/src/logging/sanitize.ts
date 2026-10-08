@@ -1,18 +1,23 @@
 /**
- * The SDK never ships request or response bodies to the logger, so the only
- * free-form text that leaves the page is an error message the SDK wrote
- * itself — a property the call sites have to keep true, and one that
- * `client.ts` broke for a while by interpolating a foreign error's message.
- * The scrub below is the second line, sized for the day the first one slips.
- * A message is not key-structured, so it cannot be redacted field by field the
- * way gw-ui's `sanitizeLogData` redacts a payload — it gets scrubbed and capped
- * instead.
+ * Two kinds of text leave the page: error messages, and the request and
+ * response bodies of the SDK's own API calls.
  *
- * Not shipping bodies at all is the deliberate part. A redaction list only
- * protects the fields somebody remembered to list, and the fields here would be
- * a card token, a JWE, a payment secret and a 3DS challenge blob. Leaving them
- * on the page is the one approach that cannot be defeated by a field added
- * later under a name nobody predicted.
+ * A message is not key-structured, so it cannot be redacted field by field —
+ * it is scrubbed and capped ({@link safeErrorMessage}). It is meant to be text
+ * the SDK wrote itself, a property the call sites keep true and one that
+ * `client.ts` broke for a while by interpolating a foreign error's message;
+ * the scrub is the second line, sized for the day the first one slips.
+ *
+ * A body is redacted by key, the way gw-ui's `sanitizeLogData` does it, so
+ * both producers drop the same things and the rows read the same way
+ * ({@link serializeBody}). The SDK did not ship bodies at all until GPOMA-2707,
+ * for a reason that still holds: a redaction list protects only the fields
+ * somebody remembered to list, and the fields here are a card token, a JWE, a
+ * payment secret, a wallet's encrypted card data and a 3DS redirect. So the
+ * key list is not the only line either. Every string that survives it goes
+ * through the message scrub as well — a token under a name nobody predicted
+ * still has the shape of a token — and the instrument a charge carries is
+ * dropped whole, whatever its fields are called.
  */
 
 const REDACTED = '[redacted]';
@@ -184,4 +189,189 @@ export function safePageUrl(): string {
         return '';
     }
     return `${loc.origin}${loc.pathname}`.slice(0, 2048);
+}
+
+/**
+ * Keys whose whole value is dropped, matched exactly.
+ *
+ * gw-ui's list, plus what this SDK's own traffic carries under names that
+ * list does not reach: `input` is the instrument of a charge — a card token,
+ * or a wallet's encrypted card data under plain names like `data` and
+ * `header` — and `customer` is the payer's contact details.
+ */
+const SENSITIVE_CONTAINER_KEYS = new Set([
+    'response',
+    'payment',
+    'paymentdata',
+    'applepaypaymentdata',
+    'googlepaymentdata',
+    'card',
+    'cards',
+    'maskedcard',
+    'maskedcards',
+    'profile',
+    'profiles',
+    'srcprofile',
+    'consumer',
+    'consumeridentity',
+    'identity',
+    'threeds',
+    'threedsdata',
+    'challenge',
+    'acs',
+    'acsdata',
+    'credential',
+    'credentials',
+    'checkout',
+    'checkoutresponse',
+    'checkoutresponsesignature',
+    'redirectparams',
+    'merchantsession',
+    'merchantsessionidentifier',
+    'validationdata',
+    'encryptedcard',
+    'recognitiontoken',
+    'idtoken',
+    'idtokens',
+    'digitalcardid',
+    'recipientaddress',
+    'accountname',
+    'bic',
+    // This SDK's own.
+    'input',
+    'customer',
+    'contact',
+    'payer',
+    'ip',
+    'ipaddress',
+    'useragent',
+]);
+
+/**
+ * Fragments that drop any key containing them. gw-ui's list, plus the ones
+ * this SDK's traffic needs: `encrypted` for the card form's payload, the
+ * signing material of a Google Pay token, and the hosted-gateway URL, which
+ * is a link to someone's payment.
+ */
+const SENSITIVE_KEY_SUBSTRINGS = [
+    'pan',
+    'token',
+    'jwe',
+    'cvv',
+    'cvc',
+    'cryptogram',
+    'cavv',
+    'secret',
+    'signature',
+    'password',
+    'identityvalue',
+    'cardnumber',
+    'digitalcardid',
+    'authentication',
+    'otp',
+    'email',
+    'phone',
+    'mobile',
+    'firstname',
+    'lastname',
+    'accountnumber',
+    'iban',
+    'redirecturl',
+    'maskedvalidationchannel',
+    // This SDK's own.
+    'encrypted',
+    'signedmessage',
+    'signedkey',
+    'publickey',
+    'nonce',
+    'gwurl',
+    'address',
+    'holder',
+];
+
+/**
+ * Nested deeper than this is dropped whole. gw-ui's bound: nothing worth
+ * reading in these payloads sits further down, and a bound is what keeps a
+ * hostile structure from costing anything.
+ */
+const MAX_DEPTH = 4;
+
+/** gw-ui's cap per body. */
+const MAX_BODY_LENGTH = 2000;
+
+/**
+ * The API is snake_case and gw-ui's lists are camelCase, so a key is
+ * compared with its separators removed: `redirect_url` has to hit
+ * `redirecturl`, or the 3DS redirect of every charge goes out as it is.
+ */
+function isSensitiveKey(key: string): boolean {
+    const normalized = key.toLowerCase().replace(/[^a-z0-9]/gu, '');
+    return (
+        SENSITIVE_CONTAINER_KEYS.has(normalized) ||
+        SENSITIVE_KEY_SUBSTRINGS.some((fragment) =>
+            normalized.includes(fragment),
+        )
+    );
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        return false;
+    }
+    // Only a plain object is safe to walk; a class instance or a DOM node is
+    // never serialized.
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+}
+
+/**
+ * The body with every sensitive key replaced by `[redacted]`, every string
+ * left in it scrubbed, and anything nested past {@link MAX_DEPTH} dropped.
+ * Structure is otherwise kept, so a reader still sees what was there.
+ */
+function sanitizeLogData(value: unknown, depth = 0): unknown {
+    if (depth >= MAX_DEPTH) {
+        return REDACTED;
+    }
+    if (Array.isArray(value)) {
+        return value.map((item) => sanitizeLogData(item, depth + 1));
+    }
+    if (isPlainObject(value)) {
+        const result: Record<string, unknown> = {};
+        for (const [key, item] of Object.entries(value)) {
+            result[key] = isSensitiveKey(key)
+                ? REDACTED
+                : sanitizeLogData(item, depth + 1);
+        }
+        return result;
+    }
+    if (typeof value === 'string') {
+        return safeErrorMessage(value);
+    }
+    if (
+        value !== null &&
+        (typeof value === 'object' || typeof value === 'function')
+    ) {
+        return REDACTED;
+    }
+    return value;
+}
+
+/**
+ * A request or response body as `req_body` / `res_body` carry it: redacted,
+ * then JSON, then cut at {@link MAX_BODY_LENGTH} — gw-ui's `serializeBody`,
+ * so a long body reads as the start of itself rather than as nothing.
+ *
+ * Never throws. A body is only a diagnostic, and the event it rides on is
+ * worth more than it is.
+ */
+export function serializeBody(value: unknown): string | undefined {
+    if (value === undefined || value === null) {
+        return undefined;
+    }
+    try {
+        return JSON.stringify(sanitizeLogData(value)).slice(0, MAX_BODY_LENGTH);
+    } catch {
+        return undefined;
+    }
 }

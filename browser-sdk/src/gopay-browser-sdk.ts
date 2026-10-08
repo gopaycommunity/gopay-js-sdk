@@ -68,7 +68,6 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
     let attachedPaymentId: string | undefined;
     const telemetry = createGwLoggerTelemetry({
         environment: coreConfig.environment ?? 'sandbox',
-        getShareableKey: () => shareableKey,
         getClientId: () => clientId,
         getPaymentId: () => attachedPaymentId,
     });
@@ -167,7 +166,7 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
                     { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
                 );
             }
-            paymentsApi = createPaymentsApi(client, pid, threeDS);
+            paymentsApi = createPaymentsApi(client, pid, threeDS, telemetry);
             // The attach has no HTTP call of its own to stand for it: the
             // exchange is a POST /oauth2/token like the SDK's own
             // authentication, so in the logs the two are only told apart by

@@ -8,7 +8,15 @@ import { createGoPayBrowserSDK } from '../../src/gopay-browser-sdk.js';
 import { createGwLoggerTelemetry } from '../../src/logging/gw-logger.js';
 import { getTransactionId, newTraceId } from '../../src/logging/ids.js';
 import { registerLeaveBeacon } from '../../src/logging/leave-beacon.js';
-import { safeErrorMessage, safePageUrl } from '../../src/logging/sanitize.js';
+import {
+    safeErrorMessage,
+    safePageUrl,
+    serializeBody,
+} from '../../src/logging/sanitize.js';
+
+/** What a body looks like once it has been through the serializer. */
+const sanitizeLogData = (value: unknown): unknown =>
+    JSON.parse(serializeBody(value) ?? 'null');
 
 describe('safeErrorMessage()', () => {
     // Every one of these reached the ingest unredacted before: measured on
@@ -199,14 +207,12 @@ describe('createGwLoggerTelemetry()', () => {
 
     const makeTelemetry = (
         overrides: Partial<{
-            getShareableKey: () => string | undefined;
             getClientId: () => string | undefined;
             getPaymentId: () => string | undefined;
         }> = {},
     ) =>
         createGwLoggerTelemetry({
             environment: 'sandbox',
-            getShareableKey: () => 'pk_test_123',
             getClientId: () => 'client_test_123',
             getPaymentId: () => undefined,
             ...overrides,
@@ -247,25 +253,34 @@ describe('createGwLoggerTelemetry()', () => {
 
         expect(fetchMock).toHaveBeenCalledOnce();
         expect(requests[0]?.url).toBe('https://lx.sandbox.gopay.com/events');
-        expect(await eventOf()).toMatchObject({
+        const event = await eventOf();
+        expect(event).toMatchObject({
             event_type: 'api_call',
-            shareable_key: 'pk_test_123',
+            client_id: 'client_test_123',
+            seq: 1,
             origin: 'https://eshop.example.com/checkout',
             target: '/payments/{id}/charge',
             action: 'charge',
             status_code: 200,
             duration: 42,
         });
+        // client_id attributes now; the shareable key authorises calls and
+        // has no business in a log line.
+        expect(event).not.toHaveProperty('shareable_key');
+        expect(typeof event.sdk_instance_id).toBe('string');
     });
 
     it('carries no raw id — target is the template the caller was given', async () => {
         makeTelemetry().apiCall({ ...GET_PAYMENT, statusCode: 404 });
 
-        // trace_id and transaction_id are random UUIDs and are excluded on
-        // purpose: a UUID contains a run of six digits often enough that
-        // scanning them made this assertion fail at random. Every other field
-        // is scanned, which is where a leaked payment id would actually land.
-        const { trace_id, transaction_id, ...rest } = await eventOf();
+        // trace_id, transaction_id and sdk_instance_id are random UUIDs and
+        // are excluded on purpose: a UUID contains a run of six digits often
+        // enough that scanning them made this assertion fail at random. Every
+        // other field is scanned, which is where a leaked payment id would
+        // actually land.
+        const { trace_id, transaction_id, sdk_instance_id, ...rest } =
+            await eventOf();
+        expect(sdk_instance_id).toBeDefined();
         expect(trace_id).toBeDefined();
         expect(transaction_id).toBeDefined();
         expect(JSON.stringify(rest)).not.toMatch(/\d{6,}/u);
@@ -310,8 +325,9 @@ describe('createGwLoggerTelemetry()', () => {
     });
 
     it('labels an unavailable wallet with the function, the payment method and the reason', async () => {
-        // payment_method is the field the question needs and the one `error()`
-        // cannot carry, since core's seam hands it only the error object.
+        // The payment method is what the question needs and what `error()`
+        // cannot carry, since core's seam hands it only the error object. It
+        // rides in the name, gw-ui's `APPLE_PAY.readyToPay`.
         makeTelemetry().walletUnavailable({
             functionName: 'mountApplePayButton',
             paymentMethod: 'applepay',
@@ -322,11 +338,13 @@ describe('createGwLoggerTelemetry()', () => {
         const event = await eventOf();
         expect(event).toMatchObject({
             event_type: 'js_event',
-            function_name: 'mountApplePayButton',
-            payment_method: 'applepay',
+            function_name: 'APPLE_PAY.readyToPay',
             return_value: 'unsupported-device',
         });
+        expect(event).not.toHaveProperty('payment_method');
         expect(JSON.parse(String(event.params))).toEqual({
+            caller: 'mountApplePayButton',
+            available: false,
             ua_mobile: true,
             secure_context: true,
         });
@@ -363,6 +381,8 @@ describe('createGwLoggerTelemetry()', () => {
         });
 
         expect(JSON.parse(String((await eventOf()).params))).toEqual({
+            caller: 'mountGooglePayButton',
+            available: false,
             max_touch_points: 0,
         });
     });
@@ -434,7 +454,7 @@ describe('createGwLoggerTelemetry()', () => {
         }
         fetchMock.mockClear();
 
-        t.lifecycle('ready', { paymentMethod: 'card' });
+        t.ready({ paymentMethod: 'card' });
         t.submit('card-form', { paymentMethod: 'card' });
         t.lifecycle('leave');
 
@@ -463,7 +483,7 @@ describe('createGwLoggerTelemetry()', () => {
     it('caps the lifecycle side too, so a runaway there cannot flood either', () => {
         const t = makeTelemetry();
         for (let i = 0; i < 80; i += 1) {
-            t.lifecycle('ready');
+            t.ready({ paymentMethod: 'card' });
         }
 
         expect(fetchMock).toHaveBeenCalledTimes(50);
@@ -532,10 +552,9 @@ describe('createGwLoggerTelemetry()', () => {
         // a throw here replaced the payment error the caller was about to get.
         const t = createGwLoggerTelemetry({
             environment: 'sandbox',
-            getShareableKey: () => {
+            getClientId: () => {
                 throw new Error('exotic embedding');
             },
-            getClientId: () => 'client_test_123',
             getPaymentId: () => undefined,
         });
 
@@ -573,8 +592,9 @@ describe('createGwLoggerTelemetry()', () => {
     it('abandons a hanging ingest instead of holding the payment open', () => {
         // keepalive is tested next door and answers a different question: it
         // keeps the request alive through unload. This is the half that ends
-        // it when the ingest never answers — remove the `signal` and the
-        // promise this SDK never awaits is still a socket it never closes.
+        // it when the ingest never answers — remove the `signal` and every
+        // keepalive request stays in flight until the browser's quota is gone.
+        // 10 s rather than the 2 s that cut uploads on slow connections.
         const controller = new AbortController();
         const timeoutSpy = vi
             .spyOn(AbortSignal, 'timeout')
@@ -582,7 +602,7 @@ describe('createGwLoggerTelemetry()', () => {
 
         makeTelemetry().apiCall(GET_PAYMENT);
 
-        expect(timeoutSpy).toHaveBeenCalledWith(2_000);
+        expect(timeoutSpy).toHaveBeenCalledWith(10_000);
         // Identity is not assertable — Request derives its own signal from
         // the one it is given — so follow the abort through instead. Drop the
         // `signal` and the request gets a signal of its own that never fires.
@@ -593,7 +613,6 @@ describe('createGwLoggerTelemetry()', () => {
     it('routes production to the production ingest', () => {
         createGwLoggerTelemetry({
             environment: 'production',
-            getShareableKey: () => 'pk_live',
             getClientId: () => 'client_live',
             getPaymentId: () => undefined,
         }).apiCall(GET_PAYMENT);
@@ -642,7 +661,6 @@ describe('lifecycle events', () => {
     const telemetry = (paymentId?: string) =>
         createGwLoggerTelemetry({
             environment: 'sandbox',
-            getShareableKey: () => 'pk_test_123',
             getClientId: () => 'client_test_123',
             getPaymentId: () => paymentId,
         });
@@ -660,13 +678,12 @@ describe('lifecycle events', () => {
     });
 
     it('carries the diagnostic fields on every lifecycle event', async () => {
-        telemetry().lifecycle('ready', {
+        telemetry().ready({
             paymentMethod: 'applepay',
             flow: 'direct-charge',
         });
 
         const event = await readEvent(0);
-        expect(event.payment_method).toBe('applepay');
         expect(event.flow).toBe('direct-charge');
         expect(event.client_id).toBe('client_test_123');
         expect(typeof event.sdk_version).toBe('string');
@@ -724,8 +741,9 @@ describe('lifecycle events', () => {
             'interaction_type',
             'origin',
             'payment_method',
+            'sdk_instance_id',
             'sdk_version',
-            'shareable_key',
+            'seq',
             'trace_id',
             'transaction_id',
         ]);
@@ -747,9 +765,8 @@ describe('lifecycle events', () => {
         const event = await readEvent(0);
         expect(event).toMatchObject({
             event_type: 'js_event',
-            function_name: 'card-form-height',
+            function_name: 'PAYMENT_CARD.card-form-height',
             return_value: 'summary',
-            payment_method: 'card',
             flow: 'direct-charge',
             // The schema's duration is an integer; a fractional one is
             // rejected, and in production a rejection is a silent 204.
@@ -765,7 +782,7 @@ describe('lifecycle events', () => {
     });
 
     it('reports payment_session_id once a payment is attached', async () => {
-        telemetry('3273103424').lifecycle('ready', { paymentMethod: 'card' });
+        telemetry('3273103424').ready({ paymentMethod: 'card' });
 
         expect((await readEvent(0)).payment_session_id).toBe('3273103424');
     });
@@ -1080,5 +1097,374 @@ describe('id generation without randomUUID', () => {
 
         expect(first).not.toBe(second);
         expect(first).toMatch(/^txn-\d+-\d+$/u);
+    });
+});
+
+describe('the GPOMA-2707 event shape', () => {
+    let requests: Request[];
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        requests = [];
+        fetchMock = vi.fn((req: Request) => {
+            requests.push(req);
+            return Promise.resolve(new Response(null, { status: 204 }));
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        vi.stubGlobal('location', {
+            origin: 'https://eshop.example.com',
+            pathname: '/checkout',
+        });
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    const telemetry = (paymentId?: string) =>
+        createGwLoggerTelemetry({
+            environment: 'sandbox',
+            getClientId: () => 'client_test_123',
+            getPaymentId: () => paymentId,
+        });
+
+    const rawBody = (i: number) => {
+        const req = requests[i];
+        if (!req) {
+            throw new Error(`no request at ${i}`);
+        }
+        return req.clone().text();
+    };
+    const eventAt = async (i: number) =>
+        (JSON.parse(await rawBody(i)) as { event: Record<string, unknown> })
+            .event;
+
+    describe('request and response bodies', () => {
+        const JWE =
+            'eyJhbGciOiJSU0EtT0FFUC0yNTYifQ.c2VjcmV0X2tleV9zZWdtZW50.aXZfdmFsdWVfaGVyZQ.Y2lwaGVydGV4dF9oZXJl.dGFnX3ZhbHVlX2hlcmU';
+        const PAN = '4111111111111111';
+
+        /**
+         * Everything that must never leave the page, each under the name it
+         * really travels as — snake_case from the API, camelCase from a
+         * wallet — plus two that hide under names no list would predict.
+         */
+        const SECRETS = {
+            paymentSecret: 'sec-payment-AAA',
+            payment_secret: 'sec-payment-BBB',
+            client_secret: 'sec-client-CCC',
+            encryptedPayload: JWE,
+            card_token: 'tok_card_DDD',
+            token: 'tok_EEE',
+            card_number: PAN,
+            cvv: '739',
+            cvc: '846',
+            email: 'shopper@example.com',
+            phone_number: '+420777123456',
+            first_name: 'Jana',
+            last_name: 'Nováková',
+            ip: '198.51.100.23',
+            user_agent: 'Mozilla/5.0 (Shopper)',
+            redirect_url: 'https://acs.example-bank.com/c?creq=SECRETCREQ',
+            gw_url: 'https://gate.gopay.cz/gw/v3/SECRETGW',
+            access_token: 'at-SECRET-FFF',
+        };
+
+        it('never sends a secret, a JWE, a card token, PAN/CVV or PII in a body', async () => {
+            telemetry().apiCall({
+                method: 'POST',
+                endpoint: '/payments/{id}/charge',
+                statusCode: 200,
+                durationMs: 5,
+                requestBody: {
+                    payment_instrument: 'PAYMENT_CARD',
+                    // A wallet's encrypted card data, under plain names.
+                    input: {
+                        input_type: 'APPLE_PAY',
+                        data: 'APPLE-ENCRYPTED-CARD-DATA',
+                        header: { ephemeralPublicKey: 'EPK-SECRET' },
+                    },
+                    browser_data: {
+                        ip: SECRETS.ip,
+                        user_agent: SECRETS.user_agent,
+                        accept_header: 'application/json',
+                    },
+                    customer: { email: SECRETS.email },
+                    ...SECRETS,
+                    // Under names nobody would list: caught by shape.
+                    note: `card ${PAN} and ${JWE}`,
+                },
+                responseBody: {
+                    state: 'ACTION_REQUIRED',
+                    action: { redirect_url: SECRETS.redirect_url },
+                    ...SECRETS,
+                },
+            });
+
+            // The two body fields, not the whole event: the event's UUIDs
+            // could contain a short digit run by chance.
+            const sent = await eventAt(0);
+            const wire = `${sent.req_body} ${sent.res_body}`;
+            for (const value of [
+                ...Object.values(SECRETS),
+                'APPLE-ENCRYPTED-CARD-DATA',
+                'EPK-SECRET',
+                'SECRETCREQ',
+            ]) {
+                expect(wire).not.toContain(value);
+            }
+            // Redacted, not dropped: a reader still sees what was there.
+            const event = await eventAt(0);
+            const req = JSON.parse(String(event.req_body));
+            expect(req.payment_instrument).toBe('PAYMENT_CARD');
+            expect(req.input).toBe('[redacted]');
+            expect(req.browser_data.accept_header).toBe('application/json');
+            expect(req.paymentSecret).toBe('[redacted]');
+            const res = JSON.parse(String(event.res_body));
+            expect(res.state).toBe('ACTION_REQUIRED');
+            expect(res.action.redirect_url).toBe('[redacted]');
+        });
+
+        it('ships the bodies of an ordinary call as they are', async () => {
+            telemetry().apiCall({
+                method: 'GET',
+                endpoint: '/payments/{id}',
+                statusCode: 409,
+                durationMs: 5,
+                responseBody: {
+                    error: 'PAYMENT_STATE_CONFLICT',
+                    state: 'CANCELED',
+                    amount: 1000,
+                },
+            });
+
+            const event = await eventAt(0);
+            expect(JSON.parse(String(event.res_body))).toEqual({
+                error: 'PAYMENT_STATE_CONFLICT',
+                state: 'CANCELED',
+                amount: 1000,
+            });
+            expect(event).not.toHaveProperty('req_body');
+        });
+
+        it('cuts a long body to gw-ui’s cap', async () => {
+            telemetry().apiCall({
+                method: 'GET',
+                endpoint: '/payments/{id}',
+                statusCode: 200,
+                durationMs: 5,
+                responseBody: {
+                    items: Array.from({ length: 400 }, () => 'item'),
+                },
+            });
+
+            // gw-ui's MAX_BODY_LENGTH.
+            expect(String((await eventAt(0)).res_body)).toHaveLength(2_000);
+        });
+
+        it('matches snake_case keys against gw-ui’s camelCase list', () => {
+            expect(
+                sanitizeLogData({
+                    redirect_url: 'x',
+                    redirectUrl: 'x',
+                    CARD_NUMBER: 'x',
+                    state: 'PAID',
+                }),
+            ).toEqual({
+                redirect_url: '[redacted]',
+                redirectUrl: '[redacted]',
+                CARD_NUMBER: '[redacted]',
+                state: 'PAID',
+            });
+        });
+
+        it('drops what nests past the depth bound and anything that is not plain data', () => {
+            expect(
+                sanitizeLogData({
+                    a: { b: { c: { d: 'deep' } } },
+                    when: new Date(0),
+                }),
+            ).toEqual({
+                // gw-ui's bound: the root is depth 0, so the fourth level
+                // down is the first one dropped.
+                a: { b: { c: { d: '[redacted]' } } },
+                when: '[redacted]',
+            });
+        });
+    });
+
+    describe('instance and sequence', () => {
+        it('numbers the events one instance sends, 1, 2, 3', async () => {
+            const t = telemetry();
+            t.lifecycle('init');
+            t.ready({ paymentMethod: 'card' });
+            t.apiCall({
+                method: 'GET',
+                endpoint: '/cards/card-form-url',
+                statusCode: 200,
+                durationMs: 1,
+            });
+
+            const events = await Promise.all([0, 1, 2].map(eventAt));
+            expect(events.map((e) => e.seq)).toEqual([1, 2, 3]);
+            expect(new Set(events.map((e) => e.sdk_instance_id)).size).toBe(1);
+        });
+
+        it('leaves no gap for an event it never sent', async () => {
+            // A gap is supposed to mean "sent and lost". An event the budget
+            // refused, or one that failed to build, was never sent at all.
+            let throwOnce = false;
+            const t = createGwLoggerTelemetry({
+                environment: 'sandbox',
+                getClientId: () => {
+                    if (throwOnce) {
+                        throwOnce = false;
+                        throw new Error('getter');
+                    }
+                    return 'client_test_123';
+                },
+                getPaymentId: () => undefined,
+            });
+            for (let i = 0; i < 60; i += 1) {
+                t.ready({ paymentMethod: 'card' });
+            }
+            // 50 sent, 10 refused by the lifecycle budget. Then one that
+            // fails to build, then one that goes out.
+            const error = new GoPaySDKError('[GoPayBrowserSDK] x', {
+                errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+            });
+            throwOnce = true;
+            t.error(error);
+            t.error(error);
+
+            expect(requests).toHaveLength(51);
+            expect((await eventAt(50)).seq).toBe(51);
+        });
+
+        it('gives each SDK instance its own id', async () => {
+            telemetry().lifecycle('init');
+            telemetry().lifecycle('init');
+
+            const [a, b] = await Promise.all([0, 1].map(eventAt));
+            expect(a?.sdk_instance_id).not.toBe(b?.sdk_instance_id);
+            // Each instance starts its own sequence.
+            expect([a?.seq, b?.seq]).toEqual([1, 1]);
+        });
+    });
+
+    describe('method steps', () => {
+        it('names a step after the method and puts its outcome in params', async () => {
+            const now = vi.spyOn(performance, 'now').mockReturnValue(1_000);
+            const t = telemetry();
+            now.mockReturnValue(1_750);
+            t.walletStep({
+                paymentMethod: 'googlepay',
+                step: 'checkout',
+                status: 'failure',
+                detail: 'CHARGE_FAILED',
+                startedAt: 1_000,
+            });
+
+            const event = await eventAt(0);
+            expect(event).toMatchObject({
+                event_type: 'js_event',
+                function_name: 'GPAY.checkout',
+                return_value: 'CHARGE_FAILED',
+                duration: 750,
+            });
+            // The method is in the name now, gw-ui's way, not a label.
+            expect(event).not.toHaveProperty('payment_method');
+            expect(JSON.parse(String(event.params))).toEqual({
+                status: 'failure',
+            });
+        });
+
+        it('sends ready as a js_event timed from init, and unmount timed from ready', async () => {
+            const now = vi.spyOn(performance, 'now').mockReturnValue(100);
+            const t = telemetry();
+            t.lifecycle('init');
+            now.mockReturnValue(1_300);
+            t.ready({ paymentMethod: 'applepay' });
+            now.mockReturnValue(4_300);
+            t.unmount({
+                paymentMethod: 'applepay',
+                sheetOpen: false,
+                chargeInFlight: false,
+            });
+
+            const [, ready, unmount] = await Promise.all(
+                [0, 1, 2].map(eventAt),
+            );
+            expect(ready).toMatchObject({
+                event_type: 'js_event',
+                function_name: 'APPLE_PAY.ready',
+                duration: 1_200,
+            });
+            expect(unmount).toMatchObject({
+                function_name: 'APPLE_PAY.unmount',
+                duration: 3_000,
+            });
+        });
+
+        it('names the card form PAYMENT_CARD, gw-ui’s key', async () => {
+            telemetry().ready({ paymentMethod: 'card', flow: 'direct-charge' });
+
+            expect(await eventAt(0)).toMatchObject({
+                function_name: 'PAYMENT_CARD.ready',
+                flow: 'direct-charge',
+            });
+        });
+    });
+
+    describe('the 3DS redirect', () => {
+        it('is the leave, with the ACS as its target and no query', async () => {
+            telemetry('3273103424').redirect({
+                target: 'https://acs.example-bank.com/challenge?creq=eyJhbGci&MD=1',
+                flow: '3ds-redirect',
+            });
+
+            expect(await eventAt(0)).toMatchObject({
+                event_type: 'navigation',
+                navigation_type: 'leave',
+                flow: '3ds-redirect',
+                target: 'https://acs.example-bank.com/challenge',
+                payment_session_id: '3273103424',
+            });
+        });
+
+        it('keeps the pagehide that follows from reporting a second leave', () => {
+            const t = telemetry();
+            const lifecycle = vi.spyOn(t, 'lifecycle');
+            registerLeaveBeacon(t);
+
+            t.redirect({
+                target: 'https://acs.example.com/c',
+                flow: '3ds-redirect',
+            });
+            globalThis.dispatchEvent(new Event('pagehide'));
+
+            expect(lifecycle).not.toHaveBeenCalledWith('leave');
+            expect(requests).toHaveLength(1);
+        });
+
+        it('lets a later SDK instance on the page report its own leave', () => {
+            const first = telemetry();
+            registerLeaveBeacon(first);
+            first.redirect({
+                target: 'https://acs.example.com/c',
+                flow: '3ds-redirect',
+            });
+            globalThis.dispatchEvent(new Event('pagehide'));
+
+            // Back from the ACS through the back/forward cache, the page
+            // builds a new SDK: a new visit, with a leave of its own.
+            const second = telemetry();
+            const lifecycle = vi.spyOn(second, 'lifecycle');
+            registerLeaveBeacon(second);
+            globalThis.dispatchEvent(new Event('pagehide'));
+
+            expect(lifecycle).toHaveBeenCalledWith('leave');
+        });
     });
 });

@@ -3,6 +3,7 @@ import {
     GoPayHTTPError,
     GoPaySDKError,
     type HttpClient,
+    nowMs,
 } from '@gopay-internal/core';
 import { callIntegrator } from '../../internal/integrator-callback.js';
 import { makeLoadingEmitter } from '../../internal/loading-emitter.js';
@@ -14,6 +15,7 @@ import { showSpinnerIn } from '../../internal/loading-spinner.js';
 import { reportFailure } from '../../internal/report-failure.js';
 import {
     type BrowserTelemetry,
+    describeFailure,
     NO_BROWSER_TELEMETRY,
     type ParamValue,
 } from '../../logging/gw-logger.js';
@@ -551,7 +553,9 @@ type WalletGate =
  * silently drifting is exactly how a probe starts promising a button that
  * will not mount.
  */
-async function ensureApplePayLibrary(): Promise<WalletGate> {
+async function ensureApplePayLibrary(
+    telemetry: BrowserTelemetry,
+): Promise<WalletGate> {
     // Loading on a missing button (rather than only on a missing
     // ApplePaySession) is what lets Safari pages work without the host adding
     // its own script tag — Safari has ApplePaySession built in, so the old
@@ -570,15 +574,30 @@ async function ensureApplePayLibrary(): Promise<WalletGate> {
     }
 
     const csp = watchCspViolation(APPLE_PAY_SCRIPT_SRC);
+    // gw-ui's APPLE_PAY.load. Only when the SDK actually fetches the script —
+    // a page that brought its own has nothing to time.
+    const loadStartedAt = nowMs();
     try {
         await loadScriptOnce(APPLE_PAY_SCRIPT_SRC, {
             crossOrigin: 'anonymous',
+        });
+        telemetry.walletStep({
+            paymentMethod: 'applepay',
+            step: 'load',
+            status: 'success',
+            startedAt: loadStartedAt,
         });
         // The script is in. The shim it installs may be a tick behind it, and
         // both callers decide `library-missing` on the very next read.
         await waitForApplePaySession();
         return { ok: true };
     } catch {
+        telemetry.walletStep({
+            paymentMethod: 'applepay',
+            step: 'load',
+            status: 'failure',
+            startedAt: loadStartedAt,
+        });
         // The SDK is the only thing loading this script now, so a blocked CDN
         // (ad-blocker, CSP, proxy) has to reach the merchant's fallback UI
         // rather than leave an empty slot.
@@ -619,7 +638,9 @@ async function ensureApplePayLibrary(): Promise<WalletGate> {
  * — a probe that waited too would spend ten seconds on a question the caller
  * asked to be quick.
  */
-async function resolveApplePayAvailability(): Promise<WalletGate> {
+async function resolveApplePayAvailability(
+    telemetry: BrowserTelemetry,
+): Promise<WalletGate> {
     // Make sure the script is in, wait for the session it installs, then let
     // Apple answer. gw-ui's shape (useApplePay.ts), deliberately: it is the
     // implementation with production mileage behind it, and two gates that
@@ -631,7 +652,7 @@ async function resolveApplePayAvailability(): Promise<WalletGate> {
     // offers its scan-with-an-iPhone flow, so that rule suppressed a button
     // that had something to show. The device and the browser both get to
     // answer for themselves.
-    const library = await ensureApplePayLibrary();
+    const library = await ensureApplePayLibrary(telemetry);
     if (!library.ok) {
         return library;
     }
@@ -660,9 +681,19 @@ function makeUnavailableController(args: {
      * "something blocked it" and the host and directive to change.
      */
     csp?: CspRefusal;
+    /** When the mount began — how long the shopper waited for no button. */
+    startedAt?: number;
 }): WalletButtonController {
-    const { client, telemetry, wallet, reason, onUnavailable, cause, csp } =
-        args;
+    const {
+        client,
+        telemetry,
+        wallet,
+        reason,
+        onUnavailable,
+        cause,
+        csp,
+        startedAt,
+    } = args;
     // Guarded like every other integrator callback. This one is the easiest to
     // overlook — it is the only callback this path is guaranteed to invoke,
     // and it runs ahead of both the telemetry and the reportError below, so a
@@ -675,6 +706,7 @@ function makeUnavailableController(args: {
         functionName: WALLET_MOUNT_FUNCTION[wallet],
         paymentMethod: wallet,
         reason,
+        startedAt,
         capabilities: {
             ...walletCapabilities(wallet),
             ...(csp ? { csp_directive: csp.directive } : {}),
@@ -949,7 +981,8 @@ export function createWalletsApi(
          * asked a question and got an answer, and an answer is not a failure.
          */
         async getApplePayAvailability(): Promise<WalletAvailability> {
-            const gate = await resolveApplePayAvailability();
+            const startedAt = nowMs();
+            const gate = await resolveApplePayAvailability(telemetry);
 
             // Reported either way, which is what makes the number a rate:
             // gw-ui logs its readyToPay probe on success as well as refusal
@@ -959,6 +992,7 @@ export function createWalletsApi(
                 functionName: 'getApplePayAvailability',
                 paymentMethod: 'applepay',
                 available: gate.ok,
+                startedAt,
                 reason: gate.ok ? undefined : gate.reason,
                 capabilities: {
                     ...walletCapabilities('applepay'),
@@ -988,6 +1022,7 @@ export function createWalletsApi(
             container: HTMLElement,
             options: ApplePayButtonOptions = {},
         ): Promise<WalletButtonController> {
+            const startedAt = nowMs();
             const paymentsApi = getPaymentsApi();
             if (!paymentsApi) {
                 return makeNotAttachedController(client);
@@ -1006,11 +1041,12 @@ export function createWalletsApi(
             }
 
             // Same gate the availability probe uses, so the two cannot drift.
-            const library = await ensureApplePayLibrary();
+            const library = await ensureApplePayLibrary(telemetry);
             if (!library.ok) {
                 return makeUnavailableController({
                     client,
                     telemetry,
+                    startedAt,
                     wallet: 'applepay',
                     reason: library.reason,
                     csp: library.csp,
@@ -1024,6 +1060,7 @@ export function createWalletsApi(
                 return makeUnavailableController({
                     client,
                     telemetry,
+                    startedAt,
                     wallet: 'applepay',
                     reason: WALLET_UNAVAILABLE.buttonUnregistered,
                     onUnavailable: options.onUnavailable,
@@ -1049,6 +1086,7 @@ export function createWalletsApi(
                 return makeUnavailableController({
                     client,
                     telemetry,
+                    startedAt,
                     wallet: 'applepay',
                     reason: WALLET_UNAVAILABLE.libraryMissing,
                     onUnavailable: options.onUnavailable,
@@ -1059,6 +1097,7 @@ export function createWalletsApi(
                 return makeUnavailableController({
                     client,
                     telemetry,
+                    startedAt,
                     wallet: 'applepay',
                     reason: WALLET_UNAVAILABLE.unsupportedDevice,
                     onUnavailable: options.onUnavailable,
@@ -1138,12 +1177,22 @@ export function createWalletsApi(
                 if (!open) {
                     return;
                 }
+                const result = succeeded ? 'success' : 'failure';
                 try {
                     open.completePayment(
                         succeeded
                             ? ApplePaySession.STATUS_SUCCESS
                             : ApplePaySession.STATUS_FAILURE,
                     );
+                    // The sheet took the result. `status` is whether it did,
+                    // `result` what it was told — the two are different
+                    // questions, and only the first is this step's.
+                    telemetry.walletStep({
+                        paymentMethod: 'applepay',
+                        step: 'completePayment',
+                        status: 'success',
+                        params: { result },
+                    });
                     if (!succeeded) {
                         // Apple treats a failure result as correctable: the
                         // sheet stays up and offers the shopper another card.
@@ -1169,16 +1218,16 @@ export function createWalletsApi(
                     //
                     // Telemetry rather than onError: the integrator has the
                     // correct result already and there is nothing they can do
-                    // about Apple's sheet.
-                    telemetry.error(
-                        new GoPaySDKError(
-                            '[GoPayBrowserSDK] Apple Pay: the sheet would not accept the payment result.',
-                            {
-                                errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
-                                cause,
-                            },
-                        ),
-                    );
+                    // about Apple's sheet. As the step, which is gw-ui's
+                    // APPLE_PAY.completePayment failure, rather than as an SDK
+                    // error: nothing failed that the SDK could have done.
+                    telemetry.walletStep({
+                        paymentMethod: 'applepay',
+                        step: 'completePayment',
+                        status: 'failure',
+                        detail: describeFailure(cause),
+                        params: { result },
+                    });
                 }
             };
 
@@ -1213,6 +1262,7 @@ export function createWalletsApi(
                 // failure this ticket started from left no trace: the shopper
                 // tapped, no sheet came up, and the funnel showed a `ready`
                 // followed by silence.
+                const tapAt = nowMs();
                 telemetry.walletStep({
                     paymentMethod: 'applepay',
                     step: 'begin',
@@ -1229,6 +1279,13 @@ export function createWalletsApi(
                         info.applePayPaymentRequest ?? {},
                     );
                 } catch (cause) {
+                    telemetry.walletStep({
+                        paymentMethod: 'applepay',
+                        step: 'begin',
+                        status: 'failure',
+                        detail: describeFailure(cause),
+                        startedAt: tapAt,
+                    });
                     rejectResult(
                         new GoPaySDKError(
                             '[GoPayBrowserSDK] Apple Pay: the payment request returned by apple-pay/info was rejected by ApplePaySession.',
@@ -1262,6 +1319,7 @@ export function createWalletsApi(
                         return;
                     }
                     authorized = true;
+                    const authorizedAt = nowMs();
 
                     const paymentData =
                         event != null &&
@@ -1277,6 +1335,13 @@ export function createWalletsApi(
                             : undefined;
 
                     if (!paymentData || typeof paymentData !== 'object') {
+                        telemetry.walletStep({
+                            paymentMethod: 'applepay',
+                            step: 'paymentAuthorized',
+                            status: 'failure',
+                            detail: 'missing-payment-data',
+                            startedAt: authorizedAt,
+                        });
                         finishSheet(false);
                         rejectResult(
                             new GoPaySDKError(
@@ -1319,6 +1384,18 @@ export function createWalletsApi(
                     });
                     charging = false;
 
+                    // gw-ui's paymentAuthorized outcome: the charge the
+                    // authorisation turned into, timed from the authorisation.
+                    telemetry.walletStep({
+                        paymentMethod: 'applepay',
+                        step: 'paymentAuthorized',
+                        status: outcome.ok ? 'success' : 'failure',
+                        detail: outcome.ok
+                            ? undefined
+                            : describeFailure(outcome.error),
+                        startedAt: authorizedAt,
+                    });
+
                     // The sheet is told first, and told the truth. It is still
                     // open and it is the only thing the shopper is looking at,
                     // so settling `result` ahead of it would let the page act
@@ -1350,6 +1427,8 @@ export function createWalletsApi(
                                 paymentMethod: 'applepay',
                                 step: 'cancel',
                                 status: 'info',
+                                // Time in the sheet before giving up on it.
+                                startedAt: tapAt,
                             });
                             callIntegrator(
                                 'onCancel',
@@ -1391,6 +1470,13 @@ export function createWalletsApi(
                     // open. Uncaught, its throw reached window.onerror and
                     // left `result` pending for good.
                     activeSession = undefined;
+                    telemetry.walletStep({
+                        paymentMethod: 'applepay',
+                        step: 'begin',
+                        status: 'failure',
+                        detail: describeFailure(cause),
+                        startedAt: tapAt,
+                    });
                     rejectResult(
                         new GoPaySDKError(
                             '[GoPayBrowserSDK] Apple Pay: the payment sheet could not be opened.',
@@ -1407,7 +1493,7 @@ export function createWalletsApi(
             container.appendChild(appleBtn);
             // In the DOM and upgraded by apple-pay-sdk.js — the point past
             // which a shopper can actually start paying.
-            telemetry.lifecycle('ready', { paymentMethod: 'applepay' });
+            telemetry.ready({ paymentMethod: 'applepay' });
 
             return {
                 result,
@@ -1452,6 +1538,7 @@ export function createWalletsApi(
             container: HTMLElement,
             options: GooglePayButtonOptions = {},
         ): Promise<WalletButtonController> {
+            const startedAt = nowMs();
             const paymentsApi = getPaymentsApi();
             if (!paymentsApi) {
                 return makeNotAttachedController(client);
@@ -1471,9 +1558,25 @@ export function createWalletsApi(
 
             // Inject Google Pay JS library
             const csp = watchCspViolation(GOOGLE_PAY_SCRIPT_SRC);
+            // GPAY.load, by the same rule as APPLE_PAY.load: timed wherever
+            // the SDK asks for the script. A second mount finds it cached and
+            // reports a load of next to nothing, which is what it was.
+            const loadStartedAt = nowMs();
             try {
                 await loadScriptOnce(GOOGLE_PAY_SCRIPT_SRC);
+                telemetry.walletStep({
+                    paymentMethod: 'googlepay',
+                    step: 'load',
+                    status: 'success',
+                    startedAt: loadStartedAt,
+                });
             } catch {
+                telemetry.walletStep({
+                    paymentMethod: 'googlepay',
+                    step: 'load',
+                    status: 'failure',
+                    startedAt: loadStartedAt,
+                });
                 // Same contract as the Apple Pay path and the availability
                 // checks below: a blocked CDN has to reach the merchant's
                 // fallback UI rather than leave an empty slot, and a policy
@@ -1482,6 +1585,7 @@ export function createWalletsApi(
                 return makeUnavailableController({
                     client,
                     telemetry,
+                    startedAt,
                     wallet: 'googlepay',
                     reason: blocked
                         ? WALLET_UNAVAILABLE.scriptBlockedCsp
@@ -1511,6 +1615,7 @@ export function createWalletsApi(
                 return makeUnavailableController({
                     client,
                     telemetry,
+                    startedAt,
                     wallet: 'googlepay',
                     reason: WALLET_UNAVAILABLE.libraryMissing,
                     onUnavailable: options.onUnavailable,
@@ -1545,6 +1650,7 @@ export function createWalletsApi(
                     return makeUnavailableController({
                         client,
                         telemetry,
+                        startedAt,
                         wallet: 'googlepay',
                         reason: WALLET_UNAVAILABLE.unsupportedDevice,
                         onUnavailable: options.onUnavailable,
@@ -1554,6 +1660,7 @@ export function createWalletsApi(
                 return makeUnavailableController({
                     client,
                     telemetry,
+                    startedAt,
                     wallet: 'googlepay',
                     reason: WALLET_UNAVAILABLE.readinessCheckFailed,
                     onUnavailable: options.onUnavailable,
@@ -1597,6 +1704,7 @@ export function createWalletsApi(
                 // one because gw-ui uses two, and a step vocabulary that only
                 // half matches is worse than either. No separate `begin`, so
                 // the pair to compare across wallets is begin/checkout.
+                const checkoutAt = nowMs();
                 telemetry.walletStep({
                     paymentMethod: 'googlepay',
                     step: 'checkout',
@@ -1626,6 +1734,8 @@ export function createWalletsApi(
                             paymentMethod: 'googlepay',
                             step: 'cancel',
                             status: 'info',
+                            // Time in the sheet before giving up on it.
+                            startedAt: checkoutAt,
                         });
                         callIntegrator(
                             'onCancel',
@@ -1633,6 +1743,13 @@ export function createWalletsApi(
                             telemetry,
                         );
                     } else {
+                        telemetry.walletStep({
+                            paymentMethod: 'googlepay',
+                            step: 'checkout',
+                            status: 'failure',
+                            detail: describeFailure(err),
+                            startedAt: checkoutAt,
+                        });
                         cleanup();
                         rejectResult(err);
                     }
@@ -1656,6 +1773,13 @@ export function createWalletsApi(
                         : undefined;
 
                 if (!paymentMethodData) {
+                    telemetry.walletStep({
+                        paymentMethod: 'googlepay',
+                        step: 'checkout',
+                        status: 'failure',
+                        detail: 'missing-payment-method-data',
+                        startedAt: checkoutAt,
+                    });
                     rejectResult(
                         new GoPaySDKError(
                             '[GoPayBrowserSDK] Google Pay: missing paymentMethodData in loadPaymentData response.',
@@ -1669,6 +1793,13 @@ export function createWalletsApi(
                 try {
                     instrument = extractGooglePayInstrument(paymentMethodData);
                 } catch (err) {
+                    telemetry.walletStep({
+                        paymentMethod: 'googlepay',
+                        step: 'checkout',
+                        status: 'failure',
+                        detail: describeFailure(err),
+                        startedAt: checkoutAt,
+                    });
                     rejectResult(err);
                     return;
                 }
@@ -1692,6 +1823,17 @@ export function createWalletsApi(
                 });
                 charging = false;
 
+                // gw-ui's checkout outcome: the charge, timed from the tap.
+                telemetry.walletStep({
+                    paymentMethod: 'googlepay',
+                    step: 'checkout',
+                    status: outcome.ok ? 'success' : 'failure',
+                    detail: outcome.ok
+                        ? undefined
+                        : describeFailure(outcome.error),
+                    startedAt: checkoutAt,
+                });
+
                 if (outcome.ok) {
                     resolveResult(outcome.state);
                 } else {
@@ -1704,7 +1846,7 @@ export function createWalletsApi(
                 ...options.googleButtonOptions,
             });
             container.appendChild(btn);
-            telemetry.lifecycle('ready', { paymentMethod: 'googlepay' });
+            telemetry.ready({ paymentMethod: 'googlepay' });
 
             return {
                 result,

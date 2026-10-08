@@ -705,8 +705,9 @@ class name, never its message.
 ## Operational data
 
 The SDK sends GoPay basic diagnostic data about its own behaviour: which SDK
-operation ran, the HTTP status it got back, how long it took, and — when the SDK
-raises an error — the SDK's own error code and message. This is always on. There
+operation ran, the HTTP status it got back, how long it took, what the request
+and response said (redacted — see below), and — when the SDK raises an error —
+the SDK's own error code and message. This is always on. There
 is no switch and nothing to configure, because a signal produced only by the
 merchants who opted in describes those merchants rather than the SDK.
 
@@ -714,7 +715,13 @@ Alongside those it reports four lifecycle moments — the SDK being created, it
 attaching to a payment, a card form or wallet button becoming usable, and the
 visit ending — plus the SDK version, which build of the package is running
 (ESM/CJS or the CDN bundle), which payment method and flow the event belongs to,
-the id of the payment being paid, and your `clientId` and `shareableKey`. The
+the id of the payment being paid, your `clientId`, a random id for the SDK
+instance and the event's position among those the instance sent. When the
+customer is sent to 3DS authentication, the visit's end is reported before the
+redirect, with the authentication page's address but none of its parameters.
+Each step of a wallet payment is reported as it happens — the button loading
+and becoming ready, the sheet opening, merchant validation, the authorisation
+and its outcome — with how long it took. The
 lifecycle markers are what make a checkout that never starts visible at all:
 without them a payment that silently fails to appear produces no data of any
 kind, which is indistinguishable from nobody having visited.
@@ -729,18 +736,24 @@ appeared" and "a charge was attempted", so without it a customer who gave up at
 the form and a charge that failed to fire are the same silence.
 
 **What it never contains.** Card numbers, CVV, the encrypted card payload, card
-tokens, `paymentSecret`, credentials, 3DS or ACS redirect parameters, and
-personal data such as e-mail, phone, name or IBAN. Request and response bodies
-are not sent at all — not redacted, not sampled, simply never read — so a field
-added to the API later cannot start leaking through a redaction list that
-predates it. Request paths are sent as templates (`/payments/{id}/charge`)
-rather than as the URLs actually called, and error messages are stripped of
-PAN-shaped digit runs and query strings before they leave the page. The payment
-id itself is sent, once, as its own field — it is what ties the events of one
-checkout together, and it identifies a payment rather than a person.
+tokens, wallet payment data, `paymentSecret`, credentials, 3DS or ACS redirect
+parameters, and personal data such as e-mail, phone, name, address or IBAN.
+Request and response bodies are redacted before they leave the page, and not by
+a field list alone: every field whose name marks it as a secret, a token, card
+or wallet data, a redirect or personal data is replaced with `[redacted]`; the
+payment instrument of a charge is dropped whole, whatever its fields are
+called; every text value that survives is still stripped of PAN-shaped digit
+runs, token-shaped strings, e-mail addresses and query strings; and each body
+is cut at 2 000 characters. Request paths are sent as templates
+(`/payments/{id}/charge`) rather than as the URLs actually called, and error
+messages get the same scrub before they leave the page. The payment id itself
+is sent as its own field — it is what ties the events of one checkout together,
+and it identifies a payment rather than a person.
 
 **What it does contain that concerns you.** Every request carries the customer's
-IP address, as any HTTP request does, and the page URL the SDK is running on
+IP address and browser user-agent string, as any HTTP request does, and GoPay
+keeps both with the data — the IP on every event, the user agent on the first
+and last event of a visit — together with the page URL the SDK is running on
 without its query string. The data is therefore pseudonymised personal data, not
 anonymous. GoPay processes it under legitimate interest to keep the payment
 integration working and diagnosable.
@@ -756,7 +769,8 @@ count, and — for Apple Pay — whether `ApplePaySession` and the button elemen
 are present. When your own Content-Security-Policy is what refused the wallet's
 script, the directive that refused it is reported too. Deliberately **not** the
 user-agent string, the screen size or the pixel ratio: those are what a
-fingerprint is assembled from and none of them is what the check consults.
+fingerprint is assembled from and none of them is what the check consults (the
+user agent the request itself carries is the one described above).
 
 **What you should do.** Reflect this in your own privacy notice — you are the
 controller for your checkout, and your customers' data is being processed on your

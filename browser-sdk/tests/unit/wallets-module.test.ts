@@ -177,6 +177,8 @@ function makeTelemetry() {
         apiCall: vi.fn(),
         error: vi.fn(),
         lifecycle: vi.fn(),
+        ready: vi.fn(),
+        redirect: vi.fn(),
         submit: vi.fn(),
         walletUnavailable: vi.fn(),
         integratorError: vi.fn(),
@@ -1622,6 +1624,41 @@ describe('mountApplePayButton()', () => {
             });
         });
 
+        it('reports what the authorisation became and whether the sheet took it', async () => {
+            // gw-ui's paymentAuthorized and completePayment steps. Before them
+            // the trace ended at the submit, and a charge that failed after
+            // the shopper authorised read the same as one never attempted.
+            const telemetry = makeTelemetry();
+            const api = createWalletsApi(
+                makeClient() as never,
+                () => makePaymentsApi() as never,
+                telemetry as never,
+            );
+
+            const ctrl = await api.mountApplePayButton(container);
+            tap();
+            authorise();
+            await ctrl.result;
+
+            expect(telemetry.ready).toHaveBeenCalledWith({
+                paymentMethod: 'applepay',
+            });
+            const steps = telemetry.walletStep.mock.calls.map(([c]) => c);
+            expect(steps).toContainEqual({
+                paymentMethod: 'applepay',
+                step: 'paymentAuthorized',
+                status: 'success',
+                detail: undefined,
+                startedAt: expect.any(Number),
+            });
+            expect(steps).toContainEqual({
+                paymentMethod: 'applepay',
+                step: 'completePayment',
+                status: 'success',
+                params: { result: 'success' },
+            });
+        });
+
         it('records the tap and the dismissal, so the funnel has a middle', async () => {
             // The gap the Sentry case fell through. `ready` said the button
             // drew and the next event was whatever the charge did; a shopper
@@ -1641,7 +1678,13 @@ describe('mountApplePayButton()', () => {
 
             expect(telemetry.walletStep.mock.calls.map(([c]) => c)).toEqual([
                 { paymentMethod: 'applepay', step: 'begin', status: 'start' },
-                { paymentMethod: 'applepay', step: 'cancel', status: 'info' },
+                {
+                    paymentMethod: 'applepay',
+                    step: 'cancel',
+                    status: 'info',
+                    // Timed from the tap: how long the sheet was up.
+                    startedAt: expect.any(Number),
+                },
             ]);
         });
 
@@ -1902,11 +1945,17 @@ describe('mountApplePayButton()', () => {
 
             // The charge went through, and that is still what the page hears.
             await expect(ctrl.result).resolves.toEqual(mockChargeState);
-            expect(telemetry.error).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
-                    cause: expired,
-                }),
+            // As gw-ui's APPLE_PAY.completePayment failure, and only as that:
+            // nothing failed that the SDK could have done anything about.
+            expect(telemetry.walletStep).toHaveBeenCalledWith({
+                paymentMethod: 'applepay',
+                step: 'completePayment',
+                status: 'failure',
+                detail: expect.any(String),
+                params: { result: 'success' },
+            });
+            expect(telemetry.error).not.toHaveBeenCalledWith(
+                expect.objectContaining({ cause: expired }),
             );
         });
 
@@ -1976,6 +2025,8 @@ describe('mountApplePayButton()', () => {
             apiCall: vi.fn(),
             error: vi.fn(),
             lifecycle: vi.fn(),
+            ready: vi.fn(),
+            redirect: vi.fn(),
             submit: vi.fn(),
             walletUnavailable: vi.fn(),
             integratorError: vi.fn(),
@@ -2405,6 +2456,87 @@ describe('mountGooglePayButton()', () => {
         expect(telemetry.submit).toHaveBeenCalledWith('googlepay-button', {
             paymentMethod: 'googlepay',
         });
+    });
+
+    it('reports the checkout from the tap to the charge, gw-ui’s GPAY.checkout', async () => {
+        const telemetry = makeTelemetry();
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        await must(capturedOnClick, 'the Google Pay button onClick')();
+        await ctrl.result;
+
+        expect(telemetry.ready).toHaveBeenCalledWith({
+            paymentMethod: 'googlepay',
+        });
+        const steps = telemetry.walletStep.mock.calls.map(([c]) => c);
+        expect(steps).toEqual([
+            {
+                paymentMethod: 'googlepay',
+                step: 'load',
+                status: 'success',
+                startedAt: expect.any(Number),
+            },
+            { paymentMethod: 'googlepay', step: 'checkout', status: 'start' },
+            {
+                paymentMethod: 'googlepay',
+                step: 'checkout',
+                status: 'success',
+                detail: undefined,
+                startedAt: expect.any(Number),
+            },
+        ]);
+    });
+
+    it('reports a sheet that failed as a checkout failure, by class rather than message', async () => {
+        // The message is Google's text, not ours to ship.
+        mockLoadPaymentData = vi
+            .fn()
+            .mockRejectedValue(
+                new Error('sheet failed for shopper@example.com'),
+            );
+        const telemetry = makeTelemetry();
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container);
+        await must(capturedOnClick, 'the Google Pay button onClick')();
+        await ctrl.result.catch(() => {});
+
+        expect(telemetry.walletStep).toHaveBeenCalledWith({
+            paymentMethod: 'googlepay',
+            step: 'checkout',
+            status: 'failure',
+            detail: 'Error',
+            startedAt: expect.any(Number),
+        });
+    });
+
+    it('times the mount when Google Pay turns out to be unavailable', async () => {
+        const telemetry = makeTelemetry();
+        mockIsReadyToPay = vi.fn().mockResolvedValue({ result: false });
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => makePaymentsApi() as never,
+            telemetry as never,
+        );
+
+        await api.mountGooglePayButton(container);
+
+        expect(telemetry.walletUnavailable).toHaveBeenCalledWith(
+            expect.objectContaining({
+                functionName: 'mountGooglePayButton',
+                paymentMethod: 'googlepay',
+                startedAt: expect.any(Number),
+            }),
+        );
     });
 
     it('fires onCancel and does not reject when loadPaymentData is cancelled', async () => {

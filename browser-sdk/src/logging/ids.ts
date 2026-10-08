@@ -78,3 +78,11 @@ export function getTransactionId(): string {
 export function newTraceId(): string {
     return newId();
 }
+
+/**
+ * One browser SDK instance, for `sdk_instance_id`. From the same source as the
+ * other ids; never stored, since an instance does not outlive its page.
+ */
+export function newInstanceId(): string {
+    return newId();
+}
