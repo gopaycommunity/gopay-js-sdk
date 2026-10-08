@@ -489,11 +489,11 @@ describe('createGwLoggerTelemetry()', () => {
         expect(fetchMock).toHaveBeenCalledTimes(50);
     });
 
-    it('spends the lifecycle budget on the card form height, never the error one', () => {
+    it('spends the step budget on the card form height, never the error or lifecycle one', () => {
         const t = makeTelemetry();
         // A form remounted in a loop, each mount oscillating. The cap is what
-        // stops that from flooding; the error budget is what must survive it.
-        for (let i = 0; i < 60; i += 1) {
+        // stops that from flooding; errors and the funnel are what must survive it.
+        for (let i = 0; i < 200; i += 1) {
             t.cardFormHeight({
                 phase: 'oscillation',
                 flow: 'return-payload',
@@ -501,7 +501,7 @@ describe('createGwLoggerTelemetry()', () => {
                 measurements: {},
             });
         }
-        expect(fetchMock).toHaveBeenCalledTimes(50);
+        expect(fetchMock).toHaveBeenCalledTimes(150);
         fetchMock.mockClear();
 
         t.error(
@@ -509,8 +509,34 @@ describe('createGwLoggerTelemetry()', () => {
                 errorCode: GoPayErrorCodes.CARD_FORM_ERROR,
             }),
         );
+        t.ready({ paymentMethod: 'card' });
 
-        expect(fetchMock).toHaveBeenCalledOnce();
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the funnel when a shopper opens and dismisses the sheet over and over', () => {
+        const t = makeTelemetry();
+        // Each tap that ends in a cancel is a begin and a cancel. On the
+        // shared lifecycle budget 25 of those silenced the leave.
+        for (let i = 0; i < 70; i += 1) {
+            t.walletStep({
+                paymentMethod: 'applepay',
+                step: 'begin',
+                status: 'start',
+            });
+            t.walletStep({
+                paymentMethod: 'applepay',
+                step: 'cancel',
+                status: 'info',
+            });
+        }
+        fetchMock.mockClear();
+
+        t.submit('applepay-button', { paymentMethod: 'applepay' });
+        t.redirect({ target: 'https://acs.example/c', flow: '3ds-redirect' });
+        t.lifecycle('leave');
+
+        expect(fetchMock).toHaveBeenCalledTimes(3);
     });
 
     it('carries the HTTP method, which is the only thing separating a POST from its polls', async () => {
@@ -1198,6 +1224,17 @@ describe('the GPOMA-2707 event shape', () => {
                 responseBody: {
                     state: 'ACTION_REQUIRED',
                     action: { redirect_url: SECRETS.redirect_url },
+                    // What a charge reports about the card it used.
+                    payment_instrument: {
+                        payment_instrument: 'PAYMENT_CARD',
+                        details: {
+                            masked_pan: '406821******1234',
+                            expiration_month: '11',
+                            expiration_year: '93',
+                            scheme: 'VISA',
+                            fingerprint: '73c8d0a48d91def89761bb',
+                        },
+                    },
                     ...SECRETS,
                 },
             });
@@ -1224,6 +1261,15 @@ describe('the GPOMA-2707 event shape', () => {
             const res = JSON.parse(String(event.res_body));
             expect(res.state).toBe('ACTION_REQUIRED');
             expect(res.action.redirect_url).toBe('[redacted]');
+            // A stable identifier of the physical card, and what narrows it down.
+            expect(res.payment_instrument.details).toEqual({
+                masked_pan: '[redacted]',
+                expiration_month: '[redacted]',
+                expiration_year: '[redacted]',
+                scheme: 'VISA',
+                fingerprint: '[redacted]',
+            });
+            expect(wire).not.toContain('73c8d0a48d91def89761bb');
         });
 
         it('ships the bodies of an ordinary call as they are', async () => {
@@ -1446,6 +1492,42 @@ describe('the GPOMA-2707 event shape', () => {
 
             expect(lifecycle).not.toHaveBeenCalledWith('leave');
             expect(requests).toHaveLength(1);
+        });
+
+        it('leaves the pagehide its leave when the redirect one was never sent', () => {
+            const t = telemetry();
+            for (let i = 0; i < 50; i += 1) {
+                t.ready({ paymentMethod: 'card' });
+            }
+            const lifecycle = vi.spyOn(t, 'lifecycle');
+            registerLeaveBeacon(t);
+
+            // The lifecycle budget is spent, so this leave is refused.
+            t.redirect({
+                target: 'https://acs.example.com/c',
+                flow: '3ds-redirect',
+            });
+            globalThis.dispatchEvent(new Event('pagehide'));
+
+            expect(lifecycle).toHaveBeenCalledWith('leave');
+        });
+
+        it('reports the real leave of a page the redirect never took away', () => {
+            // A webview that drops the top-level navigation: the page stays,
+            // and its end, much later, is a leave of its own.
+            const now = vi.spyOn(performance, 'now').mockReturnValue(1_000);
+            const t = telemetry();
+            const lifecycle = vi.spyOn(t, 'lifecycle');
+            registerLeaveBeacon(t);
+
+            t.redirect({
+                target: 'https://acs.example.com/c',
+                flow: '3ds-redirect',
+            });
+            now.mockReturnValue(1_000 + 31_000);
+            globalThis.dispatchEvent(new Event('pagehide'));
+
+            expect(lifecycle).toHaveBeenCalledWith('leave');
         });
 
         it('lets a later SDK instance on the page report its own leave', () => {

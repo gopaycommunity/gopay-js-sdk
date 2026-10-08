@@ -1,3 +1,5 @@
+import { nowMs } from '@gopay-internal/core';
+
 /**
  * Whether this page has already reported its `leave`.
  *
@@ -9,15 +11,25 @@
  * Its own module because both sides need it and they already import each
  * other's types: the emitter sets it, the beacon reads it.
  */
-let left = false;
 
-/** The leave has been reported; the beacon stays quiet. */
+/**
+ * How long the redirect's leave stands in for the pagehide one. The same 30 s
+ * the payments module gives a redirect to take the page away
+ * (THREE_DS_REDIRECT_TIMEOUT_MS): a page still alive after that was not
+ * navigated — a webview that dropped the redirect — and its real end, whenever
+ * it comes, is a leave of its own.
+ */
+const LATCH_MS = 30_000;
+
+let leftAt: number | undefined;
+
+/** The leave has been reported; the beacon stays quiet for a while. */
 export function markLeft(): void {
-    left = true;
+    leftAt = nowMs();
 }
 
 export function hasLeft(): boolean {
-    return left;
+    return leftAt !== undefined && nowMs() - leftAt < LATCH_MS;
 }
 
 /**
@@ -25,5 +37,5 @@ export function hasLeft(): boolean {
  * back/forward cache, say — which gets a leave of its own.
  */
 export function resetLeft(): void {
-    left = false;
+    leftAt = undefined;
 }

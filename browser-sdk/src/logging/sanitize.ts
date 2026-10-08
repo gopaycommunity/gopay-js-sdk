@@ -250,8 +250,8 @@ const SENSITIVE_CONTAINER_KEYS = new Set([
 /**
  * Fragments that drop any key containing them. gw-ui's list, plus the ones
  * this SDK's traffic needs: `encrypted` for the card form's payload, the
- * signing material of a Google Pay token, and the hosted-gateway URL, which
- * is a link to someone's payment.
+ * signing material of a Google Pay token, the hosted-gateway URL, which is a
+ * link to someone's payment, and the card details a charge reports back.
  */
 const SENSITIVE_KEY_SUBSTRINGS = [
     'pan',
@@ -287,6 +287,10 @@ const SENSITIVE_KEY_SUBSTRINGS = [
     'gwurl',
     'address',
     'holder',
+    // A charge's card details: the fingerprint is a stable identifier of the physical card, and
+    // expiration_month/_year narrow it down further. masked_pan is already caught by `pan`.
+    'fingerprint',
+    'expiration',
 ];
 
 /**

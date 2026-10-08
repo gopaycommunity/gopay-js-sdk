@@ -57,7 +57,7 @@ function msSince(start: number | undefined): number | null {
 }
 
 /**
- * Per SDK instance, and split in two on purpose.
+ * Per SDK instance, and split on purpose.
  *
  * A page that somehow loops through the SDK must not turn into a flood against
  * an ingest that answers every POST with 204 and no backpressure — but one
@@ -67,15 +67,24 @@ function msSince(start: number | undefined): number | null {
  * then silently drop the `leave` and the terminal charge — the events the
  * feature exists for, lost in exactly the flows most worth watching.
  *
- * The lifecycle side is bounded by design (a handful of markers per mount), so
- * its own small budget both caps a runaway and guarantees it can never be
- * crowded out by traffic. Errors get a third budget for the same reason and
- * with more force: on a shared counter a flood of polls would have silenced
- * the one kind of event nobody can afford to lose.
+ * The lifecycle side — init, attach, ready, submit, unmount, leave — is
+ * bounded by design (a handful of markers per mount), so its own small budget
+ * both caps a runaway and guarantees it can never be crowded out by traffic.
+ *
+ * Wallet steps sit apart from it. They repeat with the shopper rather than
+ * with the mount: every tap that ends in a cancel is a begin and a cancel, and
+ * a shopper opening and dismissing the sheet a dozen times used to spend the
+ * lifecycle budget and silence the leave. The steps get room for that, and
+ * the funnel markers keep theirs whatever the steps do.
+ *
+ * Errors get a budget of their own for the same reason and with more force: on
+ * a shared counter a flood of polls would have silenced the one kind of event
+ * nobody can afford to lose.
  */
 const EVENT_BUDGET = {
     api_call: 200,
     lifecycle: 50,
+    step: 150,
     error: 50,
 } as const;
 
@@ -582,6 +591,7 @@ export function createGwLoggerTelemetry(options: {
     const spent: Record<BudgetKind, number> = {
         api_call: 0,
         lifecycle: 0,
+        step: 0,
         error: 0,
     };
     /**
@@ -618,10 +628,11 @@ export function createGwLoggerTelemetry(options: {
      * thing being measured, so routing telemetry through it would emit an
      * api_call per api_call.
      */
-    function post(budget: BudgetKind, build: () => GwLoggerEvent): void {
+    /** True when the event was handed to `fetch`; false when it was refused or failed to build. */
+    function post(budget: BudgetKind, build: () => GwLoggerEvent): boolean {
         try {
             if (spent[budget] >= EVENT_BUDGET[budget]) {
-                return;
+                return false;
             }
             // Built inside the try, not passed in already built. `base()` reads
             // the page URL and the callers' getters, and an emitter is called
@@ -644,9 +655,11 @@ export function createGwLoggerTelemetry(options: {
             seq = next;
             spent[budget] += 1;
             void fetch(request).catch(() => {});
+            return true;
         } catch {
             // A field getter throwing, or fetch missing on an older engine.
             // Logging is never worth a thrown error in a payment flow.
+            return false;
         }
     }
 
@@ -698,16 +711,18 @@ export function createGwLoggerTelemetry(options: {
         },
 
         redirect({ target, flow }): void {
-            post('lifecycle', () => ({
+            const sent = post('lifecycle', () => ({
                 ...base(),
                 event_type: 'navigation',
                 navigation_type: 'leave',
                 target: safeTarget(target),
                 flow,
             }));
-            // After the post, not before: a leave that was refused (budget)
-            // must still leave the pagehide its chance to report one.
-            markLeft();
+            // Only a leave that actually went out stands in for the pagehide
+            // one; a refused or unbuildable one must leave it its chance.
+            if (sent) {
+                markLeft();
+            }
         },
 
         ready({ paymentMethod, flow }): void {
@@ -778,7 +793,7 @@ export function createGwLoggerTelemetry(options: {
             startedAt,
             params,
         }): void {
-            post('lifecycle', () => ({
+            post('step', () => ({
                 ...base(),
                 event_type: 'js_event',
                 function_name: actionName(paymentMethod, step),
@@ -796,11 +811,10 @@ export function createGwLoggerTelemetry(options: {
             capabilities,
             startedAt,
         }): void {
-            // The lifecycle budget: a probe is a bounded, ordinary step, and
-            // an answer of "no" is the correct outcome on a device that
-            // cannot pay — not a failure, and not something to spend the
-            // error budget on.
-            post('lifecycle', () => ({
+            // The step budget: a probe is an ordinary step, and an answer of
+            // "no" is the correct outcome on a device that cannot pay — not a
+            // failure, and not something to spend the error budget on.
+            post('step', () => ({
                 ...base(),
                 event_type: 'js_event',
                 function_name: actionName(paymentMethod, 'readyToPay'),
@@ -839,10 +853,9 @@ export function createGwLoggerTelemetry(options: {
         },
 
         cardFormHeight({ phase, flow, durationMs, measurements }): void {
-            // The lifecycle budget: at most two of these per mount, and the
-            // oscillation is exactly the case the budget split exists for — a
-            // flood of anything must not silence the funnel.
-            post('lifecycle', () => ({
+            // The step budget: at most two of these per mount, and a form
+            // remounted in a loop is exactly what must not silence the funnel.
+            post('step', () => ({
                 ...base(),
                 event_type: 'js_event',
                 // The protocol message being described. The suffix is the name
