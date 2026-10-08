@@ -46,8 +46,10 @@ import { hasLeft, resetLeft } from './leave-latch.js';
  *
  * So: one listener, retargeted at whichever SDK was built last, which is the
  * one the page is actually using. After it fires it is gone and a later
- * instance may install a fresh one — a page restored from the back/forward
- * cache is a second visit, not a continuation.
+ * instance may install a fresh one. A page restored from the back/forward
+ * cache is a second visit, not a continuation — but a restore rebuilds
+ * nothing, the page's script state simply comes back, so the restore itself
+ * re-arms it ({@link rearmLeaveBeacon}, from page-lifecycle.ts).
  *
  * What keeps it to one listener is that `onPageHide` is a module-level
  * reference: `addEventListener` ignores a repeat registration of the same
@@ -75,5 +77,22 @@ export function registerLeaveBeacon(telemetry: BrowserTelemetry): void {
     if (typeof globalThis.addEventListener !== 'function') {
         return;
     }
+    globalThis.addEventListener('pagehide', onPageHide, { once: true });
+}
+
+/**
+ * The page came back from the back/forward cache: a second visit on the same
+ * document, with the same SDK, whose listener already fired on the way in.
+ * Without this its departure is never reported. Nothing to re-arm on a page
+ * that never registered one.
+ */
+export function rearmLeaveBeacon(): void {
+    if (
+        activeTelemetry === undefined ||
+        typeof globalThis.addEventListener !== 'function'
+    ) {
+        return;
+    }
+    resetLeft();
     globalThis.addEventListener('pagehide', onPageHide, { once: true });
 }

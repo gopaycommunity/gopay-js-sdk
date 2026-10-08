@@ -726,6 +726,15 @@ lifecycle markers are what make a checkout that never starts visible at all:
 without them a payment that silently fails to appear produces no data of any
 kind, which is indistinguishable from nobody having visited.
 
+It also reports what happens to the page around the checkout: the page leaving
+the screen and coming back (the customer switching to another app or tab, or
+locking the screen), the browser suspending or resuming a background tab, the
+page returning from the back/forward cache, and the page being the reload of a
+tab the browser had discarded — each with how long the page spent in the state
+it left. That is what tells a customer who walked away in the background apart
+from a report that never arrived. Nothing about what the customer did
+elsewhere: not which app or tab, and not where the focus was on your page.
+
 One event describes something your customer did rather than something the SDK
 did: that they submitted the card form, or authorised in an Apple Pay or Google
 Pay sheet, and how long the form had been on the page before they did. That is

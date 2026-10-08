@@ -8,6 +8,7 @@ import {
 import type { AttachPaymentArgs, GoPayBrowserConfig } from './config.js';
 import { createGwLoggerTelemetry } from './logging/gw-logger.js';
 import { registerLeaveBeacon } from './logging/leave-beacon.js';
+import { registerPageLifecycle } from './logging/page-lifecycle.js';
 import {
     createAuthApi,
     exchangePaymentCredentials,
@@ -83,6 +84,9 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
     // never starts otherwise leaves no trace of.
     telemetry.lifecycle('init');
     registerLeaveBeacon(telemetry);
+    // After the leave beacon: a restore re-arms it, and a discarded tab's
+    // reload reports itself right after this instance's init.
+    registerPageLifecycle(telemetry);
 
     let paymentsApi: PaymentsApi | null = null;
     const getPaymentsApi = () => paymentsApi;

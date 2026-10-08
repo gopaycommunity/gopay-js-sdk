@@ -20,6 +20,7 @@ describe('callIntegrator()', () => {
         walletAvailability: vi.fn(),
         walletStep: vi.fn(),
         cardFormHeight: vi.fn(),
+        page: vi.fn(),
     });
 
     afterEach(() => {

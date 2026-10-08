@@ -80,12 +80,17 @@ function msSince(start: number | undefined): number | null {
  * Errors get a budget of their own for the same reason and with more force: on
  * a shared counter a flood of polls would have silenced the one kind of event
  * nobody can afford to lose.
+ *
+ * Page transitions too. They repeat with the shopper — every switch to the
+ * banking app and back is two of them — so on the lifecycle budget a restless
+ * shopper would silence the leave they exist to explain.
  */
 const EVENT_BUDGET = {
     api_call: 200,
     lifecycle: 50,
     step: 150,
     error: 50,
+    page: 30,
 } as const;
 
 type BudgetKind = keyof typeof EVENT_BUDGET;
@@ -379,6 +384,18 @@ function lastSegment(endpoint: string): string {
 type StepStatus = 'start' | 'success' | 'failure' | 'info';
 
 /**
+ * What happened to the page itself, reported as `PAGE.<state>` — see
+ * page-lifecycle.ts for what each one tells apart.
+ */
+export type PageState =
+    | 'hidden'
+    | 'visible'
+    | 'freeze'
+    | 'resume'
+    | 'restored'
+    | 'discarded';
+
+/**
  * The core seam plus the lifecycle events, which only a browser has. Core stays
  * unaware of them on purpose: the server SDK shares the HTTP client and has no
  * page to mount anything on.
@@ -544,6 +561,15 @@ export interface BrowserTelemetry extends Telemetry {
         durationMs: number | null;
         measurements: Record<string, ParamValue>;
     }): void;
+    /**
+     * The page changed state around the SDK: hidden or shown again, frozen or
+     * resumed by the browser, restored from the back/forward cache, or the
+     * reload of a tab the browser discarded. `PAGE.<state>`, with how long the
+     * page spent in the state it left — on `visible`, how long the shopper was
+     * away. Page-level, so registerPageLifecycle reports it through the SDK
+     * built last.
+     */
+    page(context: { state: PageState; durationMs: number | null }): void;
 }
 
 /**
@@ -565,6 +591,7 @@ export const NO_BROWSER_TELEMETRY: BrowserTelemetry = {
     walletAvailability: () => {},
     walletStep: () => {},
     cardFormHeight: () => {},
+    page: () => {},
 };
 
 /**
@@ -593,6 +620,7 @@ export function createGwLoggerTelemetry(options: {
         lifecycle: 0,
         step: 0,
         error: 0,
+        page: 0,
     };
     /**
      * One per SDK instance — what ties an init to the payments made through
@@ -866,6 +894,17 @@ export function createGwLoggerTelemetry(options: {
                 flow: orUndefined(flow),
                 return_value: phase,
                 params: describeParams(measurements),
+            }));
+        },
+
+        page({ state, durationMs }): void {
+            post('page', () => ({
+                ...base(),
+                event_type: 'js_event',
+                // gw-ui's `<METHOD>.<step>` shape with the page as the subject,
+                // so `PAGE.*` reads beside `PAYMENT_CARD.*` on event.action.
+                function_name: `PAGE.${state}`,
+                duration: durationMs,
             }));
         },
 
