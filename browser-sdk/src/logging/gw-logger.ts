@@ -10,7 +10,13 @@ import {
     timeoutSignal,
 } from '@gopay-internal/core';
 import { SDK_VERSION } from '../version.js';
-import { getTransactionId, newInstanceId, newTraceId } from './ids.js';
+import {
+    getTransactionId,
+    lastSequence,
+    newInstanceId,
+    newTraceId,
+    recordSequence,
+} from './ids.js';
 import { markLeft } from './leave-latch.js';
 import { safeErrorMessage, safePageUrl, serializeBody } from './sanitize.js';
 
@@ -109,7 +115,7 @@ interface CommonFields {
     payment_session_id?: string;
     /** One SDK instance; see {@link createGwLoggerTelemetry}. */
     sdk_instance_id: string;
-    /** Set when the event is actually sent, never before. */
+    /** The tab's event number, set when the event is actually sent; see ids.ts. */
     seq?: number;
     sdk_version: string;
     integration: string;
@@ -393,7 +399,15 @@ export type PageState =
     | 'freeze'
     | 'resume'
     | 'restored'
-    | 'discarded';
+    | 'discarded'
+    | PageArrival;
+
+/**
+ * How the document was reached, in Navigation Timing's own words — a new
+ * navigation, a reload, the back or forward button — plus `prerender` for a
+ * page the browser loaded speculatively before anyone asked to see it.
+ */
+export type PageArrival = 'navigate' | 'reload' | 'back_forward' | 'prerender';
 
 /**
  * The core seam plus the lifecycle events, which only a browser has. Core stays
@@ -551,6 +565,22 @@ export interface BrowserTelemetry extends Telemetry {
      * messages and text wrapping, never with what was typed into a field, and
      * the values are the ones the SDK itself writes into `iframe.style.height`.
      */
+    /**
+     * The form inside the card iframe is built and listening — the iframe's own
+     * `GOPAY_CARD_ENCRYPT_READY`, timed from the frame's load.
+     *
+     * `ready` cannot say this. It fires on the iframe's load event, which also
+     * fires for a document that never ran its script, failed it, or never
+     * received the init message, so "ready but nothing after" was a form that
+     * might or might not have been on the customer's screen. This one comes
+     * from the form itself, after it has rendered, and needs nothing new in the
+     * postMessage protocol: the message has always been sent.
+     */
+    cardFormRendered(context: {
+        flow: string;
+        /** When the frame loaded — the same moment `ready` reports. */
+        loadedAt: number | null;
+    }): void;
     cardFormHeight(context: {
         phase: 'oscillation' | 'summary';
         flow: string;
@@ -566,8 +596,10 @@ export interface BrowserTelemetry extends Telemetry {
      * resumed by the browser, restored from the back/forward cache, or the
      * reload of a tab the browser discarded. `PAGE.<state>`, with how long the
      * page spent in the state it left — on `visible`, how long the shopper was
-     * away. Page-level, so registerPageLifecycle reports it through the SDK
-     * built last.
+     * away. Once per document, also how the page was reached
+     * ({@link PageArrival}), with how far into the page's life the first SDK
+     * was built. Page-level, so registerPageLifecycle reports it through the
+     * SDK built last.
      */
     page(context: { state: PageState; durationMs: number | null }): void;
 }
@@ -590,6 +622,7 @@ export const NO_BROWSER_TELEMETRY: BrowserTelemetry = {
     unmount: () => {},
     walletAvailability: () => {},
     walletStep: () => {},
+    cardFormRendered: () => {},
     cardFormHeight: () => {},
     page: () => {},
 };
@@ -630,14 +663,6 @@ export function createGwLoggerTelemetry(options: {
      * one's on the same page and in the same transaction.
      */
     const instanceId = newInstanceId();
-    /**
-     * The last sequence number sent. Advanced only for an event that is
-     * actually handed to `fetch` — a budget refusal or an event that failed to
-     * build leaves no gap — so a gap in one instance's sequence in OpenSearch
-     * is an event lost on the way there, measurable without pairing anything
-     * with the ALB logs.
-     */
-    let seq = 0;
     /** The SDK's construction, which is what `ready` is timed from. */
     const createdAt = nowMs();
     /** The last `ready` per method, which is what `unmount` is timed from. */
@@ -668,7 +693,10 @@ export function createGwLoggerTelemetry(options: {
             // the event would replace the payment error the caller was about
             // to receive with a telemetry error. Logging is never worth that.
             const event = build();
-            const next = seq + 1;
+            // The tab's numbering, not this instance's — see lastSequence().
+            // Spent only once the request exists, so a refused or unbuildable
+            // event leaves no gap.
+            const next = lastSequence() + 1;
             const request = new Request(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -680,7 +708,7 @@ export function createGwLoggerTelemetry(options: {
                 // browsers this runs in, and a throw here dropped the event.
                 signal: timeoutSignal(REQUEST_TIMEOUT_MS).signal,
             });
-            seq = next;
+            recordSequence(next);
             spent[budget] += 1;
             void fetch(request).catch(() => {});
             return true;
@@ -877,6 +905,18 @@ export function createGwLoggerTelemetry(options: {
                     sheet_open: sheetOpen,
                     charge_in_flight: chargeInFlight,
                 }),
+            }));
+        },
+
+        cardFormRendered({ flow, loadedAt }): void {
+            // The lifecycle budget, beside the `ready` it completes: one per
+            // load of the frame.
+            post('lifecycle', () => ({
+                ...base(),
+                event_type: 'js_event',
+                function_name: actionName('card', 'rendered'),
+                duration: msSince(loadedAt ?? undefined),
+                flow: orUndefined(flow),
             }));
         },
 

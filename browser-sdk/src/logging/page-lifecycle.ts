@@ -1,5 +1,5 @@
 import { nowMs } from '@gopay-internal/core';
-import type { BrowserTelemetry, PageState } from './gw-logger.js';
+import type { BrowserTelemetry, PageArrival, PageState } from './gw-logger.js';
 import { rearmLeaveBeacon } from './leave-beacon.js';
 
 /**
@@ -24,6 +24,15 @@ import { rearmLeaveBeacon } from './leave-beacon.js';
  *   away. sessionStorage survives the discard, so it carries the same
  *   `transaction_id` as the visit that went silent, which is the explanation
  *   that visit never got to send. Chromium only.
+ * - `PAGE.navigate` / `PAGE.reload` / `PAGE.back_forward` / `PAGE.prerender` —
+ *   how this document was reached, once, with how many milliseconds into its
+ *   life the first SDK was built. It separates a merchant re-rendering the
+ *   checkout inside one page (several inits after one of these) from the page
+ *   being loaded again, and the back button from a fresh visit — on mixit.fr,
+ *   a customer coming back from a failed 3DS page and a page that never ran in
+ *   front of anyone were indistinguishable. `prerender` is a page the browser
+ *   loaded speculatively: it runs the merchant's script, payment creation
+ *   included, before the customer has seen it, and may never show it at all.
  *
  * Together with `seq`, a gap in which is an event lost on the way, that makes
  * a missing `leave` either lost, never sent, or never possible.
@@ -53,8 +62,50 @@ let cachedAt: number | undefined;
 /** A discarded document says so once, however many SDKs it builds. */
 let discardReported = false;
 
-/** `wasDiscarded` is Chromium's, and not in the DOM typings. */
-type DiscardableDocument = Document & { wasDiscarded?: boolean };
+/** How the document was reached is said once too, by the first SDK. */
+let arrivalReported = false;
+
+/**
+ * `wasDiscarded` is Chromium's, and `prerendering` is Chromium's speculation
+ * rules; neither is in the DOM typings.
+ */
+type DiscardableDocument = Document & {
+    wasDiscarded?: boolean;
+    prerendering?: boolean;
+};
+
+const ARRIVALS: readonly string[] = [
+    'navigate',
+    'reload',
+    'back_forward',
+    'prerender',
+] satisfies PageArrival[];
+
+/**
+ * The Navigation Timing entry's own `type`, except that a prerendered page —
+ * still prerendering, or shown since — is recognised by the two signals meant
+ * for exactly that, `document.prerendering` and `activationStart`, rather than
+ * by the entry's type alone. Undefined where the entry is missing: no guess is
+ * better than a wrong one.
+ */
+function arrival(doc: DiscardableDocument): PageArrival | undefined {
+    try {
+        const [entry] =
+            globalThis.performance?.getEntriesByType?.('navigation') ?? [];
+        const timing = entry as
+            | (PerformanceNavigationTiming & { activationStart?: number })
+            | undefined;
+        if (doc.prerendering === true || (timing?.activationStart ?? 0) > 0) {
+            return 'prerender';
+        }
+        const type = timing?.type;
+        return type !== undefined && ARRIVALS.includes(type)
+            ? (type as PageArrival)
+            : undefined;
+    } catch {
+        return undefined;
+    }
+}
 
 /** Whole milliseconds since `start`; null when there is no start to time from. */
 function msSince(start: number | undefined): number | null {
@@ -133,6 +184,16 @@ export function registerPageLifecycle(telemetry: BrowserTelemetry): void {
     doc.addEventListener('resume', onResume);
     globalThis.addEventListener('pagehide', onPageHide);
     globalThis.addEventListener('pageshow', onPageShow);
+
+    if (!arrivalReported) {
+        arrivalReported = true;
+        const how = arrival(doc);
+        if (how !== undefined) {
+            // Since the document's time origin: small for an SDK built as the
+            // page loads, large for one built by a re-render much later.
+            report(how, Math.round(nowMs()));
+        }
+    }
 
     if (!discardReported && doc.wasDiscarded === true) {
         discardReported = true;

@@ -716,24 +716,29 @@ attaching to a payment, a card form or wallet button becoming usable, and the
 visit ending — plus the SDK version, which build of the package is running
 (ESM/CJS or the CDN bundle), which payment method and flow the event belongs to,
 the id of the payment being paid, your `clientId`, a random id for the SDK
-instance and the event's position among those the instance sent. When the
-customer is sent to 3DS authentication, the visit's end is reported before the
-redirect, with the authentication page's address but none of its parameters.
-Each step of a wallet payment is reported as it happens — the button loading
-and becoming ready, the sheet opening, merchant validation, the authorisation
-and its outcome — with how long it took. The
-lifecycle markers are what make a checkout that never starts visible at all:
-without them a payment that silently fails to appear produces no data of any
-kind, which is indistinguishable from nobody having visited.
+instance and the event's position among those sent from the browser tab. When
+the customer is sent to 3DS authentication, the visit's end is reported before
+the redirect, with the authentication page's address but none of its parameters.
+Each step of a wallet payment is reported as it happens — the button loading and
+becoming ready, the sheet opening, merchant validation, the authorisation and
+its outcome — with how long it took. For the card form, that it actually
+rendered inside its frame, not only that the frame loaded. The lifecycle markers
+are what make a checkout that never starts visible at all: without them a
+payment that silently fails to appear produces no data of any kind, which is
+indistinguishable from nobody having visited.
 
 It also reports what happens to the page around the checkout: the page leaving
 the screen and coming back (the customer switching to another app or tab, or
 locking the screen), the browser suspending or resuming a background tab, the
 page returning from the back/forward cache, and the page being the reload of a
 tab the browser had discarded — each with how long the page spent in the state
-it left. That is what tells a customer who walked away in the background apart
-from a report that never arrived. Nothing about what the customer did
-elsewhere: not which app or tab, and not where the focus was on your page.
+it left. Once per page it also reports how the page was reached — a new
+navigation, a reload, the back or forward button, or a speculative prerender by
+the browser — and how long after the page started loading the SDK was created.
+Not the address it was reached from. That is what tells a customer who walked
+away in the background apart from a report that never arrived. Nothing about
+what the customer did elsewhere: not which app or tab, and not where the focus
+was on your page.
 
 One event describes something your customer did rather than something the SDK
 did: that they submitted the card form, or authorised in an Apple Pay or Google

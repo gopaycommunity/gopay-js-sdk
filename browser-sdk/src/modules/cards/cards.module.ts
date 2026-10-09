@@ -598,11 +598,10 @@ export function createCardsApi(
                     expectedOrigin,
                 );
 
-                // The other half of the init/ready pair. Deliberately the load
-                // event and not an acknowledgement from the iframe: an ack
-                // would need a new message in the postMessage protocol, and
-                // that protocol is shared with gw-ui-cc-v4. "The form is on the
-                // page" is what this claims, and it is what it can prove.
+                // The other half of the init/ready pair, on the load event:
+                // the frame's document is on the page. Whether the form inside
+                // it rendered is the iframe's own GOPAY_CARD_ENCRYPT_READY,
+                // reported separately as rendered — see onMessage.
                 readyAt = nowMs();
                 heightsSince = readyAt;
                 telemetry.ready({
@@ -803,6 +802,10 @@ export function createCardsApi(
                         return;
                     case 'GOPAY_CARD_ENCRYPT_READY':
                         iframe.focus();
+                        telemetry.cardFormRendered({
+                            flow: options.flow,
+                            loadedAt: readyAt,
+                        });
                         return;
                     case 'GOPAY_CARD_FORM_VALIDITY':
                         handleValidityMessage(event.data.isValid);

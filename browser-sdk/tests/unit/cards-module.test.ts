@@ -446,6 +446,7 @@ describe('createCardsApi() — browser SDK', () => {
                 unmount: vi.fn(),
                 walletAvailability: vi.fn(),
                 walletStep: vi.fn(),
+                cardFormRendered: vi.fn(),
                 cardFormHeight: vi.fn(),
             };
             const cards = createCardsApi(
@@ -1667,6 +1668,7 @@ describe('the card form submit is reported', () => {
             ready: vi.fn(),
             redirect: vi.fn(),
             submit: vi.fn(),
+            cardFormRendered: vi.fn(),
             cardFormHeight: vi.fn(),
         } as unknown as typeof telemetry;
     });
@@ -1751,6 +1753,29 @@ describe('the card form submit is reported', () => {
         ]);
     });
 
+    it('reports the form rendered only when the iframe says so, timed from its load', async () => {
+        const now = vi.spyOn(performance, 'now').mockReturnValue(1_000);
+        const cards = createCardsApi(client, () => null, telemetry);
+        const ctrl = await cards.mountCardForm(container, {
+            flow: 'return-payload',
+        });
+        ctrl.result.catch(() => {});
+        const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+        iframe.onload?.(new Event('load'));
+
+        // Loaded is not rendered: the frame's document is there, but nothing
+        // yet says the form inside it ran.
+        expect(telemetry.cardFormRendered).not.toHaveBeenCalled();
+
+        now.mockReturnValue(1_350);
+        simulateMessage(iframe, { type: 'GOPAY_CARD_ENCRYPT_READY' });
+
+        expect(telemetry.cardFormRendered).toHaveBeenCalledExactlyOnceWith({
+            flow: 'return-payload',
+            loadedAt: 1_000,
+        });
+    });
+
     it('measures the form being on the page, and reports null when it never loaded', async () => {
         const cards = createCardsApi(client, () => null, telemetry);
         const ctrl = await cards.mountCardForm(container, {
@@ -1807,6 +1832,7 @@ describe('the card form height is reported', () => {
             unmount: vi.fn(),
             walletAvailability: vi.fn(),
             walletStep: vi.fn(),
+            cardFormRendered: vi.fn(),
             cardFormHeight: vi.fn(),
         } as unknown as typeof telemetry;
         mounted = [];
@@ -2109,6 +2135,7 @@ describe('unmounting the card form is reported as an unmount, not an error', () 
             unmount: vi.fn(),
             walletAvailability: vi.fn(),
             walletStep: vi.fn(),
+            cardFormRendered: vi.fn(),
             cardFormHeight: vi.fn(),
         } as unknown as typeof telemetry;
     });

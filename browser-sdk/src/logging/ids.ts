@@ -71,6 +71,59 @@ export function getTransactionId(): string {
 }
 
 /**
+ * ECS `event.sequence` — the events sent from one tab, numbered 1, 2, 3 across
+ * every SDK instance and every page load in it, so a gap in a transaction's
+ * numbering is an event lost on the way to gw-logger.
+ *
+ * Per tab rather than per instance, and kept beside the transaction id for the
+ * same reason that id is: a count that restarts with every instance cannot see
+ * an instance lost whole. mixit.fr builds a new SDK on every re-render and on
+ * every return from 3DS, and a page load whose only event — its `init` — went
+ * missing left no gap anywhere, which is exactly the visit that matters when
+ * the question is whether the merchant's page ran at all at a given moment.
+ *
+ * Read and written in two steps, so a number is spent only on an event that is
+ * actually handed to `fetch`: a refused or unbuildable event leaves no gap, or
+ * a gap would stop meaning "lost".
+ *
+ * Storage that throws or is absent falls back to a count in memory, like the
+ * transaction id, and like it restarts with the page. Storage that reads but
+ * cannot be written repeats the last number rather than skipping one — a
+ * repeat cannot be mistaken for a lost event.
+ */
+const SEQUENCE_KEY = 'gopay.sdk.sequence';
+
+let memorySequence = 0;
+
+/** The number the tab's last sent event carried; 0 before the first. */
+export function lastSequence(): number {
+    try {
+        const store = globalThis.sessionStorage;
+        if (store) {
+            const stored = Number(store.getItem(SEQUENCE_KEY));
+            return Number.isSafeInteger(stored) && stored > 0 ? stored : 0;
+        }
+    } catch {
+        // Unavailable or blocked — fall through to the in-memory count.
+    }
+    return memorySequence;
+}
+
+/** Records the number an event just went out with. */
+export function recordSequence(sent: number): void {
+    try {
+        const store = globalThis.sessionStorage;
+        if (store) {
+            store.setItem(SEQUENCE_KEY, String(sent));
+            return;
+        }
+    } catch {
+        // Unavailable or blocked — fall through to the in-memory count.
+    }
+    memorySequence = sent;
+}
+
+/**
  * ECS `trace.id` — one user action. A fresh one per event: the SDK has no
  * notion of a gesture spanning several calls, and inventing one would group
  * unrelated requests under a single id.

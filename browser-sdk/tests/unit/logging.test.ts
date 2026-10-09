@@ -14,6 +14,14 @@ import {
     serializeBody,
 } from '../../src/logging/sanitize.js';
 
+/**
+ * The event sequence is per tab and lives in sessionStorage, which jsdom keeps
+ * for the whole file. Every test is a fresh tab.
+ */
+beforeEach(() => {
+    globalThis.sessionStorage?.clear();
+});
+
 /** What a body looks like once it has been through the serializer. */
 const sanitizeLogData = (value: unknown): unknown =>
     JSON.parse(serializeBody(value) ?? 'null');
@@ -1388,14 +1396,86 @@ describe('the GPOMA-2707 event shape', () => {
             expect((await eventAt(50)).seq).toBe(51);
         });
 
-        it('gives each SDK instance its own id', async () => {
+        it('gives each SDK instance its own id, and numbers the tab across them', async () => {
             telemetry().lifecycle('init');
             telemetry().lifecycle('init');
 
             const [a, b] = await Promise.all([0, 1].map(eventAt));
             expect(a?.sdk_instance_id).not.toBe(b?.sdk_instance_id);
-            // Each instance starts its own sequence.
-            expect([a?.seq, b?.seq]).toEqual([1, 1]);
+            // One count per tab: an instance whose only event was lost leaves
+            // a gap here, which a count per instance never could.
+            expect([a?.seq, b?.seq]).toEqual([1, 2]);
+        });
+
+        it('carries the numbering over a page load in the same tab', async () => {
+            // What the page before a reload or a 3DS round trip left behind.
+            globalThis.sessionStorage.setItem('gopay.sdk.sequence', '41');
+
+            telemetry().lifecycle('init');
+
+            expect((await eventAt(0)).seq).toBe(42);
+        });
+
+        it('counts in memory where storage is blocked', async () => {
+            vi.stubGlobal('sessionStorage', {
+                getItem: () => {
+                    throw new Error('blocked');
+                },
+                setItem: () => {
+                    throw new Error('blocked');
+                },
+            });
+            const t = telemetry();
+            t.lifecycle('init');
+            t.lifecycle('leave');
+
+            const events = await Promise.all([0, 1].map(eventAt));
+            const [first, second] = events.map((e) => Number(e.seq));
+            expect(second).toBe((first ?? 0) + 1);
+        });
+
+        it('repeats a number rather than skip one when storage stops taking writes', async () => {
+            const store = new Map<string, string>();
+            vi.stubGlobal('sessionStorage', {
+                getItem: (k: string) => store.get(k) ?? null,
+                setItem: () => {
+                    throw new Error('QuotaExceededError');
+                },
+            });
+            const t = telemetry();
+            t.lifecycle('init');
+            t.lifecycle('leave');
+
+            // A skipped number would read as an event lost on the way.
+            const events = await Promise.all([0, 1].map(eventAt));
+            expect(events.map((e) => e.seq)).toEqual([1, 1]);
+        });
+    });
+
+    describe('the card form rendering', () => {
+        it('is PAYMENT_CARD.rendered, timed from the frame’s load', async () => {
+            const now = vi.spyOn(performance, 'now').mockReturnValue(1_350);
+            telemetry().cardFormRendered({
+                flow: 'direct-charge',
+                loadedAt: 1_000,
+            });
+
+            expect(await eventAt(0)).toMatchObject({
+                event_type: 'js_event',
+                function_name: 'PAYMENT_CARD.rendered',
+                duration: 350,
+                flow: 'direct-charge',
+            });
+            now.mockRestore();
+        });
+
+        it('has no duration when the frame’s load was never seen', async () => {
+            telemetry().cardFormRendered({
+                flow: 'return-payload',
+                loadedAt: null,
+            });
+
+            expect((await eventAt(0)).duration).toBeNull();
         });
     });
 

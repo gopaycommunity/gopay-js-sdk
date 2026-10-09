@@ -36,6 +36,19 @@ function goVisibility(state: DocumentVisibilityState): void {
     globalThis.document.dispatchEvent(new Event('visibilitychange'));
 }
 
+/**
+ * The page's Navigation Timing entry, or none. Shadows whatever jsdom has, and
+ * the afterEach deletes the shadow again.
+ */
+function navigationEntry(entry: Record<string, unknown> | undefined): void {
+    Object.defineProperty(performance, 'getEntriesByType', {
+        value: (type: string) =>
+            type === 'navigation' && entry ? [entry] : [],
+        configurable: true,
+        writable: true,
+    });
+}
+
 /** jsdom's PageTransitionEvent support varies; the handlers read only `persisted`. */
 function transition(type: 'pagehide' | 'pageshow', persisted: boolean): Event {
     const event = new Event(type);
@@ -49,11 +62,74 @@ describe('page lifecycle', () => {
     beforeEach(() => {
         now = vi.spyOn(performance, 'now').mockReturnValue(0);
         setVisibility('visible');
+        // No entry unless a test says how the page was reached, so the rest
+        // see only the events they cause.
+        navigationEntry(undefined);
     });
 
     afterEach(() => {
         vi.restoreAllMocks();
         Reflect.deleteProperty(globalThis.document, 'wasDiscarded');
+        Reflect.deleteProperty(globalThis.document, 'prerendering');
+        Reflect.deleteProperty(performance, 'getEntriesByType');
+    });
+
+    it('says once how the page was reached, and how far into its life the first SDK came', async () => {
+        const { registerPageLifecycle } = await freshModules();
+        navigationEntry({ type: 'back_forward' });
+        const first = spyTelemetry();
+        const rerendered = spyTelemetry();
+        now.mockReturnValue(2_400.6);
+        registerPageLifecycle(first as never);
+        // The merchant's checkout re-renders and builds another SDK: the
+        // same page, so nothing new to say about how it was reached.
+        now.mockReturnValue(30_000);
+        registerPageLifecycle(rerendered as never);
+
+        expect(first.page.mock.calls).toEqual([
+            [{ state: 'back_forward', durationMs: 2_401 }],
+        ]);
+        expect(rerendered.page).not.toHaveBeenCalled();
+    });
+
+    it('calls a page still being prerendered a prerender, whatever its entry says', async () => {
+        const { registerPageLifecycle } = await freshModules();
+        navigationEntry({ type: 'navigate', activationStart: 0 });
+        Object.defineProperty(globalThis.document, 'prerendering', {
+            value: true,
+            configurable: true,
+        });
+        const t = spyTelemetry();
+        registerPageLifecycle(t as never);
+
+        expect(t.page.mock.calls[0]?.[0]).toMatchObject({ state: 'prerender' });
+    });
+
+    it('calls a prerendered page that has since been shown a prerender too', async () => {
+        const { registerPageLifecycle } = await freshModules();
+        navigationEntry({ type: 'navigate', activationStart: 812 });
+        const t = spyTelemetry();
+        registerPageLifecycle(t as never);
+
+        expect(t.page.mock.calls[0]?.[0]).toMatchObject({ state: 'prerender' });
+    });
+
+    it('reports an ordinary load as navigate', async () => {
+        const { registerPageLifecycle } = await freshModules();
+        navigationEntry({ type: 'navigate', activationStart: 0 });
+        const t = spyTelemetry();
+        registerPageLifecycle(t as never);
+
+        expect(t.page.mock.calls[0]?.[0]).toMatchObject({ state: 'navigate' });
+    });
+
+    it('guesses nothing when the entry is missing or unknown', async () => {
+        const { registerPageLifecycle } = await freshModules();
+        navigationEntry({ type: 'something-new' });
+        const t = spyTelemetry();
+        registerPageLifecycle(t as never);
+
+        expect(t.page).not.toHaveBeenCalled();
     });
 
     it('reports the page leaving the screen and coming back, timed in the state it left', async () => {
@@ -193,6 +269,8 @@ describe('page events on the wire', () => {
     let requests: Request[];
 
     beforeEach(() => {
+        // The sequence is per tab, kept in sessionStorage; this is a new tab.
+        globalThis.sessionStorage.clear();
         requests = [];
         vi.stubGlobal(
             'fetch',
