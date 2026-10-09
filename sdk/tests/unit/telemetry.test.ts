@@ -111,6 +111,35 @@ describe('telemetry from the HTTP client', () => {
         ]);
     });
 
+    it('hands every verb its request and response body, the error body included', async () => {
+        // Nothing else checks the hand-over: the browser SDK's tests start
+        // from a record that already carries the bodies.
+        fetchMock.mockImplementation((req: Request) =>
+            Promise.resolve(
+                req.method === 'DELETE'
+                    ? makeResponse({ errors: [{ error_code: 404 }] }, 404)
+                    : makeResponse({ id: 'p1', state: 'CREATED' }),
+            ),
+        );
+        const client = makeClient();
+        await client.get('/payments/300000001');
+        await client.post('/payments', { amount: 1 });
+        await client.postForm('/oauth2/token', { grant_type: 'x' });
+        await client.delete('/cards/abc').catch(() => {});
+
+        expect(
+            telemetry.apiCall.mock.calls.map(([r]) => [
+                r.requestBody,
+                r.responseBody,
+            ]),
+        ).toEqual([
+            [undefined, { id: 'p1', state: 'CREATED' }],
+            [{ amount: 1 }, { id: 'p1', state: 'CREATED' }],
+            [{ grant_type: 'x' }, { id: 'p1', state: 'CREATED' }],
+            [undefined, { errors: [{ error_code: 404 }] }],
+        ]);
+    });
+
     it('reports the config failure that happens before the client even exists', () => {
         // resolveBaseUrl runs before emitError exists, so this is the one error
         // guaranteed to happen at construction time — and the one that would
@@ -407,6 +436,33 @@ describe('telemetry from the auth handler', () => {
             { method: 'POST', endpoint: '/oauth2/token', statusCode: 200 },
             { method: 'GET', endpoint: '/payments/{id}', statusCode: 200 },
         ]);
+    });
+
+    it('hands the token call its form, never the token pair it got back', async () => {
+        fetchMock = vi.fn((req: Request) =>
+            Promise.resolve(
+                req.url.includes('/oauth2/token')
+                    ? tokenResponse()
+                    : makeResponse({ ok: true }),
+            ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+        const client = makeClient();
+        client.tokenStore.set({
+            access_token: 'stale-at',
+            expires_in: 0,
+            token_type: 'bearer',
+        });
+
+        await client.get('/payments/300000001');
+
+        const token = telemetry.apiCall.mock.calls
+            .map(([r]) => r)
+            .find((r) => r.endpoint === '/oauth2/token');
+        expect(token?.requestBody).toMatchObject({
+            grant_type: expect.any(String),
+        });
+        expect(token?.responseBody).toBeUndefined();
     });
 
     it('records the refresh a 401 triggers, and leaves the retry to the verb method', async () => {

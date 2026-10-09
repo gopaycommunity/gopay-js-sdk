@@ -12,6 +12,7 @@ export {
     GoPayErrorCodes,
     GoPayHTTPError,
     GoPaySDKError,
+    isForeignCode,
     safeErrorLabel,
 } from './errors.js';
 export { buildUrl } from './http/build-url.js';
@@ -25,7 +26,7 @@ export type {
 } from './http/token-store.js';
 export { createTokenStore } from './http/token-store.js';
 export type { ApiCallRecord, Telemetry } from './logging/telemetry.js';
-export { NO_TELEMETRY, nowMs } from './logging/telemetry.js';
+export { msSince, NO_TELEMETRY, nowMs } from './logging/telemetry.js';
 export type { AwaitPaymentStatusOptions } from './payment-status-polling.js';
 export { awaitPaymentStatus } from './payment-status-polling.js';
 export { reportErrors } from './report-errors.js';

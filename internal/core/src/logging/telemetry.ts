@@ -64,3 +64,11 @@ export function nowMs(): number {
         ? globalThis.performance.now()
         : Date.now();
 }
+
+/**
+ * Whole milliseconds since a `nowMs()` reading — gw-logger's duration is an
+ * integer — or null when there is no start to time from.
+ */
+export function msSince(start: number | undefined): number | null {
+    return start === undefined ? null : Math.round(nowMs() - start);
+}

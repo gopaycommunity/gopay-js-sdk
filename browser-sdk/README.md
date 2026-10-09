@@ -793,11 +793,11 @@ page. If your Content-Security-Policy restricts `connect-src`, add
 without it the browser blocks the reports, which changes nothing about the
 payment.
 
-Delivery is fire-and-forget: a hard 2-second timeout, no retries, and every
-failure discarded silently. Nothing here can delay or fail a payment. Three
-separate caps limit how much one visit can produce — one for API reports, one
-for lifecycle markers, one for errors — so a flood of any single kind cannot
-crowd out the other two.
+Delivery is fire-and-forget: each report gives up after 10 seconds, nothing is
+retried, and every failure is discarded silently. Nothing here can delay or
+fail a payment. Five separate caps limit how much one SDK instance can produce
+— API reports, lifecycle markers, wallet steps, page changes and errors — so a
+flood of any single kind cannot crowd out the others.
 
 ---
 

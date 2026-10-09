@@ -25,8 +25,12 @@ const REDACTED = '[redacted]';
 /** Longest message kept; anything past this is cut. */
 const MAX_MESSAGE_LENGTH = 500;
 
-/** A run of 12–19 digits is a PAN in every scheme we accept. */
-const PAN_LIKE = /\d{12,19}/gu;
+/**
+ * 12–19 digits is a PAN in every scheme we accept, and people write one in
+ * groups: `4111 1111 1111 1111`, `4111-1111-…`. One optional separator between
+ * digits, bounded, so each position costs a fixed amount however long the text.
+ */
+const PAN_LIKE = /\d(?:[ -]?\d){11,18}/gu;
 
 /**
  * Card-comm form URLs carry a signed session token after the form-type letter
@@ -142,9 +146,15 @@ function redactEmails(text: string): string {
  * `name=value` for the names worth never printing, with no `?` in front of
  * them. 3DS posts `MD` and `PaRes` as form fields, so they reach a message as
  * a bare pair — which is how they slipped past a query-string-only rule.
+ *
+ * Any name ending in a token or a secret, not a list of them: `\btoken` alone
+ * missed `card_token` and `payment_token`, because `_` is a word character and
+ * there is no boundary inside the name. The prefix is matched from the word's
+ * start instead of looked behind — a lookbehind is a SyntaxError on Safari
+ * before 16.4, which would take the whole bundle down with it.
  */
 const SENSITIVE_PAIR =
-    /\b(?:MD|PaRes|CRes|creq|paymentSecret|payment_secret|client_secret|access_token|id_token|refresh_token|authorization|password|token)\s*=\s*\S+/giu;
+    /\b(?:MD|PaRes|CRes|creq|authorization|password|\w*(?:token|secret))\s*=\s*\S+/giu;
 
 /**
  * A message safe to put in a log line: no PAN-shaped digits, no signed form
@@ -291,6 +301,13 @@ const SENSITIVE_KEY_SUBSTRINGS = [
     // expiration_month/_year narrow it down further. masked_pan is already caught by `pan`.
     'fingerprint',
     'expiration',
+    // The same card data under the other names it goes by.
+    'expiry',
+    'expmonth',
+    'expyear',
+    'securitycode',
+    // A signed session token sits in its path, like gw_url's.
+    'cardformurl',
 ];
 
 /**
@@ -329,9 +346,32 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * JSON that arrived as text, parsed — or undefined when it is not an object or
+ * an array. `parseBody` hands over the raw text whenever the content type is
+ * not `application/json`, `application/problem+json` included, and text only
+ * gets the message scrub, which knows shapes but not keys: a payment secret
+ * there went out whole.
+ */
+function parseJsonText(text: string): unknown {
+    const first = text.trimStart()[0];
+    if (first !== '{' && first !== '[') {
+        return undefined;
+    }
+    try {
+        const parsed: unknown = JSON.parse(text);
+        return typeof parsed === 'object' && parsed !== null
+            ? parsed
+            : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
  * The body with every sensitive key replaced by `[redacted]`, every string
  * left in it scrubbed, and anything nested past {@link MAX_DEPTH} dropped.
- * Structure is otherwise kept, so a reader still sees what was there.
+ * Structure is otherwise kept, so a reader still sees what was there. A string
+ * holding JSON is read as the structure it is.
  */
 function sanitizeLogData(value: unknown, depth = 0): unknown {
     if (depth >= MAX_DEPTH) {
@@ -350,7 +390,12 @@ function sanitizeLogData(value: unknown, depth = 0): unknown {
         return result;
     }
     if (typeof value === 'string') {
-        return safeErrorMessage(value);
+        // Same depth: the text and the structure in it are one node, and the
+        // arrays and objects inside count against the bound as usual.
+        const parsed = parseJsonText(value);
+        return parsed === undefined
+            ? safeErrorMessage(value)
+            : sanitizeLogData(parsed, depth);
     }
     if (
         value !== null &&

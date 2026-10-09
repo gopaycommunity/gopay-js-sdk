@@ -1,4 +1,4 @@
-import { nowMs } from '@gopay-internal/core';
+import { msSince, nowMs } from '@gopay-internal/core';
 import type { BrowserTelemetry, PageArrival, PageState } from './gw-logger.js';
 import { rearmLeaveBeacon } from './leave-beacon.js';
 
@@ -65,21 +65,25 @@ let discardReported = false;
 /** How the document was reached is said once too, by the first SDK. */
 let arrivalReported = false;
 
-/**
- * `wasDiscarded` is Chromium's, and `prerendering` is Chromium's speculation
- * rules; neither is in the DOM typings.
- */
-type DiscardableDocument = Document & {
-    wasDiscarded?: boolean;
-    prerendering?: boolean;
-};
-
-const ARRIVALS: readonly string[] = [
+const ARRIVALS: readonly PageArrival[] = [
     'navigate',
     'reload',
     'back_forward',
     'prerender',
-] satisfies PageArrival[];
+];
+
+function isArrival(type: string): type is PageArrival {
+    return ARRIVALS.some((known) => known === type);
+}
+
+/**
+ * `wasDiscarded` is Chromium's, and `prerendering` and `activationStart` are
+ * Chromium's speculation rules; none is in the DOM typings, so each is read
+ * through `in`, which is also what tells an engine without it apart.
+ */
+function flag(target: object, name: string): boolean {
+    return name in target && Reflect.get(target, name) === true;
+}
 
 /**
  * The Navigation Timing entry's own `type`, except that a prerendered page —
@@ -88,28 +92,28 @@ const ARRIVALS: readonly string[] = [
  * by the entry's type alone. Undefined where the entry is missing: no guess is
  * better than a wrong one.
  */
-function arrival(doc: DiscardableDocument): PageArrival | undefined {
+function arrival(doc: Document): PageArrival | undefined {
     try {
         const [entry] =
             globalThis.performance?.getEntriesByType?.('navigation') ?? [];
-        const timing = entry as
-            | (PerformanceNavigationTiming & { activationStart?: number })
-            | undefined;
-        if (doc.prerendering === true || (timing?.activationStart ?? 0) > 0) {
+        const activationStart =
+            entry !== undefined && 'activationStart' in entry
+                ? Reflect.get(entry, 'activationStart')
+                : undefined;
+        if (
+            flag(doc, 'prerendering') ||
+            (typeof activationStart === 'number' && activationStart > 0)
+        ) {
             return 'prerender';
         }
-        const type = timing?.type;
-        return type !== undefined && ARRIVALS.includes(type)
-            ? (type as PageArrival)
-            : undefined;
+        const type =
+            entry !== undefined && 'type' in entry
+                ? Reflect.get(entry, 'type')
+                : undefined;
+        return typeof type === 'string' && isArrival(type) ? type : undefined;
     } catch {
         return undefined;
     }
-}
-
-/** Whole milliseconds since `start`; null when there is no start to time from. */
-function msSince(start: number | undefined): number | null {
-    return start === undefined ? null : Math.round(nowMs() - start);
 }
 
 function report(state: PageState, durationMs: number | null): void {
@@ -165,7 +169,7 @@ function onPageShow(event: PageTransitionEvent): void {
 export function registerPageLifecycle(telemetry: BrowserTelemetry): void {
     activeTelemetry = telemetry;
 
-    const doc = globalThis.document as DiscardableDocument | undefined;
+    const doc: Document | undefined = globalThis.document;
     if (
         !doc ||
         typeof doc.addEventListener !== 'function' ||
@@ -195,7 +199,7 @@ export function registerPageLifecycle(telemetry: BrowserTelemetry): void {
         }
     }
 
-    if (!discardReported && doc.wasDiscarded === true) {
+    if (!discardReported && flag(doc, 'wasDiscarded')) {
         discardReported = true;
         report('discarded', null);
     }

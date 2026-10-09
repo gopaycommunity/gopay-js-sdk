@@ -3,6 +3,7 @@ import {
     GoPayErrorCodes,
     GoPayHTTPError,
     GoPaySDKError,
+    isForeignCode,
     safeErrorLabel,
 } from '../errors.js';
 import {
@@ -47,9 +48,6 @@ const wrappedForeignErrors = new WeakSet<object>();
  * ones. Kept to a code and a message — the telemetry layer sanitizes what it
  * sends, but there is no reason to hand it more than this in the first place.
  */
-/** A code, not prose: uppercase, underscores, bounded. */
-const FOREIGN_CODE = /^[A-Z][A-Z0-9_]{0,63}$/;
-
 /**
  * Describe something that is not one of our errors, without quoting it.
  *
@@ -66,7 +64,7 @@ function describeForeign(error: unknown): string {
         return typeof error;
     }
     const { statusCode } = error as { statusCode?: unknown };
-    if (typeof statusCode === 'string' && FOREIGN_CODE.test(statusCode)) {
+    if (isForeignCode(statusCode)) {
         return statusCode;
     }
     return safeErrorLabel(error);

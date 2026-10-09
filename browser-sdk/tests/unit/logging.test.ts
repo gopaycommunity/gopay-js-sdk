@@ -5,7 +5,10 @@ import {
     GoPaySDKError,
 } from '../../src/errors.js';
 import { createGoPayBrowserSDK } from '../../src/gopay-browser-sdk.js';
-import { createGwLoggerTelemetry } from '../../src/logging/gw-logger.js';
+import {
+    createGwLoggerTelemetry,
+    describeFailure,
+} from '../../src/logging/gw-logger.js';
 import { getTransactionId, newTraceId } from '../../src/logging/ids.js';
 import { registerLeaveBeacon } from '../../src/logging/leave-beacon.js';
 import {
@@ -25,6 +28,32 @@ beforeEach(() => {
 /** What a body looks like once it has been through the serializer. */
 const sanitizeLogData = (value: unknown): unknown =>
     JSON.parse(serializeBody(value) ?? 'null');
+
+describe('describeFailure()', () => {
+    it('names a failure by its code, its HTTP status or Google Pay’s status code', () => {
+        expect(
+            describeFailure(
+                new GoPaySDKError('x', {
+                    errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
+                }),
+            ),
+        ).toBe('WALLET_BUTTON_ERROR');
+        expect(describeFailure({ status: 409 })).toBe('HTTP_409');
+        expect(describeFailure({ statusCode: 'CANCELED' })).toBe('CANCELED');
+    });
+
+    it('does not ship a sentence that sits where a code should be', () => {
+        // A foreign object decides what its fields hold.
+        expect(describeFailure({ statusCode: 'Card declined by issuer' })).toBe(
+            'object',
+        );
+        expect(
+            describeFailure({
+                errorCode: 'Payment failed for jan@example.com',
+            }),
+        ).toBe('object');
+    });
+});
 
 describe('safeErrorMessage()', () => {
     // Every one of these reached the ingest unredacted before: measured on
@@ -109,6 +138,24 @@ describe('safeErrorMessage()', () => {
         expect(
             safeErrorMessage(new Error('card 4111111111111111 declined')),
         ).toBe('card [redacted] declined');
+    });
+
+    it('redacts a PAN written in groups, with spaces or dashes', () => {
+        expect(
+            safeErrorMessage(
+                'card 4111 1111 1111 1111 and 5500-0000-0000-0004 declined',
+            ),
+        ).toBe('card [redacted] and [redacted] declined');
+    });
+
+    it('redacts a pair under any name ending in token or secret', () => {
+        // `_` is a word character, so a boundary right before `token` never
+        // matched inside these names.
+        expect(
+            safeErrorMessage(
+                'bad payment_token=abc123 and card_token=zzz999 or clientSecret=s3',
+            ),
+        ).toBe('bad [redacted] and [redacted] or [redacted]');
     });
 
     it('keeps a short digit run that cannot be a PAN', () => {
@@ -379,6 +426,28 @@ describe('createGwLoggerTelemetry()', () => {
         expect(String(params.probe)).not.toContain('token=abc');
     });
 
+    it('scrubs a step’s detail and a probe’s reason, which carry real failures now', async () => {
+        // Fixed strings once; describeFailure(err) from a real wallet error
+        // flows into both today.
+        const t = makeTelemetry();
+        t.walletStep({
+            paymentMethod: 'googlepay',
+            step: 'checkout',
+            status: 'failure',
+            detail: 'rejected for shopper@example.com',
+        });
+        t.walletAvailability({
+            functionName: 'canMakeGooglePayPayment',
+            paymentMethod: 'googlepay',
+            available: false,
+            reason: 'blocked for shopper@example.com',
+        });
+
+        const [step, probe] = [await eventOf(0), await eventOf(1)];
+        expect(step.return_value).toBe('rejected for [redacted]');
+        expect(probe.return_value).toBe('blocked for [redacted]');
+    });
+
     it('leaves out a capability the browser does not answer', async () => {
         // A null would read as "false" in a query; absent is the honest shape.
         makeTelemetry().walletUnavailable({
@@ -490,11 +559,11 @@ describe('createGwLoggerTelemetry()', () => {
 
     it('caps the lifecycle side too, so a runaway there cannot flood either', () => {
         const t = makeTelemetry();
-        for (let i = 0; i < 80; i += 1) {
+        for (let i = 0; i < 100; i += 1) {
             t.ready({ paymentMethod: 'card' });
         }
 
-        expect(fetchMock).toHaveBeenCalledTimes(50);
+        expect(fetchMock).toHaveBeenCalledTimes(75);
     });
 
     it('spends the step budget on the card form height, never the error or lifecycle one', () => {
@@ -1333,6 +1402,133 @@ describe('the GPOMA-2707 event shape', () => {
             });
         });
 
+        it('redacts JSON that arrived as text by key, not only by shape', () => {
+            // parseBody hands over the raw text whenever the content type is
+            // not application/json — application/problem+json included.
+            expect(
+                sanitizeLogData(
+                    '{"payment_secret":"S3cr3tV4lueXYZ","detail":"x"}',
+                ),
+            ).toEqual({ payment_secret: '[redacted]', detail: 'x' });
+            expect(sanitizeLogData('not json, just text')).toBe(
+                'not json, just text',
+            );
+        });
+
+        /**
+         * One key for every entry of the two redaction lists, each with a
+         * value nothing else would catch: no digit run, no e-mail, no query,
+         * no `name=value`, no token shape. Drop an entry from sanitize.ts and
+         * its key goes out as it is. A handful of container entries are also
+         * reached by a fragment (`idtoken` by `token`, `ipaddress` by
+         * `address`), so for those it is the pair that is pinned.
+         */
+        const BY_NAME_ONLY: Record<string, unknown> = {
+            // Containers, dropped whole.
+            response: { note: 'kept' },
+            payment: { note: 'kept' },
+            paymentData: { note: 'kept' },
+            applePayPaymentData: { note: 'kept' },
+            googlePaymentData: { note: 'kept' },
+            card: { brand: 'VISA' },
+            cards: [{ brand: 'VISA' }],
+            maskedCard: { brand: 'VISA' },
+            maskedCards: [{ brand: 'VISA' }],
+            profile: { note: 'kept' },
+            profiles: [{ note: 'kept' }],
+            srcProfile: { note: 'kept' },
+            consumer: { full_name: 'Jana Nováková' },
+            consumerIdentity: { note: 'kept' },
+            identity: { note: 'kept' },
+            three_ds: { version: '2.2.0' },
+            threeDSData: { version: '2.2.0' },
+            challenge: { note: 'kept' },
+            acs: { note: 'kept' },
+            acsData: { note: 'kept' },
+            credential: { note: 'kept' },
+            credentials: { note: 'kept' },
+            checkout: { note: 'kept' },
+            checkoutResponse: { note: 'kept' },
+            checkoutResponseSignature: 'plain',
+            redirectParams: { note: 'kept' },
+            merchantSession: { note: 'kept' },
+            merchantSessionIdentifier: 'plain',
+            validationData: 'plain',
+            encryptedCard: 'plain',
+            recognitionToken: 'plain',
+            idToken: 'plain',
+            idTokens: ['plain'],
+            digitalCardId: 'plain',
+            recipientAddress: 'plain',
+            accountName: 'Jana Nováková',
+            bic: 'GIBACZPX',
+            input: { input_type: 'APPLE_PAY', data: 'plain' },
+            customer: { full_name: 'Jana Nováková' },
+            contact: { full_name: 'Jana Nováková' },
+            payer: { full_name: 'Jana Nováková' },
+            ip: '198.51.100.23',
+            ip_address: '198.51.100.23',
+            user_agent: 'Mozilla/5.0 (Shopper)',
+            // Fragments, any key that contains one.
+            masked_pan: 'plain',
+            card_token: 'plain',
+            jwe_payload: 'plain',
+            cvv: 'plain',
+            cvc: 'plain',
+            online_cryptogram: 'plain',
+            cavv: 'plain',
+            payment_secret: 'plain',
+            signature: 'plain',
+            password: 'plain',
+            identityValue: 'plain',
+            card_number: 'plain',
+            authentication_value: 'plain',
+            otp: 'plain',
+            billing_email: 'plain',
+            phone: '777123456',
+            mobile: '777123456',
+            first_name: 'Jana',
+            last_name: 'Nováková',
+            account_number: '2000145399',
+            iban: 'plain',
+            redirect_url: 'https://acs.example-bank.com/challenge',
+            maskedValidationChannel: 'plain',
+            encrypted_payload: 'plain',
+            signedMessage: 'plain',
+            signedKey: 'plain',
+            public_key: 'plain',
+            nonce: 'plain',
+            gw_url: 'https://gate.example.com/gw/payment',
+            billing_address: 'Vodičkova 1',
+            card_holder: 'Jana Nováková',
+            fingerprint: 'plain',
+            expiration_month: '12',
+            expiry: '12/30',
+            exp_month: '12',
+            exp_year: '30',
+            security_code: '123',
+            card_form_url: 'https://gate.example.com/form/session',
+        };
+
+        it('keeps the values above when they sit under a harmless name', () => {
+            // The guard on the test below: a value some other rule catches
+            // would keep it green whatever the lists say.
+            for (const value of Object.values(BY_NAME_ONLY)) {
+                expect(sanitizeLogData({ note: value })).toEqual({
+                    note: value,
+                });
+            }
+        });
+
+        it.each(Object.entries(BY_NAME_ONLY))(
+            'drops %s by its name alone',
+            (key, value) => {
+                expect(
+                    sanitizeLogData({ [key]: value, kept: 'plain' }),
+                ).toEqual({ [key]: '[redacted]', kept: 'plain' });
+            },
+        );
+
         it('drops what nests past the depth bound and anything that is not plain data', () => {
             expect(
                 sanitizeLogData({
@@ -1380,10 +1576,10 @@ describe('the GPOMA-2707 event shape', () => {
                 },
                 getPaymentId: () => undefined,
             });
-            for (let i = 0; i < 60; i += 1) {
+            for (let i = 0; i < 85; i += 1) {
                 t.ready({ paymentMethod: 'card' });
             }
-            // 50 sent, 10 refused by the lifecycle budget. Then one that
+            // 75 sent, 10 refused by the lifecycle budget. Then one that
             // fails to build, then one that goes out.
             const error = new GoPaySDKError('[GoPayBrowserSDK] x', {
                 errorCode: GoPayErrorCodes.WALLET_BUTTON_ERROR,
@@ -1392,8 +1588,8 @@ describe('the GPOMA-2707 event shape', () => {
             t.error(error);
             t.error(error);
 
-            expect(requests).toHaveLength(51);
-            expect((await eventAt(50)).seq).toBe(51);
+            expect(requests).toHaveLength(76);
+            expect((await eventAt(75)).seq).toBe(76);
         });
 
         it('gives each SDK instance its own id, and numbers the tab across them', async () => {
@@ -1533,6 +1729,27 @@ describe('the GPOMA-2707 event shape', () => {
             });
         });
 
+        it('does not time a remount torn down before its ready from the last mount’s ready', async () => {
+            const now = vi.spyOn(performance, 'now').mockReturnValue(100);
+            const t = telemetry();
+            const unmount = () =>
+                t.unmount({
+                    paymentMethod: 'card',
+                    sheetOpen: false,
+                    chargeInFlight: false,
+                });
+            t.ready({ paymentMethod: 'card' });
+            now.mockReturnValue(300);
+            unmount();
+            // Mounted again and torn down before the new form was ready.
+            now.mockReturnValue(900);
+            unmount();
+
+            const [, first, second] = await Promise.all([0, 1, 2].map(eventAt));
+            expect(first.duration).toBe(200);
+            expect(second.duration).toBeNull();
+        });
+
         it('names the card form PAYMENT_CARD, gw-ui’s key', async () => {
             telemetry().ready({ paymentMethod: 'card', flow: 'direct-charge' });
 
@@ -1576,7 +1793,7 @@ describe('the GPOMA-2707 event shape', () => {
 
         it('leaves the pagehide its leave when the redirect one was never sent', () => {
             const t = telemetry();
-            for (let i = 0; i < 50; i += 1) {
+            for (let i = 0; i < 75; i += 1) {
                 t.ready({ paymentMethod: 'card' });
             }
             const lifecycle = vi.spyOn(t, 'lifecycle');

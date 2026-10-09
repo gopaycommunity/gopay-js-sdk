@@ -63,6 +63,18 @@ const BUILTIN_ERROR_NAMES: ReadonlySet<string> = new Set([
     'URIError',
 ]);
 
+/** A code, not prose: uppercase, underscores, bounded. */
+const FOREIGN_CODE = /^[A-Z][A-Z0-9_]{0,63}$/;
+
+/**
+ * Whether a code another library put on its error can be reported as it is.
+ * `statusCode: 'Card declined by issuer'` is a sentence in a code's field, and
+ * a sentence is somebody else's free text.
+ */
+export function isForeignCode(value: unknown): value is string {
+    return typeof value === 'string' && FOREIGN_CODE.test(value);
+}
+
 /**
  * Name an error without quoting anything its author wrote.
  *

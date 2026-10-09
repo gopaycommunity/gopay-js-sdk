@@ -11,7 +11,8 @@ async function freshModules() {
     vi.resetModules();
     const lifecycle = await import('../../src/logging/page-lifecycle.js');
     const beacon = await import('../../src/logging/leave-beacon.js');
-    return { ...lifecycle, ...beacon };
+    const latch = await import('../../src/logging/leave-latch.js');
+    return { ...lifecycle, ...beacon, ...latch };
 }
 
 function spyTelemetry() {
@@ -227,6 +228,29 @@ describe('page lifecycle', () => {
             durationMs: 60_000,
         });
         expect(leaves()).toBe(2);
+    });
+
+    it('re-arms the leave of a page restored from a 3DS redirect within the latch', async () => {
+        // The bfcache return from an ACS: the redirect reported the leave and
+        // set the latch, so the pagehide into the cache stayed quiet. Back
+        // within the latch's 30 s, the restored visit's own end still needs
+        // its leave — which only a re-arm that also clears the latch gives.
+        const { registerPageLifecycle, registerLeaveBeacon, markLeft } =
+            await freshModules();
+        const t = spyTelemetry();
+        const leaves = () =>
+            t.lifecycle.mock.calls.filter(([type]) => type === 'leave').length;
+        registerLeaveBeacon(t as never);
+        registerPageLifecycle(t as never);
+
+        now.mockReturnValue(1_000);
+        markLeft();
+        globalThis.dispatchEvent(transition('pagehide', true));
+        now.mockReturnValue(11_000);
+        globalThis.dispatchEvent(transition('pageshow', true));
+        globalThis.dispatchEvent(transition('pagehide', false));
+
+        expect(leaves()).toBe(1);
     });
 
     it('does not take an ordinary page load for a restore', async () => {

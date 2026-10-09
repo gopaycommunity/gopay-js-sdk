@@ -1,4 +1,5 @@
 import { nowMs } from '@gopay-internal/core';
+import { THREE_DS_REDIRECT_TIMEOUT_MS } from '../modules/payments/three-ds-redirect.js';
 
 /**
  * Whether this page has already reported its `leave`.
@@ -13,13 +14,12 @@ import { nowMs } from '@gopay-internal/core';
  */
 
 /**
- * How long the redirect's leave stands in for the pagehide one. The same 30 s
- * the payments module gives a redirect to take the page away
- * (THREE_DS_REDIRECT_TIMEOUT_MS): a page still alive after that was not
- * navigated — a webview that dropped the redirect — and its real end, whenever
- * it comes, is a leave of its own.
+ * How long the redirect's leave stands in for the pagehide one: as long as the
+ * payments module gives a redirect to take the page away. A page still alive
+ * after that was not navigated — a webview that dropped the redirect — and its
+ * real end, whenever it comes, is a leave of its own.
  */
-const LATCH_MS = 30_000;
+const LATCH_MS = THREE_DS_REDIRECT_TIMEOUT_MS;
 
 let leftAt: number | undefined;
 

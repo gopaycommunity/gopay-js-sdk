@@ -3,7 +3,9 @@ import {
     type GoPayEnvironment,
     type GoPayHTTPError,
     type GoPaySDKError,
+    isForeignCode,
     LOGGER_URLS,
+    msSince,
     nowMs,
     safeErrorLabel,
     type Telemetry,
@@ -51,15 +53,9 @@ const METHOD_KEY = {
 
 type PaymentMethod = keyof typeof METHOD_KEY;
 
-/** `APPLE_PAY.<step>`; an unknown method keeps its own name rather than none. */
-function actionName(paymentMethod: string, step: string): string {
-    const key = METHOD_KEY[paymentMethod as PaymentMethod] ?? paymentMethod;
-    return `${key}.${step}`;
-}
-
-/** The schema's duration is whole milliseconds. */
-function msSince(start: number | undefined): number | null {
-    return start === undefined ? null : Math.round(nowMs() - start);
+/** `APPLE_PAY.<step>`. */
+function actionName(paymentMethod: PaymentMethod, step: string): string {
+    return `${METHOD_KEY[paymentMethod]}.${step}`;
 }
 
 /**
@@ -73,9 +69,13 @@ function msSince(start: number | undefined): number | null {
  * then silently drop the `leave` and the terminal charge — the events the
  * feature exists for, lost in exactly the flows most worth watching.
  *
- * The lifecycle side — init, attach, ready, submit, unmount, leave — is
- * bounded by design (a handful of markers per mount), so its own small budget
- * both caps a runaway and guarantees it can never be crowded out by traffic.
+ * The lifecycle side — init, attach, ready, rendered, submit, unmount, leave —
+ * is bounded by design (a handful of markers per mount), so its own small
+ * budget both caps a runaway and guarantees it can never be crowded out by
+ * traffic. The leave shares it with the markers that repeat per mount, so it
+ * is sized for an integrator that remounts in a loop, re-init style: a card
+ * mount spends three (ready, rendered, unmount), and 75 still has the leave
+ * after some 25 of them.
  *
  * Wallet steps sit apart from it. They repeat with the shopper rather than
  * with the mount: every tap that ends in a cancel is a begin and a cancel, and
@@ -93,7 +93,7 @@ function msSince(start: number | undefined): number | null {
  */
 const EVENT_BUDGET = {
     api_call: 200,
-    lifecycle: 50,
+    lifecycle: 75,
     step: 150,
     error: 50,
     page: 30,
@@ -356,14 +356,16 @@ function describeUnmount(sheetOpen: boolean, chargeInFlight: boolean): string {
  */
 export function describeFailure(error: unknown): string {
     if (error !== null && typeof error === 'object') {
-        if ('errorCode' in error && typeof error.errorCode === 'string') {
+        // Read only when they have a code's shape: a foreign object can put
+        // a sentence in either field, and that sentence is not ours to ship.
+        if ('errorCode' in error && isForeignCode(error.errorCode)) {
             return error.errorCode;
         }
         if ('status' in error && typeof error.status === 'number') {
             return `HTTP_${error.status}`;
         }
         // Google Pay rejects with a plain object carrying its own code.
-        if ('statusCode' in error && typeof error.statusCode === 'string') {
+        if ('statusCode' in error && isForeignCode(error.statusCode)) {
             return error.statusCode;
         }
     }
@@ -421,7 +423,7 @@ export type PageArrival = 'navigate' | 'reload' | 'back_forward' | 'prerender';
 export interface BrowserTelemetry extends Telemetry {
     lifecycle(
         navigationType: NavigationEvent['navigation_type'],
-        context?: { paymentMethod?: string; flow?: string },
+        context?: { flow?: string },
     ): void;
     /**
      * The page is about to be sent to a 3DS challenge.
@@ -680,8 +682,10 @@ export function createGwLoggerTelemetry(options: {
      * Uses `fetch` directly rather than the SDK's HTTP client: the client is the
      * thing being measured, so routing telemetry through it would emit an
      * api_call per api_call.
+     *
+     * True when the event was handed to `fetch`; false when it was refused or
+     * failed to build.
      */
-    /** True when the event was handed to `fetch`; false when it was refused or failed to build. */
     function post(budget: BudgetKind, build: () => GwLoggerEvent): boolean {
         try {
             if (spent[budget] >= EVENT_BUDGET[budget]) {
@@ -761,7 +765,6 @@ export function createGwLoggerTelemetry(options: {
                 // url.full is a navigation destination; these events describe
                 // this page, which origin already carries.
                 target: null,
-                payment_method: orUndefined(context?.paymentMethod),
                 flow: orUndefined(context?.flow),
             }));
         },
@@ -890,6 +893,10 @@ export function createGwLoggerTelemetry(options: {
         },
 
         unmount({ paymentMethod, sheetOpen, chargeInFlight }): void {
+            const since = readyAt[paymentMethod];
+            // The mount that ended took its ready with it: a remount torn down
+            // before its own ready must not be timed from this one's.
+            delete readyAt[paymentMethod];
             // The lifecycle budget, not the error one: this is a bounded
             // marker — a handful per mount — and it is emitted precisely
             // because a teardown is not a failure.
@@ -899,7 +906,7 @@ export function createGwLoggerTelemetry(options: {
                 // The function the integrator actually called, under the
                 // method it was called on.
                 function_name: actionName(paymentMethod, 'unmount'),
-                duration: msSince(readyAt[paymentMethod]),
+                duration: msSince(since),
                 return_value: describeUnmount(sheetOpen, chargeInFlight),
                 params: describeParams({
                     sheet_open: sheetOpen,

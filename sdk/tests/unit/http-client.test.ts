@@ -827,6 +827,58 @@ describe('HttpClient', () => {
         });
     });
 
+    // The commoner gap: Safari 16–17.3, Chrome 103–115 and Firefox 100–123
+    // have AbortSignal.timeout but not AbortSignal.any. A caller signal there
+    // has to take the hand-wired path too, or the request dies on a TypeError.
+    describe('on an engine with AbortSignal.timeout but without any', () => {
+        let realAny: typeof AbortSignal.any;
+
+        beforeEach(() => {
+            realAny = AbortSignal.any;
+            // biome-ignore lint/suspicious/noExplicitAny: simulating an older engine
+            (AbortSignal as any).any = undefined;
+        });
+
+        afterEach(() => {
+            AbortSignal.any = realAny;
+        });
+
+        it('still sends a request that carries the caller’s signal', async () => {
+            fetchMock.mockImplementation(async () =>
+                makeResponse({ ok: true }),
+            );
+            const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.tokenStore.set(storedTokens);
+            const caller = new AbortController();
+
+            await client.get('/data', { signal: caller.signal });
+            await client.postForm(
+                '/oauth2/token',
+                { grant_type: 'client_credentials' },
+                { signal: caller.signal },
+            );
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        it('forwards the caller’s abort', async () => {
+            let captured!: Request;
+            fetchMock.mockImplementation((req: Request) => {
+                captured = req;
+                return new Promise(() => {});
+            });
+            const client = createHttpClient({ baseUrl: 'https://example.com' });
+            client.tokenStore.set(storedTokens);
+            const caller = new AbortController();
+
+            void client.get('/data', { signal: caller.signal }).catch(() => {});
+            await Promise.resolve();
+            await Promise.resolve();
+            caller.abort();
+            expect(captured.signal.aborted).toBe(true);
+        });
+    });
+
     // -------------------------------------------------------------------------
     // Security: baseUrl scheme validation
     // -------------------------------------------------------------------------
