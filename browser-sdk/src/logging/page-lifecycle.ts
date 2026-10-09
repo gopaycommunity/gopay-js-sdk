@@ -65,15 +65,16 @@ let discardReported = false;
 /** How the document was reached is said once too, by the first SDK. */
 let arrivalReported = false;
 
-const ARRIVALS: readonly PageArrival[] = [
+/** Widened to `string` on purpose, so `has` takes the entry's raw type. */
+const ARRIVALS: ReadonlySet<string> = new Set<PageArrival>([
     'navigate',
     'reload',
     'back_forward',
     'prerender',
-];
+]);
 
 function isArrival(type: string): type is PageArrival {
-    return ARRIVALS.some((known) => known === type);
+    return ARRIVALS.has(type);
 }
 
 /**
