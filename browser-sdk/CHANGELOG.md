@@ -1,3 +1,16 @@
+## [1.10.5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.10.4...browser-sdk-1.10.5) (2026-10-12)
+
+
+### Bug Fixes
+
+* align browser telemetry with gw-ui and stop sending the shareable key GPOMA-2707 ([04998a4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/04998a479f83a8e69e578f9447ad6769ce7d4319))
+* keep request timeouts on browsers without AbortSignal.any GPOMA-2707 ([138a944](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/138a944ea02d7002c7001ba0b6ce6bf79bf7c2fb))
+* number telemetry per tab, report how the page was reached and when the card form rendered GPOMA-2707 ([eb81caf](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/eb81caf767d2de462670e6a7e24ed42eaa0773bc))
+* redact card fingerprint and expiry from logged bodies, keep wallet steps off the lifecycle budget GPOMA-2707 ([69b3762](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/69b37621bee3482ee62cd5533bd4b6fe77f1bb69))
+* redact JSON text bodies, grouped card numbers and every token pair, and pin the redaction in tests GPOMA-2707 ([c76edd9](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/c76edd9793425ca1a29ba960c3279aba7b1b74b8)), closes [#70](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/issue/70)
+* report page visibility, freeze, restore and discard around the checkout GPOMA-2707 ([2b81fc6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2b81fc674f2d203de3cda62f3ba1e2df4cb7f8c4))
+* resolve SonarCloud issue in the page arrival check GPOMA-2707 ([ebfa2d2](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ebfa2d299e3728412a552f155db802593511442d))
+
 ## [1.10.4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/browser-sdk-1.10.3...browser-sdk-1.10.4) (2026-10-07)
 
 
