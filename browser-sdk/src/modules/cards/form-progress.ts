@@ -295,7 +295,9 @@ export function createFormProgress() {
                     // submit()) cannot see.
                     invalid_submits: invalidSubmits,
                     errors_raised: errorsRaised,
-                    error_codes_seen: [...codesSeen].sort().join(','),
+                    error_codes_seen: [...codesSeen]
+                        .sort((a, b) => a.localeCompare(b))
+                        .join(','),
                     progress_at_end: progress
                         ? describeProgress(progress)
                         : null,
