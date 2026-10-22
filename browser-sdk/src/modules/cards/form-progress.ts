@@ -101,6 +101,16 @@ function describeProgress(progress: CardFormProgress): string {
     return FIELDS.map((field) => `${field}:${progress[field]}`).join(',');
 }
 
+/**
+ * What one step sends: the params for queries, and an overview for people —
+ * gw-logger stores it as `message`, the column read first. The detail stays
+ * in the params; the overview only says what kind of moment this was.
+ */
+interface CardFormStepReport {
+    params: Record<string, ParamValue>;
+    message: string;
+}
+
 /** The form before anyone touches it. */
 const UNTOUCHED: CardFormProgress = {
     pan: 'empty',
@@ -118,11 +128,12 @@ const roundMs = (ms: number | null): number | null =>
  * errors on show growing and shrinking as the customer types, validity
  * flipping — and almost none of it is news. What is: that they started, that
  * a problem appeared, that they tried to pay, that the card became complete.
- * Those are the steps this returns params for; everything else only feeds the
- * summary, which answers the same questions in one event for when the steps
- * did not all arrive.
+ * Those are the steps this reports; everything else only feeds the summary,
+ * which answers the same questions in one event for when the steps did not
+ * all arrive.
  *
- * Every input is a state, a code or a count. Nothing here sees a keystroke.
+ * Each report carries its params and a short overview of the moment. Every
+ * input is a state, a code or a count. Nothing here sees a keystroke.
  */
 export function createFormProgress() {
     let progress: CardFormProgress | null = null;
@@ -143,15 +154,14 @@ export function createFormProgress() {
 
     return {
         /**
-         * The params of `started`: the first report of a field that is no
-         * longer empty, once per mount, with the states it found. Null for
-         * every other change — those are typing, and only the state at the
-         * end is kept.
+         * `started`: the first report of a field that is no longer empty,
+         * once per mount, with the states it found. Null for every other
+         * change — those are typing, and only the state at the end is kept.
          */
         progress(
             next: CardFormProgress,
             sinceReady: number | null,
-        ): Record<string, ParamValue> | null {
+        ): CardFormStepReport | null {
             // Straight from empty to complete is a value that arrived whole:
             // an autofill or a paste, never digits typed one by one.
             const previous = progress ?? UNTOUCHED;
@@ -166,18 +176,23 @@ export function createFormProgress() {
             }
             started = true;
             startedMs = roundMs(sinceReady);
-            return { ...next, filled_at_once: jumped };
+            return {
+                params: { ...next, filled_at_once: jumped },
+                message: jumped
+                    ? 'started with autofill or paste'
+                    : 'started typing',
+            };
         },
 
         /**
-         * The params of `completed`: the first time the whole card is valid,
-         * once per mount. A form edited back to invalid and completed again
-         * is counted, not reported.
+         * `completed`: the first time the whole card is valid, once per
+         * mount. A form edited back to invalid and completed again is
+         * counted, not reported.
          */
         validity(
             nextValid: boolean,
             sinceReady: number | null,
-        ): Record<string, ParamValue> | null {
+        ): CardFormStepReport | null {
             if (valid && !nextValid) {
                 validityFlips += 1;
             }
@@ -187,27 +202,29 @@ export function createFormProgress() {
             }
             becameValid = true;
             firstValidMs = roundMs(sinceReady);
+            const sinceStarted =
+                firstValidMs === null || startedMs === null
+                    ? null
+                    : firstValidMs - startedMs;
             return {
-                since_started_ms:
-                    firstValidMs === null || startedMs === null
-                        ? null
-                        : firstValidMs - startedMs,
+                params: { since_started_ms: sinceStarted },
+                message: 'card complete',
             };
         },
 
         /**
-         * The params of `field-errors`, or null when nothing went wrong that
-         * was not already showing. A submit is always reported, clean or not:
-         * it is an attempt to pay. Otherwise only an error that was not on
-         * show before — a number that fails its check, a field left half
-         * done. Errors going away while the customer fixes them are progress,
-         * not problems, and older iframes repeating the same set on every
-         * keyup add nothing.
+         * `field-errors`, or null when nothing went wrong that was not
+         * already showing. A submit is always reported, clean or not: it is
+         * an attempt to pay. Otherwise only an error that was not on show
+         * before — a number that fails its check, a field left half done.
+         * Errors going away while the customer fixes them are progress, not
+         * problems, and older iframes repeating the same set on every keyup
+         * add nothing.
          */
         fieldErrors(
             errors: readonly CardFormFieldError[],
             trigger: CardFormErrorTrigger | undefined,
-        ): Record<string, ParamValue> | null {
+        ): CardFormStepReport | null {
             const current = new Set(
                 errors.map(({ field, code }) => `${field}:${code}`),
             );
@@ -223,42 +240,68 @@ export function createFormProgress() {
             if (trigger !== 'submit' && raised.length === 0) {
                 return null;
             }
+            let message = 'new field errors';
+            if (trigger === 'submit') {
+                message = errors.length > 0 ? 'submit errors' : 'submit ok';
+            }
             return {
-                errors: describeErrors(errors),
-                raised: raised.join(','),
-                count: errors.length,
-                trigger: trigger ?? null,
+                params: {
+                    errors: describeErrors(errors),
+                    raised: raised.join(','),
+                    count: errors.length,
+                    trigger: trigger ?? null,
+                },
+                message,
             };
         },
 
-        /** The params of a `submit-request` step. */
-        submitRequest(): Record<string, ParamValue> {
+        /** `submit-request`: the integrator's pay button. */
+        submitRequest(): CardFormStepReport {
             submitRequests += 1;
             if (!valid) {
                 invalidSubmitRequests += 1;
             }
-            return { valid };
+            return {
+                params: { valid },
+                message: valid
+                    ? 'pay pressed'
+                    : 'pay pressed with incomplete card',
+            };
         },
 
-        summary(): Record<string, ParamValue> {
+        /** `interaction`: the whole visit, ended the way `ended` says. */
+        summary(ended: string): CardFormStepReport {
+            let outcome = 'never started';
+            if (becameValid) {
+                outcome = 'completed';
+            } else if (started) {
+                outcome = 'not completed';
+            }
             return {
-                started_ms: startedMs,
-                filled_at_once: filledAtOnce,
-                became_valid: becameValid,
-                valid_at_end: valid,
-                first_valid_ms: firstValidMs,
-                // Valid and then not any more: a card edited after it was
-                // complete, which a customer who is unsure does.
-                validity_flips: validityFlips,
-                submit_requests: submitRequests,
-                invalid_submit_requests: invalidSubmitRequests,
-                // A submit the iframe's own button made with errors on show —
-                // the internal-mode answer to "pressed pay with half a card",
-                // which submit_requests (the integrator's submit()) cannot see.
-                invalid_submits: invalidSubmits,
-                errors_raised: errorsRaised,
-                error_codes_seen: [...codesSeen].sort().join(','),
-                progress_at_end: progress ? describeProgress(progress) : null,
+                params: {
+                    started_ms: startedMs,
+                    filled_at_once: filledAtOnce,
+                    became_valid: becameValid,
+                    valid_at_end: valid,
+                    first_valid_ms: firstValidMs,
+                    // Valid and then not any more: a card edited after it was
+                    // complete, which a customer who is unsure does.
+                    validity_flips: validityFlips,
+                    submit_requests: submitRequests,
+                    invalid_submit_requests: invalidSubmitRequests,
+                    // A submit the iframe's own button made with errors on
+                    // show — the internal-mode answer to "pressed pay with
+                    // half a card", which submit_requests (the integrator's
+                    // submit()) cannot see.
+                    invalid_submits: invalidSubmits,
+                    errors_raised: errorsRaised,
+                    error_codes_seen: [...codesSeen].sort().join(','),
+                    progress_at_end: progress
+                        ? describeProgress(progress)
+                        : null,
+                    ended,
+                },
+                message: `${ended}: ${outcome}`,
             };
         },
     };

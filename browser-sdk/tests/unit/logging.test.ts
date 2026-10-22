@@ -1959,7 +1959,7 @@ describe('the GPOMA-2722 loss accounting and card form steps', () => {
             flow: 'direct-charge',
             durationMs: 1234.6,
             params: { errors: 'cvv:required', count: 1, trigger: 'submit' },
-            returnValue: 'submit',
+            message: 'submit errors',
         });
 
         const event = await eventAt(0);
@@ -1968,7 +1968,8 @@ describe('the GPOMA-2722 loss accounting and card form steps', () => {
             function_name: 'PAYMENT_CARD.field-errors',
             duration: 1235,
             flow: 'direct-charge',
-            return_value: 'submit',
+            // gw-logger stores it as `message`, the column people read.
+            return_value: 'submit errors',
         });
         expect(JSON.parse(String(event.params))).toEqual({
             errors: 'cvv:required',
@@ -1985,6 +1986,7 @@ describe('the GPOMA-2722 loss accounting and card form steps', () => {
                 flow: 'return-payload',
                 durationMs: i,
                 params: { errors: `pan:pattern${i}` },
+                message: 'new field errors',
             });
         }
         t.cardFormStep({
@@ -1992,6 +1994,7 @@ describe('the GPOMA-2722 loss accounting and card form steps', () => {
             flow: 'return-payload',
             durationMs: 41,
             params: { pan: 'complete', expiry: 'empty', cvv: 'empty' },
+            message: 'started with autofill or paste',
         });
 
         const names = await Promise.all(
@@ -2011,6 +2014,7 @@ describe('the GPOMA-2722 loss accounting and card form steps', () => {
                 flow: 'return-payload',
                 durationMs: i,
                 params: { pan: 'partial' },
+                message: 'started typing',
             });
         }
         t.cardFormStep({
@@ -2018,7 +2022,7 @@ describe('the GPOMA-2722 loss accounting and card form steps', () => {
             flow: 'return-payload',
             durationMs: 70,
             params: { became_valid: false },
-            returnValue: 'leave',
+            message: 'leave: never started',
         });
 
         expect(requests).toHaveLength(61);

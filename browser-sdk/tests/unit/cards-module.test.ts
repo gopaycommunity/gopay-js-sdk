@@ -2385,7 +2385,7 @@ describe('how far the customer got with the card form is reported', () => {
                     flow: string;
                     durationMs: number | null;
                     params: Record<string, unknown>;
-                    returnValue?: string;
+                    message: string;
                 },
         );
     const stepsNamed = (name: string) => steps().filter((s) => s.step === name);
@@ -2408,6 +2408,7 @@ describe('how far the customer got with the card form is reported', () => {
         expect(stepsNamed('started')[0]).toMatchObject({
             flow: 'return-payload',
             durationMs: expect.any(Number),
+            message: 'started typing',
         });
         // Every later state is typing; it reaches only the summary.
         expect(steps()).toHaveLength(1);
@@ -2421,6 +2422,9 @@ describe('how far the customer got with the card form is reported', () => {
             pan: 'complete',
             filled_at_once: true,
         });
+        expect(stepsNamed('started')[0]?.message).toBe(
+            'started with autofill or paste',
+        );
     });
 
     it('drops a progress report outside the protocol rather than forwarding it', async () => {
@@ -2439,8 +2443,10 @@ describe('how far the customer got with the card form is reported', () => {
         send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: false });
         send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
 
-        expect(stepsNamed('completed').map((s) => s.params)).toEqual([
-            { since_started_ms: expect.any(Number) },
+        expect(
+            stepsNamed('completed').map((s) => [s.params, s.message]),
+        ).toEqual([
+            [{ since_started_ms: expect.any(Number) }, 'card complete'],
         ]);
         expect(stepsNamed('validity')).toEqual([]);
     });
@@ -2464,7 +2470,7 @@ describe('how far the customer got with the card form is reported', () => {
         report(errors(), 'submit');
 
         expect(
-            stepsNamed('field-errors').map((s) => [s.params, s.returnValue]),
+            stepsNamed('field-errors').map((s) => [s.params, s.message]),
         ).toEqual([
             [
                 {
@@ -2473,7 +2479,7 @@ describe('how far the customer got with the card form is reported', () => {
                     count: 1,
                     trigger: 'blur',
                 },
-                'blur',
+                'new field errors',
             ],
             [
                 {
@@ -2482,7 +2488,7 @@ describe('how far the customer got with the card form is reported', () => {
                     count: 2,
                     trigger: 'submit',
                 },
-                'submit',
+                'submit errors',
             ],
             [
                 {
@@ -2491,7 +2497,7 @@ describe('how far the customer got with the card form is reported', () => {
                     count: 2,
                     trigger: 'submit',
                 },
-                'submit',
+                'submit errors',
             ],
             [
                 {
@@ -2500,9 +2506,12 @@ describe('how far the customer got with the card form is reported', () => {
                     count: 2,
                     trigger: 'input',
                 },
-                'input',
+                'new field errors',
             ],
-            [{ errors: '', raised: '', count: 0, trigger: 'submit' }, 'submit'],
+            [
+                { errors: '', raised: '', count: 0, trigger: 'submit' },
+                'submit ok',
+            ],
         ]);
     });
 
@@ -2538,9 +2547,11 @@ describe('how far the customer got with the card form is reported', () => {
         send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
         ctrl.submit();
 
-        expect(stepsNamed('submit-request').map((s) => s.params)).toEqual([
-            { valid: false },
-            { valid: true },
+        expect(
+            stepsNamed('submit-request').map((s) => [s.params, s.message]),
+        ).toEqual([
+            [{ valid: false }, 'pay pressed with incomplete card'],
+            [{ valid: true }, 'pay pressed'],
         ]);
     });
 
@@ -2572,7 +2583,7 @@ describe('how far the customer got with the card form is reported', () => {
 
         const summaries = stepsNamed('interaction');
         expect(summaries).toHaveLength(1);
-        expect(summaries[0]?.returnValue).toBe('unmount');
+        expect(summaries[0]?.message).toBe('unmount: completed');
         expect(summaries[0]?.params).toEqual({
             started_ms: expect.any(Number),
             filled_at_once: true,
@@ -2614,6 +2625,9 @@ describe('how far the customer got with the card form is reported', () => {
                 ended: 'leave',
             },
         ]);
+        expect(stepsNamed('interaction')[0]?.message).toBe(
+            'leave: never started',
+        );
     });
 
     it('sends no summary for a form that never became ready', async () => {
@@ -2666,14 +2680,14 @@ describe('how far the customer got with the card form is reported', () => {
         // Timings are the SDK's own clock; everything else came through the
         // iframe and must be a state, a code or a count of events.
         const sent = JSON.stringify(
-            steps().map(({ step, params, returnValue }) => ({
+            steps().map(({ step, params, message }) => ({
                 step,
                 params: Object.fromEntries(
                     Object.entries(params).filter(
                         ([key]) => !key.endsWith('_ms'),
                     ),
                 ),
-                returnValue,
+                message,
             })),
         );
         expect(sent).not.toMatch(/4111|value|length|digits|\b1[56]\b/u);

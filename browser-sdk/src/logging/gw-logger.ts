@@ -679,8 +679,14 @@ export interface BrowserTelemetry extends Telemetry {
         flow: string;
         /** Since the form became ready; null before it did. */
         durationMs: number | null;
+        /** The codes and counts, for queries. */
         params: Record<string, ParamValue>;
-        returnValue?: string;
+        /**
+         * A short overview of the moment — `submit errors`, `card complete` —
+         * sent as `return_value`, which gw-logger stores as `message`, the
+         * column a person reads first. The detail is in `params`.
+         */
+        message: string;
     }): void;
 }
 
@@ -1056,7 +1062,7 @@ export function createGwLoggerTelemetry(options: {
             }));
         },
 
-        cardFormStep({ step, flow, durationMs, params, returnValue }): void {
+        cardFormStep({ step, flow, durationMs, params, message }): void {
             post(CARD_FORM_STEP_BUDGET[step], () => ({
                 ...base(),
                 event_type: 'js_event',
@@ -1064,7 +1070,7 @@ export function createGwLoggerTelemetry(options: {
                 // The schema's duration is an integer.
                 duration: durationMs === null ? null : Math.round(durationMs),
                 flow: orUndefined(flow),
-                return_value: returnValue,
+                return_value: message,
                 params: describeParams(params),
             }));
         },

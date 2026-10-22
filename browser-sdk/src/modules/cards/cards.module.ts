@@ -503,8 +503,7 @@ export function createCardsApi(
                     step: 'interaction',
                     flow: options.flow,
                     durationMs: sinceReady(),
-                    params: { ...formProgress.summary(), ended },
-                    returnValue: ended,
+                    ...formProgress.summary(ended),
                 });
             };
 
@@ -756,7 +755,7 @@ export function createCardsApi(
                         step: 'completed',
                         flow: options.flow,
                         durationMs: sinceReady(),
-                        params: completed,
+                        ...completed,
                     });
                 }
                 callIntegrator(
@@ -791,17 +790,16 @@ export function createCardsApi(
                 // show is the one thing that tells "pressed pay with half a
                 // card" from "never pressed" when the iframe's own button did
                 // the submitting.
-                const params = formProgress.fieldErrors(
+                const report = formProgress.fieldErrors(
                     projected,
                     projectTrigger(trigger),
                 );
-                if (params) {
+                if (report) {
                     telemetry.cardFormStep({
                         step: 'field-errors',
                         flow: options.flow,
                         durationMs: sinceReady(),
-                        params,
-                        returnValue: projectTrigger(trigger),
+                        ...report,
                     });
                 }
                 callIntegrator(
@@ -815,14 +813,14 @@ export function createCardsApi(
 
             const handleProgressMessage = (fields: unknown) => {
                 const projected = projectProgress(fields);
-                const params =
+                const report =
                     projected && formProgress.progress(projected, sinceReady());
-                if (params) {
+                if (report) {
                     telemetry.cardFormStep({
                         step: 'started',
                         flow: options.flow,
                         durationMs: sinceReady(),
-                        params,
+                        ...report,
                     });
                 }
             };
@@ -923,7 +921,7 @@ export function createCardsApi(
                             step: 'submit-request',
                             flow: options.flow,
                             durationMs: sinceReady(),
-                            params: formProgress.submitRequest(),
+                            ...formProgress.submitRequest(),
                         });
                         iframe.contentWindow?.postMessage(
                             {
