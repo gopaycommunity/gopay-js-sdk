@@ -30,8 +30,10 @@ definitions:
     #   GOPAY_PAYMENTS_V4_GOID, GOPAY_PAYMENTS_V4_SHAREABLE_KEY
     - step: &test-vitest
         name: Tests & coverage
-        runs-on:
-          - cypress
+        runs-on: &dev-2x
+          - self.hosted
+          - linux
+          - gopay.dev.2x
         caches:
           - yarn-global
           - yarn-cache
@@ -117,8 +119,7 @@ definitions:
     - step: &test-playwright
         name: Browser smoke test (IIFE)
         image: &playwright-image mcr.microsoft.com/playwright:v1.59.1-noble
-        runs-on:
-          - cypress
+        runs-on: *dev-2x
         caches:
           - yarn-global
           - yarn-cache
@@ -140,16 +141,14 @@ definitions:
     # from the run form instead of the workspace variable. Triggered by hand from any branch, so
     # a change to it can be exercised before the branch is merged.
     #
-    # runs-on: [cypress] for every target, not only the private ones. alpha* and the personal
-    # environments answer inside the dev network and that runner is the only executor reaching
-    # them; gate.test and sandbox are public and would run on Bitbucket's hosted runners too,
-    # but runs-on takes no variable, so one pipeline means one executor. Queueing on the shared
-    # slot is the accepted cost of not maintaining two pipelines.
+    # runs-on: *dev-2x for every target, not only the private ones. alpha* and the personal
+    # environments answer inside the dev network, reachable only from the self-hosted runners;
+    # gate.test and sandbox are public and would run on Bitbucket's hosted runners too,
+    # but runs-on takes no variable, so one pipeline means one executor.
     - step: &test-playwright-on-env
         name: Browser E2E against chosen env
         image: *playwright-image
-        runs-on:
-          - cypress
+        runs-on: *dev-2x
         caches:
           - yarn-global
           - yarn-cache
