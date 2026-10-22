@@ -90,6 +90,14 @@ function actionName(paymentMethod: PaymentMethod, step: string): string {
  * Page transitions too. They repeat with the shopper — every switch to the
  * banking app and back is two of them — so on the lifecycle budget a restless
  * shopper would silence the leave they exist to explain.
+ *
+ * And the card form's own steps — a field changing state, the form turning
+ * valid, a submit asked for — which move with the customer's typing. A field
+ * cleared and retyped spends several, so they stay off the step budget the
+ * wallets and the height summary share. Field errors get one of their own on
+ * top: the iframe reports them on every input, keyup and blur, and a customer
+ * fighting the expiry field must not spend the progress that says how far
+ * they got.
  */
 const EVENT_BUDGET = {
     api_call: 200,
@@ -97,6 +105,8 @@ const EVENT_BUDGET = {
     step: 150,
     error: 50,
     page: 30,
+    card_form: 60,
+    field_errors: 30,
 } as const;
 
 type BudgetKind = keyof typeof EVENT_BUDGET;
@@ -125,6 +135,18 @@ interface CommonFields {
     transaction_id: string;
     origin: string;
     duration: number | null;
+    /**
+     * The browser's clock when the event was built, `Date.now()`. gw-logger
+     * stores it as `event.created`; against `@timestamp` it is the customer's
+     * clock skew, which is what an encrypted card rejected as expired needs.
+     * Wall clock on purpose — the one place here that wants it.
+     */
+    client_time: number;
+    /**
+     * How many events this page has failed to send so far, absent while none
+     * has; see {@link countUnsent}.
+     */
+    unsent?: number;
 }
 
 /**
@@ -229,6 +251,33 @@ type GwLoggerEvent =
 /** Omitted rather than sent empty — see CommonFields. */
 function orUndefined(value: string | undefined): string | undefined {
     return value || undefined;
+}
+
+/**
+ * Events this page handed to `fetch` that never reached gw-logger: the
+ * request failed (offline, timed out, blocked — a WAF 403 arrives without CORS
+ * headers and rejects the same way) or came back non-2xx.
+ *
+ * A gap in `seq` alone cannot say where an event was lost. This count rides on
+ * the next event that does arrive, so a gap it covers was lost before
+ * gw-logger and any gap beyond it after. Cumulative rather than reset once
+ * reported: the event carrying it can be lost too, and a later one still
+ * holds the total.
+ *
+ * Per page, shared by every instance on it, which is what `seq` numbers. A
+ * page that goes away with failures still to report takes them with it — the
+ * same gap, just unexplained.
+ */
+let unsentCount = 0;
+
+function countUnsent(): void {
+    unsentCount += 1;
+}
+
+/** For tests: a fresh page. */
+// ts-unused-exports:disable-next-line
+export function resetUnsentCount(): void {
+    unsentCount = 0;
 }
 
 /**
@@ -604,7 +653,52 @@ export interface BrowserTelemetry extends Telemetry {
      * SDK built last.
      */
     page(context: { state: PageState; durationMs: number | null }): void;
+    /**
+     * How far the customer got with the card form, which the iframe reports
+     * and nothing else in the funnel can: `ready` and `submit` bracket the
+     * form, and "never typed", "typed and left" and "pressed pay with half a
+     * card" all fall silently between them.
+     *
+     * `PAYMENT_CARD.<step>`, timed from the form's ready:
+     * - `progress` — a field moved between empty, partial and complete;
+     * - `validity` — the whole form turned valid or invalid;
+     * - `field-errors` — the errors on show changed, with what raised them;
+     * - `submit-request` — the integrator called `submit()`;
+     * - `interaction` — once per visit beside the height summary, the answer
+     *   in one event for when the ones above did not all arrive.
+     *
+     * States, codes and counts only. The iframe never sends a value, a length
+     * or a digit count, and cards.module.ts projects every message onto the
+     * protocol's own values before it gets here.
+     */
+    cardFormStep(context: {
+        step: CardFormStep;
+        flow: string;
+        /** Since the form became ready; null before it did. */
+        durationMs: number | null;
+        params: Record<string, ParamValue>;
+        returnValue?: string;
+    }): void;
 }
+
+type CardFormStep =
+    | 'progress'
+    | 'validity'
+    | 'field-errors'
+    | 'submit-request'
+    | 'interaction';
+
+/**
+ * Where each card form step is counted. The summary sits with the height
+ * summary it accompanies, at most two per mount; the rest move with typing.
+ */
+const CARD_FORM_STEP_BUDGET: Record<CardFormStep, BudgetKind> = {
+    progress: 'card_form',
+    validity: 'card_form',
+    'submit-request': 'card_form',
+    'field-errors': 'field_errors',
+    interaction: 'step',
+};
 
 /**
  * The default for the module factories, mirroring core's `NO_TELEMETRY`: a call
@@ -627,6 +721,7 @@ export const NO_BROWSER_TELEMETRY: BrowserTelemetry = {
     cardFormRendered: () => {},
     cardFormHeight: () => {},
     page: () => {},
+    cardFormStep: () => {},
 };
 
 /**
@@ -656,6 +751,8 @@ export function createGwLoggerTelemetry(options: {
         step: 0,
         error: 0,
         page: 0,
+        card_form: 0,
+        field_errors: 0,
     };
     /**
      * One per SDK instance — what ties an init to the payments made through
@@ -714,7 +811,16 @@ export function createGwLoggerTelemetry(options: {
             });
             recordSequence(next);
             spent[budget] += 1;
-            void fetch(request).catch(() => {});
+            // The response is read for its status only. gw-logger answers 204
+            // to a payload it drops, so this counts the losses on the way —
+            // not the rejections, which are gw-logger's own metric.
+            void fetch(request)
+                .then((response) => {
+                    if (!response.ok) {
+                        countUnsent();
+                    }
+                })
+                .catch(countUnsent);
             return true;
         } catch {
             // A field getter throwing, or fetch missing on an older engine.
@@ -736,6 +842,8 @@ export function createGwLoggerTelemetry(options: {
             transaction_id: getTransactionId(),
             origin: safePageUrl(),
             duration: null,
+            client_time: Date.now(),
+            unsent: unsentCount > 0 ? unsentCount : undefined,
         };
     }
 
@@ -941,6 +1049,19 @@ export function createGwLoggerTelemetry(options: {
                 flow: orUndefined(flow),
                 return_value: phase,
                 params: describeParams(measurements),
+            }));
+        },
+
+        cardFormStep({ step, flow, durationMs, params, returnValue }): void {
+            post(CARD_FORM_STEP_BUDGET[step], () => ({
+                ...base(),
+                event_type: 'js_event',
+                function_name: actionName('card', step),
+                // The schema's duration is an integer.
+                duration: durationMs === null ? null : Math.round(durationMs),
+                flow: orUndefined(flow),
+                return_value: returnValue,
+                params: describeParams(params),
             }));
         },
 

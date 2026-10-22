@@ -446,6 +446,7 @@ describe('createCardsApi() — browser SDK', () => {
                 unmount: vi.fn(),
                 walletAvailability: vi.fn(),
                 walletStep: vi.fn(),
+                cardFormStep: vi.fn(),
                 cardFormRendered: vi.fn(),
                 cardFormHeight: vi.fn(),
             };
@@ -1670,6 +1671,7 @@ describe('the card form submit is reported', () => {
             submit: vi.fn(),
             cardFormRendered: vi.fn(),
             cardFormHeight: vi.fn(),
+            cardFormStep: vi.fn(),
         } as unknown as typeof telemetry;
     });
 
@@ -1832,6 +1834,7 @@ describe('the card form height is reported', () => {
             unmount: vi.fn(),
             walletAvailability: vi.fn(),
             walletStep: vi.fn(),
+            cardFormStep: vi.fn(),
             cardFormRendered: vi.fn(),
             cardFormHeight: vi.fn(),
         } as unknown as typeof telemetry;
@@ -2135,6 +2138,7 @@ describe('unmounting the card form is reported as an unmount, not an error', () 
             unmount: vi.fn(),
             walletAvailability: vi.fn(),
             walletStep: vi.fn(),
+            cardFormStep: vi.fn(),
             cardFormRendered: vi.fn(),
             cardFormHeight: vi.fn(),
         } as unknown as typeof telemetry;
@@ -2302,5 +2306,291 @@ describe('unmounting the card form is reported as an unmount, not an error', () 
             }),
         );
         expect(telemetry.unmount).not.toHaveBeenCalled();
+    });
+});
+
+describe('how far the customer got with the card form is reported', () => {
+    let client: ReturnType<typeof createHttpClient>;
+    let container: HTMLDivElement;
+    let telemetry: BrowserTelemetry & {
+        cardFormStep: ReturnType<typeof vi.fn>;
+    };
+    let mounted: { unmount: () => void }[];
+
+    beforeEach(() => {
+        vi.stubGlobal(
+            'fetch',
+            vi
+                .fn()
+                .mockResolvedValue(
+                    makeResponse({ card_form_url: CARD_FORM_URL }),
+                ),
+        );
+        client = makeClient();
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        telemetry = {
+            apiCall: vi.fn(),
+            error: vi.fn(),
+            lifecycle: vi.fn(),
+            ready: vi.fn(),
+            redirect: vi.fn(),
+            submit: vi.fn(),
+            walletUnavailable: vi.fn(),
+            integratorError: vi.fn(),
+            unmount: vi.fn(),
+            walletAvailability: vi.fn(),
+            walletStep: vi.fn(),
+            cardFormRendered: vi.fn(),
+            cardFormHeight: vi.fn(),
+            cardFormStep: vi.fn(),
+        } as unknown as typeof telemetry;
+        mounted = [];
+    });
+
+    afterEach(() => {
+        for (const ctrl of mounted) {
+            ctrl.unmount();
+        }
+        container.remove();
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    const mount = async (submitMode: 'internal' | 'external' = 'internal') => {
+        const cards = createCardsApi(client, () => null, telemetry);
+        const ctrl = await cards.mountCardForm(container, {
+            flow: 'return-payload',
+            submitMode,
+        });
+        ctrl.result.catch(() => {});
+        mounted.push(ctrl);
+        const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+        iframe.onload?.(new Event('load'));
+        const send = (data: unknown) => simulateMessage(iframe, data);
+        return { ctrl, iframe, send };
+    };
+
+    const progress = (pan: string, expiry: string, cvv: string) => ({
+        type: 'GOPAY_CARD_FORM_PROGRESS',
+        fields: { pan, expiry, cvv },
+    });
+
+    /** Every cardFormStep call, in order. */
+    const steps = () =>
+        telemetry.cardFormStep.mock.calls.map(
+            (call) =>
+                call[0] as {
+                    step: string;
+                    flow: string;
+                    durationMs: number | null;
+                    params: Record<string, unknown>;
+                    returnValue?: string;
+                },
+        );
+    const stepsNamed = (name: string) => steps().filter((s) => s.step === name);
+
+    it('reports each change of field state, and only a change', async () => {
+        const { send } = await mount();
+        send(progress('partial', 'empty', 'empty'));
+        send(progress('partial', 'empty', 'empty'));
+        send(progress('complete', 'partial', 'empty'));
+
+        expect(stepsNamed('progress').map((s) => s.params)).toEqual([
+            { pan: 'partial', expiry: 'empty', cvv: 'empty' },
+            { pan: 'complete', expiry: 'partial', cvv: 'empty' },
+        ]);
+        expect(stepsNamed('progress')[0]).toMatchObject({
+            flow: 'return-payload',
+            durationMs: expect.any(Number),
+        });
+    });
+
+    it('drops a progress report outside the protocol rather than forwarding it', async () => {
+        const { send } = await mount();
+        send(progress('partial', 'empty', '3 digits'));
+        send({ type: 'GOPAY_CARD_FORM_PROGRESS', fields: { pan: 'partial' } });
+        send({ type: 'GOPAY_CARD_FORM_PROGRESS', fields: null });
+
+        expect(stepsNamed('progress')).toEqual([]);
+    });
+
+    it('reports the form turning valid and invalid', async () => {
+        const { send } = await mount();
+        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
+        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
+        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: false });
+
+        expect(
+            stepsNamed('validity').map((s) => [s.params, s.returnValue]),
+        ).toEqual([
+            [{ valid: true }, 'valid'],
+            [{ valid: false }, 'invalid'],
+        ]);
+    });
+
+    it('reports field errors with what raised them, and a repeat only after a submit', async () => {
+        const { send } = await mount();
+        const errors = [{ field: 'cvv', code: 'required' }];
+        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors, trigger: 'blur' });
+        // An older iframe repeats the set on every keyup.
+        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors, trigger: 'input' });
+        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors, trigger: 'submit' });
+        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors, trigger: 'submit' });
+        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors: [], trigger: 'input' });
+
+        expect(
+            stepsNamed('field-errors').map((s) => [s.params, s.returnValue]),
+        ).toEqual([
+            [{ errors: 'cvv:required', count: 1, trigger: 'blur' }, 'blur'],
+            [{ errors: 'cvv:required', count: 1, trigger: 'submit' }, 'submit'],
+            [{ errors: 'cvv:required', count: 1, trigger: 'submit' }, 'submit'],
+            [{ errors: '', count: 0, trigger: 'input' }, 'input'],
+        ]);
+    });
+
+    it('does not report the absence of errors the form started with', async () => {
+        const { send } = await mount();
+        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors: [], trigger: 'input' });
+
+        expect(stepsNamed('field-errors')).toEqual([]);
+    });
+
+    it('still reports the errors of an iframe that names no trigger', async () => {
+        const { send } = await mount();
+        const errors = [{ field: 'pan', code: 'pattern' }];
+        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors });
+        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors });
+        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors, trigger: 'keyup' });
+
+        expect(stepsNamed('field-errors').map((s) => s.params)).toEqual([
+            { errors: 'pan:pattern', count: 1, trigger: null },
+        ]);
+    });
+
+    it('reports a submit asked for in external mode with the validity it was asked on', async () => {
+        const { ctrl, send } = await mount('external');
+        ctrl.submit();
+        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
+        ctrl.submit();
+
+        expect(stepsNamed('submit-request').map((s) => s.params)).toEqual([
+            { valid: false },
+            { valid: true },
+        ]);
+    });
+
+    it('summarises the visit once, beside the height summary, when the form goes away', async () => {
+        const { ctrl, send } = await mount('external');
+        send(progress('complete', 'complete', 'partial'));
+        send({
+            type: 'GOPAY_CARD_FORM_ERRORS',
+            errors: [{ field: 'cvv', code: 'pattern' }],
+            trigger: 'submit',
+        });
+        ctrl.submit();
+        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
+        send(progress('complete', 'complete', 'complete'));
+        ctrl.submit();
+        ctrl.unmount();
+        ctrl.unmount();
+
+        const summaries = stepsNamed('interaction');
+        expect(summaries).toHaveLength(1);
+        expect(summaries[0]?.returnValue).toBe('unmount');
+        expect(summaries[0]?.params).toEqual({
+            became_valid: true,
+            valid_at_end: true,
+            first_valid_ms: expect.any(Number),
+            submit_requests: 2,
+            invalid_submit_requests: 1,
+            invalid_submits: 1,
+            error_codes_seen: 'cvv:pattern',
+            progress_at_end: 'pan:complete,expiry:complete,cvv:complete',
+            ended: 'unmount',
+        });
+        expect(telemetry.cardFormHeight).toHaveBeenCalledTimes(1);
+    });
+
+    it('summarises a customer who leaves without typing anything', async () => {
+        const { ctrl } = await mount();
+        window.dispatchEvent(new Event('pagehide'));
+        ctrl.unmount();
+
+        expect(stepsNamed('interaction').map((s) => s.params)).toEqual([
+            {
+                became_valid: false,
+                valid_at_end: false,
+                first_valid_ms: null,
+                submit_requests: 0,
+                invalid_submit_requests: 0,
+                invalid_submits: 0,
+                error_codes_seen: '',
+                progress_at_end: null,
+                ended: 'leave',
+            },
+        ]);
+    });
+
+    it('sends no summary for a form that never became ready', async () => {
+        const cards = createCardsApi(client, () => null, telemetry);
+        const ctrl = await cards.mountCardForm(container, {
+            flow: 'return-payload',
+        });
+        ctrl.result.catch(() => {});
+        ctrl.unmount();
+
+        expect(stepsNamed('interaction')).toEqual([]);
+    });
+
+    it('never lets a value, a length or a digit count out, whatever the iframe sends', async () => {
+        const { ctrl, send } = await mount('external');
+        // A compromised or buggy iframe putting the card in every field it
+        // has. Only the protocol's states and codes may come out the other
+        // side.
+        send({
+            type: 'GOPAY_CARD_FORM_PROGRESS',
+            fields: {
+                pan: 'complete',
+                expiry: 'partial',
+                cvv: 'empty',
+                value: '4111111111111111',
+                length: 16,
+            },
+        });
+        send({
+            type: 'GOPAY_CARD_FORM_ERRORS',
+            errors: [
+                {
+                    field: 'pan',
+                    code: 'pattern',
+                    value: '4111111111111111',
+                    digits: 15,
+                },
+            ],
+            trigger: 'input',
+            value: '4111111111111111',
+        });
+        send({
+            type: 'GOPAY_CARD_FORM_VALIDITY',
+            isValid: true,
+            value: '4111111111111111',
+        });
+        ctrl.submit();
+        ctrl.unmount();
+
+        const sent = JSON.stringify(
+            steps().map(({ step, params, returnValue }) => ({
+                step,
+                params,
+                returnValue,
+            })),
+        );
+        expect(sent).not.toMatch(/4111|value|length|digits|\b1[56]\b/u);
+        expect(stepsNamed('progress')[0]?.params).toEqual({
+            pan: 'complete',
+            expiry: 'partial',
+            cvv: 'empty',
+        });
     });
 });

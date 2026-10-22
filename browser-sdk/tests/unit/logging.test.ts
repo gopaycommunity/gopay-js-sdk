@@ -8,6 +8,7 @@ import { createGoPayBrowserSDK } from '../../src/gopay-browser-sdk.js';
 import {
     createGwLoggerTelemetry,
     describeFailure,
+    resetUnsentCount,
 } from '../../src/logging/gw-logger.js';
 import { getTransactionId, newTraceId } from '../../src/logging/ids.js';
 import { registerLeaveBeacon } from '../../src/logging/leave-beacon.js';
@@ -19,10 +20,12 @@ import {
 
 /**
  * The event sequence is per tab and lives in sessionStorage, which jsdom keeps
- * for the whole file. Every test is a fresh tab.
+ * for the whole file; the count of unsent events is per page and lives in the
+ * module. Every test is a fresh tab on a fresh page.
  */
 beforeEach(() => {
     globalThis.sessionStorage?.clear();
+    resetUnsentCount();
 });
 
 /** What a body looks like once it has been through the serializer. */
@@ -332,9 +335,16 @@ describe('createGwLoggerTelemetry()', () => {
         // are excluded on purpose: a UUID contains a run of six digits often
         // enough that scanning them made this assertion fail at random. Every
         // other field is scanned, which is where a leaked payment id would
-        // actually land.
-        const { trace_id, transaction_id, sdk_instance_id, ...rest } =
-            await eventOf();
+        // actually land. client_time is the browser's clock, thirteen digits
+        // by construction.
+        const {
+            trace_id,
+            transaction_id,
+            sdk_instance_id,
+            client_time,
+            ...rest
+        } = await eventOf();
+        expect(client_time).toEqual(expect.any(Number));
         expect(sdk_instance_id).toBeDefined();
         expect(trace_id).toBeDefined();
         expect(transaction_id).toBeDefined();
@@ -836,6 +846,7 @@ describe('lifecycle events', () => {
         // event must never become.
         expect(Object.keys(await readEvent(0)).sort()).toEqual([
             'client_id',
+            'client_time',
             'duration',
             'element_id',
             'event_type',
@@ -1845,5 +1856,174 @@ describe('the GPOMA-2707 event shape', () => {
 
             expect(lifecycle).toHaveBeenCalledWith('leave');
         });
+    });
+});
+
+describe('the GPOMA-2722 loss accounting and card form steps', () => {
+    let requests: Request[];
+    let respond: () => Promise<Response>;
+
+    beforeEach(() => {
+        requests = [];
+        respond = () => Promise.resolve(new Response(null, { status: 204 }));
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((req: Request) => {
+                requests.push(req);
+                return respond();
+            }),
+        );
+        vi.stubGlobal('location', {
+            origin: 'https://eshop.example.com',
+            pathname: '/checkout',
+        });
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    const telemetry = () =>
+        createGwLoggerTelemetry({
+            environment: 'sandbox',
+            getClientId: () => 'client_test_123',
+            getPaymentId: () => undefined,
+        });
+    const eventAt = async (i: number) => {
+        const req = requests[i];
+        if (!req) {
+            throw new Error(`no request at ${i}`);
+        }
+        return (
+            JSON.parse(await req.clone().text()) as {
+                event: Record<string, unknown>;
+            }
+        ).event;
+    };
+    /** Lets the fetch promises of the events sent so far settle. */
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    it('stamps every event with the browser’s clock', async () => {
+        vi.spyOn(Date, 'now').mockReturnValue(1_761_120_000_123);
+        const t = telemetry();
+        t.lifecycle('init');
+        t.page({ state: 'hidden', durationMs: 10 });
+
+        expect((await eventAt(0)).client_time).toBe(1_761_120_000_123);
+        expect((await eventAt(1)).client_time).toBe(1_761_120_000_123);
+    });
+
+    it('says nothing about unsent events while every one arrived', async () => {
+        const t = telemetry();
+        t.lifecycle('init');
+        await settle();
+        t.lifecycle('navigate');
+
+        expect(await eventAt(1)).not.toHaveProperty('unsent');
+    });
+
+    it('counts a request that failed or was refused, and reports the total on the next event', async () => {
+        const t = telemetry();
+        respond = () => Promise.reject(new TypeError('Failed to fetch'));
+        t.lifecycle('init');
+        await settle();
+        // A WAF block with CORS headers, or any other non-2xx.
+        respond = () => Promise.resolve(new Response(null, { status: 403 }));
+        t.page({ state: 'hidden', durationMs: 1 });
+        await settle();
+        respond = () => Promise.resolve(new Response(null, { status: 204 }));
+        t.page({ state: 'visible', durationMs: 1 });
+        await settle();
+        t.page({ state: 'hidden', durationMs: 1 });
+
+        expect((await eventAt(1)).unsent).toBe(1);
+        expect((await eventAt(2)).unsent).toBe(2);
+        // Cumulative: the event carrying a count can be lost as well.
+        expect((await eventAt(3)).unsent).toBe(2);
+    });
+
+    it('counts the page, not the instance', async () => {
+        respond = () => Promise.reject(new TypeError('Failed to fetch'));
+        telemetry().lifecycle('init');
+        await settle();
+        respond = () => Promise.resolve(new Response(null, { status: 204 }));
+        telemetry().lifecycle('init');
+
+        expect((await eventAt(1)).unsent).toBe(1);
+    });
+
+    it('sends a card form step as PAYMENT_CARD.<step> with its params', async () => {
+        telemetry().cardFormStep({
+            step: 'field-errors',
+            flow: 'direct-charge',
+            durationMs: 1234.6,
+            params: { errors: 'cvv:required', count: 1, trigger: 'submit' },
+            returnValue: 'submit',
+        });
+
+        const event = await eventAt(0);
+        expect(event).toMatchObject({
+            event_type: 'js_event',
+            function_name: 'PAYMENT_CARD.field-errors',
+            duration: 1235,
+            flow: 'direct-charge',
+            return_value: 'submit',
+        });
+        expect(JSON.parse(String(event.params))).toEqual({
+            errors: 'cvv:required',
+            count: 1,
+            trigger: 'submit',
+        });
+    });
+
+    it('keeps field errors from spending the budget progress needs', async () => {
+        const t = telemetry();
+        for (let i = 0; i < 40; i += 1) {
+            t.cardFormStep({
+                step: 'field-errors',
+                flow: 'return-payload',
+                durationMs: i,
+                params: { errors: `pan:pattern${i}` },
+            });
+        }
+        t.cardFormStep({
+            step: 'progress',
+            flow: 'return-payload',
+            durationMs: 41,
+            params: { pan: 'complete', expiry: 'empty', cvv: 'empty' },
+        });
+
+        const names = await Promise.all(
+            requests.map(async (_, i) => (await eventAt(i)).function_name),
+        );
+        expect(
+            names.filter((n) => n === 'PAYMENT_CARD.field-errors'),
+        ).toHaveLength(30);
+        expect(names[names.length - 1]).toBe('PAYMENT_CARD.progress');
+    });
+
+    it('keeps the summary on the step budget, out of reach of typing', async () => {
+        const t = telemetry();
+        for (let i = 0; i < 70; i += 1) {
+            t.cardFormStep({
+                step: 'progress',
+                flow: 'return-payload',
+                durationMs: i,
+                params: { pan: 'partial' },
+            });
+        }
+        t.cardFormStep({
+            step: 'interaction',
+            flow: 'return-payload',
+            durationMs: 70,
+            params: { became_valid: false },
+            returnValue: 'leave',
+        });
+
+        expect(requests).toHaveLength(61);
+        expect((await eventAt(60)).function_name).toBe(
+            'PAYMENT_CARD.interaction',
+        );
     });
 });

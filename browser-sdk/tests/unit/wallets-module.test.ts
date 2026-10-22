@@ -185,6 +185,7 @@ function makeTelemetry() {
         unmount: vi.fn(),
         walletAvailability: vi.fn(),
         walletStep: vi.fn(),
+        cardFormStep: vi.fn(),
         cardFormRendered: vi.fn(),
         cardFormHeight: vi.fn(),
     };
@@ -2034,6 +2035,7 @@ describe('mountApplePayButton()', () => {
             unmount: vi.fn(),
             walletAvailability: vi.fn(),
             walletStep: vi.fn(),
+            cardFormStep: vi.fn(),
             cardFormRendered: vi.fn(),
             cardFormHeight: vi.fn(),
         });

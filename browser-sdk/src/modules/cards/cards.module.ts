@@ -25,6 +25,12 @@ import type {
     ThreeDSConfig,
 } from '../payments/payments.module.js';
 import { DEFAULT_CARD_FORM_THEME } from './card-form-themes.js';
+import {
+    createFormProgress,
+    isCardFormFieldError,
+    projectProgress,
+    projectTrigger,
+} from './form-progress.js';
 import { createHeightTracker } from './height-tracker.js';
 import type {
     CardFormConfig,
@@ -51,39 +57,6 @@ type CardFormEnd =
     | 'timeout'
     | 'unmount'
     | 'leave';
-
-/**
- * The protocol values `GOPAY_CARD_FORM_ERRORS` may carry. Declared as records
- * keyed by the union so that adding a field or a code to the synced
- * `iframe-protocol.ts` fails the build here instead of silently dropping those
- * errors on the floor — the iframe deploys ahead of the SDK. Lookup goes
- * through sets built from their keys: `in` would also match prototype keys
- * (`{ field: 'toString' }`), and `Object.hasOwn` needs ES2022.
- */
-const CARD_FORM_FIELDS: Record<CardFormField, true> = {
-    pan: true,
-    expiry: true,
-    cvv: true,
-};
-const CARD_FORM_ERROR_CODES: Record<CardFormErrorCode, true> = {
-    required: true,
-    pattern: true,
-};
-const FIELD_NAMES = new Set<string>(Object.keys(CARD_FORM_FIELDS));
-const ERROR_CODES = new Set<string>(Object.keys(CARD_FORM_ERROR_CODES));
-
-function isCardFormFieldError(entry: unknown): entry is CardFormFieldError {
-    if (typeof entry !== 'object' || entry === null) {
-        return false;
-    }
-    const { field, code } = entry as Record<string, unknown>;
-    return (
-        typeof field === 'string' &&
-        typeof code === 'string' &&
-        FIELD_NAMES.has(field) &&
-        ERROR_CODES.has(code)
-    );
-}
 
 export type {
     CardFormErrorCode,
@@ -482,6 +455,16 @@ export function createCardsApi(
                 heightsSince === null ? null : nowMs() - heightsSince;
 
             /**
+             * How far the customer got with the form; see form-progress.ts.
+             * Not reset by a back/forward-cache restore, unlike the heights:
+             * the fields keep what was typed, so the second visit's summary
+             * continues the first one's.
+             */
+            const formProgress = createFormProgress();
+            const sinceReady = () =>
+                readyAt === null ? null : nowMs() - readyAt;
+
+            /**
              * The frame itself, not just the messages: its width is what the
              * form wraps its text to, and a fractional one is what GWUICC4-24
              * turned out to be. The pixel ratio carries the browser zoom,
@@ -512,6 +495,16 @@ export function createCardsApi(
                     flow: options.flow,
                     durationMs: sinceVisit(),
                     measurements: { ...heightMeasurements(), ended },
+                });
+                // Beside it and on the same latch, so a mount has one answer
+                // to "did they fill it in, did they try to pay" per visit,
+                // however it ended.
+                telemetry.cardFormStep({
+                    step: 'interaction',
+                    flow: options.flow,
+                    durationMs: sinceReady(),
+                    params: { ...formProgress.summary(), ended },
+                    returnValue: ended,
                 });
             };
 
@@ -755,6 +748,14 @@ export function createCardsApi(
                     return;
                 }
                 isValid = nextValid;
+                formProgress.validity(isValid, sinceReady());
+                telemetry.cardFormStep({
+                    step: 'validity',
+                    flow: options.flow,
+                    durationMs: sinceReady(),
+                    params: { valid: isValid },
+                    returnValue: isValid ? 'valid' : 'invalid',
+                });
                 callIntegrator(
                     'onValidityChange',
                     () => {
@@ -764,7 +765,10 @@ export function createCardsApi(
                 );
             };
 
-            const handleFieldErrorsMessage = (errors: readonly unknown[]) => {
+            const handleFieldErrorsMessage = (
+                errors: readonly unknown[],
+                trigger: unknown,
+            ) => {
                 if (!Array.isArray(errors)) {
                     return;
                 }
@@ -779,6 +783,23 @@ export function createCardsApi(
                 const projected: CardFormFieldError[] = errors
                     .filter(isCardFormFieldError)
                     .map(({ field, code }) => ({ field, code }));
+                // Codes and what raised them, from the projection only. A
+                // submit with errors on show is the one thing that tells
+                // "pressed pay with half a card" from "never pressed" when the
+                // iframe's own button did the submitting.
+                const params = formProgress.fieldErrors(
+                    projected,
+                    projectTrigger(trigger),
+                );
+                if (params) {
+                    telemetry.cardFormStep({
+                        step: 'field-errors',
+                        flow: options.flow,
+                        durationMs: sinceReady(),
+                        params,
+                        returnValue: projectTrigger(trigger),
+                    });
+                }
                 callIntegrator(
                     'onFieldErrors',
                     () => {
@@ -786,6 +807,19 @@ export function createCardsApi(
                     },
                     telemetry,
                 );
+            };
+
+            const handleProgressMessage = (fields: unknown) => {
+                const projected = projectProgress(fields);
+                const params = projected && formProgress.progress(projected);
+                if (params) {
+                    telemetry.cardFormStep({
+                        step: 'progress',
+                        flow: options.flow,
+                        durationMs: sinceReady(),
+                        params,
+                    });
+                }
             };
 
             onMessage = async (event: MessageEvent<OutboundMessage>) => {
@@ -811,7 +845,13 @@ export function createCardsApi(
                         handleValidityMessage(event.data.isValid);
                         return;
                     case 'GOPAY_CARD_FORM_ERRORS':
-                        handleFieldErrorsMessage(event.data.errors);
+                        handleFieldErrorsMessage(
+                            event.data.errors,
+                            event.data.trigger,
+                        );
+                        return;
+                    case 'GOPAY_CARD_FORM_PROGRESS':
+                        handleProgressMessage(event.data.fields);
                         return;
                     case 'GOPAY_CARD_ENCRYPT_ERROR':
                         cleanup('encrypt-error');
@@ -870,6 +910,16 @@ export function createCardsApi(
                         );
                     }
                     if (iframeMounted) {
+                        // Before the message, with the validity the button
+                        // was pressed on: an invalid one makes the iframe
+                        // show errors, which arrive as field-errors with
+                        // trigger submit right after.
+                        telemetry.cardFormStep({
+                            step: 'submit-request',
+                            flow: options.flow,
+                            durationMs: sinceReady(),
+                            params: formProgress.submitRequest(),
+                        });
                         iframe.contentWindow?.postMessage(
                             {
                                 type: 'GOPAY_CARD_REQUEST_SUBMIT',

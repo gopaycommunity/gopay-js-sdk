@@ -268,6 +268,22 @@ export interface CardFormFieldError {
     code: CardFormErrorCode;
 }
 
+/**
+ * How far the payer has got with a field: nothing in it, something that is not
+ * yet a valid value, or a value the form would accept. A state, never a length
+ * or a digit count — `partial` covers one digit and a full number that fails
+ * Luhn alike.
+ */
+export type CardFormFieldState = 'empty' | 'partial' | 'complete';
+
+/**
+ * What ran the validation behind a `GOPAY_CARD_FORM_ERRORS`: a submit (the
+ * iframe's own button or `GOPAY_CARD_REQUEST_SUBMIT`), typing in a field, or the
+ * payer leaving one. Without it an incomplete card that was submitted and an
+ * error raised on leaving a field read the same.
+ */
+export type CardFormErrorTrigger = 'submit' | 'input' | 'blur';
+
 export type OutboundMessage =
     | { type: 'GOPAY_CARD_ENCRYPT_READY' }
     | { type: 'GOPAY_CARD_ENCRYPT_RESULT'; card_token: string }
@@ -280,8 +296,22 @@ export type OutboundMessage =
     /** Sent in external submit mode whenever the form's overall validity changes. */
     | { type: 'GOPAY_CARD_FORM_VALIDITY'; isValid: boolean }
     /**
-     * Sent on every validation run, so a parent that hides the built-in error
-     * text (`errorHidden`) can render its own. An empty array means the form
-     * validated cleanly.
+     * Sent whenever the errors shown change, and on every submit, so a parent
+     * that hides the built-in error text (`errorHidden`) can render its own. An
+     * empty array means the form validated cleanly. `trigger` is absent from
+     * iframes released before it was added (which also sent repeats), so a
+     * parent must not require it.
      */
-    | { type: 'GOPAY_CARD_FORM_ERRORS'; errors: CardFormFieldError[] };
+    | {
+          type: 'GOPAY_CARD_FORM_ERRORS';
+          errors: CardFormFieldError[];
+          trigger?: CardFormErrorTrigger;
+      }
+    /**
+     * Sent whenever any field changes state, with the state of all three. Never
+     * sent for a keystroke that leaves every state as it was.
+     */
+    | {
+          type: 'GOPAY_CARD_FORM_PROGRESS';
+          fields: Record<CardFormField, CardFormFieldState>;
+      };

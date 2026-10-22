@@ -19,6 +19,7 @@ describe('callIntegrator()', () => {
         unmount: vi.fn(),
         walletAvailability: vi.fn(),
         walletStep: vi.fn(),
+        cardFormStep: vi.fn(),
         cardFormRendered: vi.fn(),
         cardFormHeight: vi.fn(),
         page: vi.fn(),
