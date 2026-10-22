@@ -34,8 +34,6 @@ import {
 import { createHeightTracker } from './height-tracker.js';
 import type {
     CardFormConfig,
-    CardFormErrorCode,
-    CardFormField,
     CardFormFieldError,
     CardFormTheme,
     CardRequestSubmit,
@@ -61,11 +59,8 @@ type CardFormEnd =
 export type {
     CardFormErrorCode,
     CardFormField,
-    CardFormFieldError,
-    CardFormTheme,
-    LoadingState,
-    SpinnerConfig,
-};
+} from './iframe-protocol.js';
+export type { CardFormFieldError, CardFormTheme, LoadingState, SpinnerConfig };
 
 export interface CardFormController<R = EncryptedCardPayload> {
     /**
