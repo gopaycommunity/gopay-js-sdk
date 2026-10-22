@@ -1,3 +1,10 @@
+## [1.23.5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.4...1.23.5) (2026-10-22)
+
+
+### Bug Fixes
+
+* **ci:** move pipeline steps off the retired fe runners to gopay.dev.2x GPOMA-2779 ([2debe07](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/2debe076ce984df50c5579eb09736cc6203dac90))
+
 ## [1.23.4](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.3...1.23.4) (2026-10-12)
 
 
