@@ -101,76 +101,131 @@ function describeProgress(progress: CardFormProgress): string {
     return FIELDS.map((field) => `${field}:${progress[field]}`).join(',');
 }
 
+/** The form before anyone touches it. */
+const UNTOUCHED: CardFormProgress = {
+    pan: 'empty',
+    expiry: 'empty',
+    cvv: 'empty',
+};
+
+const roundMs = (ms: number | null): number | null =>
+    ms === null ? null : Math.round(ms);
+
 /**
- * What the customer did with one mounted card form, kept for telemetry only:
- * deciding which of the iframe's reports are news, and the summary that
- * answers "did they fill it in, did they try to pay" in one event when the
- * per-step ones did not all arrive.
+ * What the customer did with one mounted card form, kept for telemetry only.
+ *
+ * The iframe reports every change — each field moving between states, the
+ * errors on show growing and shrinking as the customer types, validity
+ * flipping — and almost none of it is news. What is: that they started, that
+ * a problem appeared, that they tried to pay, that the card became complete.
+ * Those are the steps this returns params for; everything else only feeds the
+ * summary, which answers the same questions in one event for when the steps
+ * did not all arrive.
  *
  * Every input is a state, a code or a count. Nothing here sees a keystroke.
  */
 export function createFormProgress() {
     let progress: CardFormProgress | null = null;
+    let started = false;
+    let startedMs: number | null = null;
+    let filledAtOnce = false;
     let valid = false;
     let becameValid = false;
     let firstValidMs: number | null = null;
+    let validityFlips = 0;
     let submitRequests = 0;
     let invalidSubmitRequests = 0;
     let invalidSubmits = 0;
-    // The form starts with nothing on show, so the iframe's first report of
-    // no errors — sent on the first keystroke — is not news either.
-    let lastErrors = '';
+    let errorsRaised = 0;
+    /** `field:code` of the errors on show; the form starts with none. */
+    let shown = new Set<string>();
     const codesSeen = new Set<string>();
 
     return {
         /**
-         * The params of a `progress` step, or null when nothing changed —
-         * the iframe sends only changes, an older one never sends this at all.
+         * The params of `started`: the first report of a field that is no
+         * longer empty, once per mount, with the states it found. Null for
+         * every other change — those are typing, and only the state at the
+         * end is kept.
          */
-        progress(next: CardFormProgress): Record<string, ParamValue> | null {
-            if (
-                progress &&
-                describeProgress(progress) === describeProgress(next)
-            ) {
+        progress(
+            next: CardFormProgress,
+            sinceReady: number | null,
+        ): Record<string, ParamValue> | null {
+            // Straight from empty to complete is a value that arrived whole:
+            // an autofill or a paste, never digits typed one by one.
+            const previous = progress ?? UNTOUCHED;
+            const jumped = FIELDS.some(
+                (field) =>
+                    previous[field] === 'empty' && next[field] === 'complete',
+            );
+            filledAtOnce ||= jumped;
+            progress = next;
+            if (started || FIELDS.every((field) => next[field] === 'empty')) {
                 return null;
             }
-            progress = next;
-            return { ...next };
-        },
-
-        /** `sinceReady` is when it happened; only the first valid is kept. */
-        validity(nextValid: boolean, sinceReady: number | null): void {
-            valid = nextValid;
-            if (nextValid && !becameValid) {
-                becameValid = true;
-                firstValidMs =
-                    sinceReady === null ? null : Math.round(sinceReady);
-            }
+            started = true;
+            startedMs = roundMs(sinceReady);
+            return { ...next, filled_at_once: jumped };
         },
 
         /**
-         * The params of a `field-errors` step, or null for a repeat. The
-         * same errors twice in a row are not news — older iframes sent them
-         * on every keyup — except after a submit, which is a fresh attempt
-         * whatever it shows.
+         * The params of `completed`: the first time the whole card is valid,
+         * once per mount. A form edited back to invalid and completed again
+         * is counted, not reported.
+         */
+        validity(
+            nextValid: boolean,
+            sinceReady: number | null,
+        ): Record<string, ParamValue> | null {
+            if (valid && !nextValid) {
+                validityFlips += 1;
+            }
+            valid = nextValid;
+            if (!nextValid || becameValid) {
+                return null;
+            }
+            becameValid = true;
+            firstValidMs = roundMs(sinceReady);
+            return {
+                since_started_ms:
+                    firstValidMs === null || startedMs === null
+                        ? null
+                        : firstValidMs - startedMs,
+            };
+        },
+
+        /**
+         * The params of `field-errors`, or null when nothing went wrong that
+         * was not already showing. A submit is always reported, clean or not:
+         * it is an attempt to pay. Otherwise only an error that was not on
+         * show before — a number that fails its check, a field left half
+         * done. Errors going away while the customer fixes them are progress,
+         * not problems, and older iframes repeating the same set on every
+         * keyup add nothing.
          */
         fieldErrors(
             errors: readonly CardFormFieldError[],
             trigger: CardFormErrorTrigger | undefined,
         ): Record<string, ParamValue> | null {
-            const described = describeErrors(errors);
-            for (const { field, code } of errors) {
-                codesSeen.add(`${field}:${code}`);
+            const current = new Set(
+                errors.map(({ field, code }) => `${field}:${code}`),
+            );
+            const raised = [...current].filter((key) => !shown.has(key));
+            shown = current;
+            errorsRaised += raised.length;
+            for (const key of raised) {
+                codesSeen.add(key);
             }
             if (trigger === 'submit' && errors.length > 0) {
                 invalidSubmits += 1;
             }
-            if (trigger !== 'submit' && described === lastErrors) {
+            if (trigger !== 'submit' && raised.length === 0) {
                 return null;
             }
-            lastErrors = described;
             return {
-                errors: described,
+                errors: describeErrors(errors),
+                raised: raised.join(','),
                 count: errors.length,
                 trigger: trigger ?? null,
             };
@@ -187,15 +242,21 @@ export function createFormProgress() {
 
         summary(): Record<string, ParamValue> {
             return {
+                started_ms: startedMs,
+                filled_at_once: filledAtOnce,
                 became_valid: becameValid,
                 valid_at_end: valid,
                 first_valid_ms: firstValidMs,
+                // Valid and then not any more: a card edited after it was
+                // complete, which a customer who is unsure does.
+                validity_flips: validityFlips,
                 submit_requests: submitRequests,
                 invalid_submit_requests: invalidSubmitRequests,
                 // A submit the iframe's own button made with errors on show —
                 // the internal-mode answer to "pressed pay with half a card",
                 // which submit_requests (the integrator's submit()) cannot see.
                 invalid_submits: invalidSubmits,
+                errors_raised: errorsRaised,
                 error_codes_seen: [...codesSeen].sort().join(','),
                 progress_at_end: progress ? describeProgress(progress) : null,
             };

@@ -2390,19 +2390,36 @@ describe('how far the customer got with the card form is reported', () => {
         );
     const stepsNamed = (name: string) => steps().filter((s) => s.step === name);
 
-    it('reports each change of field state, and only a change', async () => {
+    it('reports the start once, with the states it found', async () => {
         const { send } = await mount();
-        send(progress('partial', 'empty', 'empty'));
+        send(progress('empty', 'empty', 'empty'));
         send(progress('partial', 'empty', 'empty'));
         send(progress('complete', 'partial', 'empty'));
+        send(progress('complete', 'complete', 'complete'));
 
-        expect(stepsNamed('progress').map((s) => s.params)).toEqual([
-            { pan: 'partial', expiry: 'empty', cvv: 'empty' },
-            { pan: 'complete', expiry: 'partial', cvv: 'empty' },
+        expect(stepsNamed('started').map((s) => s.params)).toEqual([
+            {
+                pan: 'partial',
+                expiry: 'empty',
+                cvv: 'empty',
+                filled_at_once: false,
+            },
         ]);
-        expect(stepsNamed('progress')[0]).toMatchObject({
+        expect(stepsNamed('started')[0]).toMatchObject({
             flow: 'return-payload',
             durationMs: expect.any(Number),
+        });
+        // Every later state is typing; it reaches only the summary.
+        expect(steps()).toHaveLength(1);
+    });
+
+    it('marks a start that arrived whole as filled at once', async () => {
+        const { send } = await mount();
+        send(progress('complete', 'empty', 'empty'));
+
+        expect(stepsNamed('started')[0]?.params).toMatchObject({
+            pan: 'complete',
+            filled_at_once: true,
         });
     });
 
@@ -2412,59 +2429,106 @@ describe('how far the customer got with the card form is reported', () => {
         send({ type: 'GOPAY_CARD_FORM_PROGRESS', fields: { pan: 'partial' } });
         send({ type: 'GOPAY_CARD_FORM_PROGRESS', fields: null });
 
-        expect(stepsNamed('progress')).toEqual([]);
+        expect(stepsNamed('started')).toEqual([]);
     });
 
-    it('reports the form turning valid and invalid', async () => {
+    it('reports the card completed once, with how long it took from the start', async () => {
         const { send } = await mount();
-        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
+        send(progress('partial', 'empty', 'empty'));
         send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
         send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: false });
+        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
 
-        expect(
-            stepsNamed('validity').map((s) => [s.params, s.returnValue]),
-        ).toEqual([
-            [{ valid: true }, 'valid'],
-            [{ valid: false }, 'invalid'],
+        expect(stepsNamed('completed').map((s) => s.params)).toEqual([
+            { since_started_ms: expect.any(Number) },
         ]);
+        expect(stepsNamed('validity')).toEqual([]);
     });
 
-    it('reports field errors with what raised them, and a repeat only after a submit', async () => {
+    it('reports field errors only for a submit or a problem that was not showing', async () => {
         const { send } = await mount();
-        const errors = [{ field: 'cvv', code: 'required' }];
-        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors, trigger: 'blur' });
-        // An older iframe repeats the set on every keyup.
-        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors, trigger: 'input' });
-        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors, trigger: 'submit' });
-        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors, trigger: 'submit' });
-        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors: [], trigger: 'input' });
+        const errors = (...entries: [string, string][]) =>
+            entries.map(([field, code]) => ({ field, code }));
+        const report = (list: unknown, trigger: string) =>
+            send({ type: 'GOPAY_CARD_FORM_ERRORS', errors: list, trigger });
+
+        report(errors(['pan', 'pattern']), 'blur');
+        // The same problem again, and then fixed: nothing new went wrong.
+        report(errors(['pan', 'pattern']), 'input');
+        report(errors(), 'input');
+        // Every submit is an attempt to pay, the same errors or not.
+        report(errors(['pan', 'pattern'], ['cvv', 'required']), 'submit');
+        report(errors(['pan', 'pattern'], ['cvv', 'required']), 'submit');
+        report(errors(['cvv', 'required']), 'input');
+        report(errors(['cvv', 'required'], ['expiry', 'pattern']), 'input');
+        report(errors(), 'submit');
 
         expect(
             stepsNamed('field-errors').map((s) => [s.params, s.returnValue]),
         ).toEqual([
-            [{ errors: 'cvv:required', count: 1, trigger: 'blur' }, 'blur'],
-            [{ errors: 'cvv:required', count: 1, trigger: 'submit' }, 'submit'],
-            [{ errors: 'cvv:required', count: 1, trigger: 'submit' }, 'submit'],
-            [{ errors: '', count: 0, trigger: 'input' }, 'input'],
+            [
+                {
+                    errors: 'pan:pattern',
+                    raised: 'pan:pattern',
+                    count: 1,
+                    trigger: 'blur',
+                },
+                'blur',
+            ],
+            [
+                {
+                    errors: 'pan:pattern,cvv:required',
+                    raised: 'pan:pattern,cvv:required',
+                    count: 2,
+                    trigger: 'submit',
+                },
+                'submit',
+            ],
+            [
+                {
+                    errors: 'pan:pattern,cvv:required',
+                    raised: '',
+                    count: 2,
+                    trigger: 'submit',
+                },
+                'submit',
+            ],
+            [
+                {
+                    errors: 'cvv:required,expiry:pattern',
+                    raised: 'expiry:pattern',
+                    count: 2,
+                    trigger: 'input',
+                },
+                'input',
+            ],
+            [{ errors: '', raised: '', count: 0, trigger: 'submit' }, 'submit'],
         ]);
     });
 
     it('does not report the absence of errors the form started with', async () => {
         const { send } = await mount();
+        send({ type: 'GOPAY_CARD_FORM_ERRORS', errors: [], trigger: 'blur' });
         send({ type: 'GOPAY_CARD_FORM_ERRORS', errors: [], trigger: 'input' });
 
         expect(stepsNamed('field-errors')).toEqual([]);
     });
 
-    it('still reports the errors of an iframe that names no trigger', async () => {
+    it('still reports the new errors of an iframe that names no trigger', async () => {
         const { send } = await mount();
         const errors = [{ field: 'pan', code: 'pattern' }];
+        // Older iframes repeat the set on every keyup.
         send({ type: 'GOPAY_CARD_FORM_ERRORS', errors });
         send({ type: 'GOPAY_CARD_FORM_ERRORS', errors });
         send({ type: 'GOPAY_CARD_FORM_ERRORS', errors, trigger: 'keyup' });
 
         expect(stepsNamed('field-errors').map((s) => s.params)).toEqual([
-            { errors: 'pan:pattern', count: 1, trigger: null },
+            {
+                errors: 'pan:pattern',
+                raised: 'pan:pattern',
+                count: 1,
+                trigger: null,
+            },
         ]);
     });
 
@@ -2482,15 +2546,26 @@ describe('how far the customer got with the card form is reported', () => {
 
     it('summarises the visit once, beside the height summary, when the form goes away', async () => {
         const { ctrl, send } = await mount('external');
+        send({
+            type: 'GOPAY_CARD_FORM_ERRORS',
+            errors: [
+                { field: 'pan', code: 'required' },
+                { field: 'expiry', code: 'required' },
+                { field: 'cvv', code: 'required' },
+            ],
+            trigger: 'submit',
+        });
         send(progress('complete', 'complete', 'partial'));
         send({
             type: 'GOPAY_CARD_FORM_ERRORS',
             errors: [{ field: 'cvv', code: 'pattern' }],
-            trigger: 'submit',
+            trigger: 'blur',
         });
         ctrl.submit();
-        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
         send(progress('complete', 'complete', 'complete'));
+        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
+        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: false });
+        send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
         ctrl.submit();
         ctrl.unmount();
         ctrl.unmount();
@@ -2499,13 +2574,18 @@ describe('how far the customer got with the card form is reported', () => {
         expect(summaries).toHaveLength(1);
         expect(summaries[0]?.returnValue).toBe('unmount');
         expect(summaries[0]?.params).toEqual({
+            started_ms: expect.any(Number),
+            filled_at_once: true,
             became_valid: true,
             valid_at_end: true,
             first_valid_ms: expect.any(Number),
+            validity_flips: 1,
             submit_requests: 2,
             invalid_submit_requests: 1,
             invalid_submits: 1,
-            error_codes_seen: 'cvv:pattern',
+            errors_raised: 4,
+            error_codes_seen:
+                'cvv:pattern,cvv:required,expiry:required,pan:required',
             progress_at_end: 'pan:complete,expiry:complete,cvv:complete',
             ended: 'unmount',
         });
@@ -2519,12 +2599,16 @@ describe('how far the customer got with the card form is reported', () => {
 
         expect(stepsNamed('interaction').map((s) => s.params)).toEqual([
             {
+                started_ms: null,
+                filled_at_once: false,
                 became_valid: false,
                 valid_at_end: false,
                 first_valid_ms: null,
+                validity_flips: 0,
                 submit_requests: 0,
                 invalid_submit_requests: 0,
                 invalid_submits: 0,
+                errors_raised: 0,
                 error_codes_seen: '',
                 progress_at_end: null,
                 ended: 'leave',
@@ -2579,18 +2663,25 @@ describe('how far the customer got with the card form is reported', () => {
         ctrl.submit();
         ctrl.unmount();
 
+        // Timings are the SDK's own clock; everything else came through the
+        // iframe and must be a state, a code or a count of events.
         const sent = JSON.stringify(
             steps().map(({ step, params, returnValue }) => ({
                 step,
-                params,
+                params: Object.fromEntries(
+                    Object.entries(params).filter(
+                        ([key]) => !key.endsWith('_ms'),
+                    ),
+                ),
                 returnValue,
             })),
         );
         expect(sent).not.toMatch(/4111|value|length|digits|\b1[56]\b/u);
-        expect(stepsNamed('progress')[0]?.params).toEqual({
+        expect(stepsNamed('started')[0]?.params).toEqual({
             pan: 'complete',
             expiry: 'partial',
             cvv: 'empty',
+            filled_at_once: true,
         });
     });
 });

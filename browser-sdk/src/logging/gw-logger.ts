@@ -91,13 +91,12 @@ function actionName(paymentMethod: PaymentMethod, step: string): string {
  * banking app and back is two of them — so on the lifecycle budget a restless
  * shopper would silence the leave they exist to explain.
  *
- * And the card form's own steps — a field changing state, the form turning
- * valid, a submit asked for — which move with the customer's typing. A field
- * cleared and retyped spends several, so they stay off the step budget the
- * wallets and the height summary share. Field errors get one of their own on
- * top: the iframe reports them on every input, keyup and blur, and a customer
- * fighting the expiry field must not spend the progress that says how far
- * they got.
+ * And the card form's own steps — started, completed, a submit asked for —
+ * which are a handful per mount but repeat with a form remounted in a loop,
+ * so they stay off the step budget the wallets and the height summary share.
+ * Field errors get one of their own on top: they repeat with a customer who
+ * keeps getting the card wrong, and that customer must not spend the
+ * `completed` that says whether they got there in the end.
  */
 const EVENT_BUDGET = {
     api_call: 200,
@@ -659,13 +658,17 @@ export interface BrowserTelemetry extends Telemetry {
      * form, and "never typed", "typed and left" and "pressed pay with half a
      * card" all fall silently between them.
      *
-     * `PAYMENT_CARD.<step>`, timed from the form's ready:
-     * - `progress` — a field moved between empty, partial and complete;
-     * - `validity` — the whole form turned valid or invalid;
-     * - `field-errors` — the errors on show changed, with what raised them;
+     * `PAYMENT_CARD.<step>`, timed from the form's ready, and only the moments
+     * that say something — not every change the iframe reports:
+     * - `started` — once, the first field that is no longer empty, with
+     *   `filled_at_once` for an autofill or a paste;
+     * - `field-errors` — a submit, clean or not, or an error that was not on
+     *   show before, with what raised it;
+     * - `completed` — once, the first time the whole card is valid;
      * - `submit-request` — the integrator called `submit()`;
-     * - `interaction` — once per visit beside the height summary, the answer
-     *   in one event for when the ones above did not all arrive.
+     * - `interaction` — once per visit beside the height summary: the same
+     *   answers, with the counts of what was not reported on its own, for when
+     *   the steps above did not all arrive.
      *
      * States, codes and counts only. The iframe never sends a value, a length
      * or a digit count, and cards.module.ts projects every message onto the
@@ -682,19 +685,20 @@ export interface BrowserTelemetry extends Telemetry {
 }
 
 type CardFormStep =
-    | 'progress'
-    | 'validity'
+    | 'started'
+    | 'completed'
     | 'field-errors'
     | 'submit-request'
     | 'interaction';
 
 /**
  * Where each card form step is counted. The summary sits with the height
- * summary it accompanies, at most two per mount; the rest move with typing.
+ * summary it accompanies, at most two per mount; the rest are a handful per
+ * mount, field errors aside, which repeat with a customer who keeps failing.
  */
 const CARD_FORM_STEP_BUDGET: Record<CardFormStep, BudgetKind> = {
-    progress: 'card_form',
-    validity: 'card_form',
+    started: 'card_form',
+    completed: 'card_form',
     'submit-request': 'card_form',
     'field-errors': 'field_errors',
     interaction: 'step',

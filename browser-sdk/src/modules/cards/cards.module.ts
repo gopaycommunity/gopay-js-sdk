@@ -748,14 +748,17 @@ export function createCardsApi(
                     return;
                 }
                 isValid = nextValid;
-                formProgress.validity(isValid, sinceReady());
-                telemetry.cardFormStep({
-                    step: 'validity',
-                    flow: options.flow,
-                    durationMs: sinceReady(),
-                    params: { valid: isValid },
-                    returnValue: isValid ? 'valid' : 'invalid',
-                });
+                // Only the first time the card is complete; later flips are
+                // the summary's.
+                const completed = formProgress.validity(isValid, sinceReady());
+                if (completed) {
+                    telemetry.cardFormStep({
+                        step: 'completed',
+                        flow: options.flow,
+                        durationMs: sinceReady(),
+                        params: completed,
+                    });
+                }
                 callIntegrator(
                     'onValidityChange',
                     () => {
@@ -783,10 +786,11 @@ export function createCardsApi(
                 const projected: CardFormFieldError[] = errors
                     .filter(isCardFormFieldError)
                     .map(({ field, code }) => ({ field, code }));
-                // Codes and what raised them, from the projection only. A
-                // submit with errors on show is the one thing that tells
-                // "pressed pay with half a card" from "never pressed" when the
-                // iframe's own button did the submitting.
+                // Codes and what raised them, from the projection only, and
+                // only for a submit or a new problem. A submit with errors on
+                // show is the one thing that tells "pressed pay with half a
+                // card" from "never pressed" when the iframe's own button did
+                // the submitting.
                 const params = formProgress.fieldErrors(
                     projected,
                     projectTrigger(trigger),
@@ -811,10 +815,11 @@ export function createCardsApi(
 
             const handleProgressMessage = (fields: unknown) => {
                 const projected = projectProgress(fields);
-                const params = projected && formProgress.progress(projected);
+                const params =
+                    projected && formProgress.progress(projected, sinceReady());
                 if (params) {
                     telemetry.cardFormStep({
-                        step: 'progress',
+                        step: 'started',
                         flow: options.flow,
                         durationMs: sinceReady(),
                         params,

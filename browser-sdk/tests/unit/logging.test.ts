@@ -1977,7 +1977,7 @@ describe('the GPOMA-2722 loss accounting and card form steps', () => {
         });
     });
 
-    it('keeps field errors from spending the budget progress needs', async () => {
+    it('keeps field errors from spending the budget started and completed need', async () => {
         const t = telemetry();
         for (let i = 0; i < 40; i += 1) {
             t.cardFormStep({
@@ -1988,7 +1988,7 @@ describe('the GPOMA-2722 loss accounting and card form steps', () => {
             });
         }
         t.cardFormStep({
-            step: 'progress',
+            step: 'started',
             flow: 'return-payload',
             durationMs: 41,
             params: { pan: 'complete', expiry: 'empty', cvv: 'empty' },
@@ -2000,14 +2000,14 @@ describe('the GPOMA-2722 loss accounting and card form steps', () => {
         expect(
             names.filter((n) => n === 'PAYMENT_CARD.field-errors'),
         ).toHaveLength(30);
-        expect(names[names.length - 1]).toBe('PAYMENT_CARD.progress');
+        expect(names[names.length - 1]).toBe('PAYMENT_CARD.started');
     });
 
-    it('keeps the summary on the step budget, out of reach of typing', async () => {
+    it('keeps the summary on the step budget, out of reach of a remount loop', async () => {
         const t = telemetry();
         for (let i = 0; i < 70; i += 1) {
             t.cardFormStep({
-                step: 'progress',
+                step: 'started',
                 flow: 'return-payload',
                 durationMs: i,
                 params: { pan: 'partial' },
