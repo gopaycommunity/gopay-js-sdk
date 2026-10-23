@@ -1,4 +1,8 @@
 import { execSync } from 'node:child_process';
+import {
+    assertPublicReleaseNotes,
+    publicReleaseNotesWriterOpts,
+} from '../scripts/release-notes.mjs';
 
 /** @type {import('semantic-release').GlobalConfig} */
 export default {
@@ -48,8 +52,13 @@ export default {
             },
         ],
 
-        // Generate release notes from all commits since the last tag.
-        '@semantic-release/release-notes-generator',
+        // Generate release notes from all commits since the last tag. Links point at the public
+        // GitHub mirror, not at repositoryUrl (Bitbucket) — see scripts/release-notes.mjs.
+        [
+            '@semantic-release/release-notes-generator',
+            { writerOpts: publicReleaseNotesWriterOpts },
+        ],
+        [assertPublicReleaseNotes],
 
         // Update CHANGELOG.md
         [

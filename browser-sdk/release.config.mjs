@@ -1,5 +1,9 @@
 import { execSync } from 'node:child_process';
 import { analyzeCommits } from 'semantic-release-monorepo';
+import {
+    assertPublicReleaseNotes,
+    publicReleaseNotesWriterOpts,
+} from '../scripts/release-notes.mjs';
 
 /** @type {import('semantic-release').GlobalConfig} */
 export default {
@@ -43,7 +47,13 @@ export default {
         // Generate release notes (uses all commits since last tag — see note below)
         // Note: release notes may include commits from sdk/ or internal/core/,
         // but the version bump and release gate are controlled by the filtered analyzeCommits above.
-        '@semantic-release/release-notes-generator',
+        // Links point at the public GitHub mirror, not at repositoryUrl (Bitbucket) — see
+        // scripts/release-notes.mjs.
+        [
+            '@semantic-release/release-notes-generator',
+            { writerOpts: publicReleaseNotesWriterOpts },
+        ],
+        [assertPublicReleaseNotes],
 
         // Update CHANGELOG.md
         [
