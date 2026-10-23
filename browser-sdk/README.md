@@ -383,7 +383,7 @@ mountCardForm(
 | `locale` | `string` | `navigator.language` | BCP 47, e.g. `'cs-CZ'` |
 | `submitMode` | `'internal' \| 'external'` | `'internal'` | `'external'` hides the iframe button; use `controller.submit()` |
 | `onValidityChange` | `(isValid: boolean) => void` | — | External submit mode only |
-| `onFieldErrors` | `(errors: CardFormFieldError[]) => void` | — | Fires on every validation run; empty array means the form is clean |
+| `onFieldErrors` | `(errors: CardFormFieldError[]) => void` | — | Fires whenever the errors shown change, and on every submit (older iframes repeat on every validation run); empty array means the form is clean |
 
 **`ThreeDSConfig`** (used in `mountCardForm` and `awaitChargeState`):
 

@@ -273,12 +273,6 @@ function countUnsent(): void {
     unsentCount += 1;
 }
 
-/** For tests: a fresh page. */
-// ts-unused-exports:disable-next-line
-export function resetUnsentCount(): void {
-    unsentCount = 0;
-}
-
 /**
  * Read through `typeof`, which is the one way to touch a possibly-undeclared
  * identifier without a ReferenceError.

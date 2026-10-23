@@ -1,18 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-    GoPayErrorCodes,
-    GoPayHTTPError,
-    GoPaySDKError,
-} from '../../src/errors.js';
-import { createGoPayBrowserSDK } from '../../src/gopay-browser-sdk.js';
-import {
-    createGwLoggerTelemetry,
-    describeFailure,
-    resetUnsentCount,
-} from '../../src/logging/gw-logger.js';
-import { getTransactionId, newTraceId } from '../../src/logging/ids.js';
-import { registerLeaveBeacon } from '../../src/logging/leave-beacon.js';
-import {
     safeErrorMessage,
     safePageUrl,
     serializeBody,
@@ -21,11 +8,39 @@ import {
 /**
  * The event sequence is per tab and lives in sessionStorage, which jsdom keeps
  * for the whole file; the count of unsent events is per page and lives in the
- * module. Every test is a fresh tab on a fresh page.
+ * module. Every test is a fresh tab on a fresh page, so every test loads a
+ * fresh copy of the modules that keep either — all of them, and together, so
+ * that no test holds a class or a function from a copy another test's logger
+ * does not share. The sanitizers hold nothing and stay imported.
  */
-beforeEach(() => {
+let GoPayErrorCodes: typeof import('../../src/errors.js').GoPayErrorCodes;
+let GoPayHTTPError: typeof import('../../src/errors.js').GoPayHTTPError;
+let GoPaySDKError: typeof import('../../src/errors.js').GoPaySDKError;
+let createGoPayBrowserSDK: typeof import('../../src/gopay-browser-sdk.js').createGoPayBrowserSDK;
+let createGwLoggerTelemetry: typeof import('../../src/logging/gw-logger.js').createGwLoggerTelemetry;
+let describeFailure: typeof import('../../src/logging/gw-logger.js').describeFailure;
+let getTransactionId: typeof import('../../src/logging/ids.js').getTransactionId;
+let newTraceId: typeof import('../../src/logging/ids.js').newTraceId;
+let registerLeaveBeacon: typeof import('../../src/logging/leave-beacon.js').registerLeaveBeacon;
+
+beforeEach(async () => {
     globalThis.sessionStorage?.clear();
-    resetUnsentCount();
+    vi.resetModules();
+    ({ GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } = await import(
+        '../../src/errors.js'
+    ));
+    ({ createGoPayBrowserSDK } = await import(
+        '../../src/gopay-browser-sdk.js'
+    ));
+    ({ createGwLoggerTelemetry, describeFailure } = await import(
+        '../../src/logging/gw-logger.js'
+    ));
+    ({ getTransactionId, newTraceId } = await import(
+        '../../src/logging/ids.js'
+    ));
+    ({ registerLeaveBeacon } = await import(
+        '../../src/logging/leave-beacon.js'
+    ));
 });
 
 /** What a body looks like once it has been through the serializer. */

@@ -274,7 +274,11 @@ export function createFormProgress() {
             let outcome = 'never started';
             if (becameValid) {
                 outcome = 'completed';
-            } else if (started) {
+            } else if (started || (progress === null && errorsRaised > 0)) {
+                // An iframe released before `GOPAY_CARD_FORM_PROGRESS` never
+                // says a field was touched, so `started` stays false for a
+                // customer who typed. The errors it did send are the only
+                // trace of that visit.
                 outcome = 'not completed';
             }
             return {

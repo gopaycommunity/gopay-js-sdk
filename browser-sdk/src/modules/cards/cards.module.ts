@@ -123,8 +123,10 @@ type CardFormBaseOptions = {
     submitMode?: 'internal' | 'external';
     onValidityChange?: (isValid: boolean) => void;
     /**
-     * Called on every validation run the iframe performs, with one entry per
-     * invalid field; an empty array means the form validated cleanly.
+     * Called whenever the errors shown change, and on every submit, with one
+     * entry per invalid field; an empty array means the form validated cleanly.
+     * Iframes released before this was tightened repeat the same set on every
+     * validation run, so do not count calls.
      *
      * Only field names and codes are reported — the entered value never leaves
      * the iframe. Use this to render your own messages when the built-in error
