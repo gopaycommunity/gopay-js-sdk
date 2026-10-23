@@ -2353,6 +2353,7 @@ describe('how far the customer got with the card form is reported', () => {
             ctrl.unmount();
         }
         container.remove();
+        vi.useRealTimers();
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
     });
@@ -2427,6 +2428,23 @@ describe('how far the customer got with the card form is reported', () => {
         );
     });
 
+    it('does not call digits typed one by one a fill at once', async () => {
+        const { ctrl, send } = await mount();
+        send(progress('partial', 'empty', 'empty'));
+        send(progress('complete', 'partial', 'empty'));
+        send(progress('complete', 'complete', 'partial'));
+        ctrl.unmount();
+
+        // A field reaching complete from partial is typing; only empty to
+        // complete is a value that arrived whole.
+        expect(stepsNamed('started')[0]?.params).toMatchObject({
+            filled_at_once: false,
+        });
+        expect(stepsNamed('interaction')[0]?.params).toMatchObject({
+            filled_at_once: false,
+        });
+    });
+
     it('drops a progress report outside the protocol rather than forwarding it', async () => {
         const { send } = await mount();
         send(progress('partial', 'empty', '3 digits'));
@@ -2437,17 +2455,25 @@ describe('how far the customer got with the card form is reported', () => {
     });
 
     it('reports the card completed once, with how long it took from the start', async () => {
+        vi.useFakeTimers();
         const { send } = await mount();
+        vi.advanceTimersByTime(100);
         send(progress('partial', 'empty', 'empty'));
+        vi.advanceTimersByTime(400);
         send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
+        vi.advanceTimersByTime(50);
         send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: false });
         send({ type: 'GOPAY_CARD_FORM_VALIDITY', isValid: true });
 
+        // 500 ms after the form was ready, 100 of them before the first digit:
+        // the time to complete is counted from the start, not from the load.
         expect(
-            stepsNamed('completed').map((s) => [s.params, s.message]),
-        ).toEqual([
-            [{ since_started_ms: expect.any(Number) }, 'card complete'],
-        ]);
+            stepsNamed('completed').map((s) => [
+                s.params,
+                s.durationMs,
+                s.message,
+            ]),
+        ).toEqual([[{ since_started_ms: 400 }, 500, 'card complete']]);
         expect(stepsNamed('validity')).toEqual([]);
     });
 
@@ -2630,6 +2656,39 @@ describe('how far the customer got with the card form is reported', () => {
         );
     });
 
+    it('counts a customer of an iframe without progress reports as having started when it sent errors', async () => {
+        const { ctrl, send } = await mount();
+        // An older iframe never sends GOPAY_CARD_FORM_PROGRESS, so nothing says
+        // the customer typed; the errors it raised on the way are all there is.
+        send({
+            type: 'GOPAY_CARD_FORM_ERRORS',
+            errors: [{ field: 'pan', code: 'pattern' }],
+        });
+        ctrl.unmount();
+
+        expect(stepsNamed('started')).toEqual([]);
+        expect(stepsNamed('interaction')[0]?.message).toBe(
+            'unmount: not completed',
+        );
+    });
+
+    it('still calls a form that only ever reported an empty submit never started', async () => {
+        const { ctrl, send } = await mount();
+        send(progress('empty', 'empty', 'empty'));
+        send({
+            type: 'GOPAY_CARD_FORM_ERRORS',
+            errors: [{ field: 'pan', code: 'required' }],
+            trigger: 'submit',
+        });
+        ctrl.unmount();
+
+        // Progress reports arrive, so a customer who had typed would have been
+        // seen; the errors alone do not say they did.
+        expect(stepsNamed('interaction')[0]?.message).toBe(
+            'unmount: never started',
+        );
+    });
+
     it('sends no summary for a form that never became ready', async () => {
         const cards = createCardsApi(client, () => null, telemetry);
         const ctrl = await cards.mountCardForm(container, {
@@ -2669,6 +2728,17 @@ describe('how far the customer got with the card form is reported', () => {
             trigger: 'input',
             value: '4111111111111111',
         });
+        // A trigger that is not one of the protocol's: the card number in the
+        // one place a string is forwarded. A new error makes it report, so the
+        // value would show if the whitelist let it through.
+        send({
+            type: 'GOPAY_CARD_FORM_ERRORS',
+            errors: [
+                { field: 'pan', code: 'pattern' },
+                { field: 'cvv', code: 'required' },
+            ],
+            trigger: '4111111111111111',
+        });
         send({
             type: 'GOPAY_CARD_FORM_VALIDITY',
             isValid: true,
@@ -2691,6 +2761,9 @@ describe('how far the customer got with the card form is reported', () => {
             })),
         );
         expect(sent).not.toMatch(/4111|value|length|digits|\b1[56]\b/u);
+        expect(stepsNamed('field-errors').map((s) => s.params.trigger)).toEqual(
+            ['input', null],
+        );
         expect(stepsNamed('started')[0]?.params).toEqual({
             pan: 'complete',
             expiry: 'partial',
