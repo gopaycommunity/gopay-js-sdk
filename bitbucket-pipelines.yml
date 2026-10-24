@@ -17,6 +17,7 @@ definitions:
           - yarn-global
           - yarn-cache
         script:
+          - npm install -g corepack@latest
           - corepack enable
           - yarn install --immutable
           - yarn dedupe --check
@@ -38,6 +39,7 @@ definitions:
           - yarn-global
           - yarn-cache
         script:
+          - npm install -g corepack@latest
           - corepack enable
           - yarn install --immutable
           - yarn workspace @gopaycz/gopay-js-sdk run test
@@ -56,6 +58,7 @@ definitions:
           - yarn-global
           - yarn-cache
         script:
+          - npm install -g corepack@latest
           - corepack enable
           - yarn install --immutable
           - yarn workspace @gopaycz/gopay-js-sdk-browser run test:stress
@@ -88,6 +91,7 @@ definitions:
           - yarn-global
           - yarn-cache
         script:
+          - npm install -g corepack@latest
           - corepack enable
           - yarn install --immutable
           # sdk/ is the umbrella version (analyzes ALL commits repo-wide, see release.config.mjs),
@@ -103,6 +107,7 @@ definitions:
           - yarn-global
           - yarn-cache
         script:
+          - npm install -g corepack@latest
           - corepack enable
           - yarn install --immutable
           - yarn workspace @gopaycz/gopay-js-sdk run build
@@ -124,6 +129,7 @@ definitions:
           - yarn-global
           - yarn-cache
         script:
+          - npm install -g corepack@latest
           - corepack enable
           - yarn install --immutable
           - yarn workspace @gopaycz/gopay-js-sdk run build
@@ -163,6 +169,7 @@ definitions:
           # fall through to { environment: 'sandbox' } and create real payments there while still
           # reporting the chosen env. Hosts are compared parsed, not by substring; the script says why.
           - node scripts/refuse-production-target.mjs "$TARGET_BASE_URL"
+          - npm install -g corepack@latest
           - corepack enable
           - yarn install --immutable
           - export GOPAY_PAYMENTS_V4_BASE_URL="$TARGET_BASE_URL"
@@ -201,6 +208,7 @@ definitions:
           - yarn-global
           - yarn-cache
         script:
+          - npm install -g corepack@latest
           - corepack enable
           - yarn install --immutable
           - yarn workspace @gopaycz/gopay-js-sdk run build
