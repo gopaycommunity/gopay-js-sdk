@@ -253,10 +253,13 @@ definitions:
     - step: &docker-build-push
         name: Build & push example Docker image
         size: 2x
+        # Harbor (registry.gopay.com) is reachable only from the internal network — docker steps need a self-hosted runner.
+        runs-on: *dev-2x
         services:
           - docker2x
         script:
           - ./scripts/bitbucket-config.sh
+          - echo "$HARBOR_FE_PASSWORD" | docker login registry.gopay.com -u "$HARBOR_FE_USERNAME" --password-stdin
           - VERSION=$(cat version)
           - BROWSER_VERSION=$(cat browser-sdk-version)
           - IMAGE="repo.gopay.com/gp-gw-js-sdk:${VERSION}"
@@ -266,10 +269,12 @@ definitions:
     - step: &docker-build-dry-run
         name: Build example Docker image (dry-run)
         size: 2x
+        runs-on: *dev-2x
         services:
           - docker2x
         script:
           - ./scripts/bitbucket-config.sh
+          - echo "$HARBOR_FE_PASSWORD" | docker login registry.gopay.com -u "$HARBOR_FE_USERNAME" --password-stdin
           - docker build --build-arg SDK_VERSION=dev . -t repo.gopay.com/gp-gw-js-sdk:latest
 
 pipelines:
