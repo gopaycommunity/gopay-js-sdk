@@ -1,5 +1,5 @@
 # Build stage
-FROM repo.gopay.com/base/node-24:1.0.0 AS builder
+FROM registry.gopay.com/base/node:1.10.0 AS builder
 
 # SDK_VERSION is passed from the release pipeline step via --build-arg.
 # The docker-build-push step clones the pre-release commit (before semantic-release
@@ -38,7 +38,7 @@ ENV GP_BASE_PATH=/gp-gw-js-sdk/
 RUN yarn workspace gopay-js-sdk-example run build
 
 # Production stage
-FROM repo.gopay.com/base/node-24:1.0.0
+FROM registry.gopay.com/base/node:1.10.0
 
 WORKDIR /app
 
