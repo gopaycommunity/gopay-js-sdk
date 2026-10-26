@@ -15,30 +15,35 @@ import type {
  * Lookup goes through sets built from their keys: `in` would also match
  * prototype keys (`{ field: 'toString' }`), and `Object.hasOwn` needs ES2022.
  */
+function enumGuard<T extends string>(
+    record: Record<T, true>,
+): (value: unknown) => value is T {
+    const members = new Set<string>(Object.keys(record));
+    return (value): value is T =>
+        typeof value === 'string' && members.has(value);
+}
+
 const CARD_FORM_FIELDS: Record<CardFormField, true> = {
     pan: true,
     expiry: true,
     cvv: true,
 };
-const CARD_FORM_ERROR_CODES: Record<CardFormErrorCode, true> = {
+const isCardFormField = enumGuard(CARD_FORM_FIELDS);
+const isCardFormErrorCode = enumGuard<CardFormErrorCode>({
     required: true,
     pattern: true,
-};
-const CARD_FORM_FIELD_STATES: Record<CardFormFieldState, true> = {
+});
+const isCardFormFieldState = enumGuard<CardFormFieldState>({
     empty: true,
     partial: true,
     complete: true,
-};
-const CARD_FORM_ERROR_TRIGGERS: Record<CardFormErrorTrigger, true> = {
+});
+const isCardFormErrorTrigger = enumGuard<CardFormErrorTrigger>({
     submit: true,
     input: true,
     blur: true,
-};
-const FIELDS = Object.keys(CARD_FORM_FIELDS) as CardFormField[];
-const FIELD_NAMES = new Set<string>(FIELDS);
-const ERROR_CODES = new Set<string>(Object.keys(CARD_FORM_ERROR_CODES));
-const FIELD_STATES = new Set<string>(Object.keys(CARD_FORM_FIELD_STATES));
-const ERROR_TRIGGERS = new Set<string>(Object.keys(CARD_FORM_ERROR_TRIGGERS));
+});
+const FIELDS = Object.keys(CARD_FORM_FIELDS).filter(isCardFormField);
 
 export function isCardFormFieldError(
     entry: unknown,
@@ -46,12 +51,9 @@ export function isCardFormFieldError(
     if (typeof entry !== 'object' || entry === null) {
         return false;
     }
-    const { field, code } = entry as Record<string, unknown>;
     return (
-        typeof field === 'string' &&
-        typeof code === 'string' &&
-        FIELD_NAMES.has(field) &&
-        ERROR_CODES.has(code)
+        isCardFormField(Reflect.get(entry, 'field')) &&
+        isCardFormErrorCode(Reflect.get(entry, 'code'))
     );
 }
 
@@ -61,22 +63,24 @@ type CardFormProgress = Record<CardFormField, CardFormFieldState>;
  * `GOPAY_CARD_FORM_PROGRESS` as far as the protocol allows it: all three
  * fields, each in one of the three states, or nothing. Projected rather than
  * forwarded, like the field errors — the "states, never values" guarantee is
- * the iframe's, and it is enforced on this side of the boundary too.
+ * the iframe's, and it is enforced on this side of the boundary too. Built
+ * field by field, so a field added to the protocol stops compiling here.
  */
 export function projectProgress(fields: unknown): CardFormProgress | null {
     if (typeof fields !== 'object' || fields === null) {
         return null;
     }
-    const source = fields as Record<string, unknown>;
-    const projected = {} as CardFormProgress;
-    for (const field of FIELDS) {
-        const state = source[field];
-        if (typeof state !== 'string' || !FIELD_STATES.has(state)) {
-            return null;
-        }
-        projected[field] = state as CardFormFieldState;
+    const pan = Reflect.get(fields, 'pan');
+    const expiry = Reflect.get(fields, 'expiry');
+    const cvv = Reflect.get(fields, 'cvv');
+    if (
+        !isCardFormFieldState(pan) ||
+        !isCardFormFieldState(expiry) ||
+        !isCardFormFieldState(cvv)
+    ) {
+        return null;
     }
-    return projected;
+    return { pan, expiry, cvv };
 }
 
 /**
@@ -86,9 +90,7 @@ export function projectProgress(fields: unknown): CardFormProgress | null {
 export function projectTrigger(
     trigger: unknown,
 ): CardFormErrorTrigger | undefined {
-    return typeof trigger === 'string' && ERROR_TRIGGERS.has(trigger)
-        ? (trigger as CardFormErrorTrigger)
-        : undefined;
+    return isCardFormErrorTrigger(trigger) ? trigger : undefined;
 }
 
 /** `pan:required,cvv:pattern` — one string, since a param is a primitive. */

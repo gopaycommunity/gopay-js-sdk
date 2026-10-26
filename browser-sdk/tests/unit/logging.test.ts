@@ -2021,6 +2021,32 @@ describe('the GPOMA-2722 loss accounting and card form steps', () => {
         expect(names[names.length - 1]).toBe('PAYMENT_CARD.started');
     });
 
+    it('counts the errors of a submit with the steps, out of reach of the typing', async () => {
+        const t = telemetry();
+        for (let i = 0; i < 40; i += 1) {
+            t.cardFormStep({
+                step: 'field-errors',
+                flow: 'return-payload',
+                durationMs: i,
+                params: { errors: `pan:pattern${i}`, trigger: 'blur' },
+                message: 'new field errors',
+            });
+        }
+        t.cardFormStep({
+            step: 'field-errors',
+            flow: 'return-payload',
+            durationMs: 41,
+            params: { errors: 'pan:required', trigger: 'submit' },
+            message: 'submit errors',
+        });
+
+        const sent = await Promise.all(
+            requests.map(async (_, i) => (await eventAt(i)).return_value),
+        );
+        expect(sent.filter((m) => m === 'new field errors')).toHaveLength(30);
+        expect(sent[sent.length - 1]).toBe('submit errors');
+    });
+
     it('keeps the summary on the step budget, out of reach of a remount loop', async () => {
         const t = telemetry();
         for (let i = 0; i < 70; i += 1) {

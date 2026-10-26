@@ -96,7 +96,9 @@ function actionName(paymentMethod: PaymentMethod, step: string): string {
  * so they stay off the step budget the wallets and the height summary share.
  * Field errors get one of their own on top: they repeat with a customer who
  * keeps getting the card wrong, and that customer must not spend the
- * `completed` that says whether they got there in the end.
+ * `completed` that says whether they got there in the end. The errors of a
+ * submit are the exception and count with the steps above: they are the
+ * moment the customer tried to pay, and typing must not be able to silence it.
  */
 const EVENT_BUDGET = {
     api_call: 200,
@@ -194,10 +196,13 @@ interface NavigationEvent extends CommonFields {
 }
 
 /**
- * The one thing the customer does that the SDK can see. Everything they type
- * happens inside the card form iframe and is deliberately invisible here; what
- * crosses back out is that they submitted and the payload encrypted, which is
- * the step between "the form was on the page" and "a charge was attempted".
+ * The one thing the customer does that the SDK acts on. What they type happens
+ * inside the card form iframe and its values are deliberately invisible here;
+ * what crosses back out is that they submitted and the payload encrypted, which
+ * is the step between "the form was on the page" and "a charge was attempted".
+ * The iframe's reports of how far they got — a field's state, an error's code —
+ * are separate steps (`PAYMENT_CARD.started`, `completed`, `field-errors`) and
+ * carry states and counts, never a value.
  *
  * Without it those two are the only markers, and a checkout that dies in
  * between — the customer never submitting, or the encrypt result never
@@ -263,9 +268,12 @@ function orUndefined(value: string | undefined): string | undefined {
  * reported: the event carrying it can be lost too, and a later one still
  * holds the total.
  *
- * Per page, shared by every instance on it, which is what `seq` numbers. A
- * page that goes away with failures still to report takes them with it — the
- * same gap, just unexplained.
+ * Per page, shared by every instance on it. `seq` is per tab and survives a
+ * reload or the return from 3DS, which this count does not, so until `seq` is
+ * numbered per page (GPOMA-2730) a loss just before a navigation reads, on the
+ * next page, as a gap larger than `unsent` — lost after gw-logger, which it
+ * may not have been. A page that goes away with failures still to report takes
+ * them with it, the same gap again.
  */
 let unsentCount = 0;
 
@@ -693,8 +701,9 @@ type CardFormStep =
 
 /**
  * Where each card form step is counted. The summary sits with the height
- * summary it accompanies, at most two per mount; the rest are a handful per
- * mount, field errors aside, which repeat with a customer who keeps failing.
+ * summary it accompanies, one per visit; the rest are a handful per mount,
+ * field errors aside, which repeat with a customer who keeps failing. The
+ * errors of a submit are counted with the steps instead, see `cardFormStep`.
  */
 const CARD_FORM_STEP_BUDGET: Record<CardFormStep, BudgetKind> = {
     started: 'card_form',
@@ -1040,8 +1049,8 @@ export function createGwLoggerTelemetry(options: {
         },
 
         cardFormHeight({ phase, flow, durationMs, measurements }): void {
-            // The step budget: at most two of these per mount, and a form
-            // remounted in a loop is exactly what must not silence the funnel.
+            // The step budget: one of these per visit, and a form remounted
+            // in a loop is exactly what must not silence the funnel.
             post('step', () => ({
                 ...base(),
                 event_type: 'js_event',
@@ -1057,7 +1066,11 @@ export function createGwLoggerTelemetry(options: {
         },
 
         cardFormStep({ step, flow, durationMs, params, message }): void {
-            post(CARD_FORM_STEP_BUDGET[step], () => ({
+            const budget =
+                step === 'field-errors' && params.trigger === 'submit'
+                    ? 'card_form'
+                    : CARD_FORM_STEP_BUDGET[step];
+            post(budget, () => ({
                 ...base(),
                 event_type: 'js_event',
                 function_name: actionName('card', step),

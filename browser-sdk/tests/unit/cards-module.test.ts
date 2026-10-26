@@ -589,6 +589,9 @@ describe('createCardsApi() — browser SDK', () => {
                     { field: 'cvv' },
                     // right shape, values outside the protocol enums
                     { field: 'unknown', code: 'invalid' },
+                    // and each half alone: one good value must not carry the other
+                    { field: 'pan', code: 'invalid' },
+                    { field: 'unknown', code: 'required' },
                     // prototype keys must not pass as protocol values either
                     { field: 'toString', code: 'constructor' },
                     { field: 'pan', code: 'required' },
@@ -2443,6 +2446,29 @@ describe('how far the customer got with the card form is reported', () => {
         expect(stepsNamed('interaction')[0]?.params).toMatchObject({
             filled_at_once: false,
         });
+    });
+
+    it('drops an error entry with either half outside the protocol before it reaches the log', async () => {
+        const { send } = await mount();
+        send({
+            type: 'GOPAY_CARD_FORM_ERRORS',
+            errors: [
+                { field: 'pan', code: '4111111111111111' },
+                { field: '4111111111111111', code: 'required' },
+                { field: 'toString', code: 'required' },
+                { field: 'cvv', code: 'required' },
+            ],
+            trigger: 'input',
+        });
+
+        expect(stepsNamed('field-errors').map((s) => s.params)).toEqual([
+            {
+                errors: 'cvv:required',
+                raised: 'cvv:required',
+                count: 1,
+                trigger: 'input',
+            },
+        ]);
     });
 
     it('drops a progress report outside the protocol rather than forwarding it', async () => {

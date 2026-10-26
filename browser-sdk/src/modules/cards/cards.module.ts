@@ -496,6 +496,10 @@ export function createCardsApi(
                 // Beside it and on the same latch, so a mount has one answer
                 // to "did they fill it in, did they try to pay" per visit,
                 // however it ended.
+                // Counted from the form becoming ready, unlike the height
+                // summary above: the progress is not reset by a restore, so
+                // `started_ms` and `first_valid_ms` already count from there
+                // and this duration has to share their clock.
                 telemetry.cardFormStep({
                     step: 'interaction',
                     flow: options.flow,
