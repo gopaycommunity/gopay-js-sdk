@@ -1,3 +1,12 @@
+## [1.23.6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.5...1.23.6) (2026-10-26)
+
+
+### Bug Fixes
+
+* **chore:** update base image to base/node 1.10.0 (Node 26.12.1) GPOMA-2789 ([ab21610](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/ab216100507752a75b966936fcef743b7d46588d))
+* **ci:** install corepack explicitly, node 26 no longer bundles it GPOMA-2789 ([036d522](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/036d5224b39b13e26b3c807388c75f7cb5b9225c))
+* **ci:** log in to harbor on a self-hosted runner to pull base/node GPOMA-2789 ([1fda28e](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/1fda28ea6f35b809c6d91e3da7077e9e21e418ee))
+
 ## [1.23.5](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.4...1.23.5) (2026-10-22)
 
 
