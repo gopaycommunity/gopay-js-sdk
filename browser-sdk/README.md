@@ -740,14 +740,24 @@ away in the background apart from a report that never arrived. Nothing about
 what the customer did elsewhere: not which app or tab, and not where the focus
 was on your page.
 
-One event describes something your customer did rather than something the SDK
-did: that they submitted the card form, or authorised in an Apple Pay or Google
-Pay sheet, and how long the form had been on the page before they did. That is
-the whole of it — no field contents, no keystrokes, no timing of individual
-fields, nothing derived from the card data, not even the length of the
-encrypted payload. It exists because it is the only point between "the form
-appeared" and "a charge was attempted", so without it a customer who gave up at
-the form and a charge that failed to fire are the same silence.
+Some events describe something your customer did rather than something the SDK
+did. One is that they submitted the card form, or authorised in an Apple Pay or
+Google Pay sheet, and how long the form had been on the page before they did.
+The others say how far they got with the card form: that they started (and
+whether a field arrived whole, as an autofill or a paste, rather than being
+typed), that the card became valid and how long after the start, which errors
+were shown and what raised them (a submit, typing, or leaving a field), that
+your own pay button was pressed while the card was incomplete, and one summary
+per visit with the counts and timings of all of it.
+
+What those carry is the state of each field — empty, partial or complete — the
+error codes (`required`, `pattern`), counts and times. Never a field's
+contents, a keystroke, the length of an entry or a digit count, nothing derived
+from the card data, not even the length of the encrypted payload. The card form
+reports them and the SDK forwards only values the protocol defines, whatever
+else a message carries. They exist because they are the only points between
+"the form appeared" and "a charge was attempted", so without them a customer
+who gave up at the form and a charge that failed to fire are the same silence.
 
 **What it never contains.** Card numbers, CVV, the encrypted card payload, card
 tokens, wallet payment data, `paymentSecret`, credentials, 3DS or ACS redirect
@@ -793,11 +803,19 @@ page. If your Content-Security-Policy restricts `connect-src`, add
 without it the browser blocks the reports, which changes nothing about the
 payment.
 
+Every event also carries the time on the browser's own clock (`client_time`),
+so a report that arrives late can be told from one that happened late. And
+when a report fails to leave the page — offline, blocked, or answered with an
+error — the SDK counts it and sends the running total with the next event that
+does arrive (`unsent`), so a gap in the numbering of the events can be told to
+have been lost before reaching GoPay or after.
+
 Delivery is fire-and-forget: each report gives up after 10 seconds, nothing is
-retried, and every failure is discarded silently. Nothing here can delay or
-fail a payment. Five separate caps limit how much one SDK instance can produce
-— API reports, lifecycle markers, wallet steps, page changes and errors — so a
-flood of any single kind cannot crowd out the others.
+retried, and a failed one is counted but never shown or thrown. Nothing here
+can delay or fail a payment. Seven separate caps limit how much one SDK
+instance can produce — API reports, lifecycle markers, wallet steps, page
+changes, errors, card form steps and card form field errors — so a flood of any
+single kind cannot crowd out the others.
 
 ---
 
