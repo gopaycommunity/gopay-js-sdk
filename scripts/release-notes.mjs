@@ -19,6 +19,23 @@ const GITHUB_REPOSITORY = 'gopay-js-sdk';
 // runs, so they are turned back into plain text here.
 const HOST_LINK = /\[([#@][^\]]*)\]\([^)]*\)/g;
 const INTERNAL_HOST = /bitbucket\.org|atlassian\.net/i;
+// Any other GoPay host is internal until it is listed here, so a subject that names an internal
+// feed is caught without this file having to name it (CLAUDE.md keeps that hostname to itself).
+const GOPAY_HOST = /\b(?:[a-z0-9-]+\.)+gopay\.(?:com|cz|io)\b/gi;
+const PUBLIC_GOPAY_HOSTS = new Set(['api-docs.gopay.com']);
+
+const internalHostIn = (notes) => {
+    const named = INTERNAL_HOST.exec(notes);
+    if (named) {
+        return named[0];
+    }
+    for (const [host] of notes.matchAll(GOPAY_HOST)) {
+        if (!PUBLIC_GOPAY_HOSTS.has(host.toLowerCase())) {
+            return host;
+        }
+    }
+    return null;
+};
 
 const unlink = (text) =>
     typeof text === 'string' ? text.replace(HOST_LINK, '$1') : text;
@@ -40,13 +57,6 @@ export const publicReleaseNotesWriterOpts = {
                 references: [],
             })),
         })),
-        noteGroups: context.noteGroups.map((group) => ({
-            ...group,
-            notes: group.notes.map((note) => ({
-                ...note,
-                text: unlink(note.text),
-            })),
-        })),
     }),
 };
 
@@ -63,10 +73,10 @@ export const publicReleaseNotesWriterOpts = {
 export const assertPublicReleaseNotes = fileURLToPath(import.meta.url);
 
 export function generateNotes(_pluginConfig, { nextRelease }) {
-    const match = INTERNAL_HOST.exec(nextRelease.notes ?? '');
-    if (match) {
+    const host = internalHostIn(nextRelease.notes ?? '');
+    if (host) {
         throw new Error(
-            `Release notes name the internal host ${match[0]}. They are public (CHANGELOG.md, the release commit, npm), so they may only link to ${GITHUB_HOST}/${GITHUB_OWNER}/${GITHUB_REPOSITORY}.`,
+            `Release notes name the internal host ${host}. They are public (CHANGELOG.md, the release commit, npm), so they may only link to ${GITHUB_HOST}/${GITHUB_OWNER}/${GITHUB_REPOSITORY}.`,
         );
     }
 }
