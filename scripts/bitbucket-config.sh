@@ -1,8 +1,8 @@
 # Docker login (if docker is available)
 if command -v docker > /dev/null 2>&1; then
-  if [ -z "$NEXUS_USERNAME" ] || [ -z "$NEXUS_PASSWORD" ]; then
-    echo "Error: NEXUS_USERNAME and NEXUS_PASSWORD must be set for docker login" >&2
+  if [ -z "$HARBOR_FE_USERNAME" ] || [ -z "$HARBOR_FE_PASSWORD" ]; then
+    echo "Error: HARBOR_FE_USERNAME and HARBOR_FE_PASSWORD must be set for docker login" >&2
     exit 1
   fi
-  echo "$NEXUS_PASSWORD" | docker login repo.gopay.com -u "$NEXUS_USERNAME" --password-stdin
+  echo "$HARBOR_FE_PASSWORD" | docker login registry.gopay.com -u "$HARBOR_FE_USERNAME" --password-stdin
 fi

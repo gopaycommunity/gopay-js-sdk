@@ -19,7 +19,7 @@ export default {
     // change anywhere in the repo (sdk/, browser-sdk/, internal/core/, example/, etc.).
     //
     // Rationale: the gopay-js-sdk version is the Docker deploy tag
-    // (repo.gopay.com/gp-gw-js-sdk:<version>). The Docker image bundles both the server SDK and
+    // (registry.gopay.com/dev-tools/gp-gw-js-sdk:<version>). The Docker image bundles both the server SDK and
     // the browser SDK, so it must be rebuilt and retagged whenever either SDK changes. Making this
     // package the umbrella version ensures the tag always advances on every release, so the
     // pipeline's idempotency check (docker pull → skip-if-exists) never falsely skips a build.
