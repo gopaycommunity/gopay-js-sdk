@@ -22,7 +22,15 @@ const INTERNAL_HOST = /bitbucket\.org|atlassian\.net/i;
 // Any other GoPay host is internal until it is listed here, so a subject that names an internal
 // feed is caught without this file having to name it (CLAUDE.md keeps that hostname to itself).
 const GOPAY_HOST = /\b(?:[a-z0-9-]+\.)+gopay\.(?:com|cz|io)\b/gi;
-const PUBLIC_GOPAY_HOSTS = new Set(['api-docs.gopay.com']);
+// The hosts the public API reference, the SDK's own config and the README's connect-src advice
+// already name, so a subject may mention them.
+const PUBLIC_GOPAY_HOSTS = new Set([
+    'api-docs.gopay.com',
+    'gate.gopay.com',
+    'gw.sandbox.gopay.com',
+    'lx.gopay.com',
+    'lx.sandbox.gopay.com',
+]);
 
 const internalHostIn = (notes) => {
     const named = INTERNAL_HOST.exec(notes);
