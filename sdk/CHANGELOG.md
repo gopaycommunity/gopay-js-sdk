@@ -1,3 +1,10 @@
+## [1.23.7](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.6...1.23.7) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ci:** update Docker login credentials and image registry paths ([e06bc9f](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/commits/e06bc9f000930bfcff5f5bb05b46048a0a7ecaf2))
+
 ## [1.23.6](https://bitbucket.org/gp-gopay/gp-gw-js-sdk/compare/1.23.5...1.23.6) (2026-10-26)
 
 
