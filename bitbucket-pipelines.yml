@@ -129,7 +129,9 @@ definitions:
           - yarn-global
           - yarn-cache
         script:
-          - npm install -g corepack@latest
+          # The playwright image ships its own yarn at /usr/bin/yarn, which the corepack shim
+          # would otherwise refuse to overwrite (EEXIST).
+          - npm install -g --force corepack@latest
           - corepack enable
           - yarn install --immutable
           - yarn workspace @gopaycz/gopay-js-sdk run build
@@ -169,7 +171,9 @@ definitions:
           # fall through to { environment: 'sandbox' } and create real payments there while still
           # reporting the chosen env. Hosts are compared parsed, not by substring; the script says why.
           - node scripts/refuse-production-target.mjs "$TARGET_BASE_URL"
-          - npm install -g corepack@latest
+          # The playwright image ships its own yarn at /usr/bin/yarn, which the corepack shim
+          # would otherwise refuse to overwrite (EEXIST).
+          - npm install -g --force corepack@latest
           - corepack enable
           - yarn install --immutable
           - export GOPAY_PAYMENTS_V4_BASE_URL="$TARGET_BASE_URL"
