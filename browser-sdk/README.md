@@ -715,8 +715,8 @@ Alongside those it reports four lifecycle moments — the SDK being created, it
 attaching to a payment, a card form or wallet button becoming usable, and the
 visit ending — plus the SDK version, which build of the package is running
 (ESM/CJS or the CDN bundle), which payment method and flow the event belongs to,
-the id of the payment being paid, your `clientId`, a random id for the SDK
-instance and the event's position among those sent from the browser tab. When
+the id of the payment being paid, your `clientId` and the event's position
+among those sent from the browser tab. When
 the customer is sent to 3DS authentication, the visit's end is reported before
 the redirect, with the authentication page's address but none of its parameters.
 Each step of a wallet payment is reported as it happens — the button loading and

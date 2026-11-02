@@ -15,7 +15,6 @@ import { SDK_VERSION } from '../version.js';
 import {
     getTransactionId,
     lastSequence,
-    newInstanceId,
     newTraceId,
     recordSequence,
 } from './ids.js';
@@ -124,8 +123,6 @@ type BudgetKind = keyof typeof EVENT_BUDGET;
 interface CommonFields {
     client_id?: string;
     payment_session_id?: string;
-    /** One SDK instance; see {@link createGwLoggerTelemetry}. */
-    sdk_instance_id: string;
     /** The tab's event number, set when the event is actually sent; see ids.ts. */
     seq?: number;
     sdk_version: string;
@@ -767,14 +764,6 @@ export function createGwLoggerTelemetry(options: {
         card_form: 0,
         field_errors: 0,
     };
-    /**
-     * One per SDK instance — what ties an init to the payments made through
-     * it. mixit.fr rebuilds the SDK and creates a new payment when its
-     * checkout re-renders, so one checkout spreads across several payment
-     * session ids; this is what tells one instance's events from the next
-     * one's on the same page and in the same transaction.
-     */
-    const instanceId = newInstanceId();
     /** The SDK's construction, which is what `ready` is timed from. */
     const createdAt = nowMs();
     /** The last `ready` per method, which is what `unmount` is timed from. */
@@ -848,7 +837,6 @@ export function createGwLoggerTelemetry(options: {
             // Known only from attachPayment onwards. The encrypt-only flow
             // never has one, which is why gw-logger stopped requiring it.
             payment_session_id: orUndefined(options.getPaymentId()),
-            sdk_instance_id: instanceId,
             sdk_version: SDK_VERSION,
             integration: INTEGRATION,
             trace_id: newTraceId(),

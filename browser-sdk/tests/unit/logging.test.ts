@@ -340,27 +340,23 @@ describe('createGwLoggerTelemetry()', () => {
         // client_id attributes now; the shareable key authorises calls and
         // has no business in a log line.
         expect(event).not.toHaveProperty('shareable_key');
-        expect(typeof event.sdk_instance_id).toBe('string');
+        // One checkout is one transaction id in a tab, and a payment session
+        // id names the payment; an instance id of its own is no longer sent.
+        expect(event).not.toHaveProperty('sdk_instance_id');
     });
 
     it('carries no raw id — target is the template the caller was given', async () => {
         makeTelemetry().apiCall({ ...GET_PAYMENT, statusCode: 404 });
 
-        // trace_id, transaction_id and sdk_instance_id are random UUIDs and
-        // are excluded on purpose: a UUID contains a run of six digits often
+        // trace_id and transaction_id are random UUIDs and are excluded on
+        // purpose: a UUID contains a run of six digits often
         // enough that scanning them made this assertion fail at random. Every
         // other field is scanned, which is where a leaked payment id would
         // actually land. client_time is the browser's clock, thirteen digits
         // by construction.
-        const {
-            trace_id,
-            transaction_id,
-            sdk_instance_id,
-            client_time,
-            ...rest
-        } = await eventOf();
+        const { trace_id, transaction_id, client_time, ...rest } =
+            await eventOf();
         expect(client_time).toEqual(expect.any(Number));
-        expect(sdk_instance_id).toBeDefined();
         expect(trace_id).toBeDefined();
         expect(transaction_id).toBeDefined();
         expect(JSON.stringify(rest)).not.toMatch(/\d{6,}/u);
@@ -870,7 +866,6 @@ describe('lifecycle events', () => {
             'interaction_type',
             'origin',
             'payment_method',
-            'sdk_instance_id',
             'sdk_version',
             'seq',
             'trace_id',
@@ -1584,7 +1579,6 @@ describe('the GPOMA-2707 event shape', () => {
 
             const events = await Promise.all([0, 1, 2].map(eventAt));
             expect(events.map((e) => e.seq)).toEqual([1, 2, 3]);
-            expect(new Set(events.map((e) => e.sdk_instance_id)).size).toBe(1);
         });
 
         it('leaves no gap for an event it never sent', async () => {
@@ -1618,12 +1612,11 @@ describe('the GPOMA-2707 event shape', () => {
             expect((await eventAt(75)).seq).toBe(76);
         });
 
-        it('gives each SDK instance its own id, and numbers the tab across them', async () => {
+        it('numbers the tab across SDK instances', async () => {
             telemetry().lifecycle('init');
             telemetry().lifecycle('init');
 
             const [a, b] = await Promise.all([0, 1].map(eventAt));
-            expect(a?.sdk_instance_id).not.toBe(b?.sdk_instance_id);
             // One count per tab: an instance whose only event was lost leaves
             // a gap here, which a count per instance never could.
             expect([a?.seq, b?.seq]).toEqual([1, 2]);
