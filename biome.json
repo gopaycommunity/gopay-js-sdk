@@ -14,7 +14,7 @@
     "linter": {
         "enabled": true,
         "rules": {
-            "recommended": true,
+            "preset": "recommended",
             "correctness": {
                 "noUnusedImports": {
                     "level": "error",
@@ -43,6 +43,9 @@
             "!**/node_modules",
             "!**/.yarn",
             "!**/CHANGELOG.md",
+            "!**/*.md",
+            "!**/*.yml",
+            "!**/*.yaml",
             "!**/coverage",
             "!**/playwright-report",
             "!**/test-results",
