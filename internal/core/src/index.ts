@@ -19,6 +19,7 @@ export { buildUrl } from './http/build-url.js';
 export type { HttpClient } from './http/client.js';
 export { createHttpClient } from './http/client.js';
 export { SDK_ACCEPT_HEADER } from './http/constants.js';
+export type { Correlation } from './http/correlation.js';
 export { timeoutSignal } from './http/timeout-signal.js';
 export type {
     PaymentCredentials,

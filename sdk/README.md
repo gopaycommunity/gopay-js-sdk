@@ -144,6 +144,7 @@ For `getBrowserKeys()` to work, include `card:write` in your server-side `authen
 | `requestTimeoutMs`    | `number`                                          | `10000`     | Per-request timeout in milliseconds. Throws `GoPaySDKError` with `errorCode: 'NETWORK_TIMEOUT'` on expiry. |
 | `debugLoggingEnabled` | `boolean`                                         | `false`     | Logs `→ METHOD URL` / `← STATUS URL` for every request via `console.debug`.             |
 | `onError`             | `(error: GoPaySDKError \| GoPayHTTPError) => void` | —           | Called synchronously for every error the SDK throws. Useful for centralised logging or alerting. |
+| `userAgentSuffix`     | `string`                                          | —           | Appended to the SDK's `User-Agent` (`GoPay JS v4 <version>`), e.g. `my-shop/2.1`, so GoPay's logs name your integration. Printable ASCII, at most 200 characters. |
 
 ```ts
 const sdk = createGoPaySDK({
@@ -904,6 +905,46 @@ response and may name the customer.
 
 **Never forward the arguments you passed in.** A charge carries a card token and
 a payment secret, and an error tracker is not a place for either.
+
+### Request ids
+
+Every request the SDK sends from a server carries ids GoPay's logs record, so a call can be
+found from both sides. (Run in a browser page, it sends none of these: there they would turn each
+call into a CORS preflight.)
+
+| Header | Value |
+|---|---|
+| `X-GoPay-Trace-Id` | A new UUID per request; a retry of that request keeps it. |
+| `X-GoPay-Transaction-Id` | One per SDK call, shared by every request it makes — a token refresh, retries, the polls of an `await…` method, the pages of `iterateEvents`. |
+| `X-GoPay-Payment-Session-Id` | The payment's id, on requests for one payment. |
+| `User-Agent` | `GoPay JS v4 <version>`, plus `userAgentSuffix` when set. |
+
+An error from a request carries the first two as `traceId` and `transactionId`, a timeout and a
+network error included. Log them, and quote them to GoPay support:
+
+```ts
+onError(err) {
+  logger.error({
+    code: err instanceof GoPayHTTPError ? err.status : err.errorCode,
+    traceId: err.traceId,
+    transactionId: err.transactionId,
+  });
+},
+```
+
+To group calls under an id of your own — the id of the request your server is handling, say —
+run them in `withTransactionId` (1–64 characters of `A–Z a–z 0–9 . _ -`):
+
+```ts
+await sdk.withTransactionId(req.id, async () => {
+  const payment = await sdk.createPayment(goid, params);
+  await sdk.chargePayment(payment.id, charge);
+});
+```
+
+The per-call id relies on `AsyncLocalStorage`, which the SDK takes through
+`process.getBuiltinModule` (Node.js 20.16 or later). On an older Node.js each request gets an id
+of its own, and `withTransactionId` throws `INVALID_CONFIG`.
 
 ---
 

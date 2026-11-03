@@ -107,6 +107,13 @@ export class GoPaySDKError extends Error {
      * this did, left callers unable to read it without one of their own.
      */
     readonly cause: unknown;
+    /**
+     * `X-GoPay-Trace-Id` of the request this error came from, also on a timeout or a network
+     * error — quote it to GoPay support. Undefined when no request went out, and in the browser SDK.
+     */
+    readonly traceId: string | undefined = undefined;
+    /** `X-GoPay-Transaction-Id` of the SDK call this error came from; undefined as `traceId` is. */
+    readonly transactionId: string | undefined = undefined;
 
     constructor(
         message: string,
@@ -135,6 +142,13 @@ export class GoPayHTTPError extends Error {
      * group per payment. Undefined when the SDK did not issue the request.
      */
     readonly endpoint: string | undefined;
+    /**
+     * `X-GoPay-Trace-Id` of the request this error came from, also on a timeout or a network
+     * error — quote it to GoPay support. Undefined when no request went out, and in the browser SDK.
+     */
+    readonly traceId: string | undefined = undefined;
+    /** `X-GoPay-Transaction-Id` of the SDK call this error came from; undefined as `traceId` is. */
+    readonly transactionId: string | undefined = undefined;
 
     constructor(
         public readonly status: number,
@@ -146,5 +160,22 @@ export class GoPayHTTPError extends Error {
         super(`GoPay API error: HTTP ${status}`);
         this.method = request?.method;
         this.endpoint = request?.endpoint;
+    }
+}
+
+/**
+ * Puts the ids of the request an error came from on it, unless it already carries a request's:
+ * an error raised by an inner request (a token refresh) keeps that request's ids.
+ */
+export function attachCorrelation(
+    error: unknown,
+    ids: { traceId: string; transactionId: string } | undefined,
+): void {
+    if (
+        ids &&
+        (error instanceof GoPaySDKError || error instanceof GoPayHTTPError) &&
+        error.traceId === undefined
+    ) {
+        Object.assign(error, ids);
     }
 }

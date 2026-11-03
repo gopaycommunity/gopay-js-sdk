@@ -1,7 +1,13 @@
-import { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from '../errors.js';
+import {
+    attachCorrelation,
+    GoPayErrorCodes,
+    GoPayHTTPError,
+    GoPaySDKError,
+} from '../errors.js';
 import { nowMs } from '../logging/telemetry.js';
 import { buildUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
+import type { CorrelationIds } from './correlation.js';
 import { fetchWithRetry } from './fetch-with-retry.js';
 import { parseBody } from './response.js';
 import { timeoutSignal } from './timeout-signal.js';
@@ -33,6 +39,8 @@ interface AuthHandlerDeps {
     getClientId?: () => string | null;
     /** Appended to auth error messages to tell the caller how to recover. */
     reAuthAction?: string;
+    /** Sets the request ids on a request the handler sends itself (the token re-grant). */
+    correlate?: (headers: Headers, path: string) => CorrelationIds | undefined;
 }
 
 export function createAuthHandler(deps: AuthHandlerDeps) {
@@ -271,6 +279,7 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         }
 
         let token: { access_token: string; expires_in: number };
+        let ids: CorrelationIds | undefined;
         try {
             const url = buildUrl(baseUrl, AUTH_PATH);
             const credentials = globalThis.btoa(grant.basic);
@@ -279,6 +288,7 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
                 Accept: SDK_ACCEPT_HEADER,
                 Authorization: `Basic ${credentials}`,
             });
+            ids = deps.correlate?.(headers, AUTH_PATH);
 
             const started = nowMs();
             let status: number | null = null;
@@ -341,12 +351,13 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
                     store.setPaymentCredentials(null);
                 }
             }
-            return emitError(
-                new GoPaySDKError(
-                    `[GoPaySDK] Token refresh failed. ${reAuth}`,
-                    { cause, errorCode: GoPayErrorCodes.AUTH_REFRESH_FAILED },
-                ),
+            const failed = new GoPaySDKError(
+                `[GoPaySDK] Token refresh failed. ${reAuth}`,
+                { cause, errorCode: GoPayErrorCodes.AUTH_REFRESH_FAILED },
             );
+            // The token request's own ids: the call that needed the token never went out.
+            attachCorrelation(failed, ids);
+            return emitError(failed);
         }
         // A payment attached while this exchange was in flight has already
         // stored its own token. Storing this one would put the previous

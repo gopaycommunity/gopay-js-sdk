@@ -1,5 +1,6 @@
 import type { CoreConfig } from '../config.js';
 import {
+    attachCorrelation,
     GoPayErrorCodes,
     GoPayHTTPError,
     GoPaySDKError,
@@ -15,6 +16,11 @@ import {
 import { createAuthHandler } from './auth-handler.js';
 import { buildUrl, resolveBaseUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
+import {
+    type Correlation,
+    type CorrelationIds,
+    correlate,
+} from './correlation.js';
 import { normalizeEndpoint } from './endpoint.js';
 import { parseBody } from './response.js';
 import { timeoutSignal } from './timeout-signal.js';
@@ -111,6 +117,8 @@ export function createHttpClient(
     config: CoreConfig,
     reAuthAction?: string,
     telemetry: Telemetry = NO_TELEMETRY,
+    // The server SDK's alone until the browser's requests may carry the headers (GPOMA-2730).
+    correlation?: Correlation,
 ) {
     /**
      * Records the call whichever way it ends. `finally` rather than two call
@@ -170,6 +178,7 @@ export function createHttpClient(
         getShareableKey: () => shareableKey,
         getClientId: () => tokenStore.getClientId(),
         reAuthAction,
+        correlate: (headers, path) => correlate(correlation, headers, path),
     });
 
     function timeoutMs(): number {
@@ -238,7 +247,8 @@ export function createHttpClient(
         throw error;
     }
 
-    function handleError(err: unknown): never {
+    function handleError(err: unknown, ids?: CorrelationIds): never {
+        attachCorrelation(err, ids);
         // Report before rethrowing. These arrive already typed — either from
         // throwIfNotOk, which has reported them, or from a validator such as
         // buildUrl, which has not. reportOnce tells the two apart, so the
@@ -251,27 +261,30 @@ export function createHttpClient(
         }
 
         if (err instanceof Error && err.name === 'TimeoutError') {
-            return emitError(
-                new GoPaySDKError('[GoPaySDK] Request timed out.', {
+            const timedOut = new GoPaySDKError(
+                '[GoPaySDK] Request timed out.',
+                {
                     errorCode: GoPayErrorCodes.NETWORK_TIMEOUT,
-                }),
+                },
             );
+            attachCorrelation(timedOut, ids);
+            return emitError(timedOut);
         }
 
         if (err instanceof Error) {
-            return emitError(
-                // The label, never the message: a network error raised by
-                // the host carries text nobody here wrote, and it would go
-                // straight out through telemetry.error. `cause` keeps the
-                // original for a developer with a console open.
-                new GoPaySDKError(
-                    `[GoPaySDK] Network error (${safeErrorLabel(err)}).`,
-                    {
-                        cause: err,
-                        errorCode: GoPayErrorCodes.NETWORK_ERROR,
-                    },
-                ),
+            // The label, never the message: a network error raised by
+            // the host carries text nobody here wrote, and it would go
+            // straight out through telemetry.error. `cause` keeps the
+            // original for a developer with a console open.
+            const failed = new GoPaySDKError(
+                `[GoPaySDK] Network error (${safeErrorLabel(err)}).`,
+                {
+                    cause: err,
+                    errorCode: GoPayErrorCodes.NETWORK_ERROR,
+                },
             );
+            attachCorrelation(failed, ids);
+            return emitError(failed);
         }
 
         throw err;
@@ -281,17 +294,19 @@ export function createHttpClient(
         response: Response,
         method: string,
         path: string,
+        ids?: CorrelationIds,
     ): Promise<void> {
         if (response.ok) {
             return;
         }
         const body = await parseBody(response);
-        emitError(
-            new GoPayHTTPError(response.status, body, {
-                method,
-                endpoint: normalizeEndpoint(path),
-            }),
-        );
+        const error = new GoPayHTTPError(response.status, body, {
+            method,
+            endpoint: normalizeEndpoint(path),
+        });
+        // Before emitting, so onError already sees them.
+        attachCorrelation(error, ids);
+        emitError(error);
     }
 
     return {
@@ -392,10 +407,14 @@ export function createHttpClient(
             // that already described the same failure correctly.
             let issued = false;
             let responseBody: unknown;
+            let ids: CorrelationIds | undefined;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({ Accept: SDK_ACCEPT_HEADER });
                 await auth.injectAuth(headers, url, options);
+                // After injectAuth: a call refused before any request goes out has no ids to quote,
+                // and no header a caller passed replaces the SDK's.
+                ids = correlate(correlation, headers, path);
                 debugLogRequest('GET', url);
                 issued = true;
                 const response = await auth.fetchAndHandle401(
@@ -404,12 +423,12 @@ export function createHttpClient(
                     options?.signal,
                 );
                 status = response.status;
-                await throwIfNotOk(response, 'GET', path);
+                await throwIfNotOk(response, 'GET', path, ids);
                 responseBody = await response.json();
                 return responseBody as T;
             } catch (err) {
                 responseBody = errorBody(err);
-                return handleError(err);
+                return handleError(err, ids);
             } finally {
                 if (issued) {
                     record('GET', path, started, status, {
@@ -435,6 +454,7 @@ export function createHttpClient(
             // that already described the same failure correctly.
             let issued = false;
             let responseBody: unknown;
+            let ids: CorrelationIds | undefined;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
@@ -442,6 +462,9 @@ export function createHttpClient(
                     'Content-Type': 'application/json',
                 });
                 await auth.injectAuth(headers, url, options);
+                // After injectAuth: a call refused before any request goes out has no ids to quote,
+                // and no header a caller passed replaces the SDK's.
+                ids = correlate(correlation, headers, path);
                 debugLogRequest('POST', url);
                 issued = true;
                 const response = await auth.fetchAndHandle401(
@@ -450,12 +473,12 @@ export function createHttpClient(
                     options?.signal,
                 );
                 status = response.status;
-                await throwIfNotOk(response, 'POST', path);
+                await throwIfNotOk(response, 'POST', path, ids);
                 responseBody = await response.json();
                 return responseBody as T;
             } catch (err) {
                 responseBody = errorBody(err);
-                return handleError(err);
+                return handleError(err, ids);
             } finally {
                 if (issued) {
                     record('POST', path, started, status, {
@@ -478,10 +501,14 @@ export function createHttpClient(
             // that already described the same failure correctly.
             let issued = false;
             let responseBody: unknown;
+            let ids: CorrelationIds | undefined;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers();
                 await auth.injectAuth(headers, url, options);
+                // After injectAuth: a call refused before any request goes out has no ids to quote,
+                // and no header a caller passed replaces the SDK's.
+                ids = correlate(correlation, headers, path);
                 debugLogRequest('DELETE', url);
                 issued = true;
                 const response = await auth.fetchAndHandle401(
@@ -490,10 +517,10 @@ export function createHttpClient(
                     options?.signal,
                 );
                 status = response.status;
-                await throwIfNotOk(response, 'DELETE', path);
+                await throwIfNotOk(response, 'DELETE', path, ids);
             } catch (err) {
                 responseBody = errorBody(err);
-                return handleError(err);
+                return handleError(err, ids);
             } finally {
                 if (issued) {
                     record('DELETE', path, started, status, {
@@ -519,6 +546,7 @@ export function createHttpClient(
             // that already described the same failure correctly.
             let issued = false;
             let responseBody: unknown;
+            let ids: CorrelationIds | undefined;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
@@ -531,6 +559,9 @@ export function createHttpClient(
                     }
                 }
                 await auth.injectAuth(headers, url, options);
+                // After injectAuth: a call refused before any request goes out has no ids to quote,
+                // and no header a caller passed replaces the SDK's.
+                ids = correlate(correlation, headers, path);
                 debugLogRequest('POST', url);
                 issued = true;
                 const bodyStr = new URLSearchParams(form).toString();
@@ -545,12 +576,12 @@ export function createHttpClient(
                 );
                 debugLogResponse(response);
                 status = response.status;
-                await throwIfNotOk(response, 'POST', path);
+                await throwIfNotOk(response, 'POST', path, ids);
                 responseBody = await response.json();
                 return responseBody as T;
             } catch (err) {
                 responseBody = errorBody(err);
-                return handleError(err);
+                return handleError(err, ids);
             } finally {
                 if (issued) {
                     record('POST', path, started, status, {

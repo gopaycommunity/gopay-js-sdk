@@ -256,4 +256,42 @@ describe('createGoPayBrowserSDK()', () => {
             container.remove();
         });
     });
+
+    // The gateway's CORS does not allow these from a page yet: a browser sending them would
+    // have every call refused at preflight (GPOMA-2730). Only the server SDK sets them.
+    it('sends no correlation headers and no User-Agent of its own', async () => {
+        const seen: Request[] = [];
+        fetchMock.mockImplementation(async (req: Request) => {
+            seen.push(req);
+            return makeResponse(
+                req.url.includes('/oauth2/token')
+                    ? validTokenPair
+                    : { id: 'pay_001', state: 'REQUESTED' },
+            );
+        });
+
+        await sdk.attachPayment({
+            paymentId: 'pay_001',
+            paymentSecret: 'secret',
+        });
+        await sdk.getChargeState().catch(() => undefined);
+
+        const api = seen.filter((req) =>
+            req.url.startsWith('https://example.com/'),
+        );
+        expect(api.map((req) => new URL(req.url).pathname)).toEqual([
+            '/oauth2/token',
+            '/payments/pay_001/charge',
+        ]);
+        for (const req of api) {
+            for (const name of [
+                'X-GoPay-Trace-Id',
+                'X-GoPay-Transaction-Id',
+                'X-GoPay-Payment-Session-Id',
+                'User-Agent',
+            ]) {
+                expect(req.headers.get(name)).toBeNull();
+            }
+        }
+    });
 });
