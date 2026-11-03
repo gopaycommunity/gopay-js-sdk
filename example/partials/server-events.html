@@ -37,7 +37,7 @@
         <!-- Verify webhook -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.verifyWebhook(rawBody, signature)</h2>
-            <p class="desc">Checks the <code>X-GoPay-Signature</code> of a received webhook against GoPay's signing keys and returns the event. Needs <code>shared:read</code>. Paste the body exactly as received: a single changed byte, re-indented JSON included, fails the check.</p>
+            <p class="desc">Checks the <code>X-GoPay-Signature</code> of a received webhook against GoPay's signing keys and returns the event. Needs <code>shared:read</code>. The signature exists only on a delivered webhook — it is a header of GoPay's POST to your webhook URL; <code>getEvent()</code> returns the same event unsigned, so its output cannot be verified here. Paste the body exactly as received: a single changed byte, re-indented JSON included, fails the check. On a test environment with demo-site's receiver, <code>GET https://demo.&lt;env&gt;.dev.gopay.com/api/v1/test/webhooks?payment_id=…</code> gives both: <code>signature</code>, and <code>bodyBase64</code> to decode.</p>
             <div class="fields">
                 <label>Body<textarea id="webhook-body" rows="4" placeholder='{"id":"…","type":"payments.paid",…}'></textarea></label>
                 <label>X-GoPay-Signature<input id="webhook-signature" type="text" placeholder="eyJhbGciOiJSUzI1NiIsImtpZCI6…..…" /></label>
