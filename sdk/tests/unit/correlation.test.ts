@@ -230,7 +230,7 @@ describe('User-Agent and correlation headers', () => {
                         errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
                     }),
                 );
-                expect(requests.length).toBe(sent);
+                expect(requests).toHaveLength(sent);
             },
         );
     });

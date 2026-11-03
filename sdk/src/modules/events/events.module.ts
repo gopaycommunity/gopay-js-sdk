@@ -17,12 +17,13 @@ export type ListEventsParams = NonNullable<
 function eventsPath(goid: string, params: ListEventsParams = {}): string {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
-        if (value !== undefined) {
+        if (typeof value === 'string' || typeof value === 'number') {
             query.set(key, String(value));
         }
     }
     const search = query.toString();
-    return `/eshops/${goid}/events${search ? `?${search}` : ''}`;
+    const suffix = search ? `?${search}` : '';
+    return `/eshops/${goid}/events${suffix}`;
 }
 
 /**
@@ -48,7 +49,8 @@ export function createEventsApi(client: HttpClient) {
         options?: { signal?: AbortSignal },
     ): Promise<EventList> {
         const id = requirePathSegment(goid, 'goid');
-        return client.get<EventList>(eventsPath(id, params), options);
+        // async + await so that a refused argument rejects like a failed request does.
+        return await client.get<EventList>(eventsPath(id, params), options);
     }
 
     return {
@@ -78,7 +80,7 @@ export function createEventsApi(client: HttpClient) {
         ): Promise<GoPayEvent> {
             const id = requirePathSegment(goid, 'goid');
             const eid = requirePathSegment(eventId, 'eventId');
-            return client.get<GoPayEvent>(
+            return await client.get<GoPayEvent>(
                 `/eshops/${id}/events/${eid}`,
                 options,
             );

@@ -77,16 +77,17 @@ function createKeyStore(client: HttpClient) {
     async function load(): Promise<void> {
         try {
             const set = await client.get<WebhookPublicKeys>(PUBLIC_KEYS_PATH);
+            const jwks = (Array.isArray(set?.keys) ? set.keys : []).filter(
+                (jwk) => typeof jwk?.kid === 'string',
+            );
+            const imported = await Promise.all(jwks.map(importSigningKey));
             const next = new Map<string, CryptoKey>();
-            for (const jwk of Array.isArray(set?.keys) ? set.keys : []) {
-                const key =
-                    typeof jwk?.kid === 'string'
-                        ? await importSigningKey(jwk)
-                        : undefined;
+            jwks.forEach((jwk, index) => {
+                const key = imported[index];
                 if (key) {
                     next.set(jwk.kid, key);
                 }
-            }
+            });
             keys = next;
             lastFailure = undefined;
         } catch (error) {
@@ -167,7 +168,10 @@ export function createWebhooksApi(client: HttpClient) {
         async getWebhookPublicKeys(options?: {
             signal?: AbortSignal;
         }): Promise<WebhookPublicKeys> {
-            return client.get<WebhookPublicKeys>(PUBLIC_KEYS_PATH, options);
+            return await client.get<WebhookPublicKeys>(
+                PUBLIC_KEYS_PATH,
+                options,
+            );
         },
     };
 }

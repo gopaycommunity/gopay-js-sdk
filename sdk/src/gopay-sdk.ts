@@ -30,7 +30,7 @@ export function createGoPaySDK(config: GoPayConfig = {}) {
     // In a page (the example app runs this SDK in one) the headers would make every call a
     // CORS preflight, refused wherever the gateway does not allow them yet. A server sends none.
     const inPage =
-        typeof (globalThis as { document?: unknown }).document !== 'undefined';
+        (globalThis as { document?: unknown }).document !== undefined;
     const client = createHttpClient(
         config,
         undefined,

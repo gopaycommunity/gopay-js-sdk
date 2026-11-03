@@ -44,21 +44,23 @@ function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> | undefined {
     const binary = atob(
         base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '='),
     );
-    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    // atob yields one char per byte, 0–255, so the code point is the byte.
+    return Uint8Array.from(binary, (char) => char.codePointAt(0) ?? 0);
 }
 
 /** Unpadded, as the JWS signing input requires (RFC 7515 §2). */
 function bytesToBase64Url(bytes: Uint8Array): string {
     let binary = '';
     for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-        binary += String.fromCharCode(
+        binary += String.fromCodePoint(
             ...bytes.subarray(offset, offset + 0x8000),
         );
     }
-    return btoa(binary)
+    const base64 = btoa(binary);
+    const padding = base64.indexOf('=');
+    return (padding === -1 ? base64 : base64.slice(0, padding))
         .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
+        .replace(/\//g, '_');
 }
 
 export function bodyBytes(rawBody: WebhookBody): Uint8Array {
@@ -85,12 +87,12 @@ export function bodyBytes(rawBody: WebhookBody): Uint8Array {
 export function parseSignatureHeader(
     header: WebhookSignatureHeader,
 ): ParsedSignature {
-    const value =
-        typeof header === 'string'
-            ? header
-            : header?.length === 1
-              ? header[0]
-              : undefined;
+    let value: string | undefined;
+    if (typeof header === 'string') {
+        value = header;
+    } else if (header?.length === 1) {
+        value = header[0];
+    }
     if (!value) {
         throw invalidWebhook(
             'exactly one X-GoPay-Signature header is required',
