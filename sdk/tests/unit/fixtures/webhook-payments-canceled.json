@@ -1,0 +1,24 @@
+{
+    "body_base64": "eyJpZCI6IjAxTTVZV1BXODVEMVhKTVo3Nk43QUpIWTQ5IiwidHlwZSI6InBheW1lbnRzLmNhbmNlbGVkIiwib2NjdXJyZWRfYXQiOiIyMDI2LTEwLTI3VDE0OjM3OjI3LjE2N1oiLCJkYXRhIjp7InBheW1lbnRfaWQiOiI3NjM5ODE0NjkzIn19",
+    "x_gopay_signature": "eyJhbGciOiJSUzI1NiIsImtpZCI6InNpZ24tMjAyNi0wMiJ9..ScSTDrKudLOmCiOjOsrMldABn5sLuwCTfe7Fi7k8EmOj65Mv_FWp2mqyKyH8G911XnvEPP8PAN8KC_KMeMOADoCP8UnEAxDKdT5IlAJmRdXLtDfuoRJXJd7MyTKLDO6mkpm9sMmzMTQJWSy0zhJRzAPTKoFW5nVzL81FZPFmpg_qXU03sCD3ILJfgTvFdfIzXsiyN_7uw-V06ra1TMrmVuUF-_GJZk2bpZGeXzIcZB2W-LMJFBK7pxwynH2MjDPCPEcYHr83d38KQCjyvKyPv3clR5Y4VQEA4EmPowhEBs5FafgcnrLQx7by2GzGQtAjQIDbkxv4XMxA27GDhJu0Dw",
+    "jwks": {
+        "keys": [
+            {
+                "kty": "RSA",
+                "use": "sig",
+                "kid": "sign-2026-01",
+                "alg": "RS256",
+                "n": "skJpzhcrK_ZQ0JrsG814SUiZplxy1XfeqEQaeZAXgHgH0ixbYdDk76N3xwRXBKsc1qlTYF-y5s4oJH6fl_HF48AJV-nTXidgrjdun9ekJ5np7-XszkINmcOlAACFXGC37SwSoiBOl7T_C-PUHb5aGaz46sqi7hhLTVdnzSS8H6ha1sYhVqTN5rlh8e29HFJzA-0BuyvkGtuowqhrDiw7G0nlOgFCMgCZcHQiGfYvoaixEsnX4hHVYignnvCAaRL8SwTwS0OMxCEjXd84WmV4Rd6gYMUZyfCUwif_qwBGc1Lqhu91e1Cu5HXD9NeziQazrB94pUy1YWy_Px5r6TvAew",
+                "e": "AQAB"
+            },
+            {
+                "kty": "RSA",
+                "use": "sig",
+                "kid": "sign-2026-02",
+                "alg": "RS256",
+                "n": "w-z8WyXQlPx8swTZlB6RrvqHNVxOK0hFtZgpTSi6Tdeqi0ZWyMCd2Um1JMv41bwVHmwB959G4NUSNKo6OdZ5Z6ZuHNjWTzthnAjW2j6X9b0MiWy5KRD6AzM2zg2WEWtKdSj7R-Qk1cxy34wbGw_BPqYfcd3lU4vXsnLUDrupiyyY9TJ1N5X4EWrxcXUlpGJVlKifbMpES6eUm825WpKGovGAuHgtIW3LGpEwXIWHGvHMu7fr39Tuw6sTh3cM_08fxpDL19_FBW2LZEY4OKpOXo0XQL4sE52f82mUkLB04ltf_KRguAvJw5G85ezkpnfGirZ677HkiExWOcL4R-_LCw",
+                "e": "AQAB"
+            }
+        ]
+    }
+}

@@ -1,0 +1,173 @@
+import {
+    GoPayErrorCodes,
+    GoPayHTTPError,
+    GoPaySDKError,
+    type HttpClient,
+} from '@gopay-internal/core';
+import type { components } from '../../types/generated.js';
+import type { GoPayEvent } from '../events/events.module.js';
+import {
+    bodyBytes,
+    invalidWebhook,
+    parseEvent,
+    parseSignatureHeader,
+    verifySignature,
+    type WebhookBody,
+    type WebhookSignatureHeader,
+} from './signature.js';
+
+export type WebhookPublicKeys = components['schemas']['JWK-Set'];
+type SigningJwk = components['schemas']['Signing-JWK'];
+
+/**
+ * An unknown `kid` refetches the keys at most this often: anyone can send a request naming
+ * a made-up key, and each one must not become a call to GoPay. Short, because a real webhook
+ * signed with a rotated-in key waits it out as a 5xx GoPay retries.
+ */
+const REFETCH_INTERVAL_MS = 10_000;
+/** Older keys are refetched before use, so a key GoPay withdraws stops verifying. */
+const KEYS_MAX_AGE_MS = 60 * 60_000;
+
+const PUBLIC_KEYS_PATH = '/webhooks/public-keys';
+
+function keysUnavailable(cause: unknown): GoPaySDKError {
+    if (cause === undefined) {
+        return new GoPaySDKError(
+            '[GoPaySDK] The webhook names a signing key the SDK has not loaded, and the keys were fetched moments ago, so it was not verified yet.',
+            { errorCode: GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE },
+        );
+    }
+    const hint =
+        cause instanceof GoPayHTTPError && cause.status === 403
+            ? ' The access token needs the shared:read scope.'
+            : '';
+    return new GoPaySDKError(
+        `[GoPaySDK] The webhook signing keys could not be loaded, so the webhook was not verified.${hint}`,
+        { errorCode: GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE, cause },
+    );
+}
+
+async function importSigningKey(
+    jwk: SigningJwk,
+): Promise<CryptoKey | undefined> {
+    if (jwk.kty !== 'RSA' || jwk.alg !== 'RS256' || jwk.use !== 'sig') {
+        return undefined;
+    }
+    try {
+        return await crypto.subtle.importKey(
+            'jwk',
+            { kty: 'RSA', n: jwk.n, e: jwk.e, alg: 'RS256', ext: true },
+            { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+            false,
+            ['verify'],
+        );
+    } catch {
+        // One malformed key must not take the others down with it.
+        return undefined;
+    }
+}
+
+/** Keys by `kid`, replaced as a whole on each successful fetch; a failed one keeps the last set. */
+function createKeyStore(client: HttpClient) {
+    let keys = new Map<string, CryptoKey>();
+    let loading: Promise<void> | undefined;
+    let fetchedAt = Number.NEGATIVE_INFINITY;
+    let lastFailure: unknown;
+
+    async function load(): Promise<void> {
+        try {
+            const set = await client.get<WebhookPublicKeys>(PUBLIC_KEYS_PATH);
+            const next = new Map<string, CryptoKey>();
+            for (const jwk of Array.isArray(set?.keys) ? set.keys : []) {
+                const key =
+                    typeof jwk?.kid === 'string'
+                        ? await importSigningKey(jwk)
+                        : undefined;
+                if (key) {
+                    next.set(jwk.kid, key);
+                }
+            }
+            keys = next;
+            lastFailure = undefined;
+        } catch (error) {
+            lastFailure = error;
+        } finally {
+            fetchedAt = Date.now();
+            loading = undefined;
+        }
+    }
+
+    return {
+        /**
+         * The key, or undefined when GoPay's current keys do not include it. Throws when that
+         * could not be established — not checked is not forged, and GoPay retries a 5xx only.
+         */
+        async keyFor(kid: string): Promise<CryptoKey | undefined> {
+            const age = Date.now() - fetchedAt;
+            const known = keys.has(kid);
+            if (
+                !loading &&
+                (age >= KEYS_MAX_AGE_MS ||
+                    (!known && age >= REFETCH_INTERVAL_MS))
+            ) {
+                loading = load();
+            }
+            const checked = loading !== undefined;
+            await loading;
+            const key = keys.get(kid);
+            if (key) {
+                return key;
+            }
+            if (!checked || lastFailure !== undefined) {
+                throw keysUnavailable(lastFailure);
+            }
+            return undefined;
+        },
+    };
+}
+
+export function createWebhooksApi(client: HttpClient) {
+    const keyStore = createKeyStore(client);
+
+    return {
+        /**
+         * Check that a webhook comes from GoPay and return its event. Requires the
+         * `shared:read` OAuth2 scope, for the signing keys (fetched once, cached by `kid`).
+         *
+         * Pass the body exactly as received — `express.raw({ type: 'application/json' })`,
+         * not `express.json()` — and the `X-GoPay-Signature` header.
+         *
+         * Throws `GoPaySDKError` with `WEBHOOK_INVALID` (answer 4xx) or
+         * `WEBHOOK_KEYS_UNAVAILABLE` (answer 5xx, GoPay retries).
+         */
+        async verifyWebhook(
+            rawBody: WebhookBody,
+            signatureHeader: WebhookSignatureHeader,
+        ): Promise<GoPayEvent> {
+            const body = bodyBytes(rawBody);
+            const signature = parseSignatureHeader(signatureHeader);
+            const key = await keyStore.keyFor(signature.kid);
+            if (!key) {
+                throw invalidWebhook(
+                    'it is signed with a key GoPay does not publish',
+                );
+            }
+            if (!(await verifySignature(key, signature, body))) {
+                throw invalidWebhook('the signature does not match the body');
+            }
+            return parseEvent(body);
+        },
+
+        /**
+         * The public keys GoPay signs webhooks with, as a JWK Set. `verifyWebhook` fetches
+         * them itself; this is for verifying elsewhere. Requires the `shared:read` OAuth2 scope.
+         *
+         * GET /webhooks/public-keys
+         */
+        async getWebhookPublicKeys(options?: {
+            signal?: AbortSignal;
+        }): Promise<WebhookPublicKeys> {
+            return client.get<WebhookPublicKeys>(PUBLIC_KEYS_PATH, options);
+        },
+    };
+}

@@ -4,6 +4,12 @@ export type { GoPayConfig } from './config.js';
 export type { GoPayErrorCode } from './errors.js';
 export { GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } from './errors.js';
 export { createGoPaySDK, type GoPaySDK } from './gopay-sdk.js';
+export type {
+    EventList,
+    GoPayEvent,
+    GoPayEventType,
+    ListEventsParams,
+} from './modules/events/events.module.js';
 export type { CreatePaymentLinkParams } from './modules/links/links.module.js';
 export type {
     AwaitChargeOptions,
@@ -18,6 +24,11 @@ export type {
     RecurrenceDetails,
 } from './modules/recurrences/recurrences.module.js';
 export type { AwaitRefundStateOptions } from './modules/refunds/refunds.module.js';
+export type {
+    WebhookBody,
+    WebhookSignatureHeader,
+} from './modules/webhooks/signature.js';
+export type { WebhookPublicKeys } from './modules/webhooks/webhooks.module.js';
 export type {
     AuthenticateRequest,
     BrowserData,

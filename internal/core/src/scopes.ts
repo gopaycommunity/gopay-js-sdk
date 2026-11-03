@@ -16,6 +16,10 @@ export const GoPayScopes = {
     CARD_WRITE: 'card:write',
     /** Read and delete stored card tokens. */
     CARD_READ: 'card:read',
+    /** Read the eshop's events (server SDK: `listEvents`, `getEvent`, `iterateEvents`). */
+    EVENT_READ: 'event:read',
+    /** Read public resources such as the webhook signing keys `verifyWebhook` needs. */
+    SHARED_READ: 'shared:read',
 } as const;
 
 export type GoPayScope = (typeof GoPayScopes)[keyof typeof GoPayScopes];
