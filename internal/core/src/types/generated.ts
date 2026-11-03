@@ -17,7 +17,7 @@ export interface paths {
          * Authenticate
          * @description Exchanges credentials for an access token.
          *
-         *     The merchant's server presents `client_id:client_secret` with the `client_credentials` grant; the merchant's client presents `payment_id:payment_secret` with the `payment_credentials` grant to obtain a payment-scoped token. Credentials are sent as HTTP Basic and at least one scope must be requested. The returned `access_token` is a JWT valid for fifteen minutes and is presented as a Bearer token on the calls that authenticate with it; the `shareable_key` endpoints use HTTP Basic instead and involve no token exchange.
+         *     The merchant's server presents `client_id:client_secret` with the `client_credentials` grant; the GoPay client SDK presents `payment_id:payment_secret` with the `payment_credentials` grant to obtain a payment-scoped token. Credentials are sent as HTTP Basic and at least one scope must be requested. The returned `access_token` is a JWT valid for fifteen minutes and is presented as a Bearer token on the calls that authenticate with it; the `shareable_key` endpoints use HTTP Basic instead and involve no token exchange.
          */
         post: operations["post-oauth2-token"];
         delete?: never;
@@ -56,7 +56,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -87,7 +87,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -118,7 +118,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -143,7 +143,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -168,7 +168,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -193,7 +193,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -218,7 +218,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -243,7 +243,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -272,7 +272,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Refund ID */
+                /** @description Identifier of the refund */
                 refund_id: string;
             };
             cookie?: never;
@@ -480,7 +480,7 @@ export interface paths {
          * Card details
          * @description Returns the current details of a saved card.
          *
-         *     Called after the saved-card webhook to read fields the issuer has updated in place — a reissued PAN or a new expiration date — while the `card_id` stays the same. The API does not list saved cards; the merchant persists the association between `card_id` and customer. Server-side only.
+         *     Called after the `cards.updated` event to read fields the issuer has updated in place — a reissued PAN or a new expiration date — while the `card_id` stays the same. The API does not list saved cards; the merchant persists the association between `card_id` and customer. Server-side only.
          */
         get: operations["get-cards-tokens-card_id"];
         put?: never;
@@ -489,7 +489,7 @@ export interface paths {
          * Delete a card
          * @description Permanently deletes a saved card.
          *
-         *     A deleted token is not recoverable; saving the same card again requires re-tokenisation through the standalone flow. Server-side only.
+         *     A deleted token is not recoverable; saving the same card again requires a new tokenisation. Server-side only.
          */
         delete: operations["delete-cards-tokens-card_id"];
         options?: never;
@@ -508,7 +508,9 @@ export interface paths {
          * Fetch public key
          * @description Returns the public encryption key to be used for encrypting card data.
          *
-         *     It is structured as a JWK described by [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517)
+         *     It is structured as a JWK described by [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517).
+         *
+         *     Intended for the GoPay client SDK; the merchant's code does not normally call it.
          */
         get: operations["get-encryption-public-key"];
         put?: never;
@@ -528,7 +530,9 @@ export interface paths {
         };
         /**
          * Card Form URL
-         * @description Returns the URL of the hosted card input form
+         * @description Returns the URL of the hosted card input form.
+         *
+         *     Intended for the GoPay browser SDK, which embeds the form; the merchant's code does not normally call it.
          */
         get: operations["get-card-form-url"];
         put?: never;
@@ -550,9 +554,85 @@ export interface paths {
          * Fetch browser data
          * @description Returns the `Browser Data` fields that the customer's browser cannot determine on its own — the source IP address, the `User-Agent` header, and the `Accept` headers — derived from the request that fetched them.
          *
-         *     Call it from the customer's browser, immediately before charging the payment. A call made from the merchant's server returns the server's own values, which the card issuer rejects during 3-D Secure authentication.
+         *     The GoPay client SDK calls it from the customer's browser or device immediately before a charge. A call made from the merchant's server returns the server's own values, which the card issuer rejects during 3-D Secure authentication.
          */
         get: operations["get-browser-data"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/eshops/{goid}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of a registered merchant website */
+                goid: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * List events
+         * @description Returns one page of the eshop's events, newest first.
+         *
+         *     Each page carries the URL of the next one in `next_page_url`, with the filters of the
+         *     request and the position to continue from already in it. The field is absent once the
+         *     last matching event has been returned.
+         */
+        get: operations["get-eshops-goid-events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/eshops/{goid}/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of a registered merchant website */
+                goid: string;
+                /** @description Identifier of the event */
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Event details
+         * @description Returns a single event of the eshop by its `id`.
+         */
+        get: operations["get-eshops-goid-events-event_id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/public-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch webhook signing keys
+         * @description Returns the public keys that verify the signature of a webhook.
+         *
+         *     The keys are structured as a JWK Set described by
+         *     [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517). Several keys may be published at
+         *     once while a key is being rotated.
+         */
+        get: operations["get-webhooks-public-keys"];
         put?: never;
         post?: never;
         delete?: never;
@@ -567,7 +647,7 @@ export interface components {
     schemas: {
         /**
          * Client Credentials Request
-         * @description Request the token pair using the `client_credentials` grant type
+         * @description Requests a merchant access token with the `client_credentials` grant
          */
         "Client-Credentials-Request": {
             /**
@@ -580,15 +660,17 @@ export interface components {
              * @description List of required token scopes, separated with a space.
              *     - `payment:read` reads payments and the resources built on them, such as charges, refunds, recurrences and payment links
              *     - `payment:write` creates, charges, cancels and modifies payments and those same resources
-             *     - `card:read` and `card:write` allow reading information about and deleting or modifying cards respectively
-             *     - `shared:read` allows reading public global information
+             *     - `card:read` reads saved card tokens
+             *     - `card:write` saves and deletes card tokens
+             *     - `event:read` reads the eshop's events
+             *     - `shared:read` reads public resources such as public keys
              * @example payment:write payment:read
              */
             scope: string;
         };
         /**
          * Payment Credentials Request
-         * @description Request the token pair using the `payment_credentials` grant type
+         * @description Requests a payment-scoped access token with the `payment_credentials` grant
          */
         "Payment-Credentials-Request": {
             /**
@@ -599,10 +681,9 @@ export interface components {
             grant_type: "payment_credentials";
             /**
              * @description List of required token scopes, separated with a space.
-             *     - `payment:read` reads information about the payment
-             *     - `payment:charge` allows only to charge the payment
+             *     - `payment:read` reads the payment
+             *     - `payment:charge` charges the payment
              * @example payment:charge payment:read
-             * @example payment:write payment:read
              */
             scope: string;
         };
@@ -618,7 +699,7 @@ export interface components {
              * @constant
              */
             token_type: "bearer";
-            /** @description Access JWT */
+            /** @description The access token, presented as a Bearer token */
             access_token?: components["schemas"]["JWT"];
             /**
              * @description Space-separated list of token scopes.
@@ -640,8 +721,8 @@ export interface components {
          *     - `scope` -> the scopes of the token
          *     - `iat` -> timestamp of token issuing
          *     - `exp` -> timestamp of token expiration
-         *     - `domain` -> `merchant` for server tokens issued for client credentials. `payment` for payment tokens issued for `payment_secret` using the `payment_credentials` grant - used on calling the API from the browser.
-         * @example eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzZGsiLCJleHAiOjE3NzMzMjA0OTMsImlhdCI6MTc3MzMxOTU5Mywic2NvcGUiOiJwYXltZW50OmNyZWF0ZSBwYXltZW50OnJlYWQgY2FyZDpzYXZlIGNhcmQ6cmVhZCJ9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
+         *     - `domain` -> `merchant` for tokens issued to the merchant's server with the `client_credentials` grant, `payment` for payment-scoped tokens issued with the `payment_credentials` grant to the GoPay client SDK
+         * @example eyJraWQiOiJzaWduLTIwMjYtMDIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwic2NvcGUiOiJwYXltZW50OndyaXRlIHBheW1lbnQ6cmVhZCIsImRvbWFpbiI6Im1lcmNoYW50IiwiaWF0IjoxNzczMzE5NTkzLCJleHAiOjE3NzMzMjA0OTN9.WlrmAZT9FLeuaHz9Gp79HeAZh8S0AtYEXbu4pOghXt4f3qv6xNHa8XX3AlvcnN3dKHD8VYWtVhLiUY2DFpGnKZQN97DY91lrStimpRSX9AY5xtOB1sZzNayEpu6MjspVv6IlNrcl2YHYFgqIN1GdFUCKCFetW9Vrm3IjSQCxWA7abo5XqxJyTP_ue7ybSz7y4xiUFNH8cIKpX0PEV3svyoXnbE58UEVktzIWsLA1PnjhtFcxsWT5y1Y_bR8OVxUVTiS0TfMoA1ETQ9ybI7IbX3sttzXnRfnwsn0iS5g96NrrJh2wDvSFQ2fwO_xO-VYl6dHI8tkGDV7JYvFOZ_i7uw
          */
         JWT: string;
         /**
@@ -677,7 +758,7 @@ export interface components {
          */
         "Payment-Create-Request": {
             /**
-             * @description Total amount in cents
+             * @description Total amount in cents. In HUF, the amount must be a multiple of 100
              * @example 100
              */
             amount: number;
@@ -693,11 +774,19 @@ export interface components {
              * @example Test order
              */
             order_description?: string;
-            /** @description Additional parameters for the payment */
+            /**
+             * @description Additional parameters for the payment
+             * @example [
+             *       {
+             *         "name": "Custom param",
+             *         "value": "Custom value"
+             *       }
+             *     ]
+             */
             additional_params?: components["schemas"]["Additional-Param"][];
             /** @description Information about the customer */
             customer: components["schemas"]["Customer"];
-            /** @description Callback urls */
+            /** @description URLs for the return redirect and the notifications */
             callback: components["schemas"]["Payment-Callback"];
         };
         /**
@@ -732,12 +821,12 @@ export interface components {
          */
         "Payment-Details": {
             /**
-             * @description Payment session ID
+             * @description Identifier of the payment
              * @example 300000001
              */
             id: string;
             /**
-             * @description Order ID forwarded from the payment request
+             * @description Order number given when the payment was created
              * @example 2025010199
              */
             order_number: string;
@@ -754,21 +843,21 @@ export interface components {
             customer: components["schemas"]["Customer"];
             /**
              * Format: uri
-             * @description Address of GoPay's hosted payment gateway for this payment. It offers the
-             *     customer every payment method the eshop has enabled, and GoPay drives the
-             *     payment while the customer is on it. It is a destination the customer is sent
-             *     to — it cannot be embedded in the merchant's own checkout. A merchant who needs
-             *     the payment step inside their own UI builds a checkout integration instead, which
-             *     today covers card, Google Pay, Apple Pay and QR payments and is being extended to
-             *     further methods; this gateway already offers every method the eshop has enabled.
-             *     Either way the payment stays fully v4-observable:
-             *     GET /payments/{payment_id} still reports the final state once the customer
-             *     completes it, exactly as it would for a payment charged directly through v4.
+             * @description Address of GoPay's hosted payment gateway for this payment, used by the Redirect
+             *     integration. It offers the customer every payment method the eshop has enabled,
+             *     and GoPay drives the payment while the customer is on it. It is a destination the
+             *     customer is sent to and cannot be embedded in the merchant's own checkout.
+             *     `GET /payments/{payment_id}` reports the outcome of a payment paid there in the
+             *     same way as for any other payment.
              * @example https://gate.gopay.com/gw/123456789
              */
             gw_url: string;
+            /** @description The payment's charge, once a charge has been attempted */
             charge?: components["schemas"]["Payment-Charge-Status-Response"];
-            /** @description Payment secret that can be shared to the client side. Used to generate payment-specific JWTs. **Do not embed in URLs, log or store!** */
+            /**
+             * @description Payment secret that the merchant's server passes to the GoPay client SDK, so that the SDK can act on this payment. **Do not embed in URLs, log or store!**
+             * @example ps_4d2f9a51b7e30c68a1c5e9f03b7d2e46
+             */
             payment_secret: string;
         };
         /**
@@ -789,7 +878,7 @@ export interface components {
         Customer: {
             /**
              * Format: email
-             * @description Customer email.
+             * @description Customer email
              * @example john.doe@example.com
              */
             email: string;
@@ -824,7 +913,7 @@ export interface components {
              */
             postal_code?: string;
             /**
-             * @description Customer country code in respect to [ISO 3166-1 alpha-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)
+             * @description Customer country code according to [ISO 3166-1 alpha-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)
              * @example CZE
              */
             country_code?: string;
@@ -844,12 +933,12 @@ export interface components {
          */
         "Payment-Callback": {
             /**
-             * @description URL used to deliver the HTTP notifications
+             * @description URL that receives notifications about the payment. Optional: when it is omitted, notifications go to the notification URL configured for the eshop, and an eshop with none configured receives no notification. When present, it must not be empty
              * @example https://example.com/notify
              */
-            notification_url: string;
+            notification_url?: string;
             /**
-             * @description URL used to redirect the customer from the gateway back to the shop
+             * @description URL the customer's browser is sent to at the end of the hosted gateway flow, and after the 3-D Secure step in a checkout integration. It must not carry a fragment (`#…`)
              * @example https://example.com/return
              */
             return_url: string;
@@ -857,12 +946,12 @@ export interface components {
         /**
          * Payment State
          * @description The lifecycle state of a payment.
-         *     - `CREATED` - The payment has been created and is awaiting further action
-         *     - `PAID` - The payment has been successfully completed
-         *     - `CANCELED` - The payment was canceled
-         *     - `PAYMENT_METHOD_CHOSEN` - A payment method has been selected by the customer
-         *     - `TIMEOUTED` - The payment was not completed within the allowed time
-         *     - `AUTHORIZED` - The payment has been authorized but not yet captured
+         *     - `CREATED` - The payment exists and is awaiting a charge attempt
+         *     - `PAID` - The payment was charged successfully
+         *     - `CANCELED` - The customer abandoned the payment, the charge was rejected at authorisation, or the merchant canceled the payment before it was charged
+         *     - `PAYMENT_METHOD_CHOSEN` - A charge attempt is in flight and its outcome is not known yet
+         *     - `TIMEOUTED` - The payment did not reach a terminal outcome within its timeout
+         *     - `AUTHORIZED` - The payment has been authorised but not yet captured; only relevant for the pre-authorisation flow
          *     - `REFUNDED` - The payment has been fully refunded
          *     - `PARTIALLY_REFUNDED` - The payment has been partially refunded
          * @example CREATED
@@ -874,7 +963,7 @@ export interface components {
          * @description The lifecycle state of a payment charge.
          *     - `REQUESTED` - The charge has been initiated
          *     - `PROCESSING` - The charge is being processed by the payment provider
-         *     - `ACTION_REQUIRED` - Additional action is required from the customer (e.g. 3DS authentication or bank redirect)
+         *     - `ACTION_REQUIRED` - The customer must complete a step, such as 3-D Secure authentication, before the charge can continue
          *     - `SUCCEEDED` - The charge completed successfully
          *     - `FAILED` - The charge failed
          * @example REQUESTED
@@ -883,7 +972,7 @@ export interface components {
         "Charge-State": "REQUESTED" | "PROCESSING" | "ACTION_REQUIRED" | "SUCCEEDED" | "FAILED";
         /**
          * Payment Charge Data
-         * @description Discriminated union of the possible payment charges. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](#/schemas/Payment-Instrument) enum.
+         * @description The payment instrument used for the charge. The `payment_instrument` field selects the case, taking values from the [Payment Instrument](#/schemas/Payment-Instrument) enum.
          */
         "Payment-Charge-Data": components["schemas"]["Payment-Card-Charge-Data"];
         /**
@@ -896,13 +985,13 @@ export interface components {
         };
         /**
          * Payment Instrument
-         * @description Discriminator for the cases of the [Payment Charge Data](#/schemas/Payment-Charge-Data) union
+         * @description The values of the field that selects the case of [Payment Charge Data](#/schemas/Payment-Charge-Data)
          * @enum {string}
          */
         "Payment-Instrument": "PAYMENT_CARD";
         /**
          * Payment Card Charge Data
-         * @description The `PAYMENT_CARD` variant of the [Payment Charge Data](#/schemas/Payment-Charge-Data) union. Holds the discriminator as well as the input for a card payment.
+         * @description The `PAYMENT_CARD` variant of the [Payment Charge Data](#/schemas/Payment-Charge-Data) union. Holds the card input, the browser data and the 3-D Secure preference.
          */
         "Payment-Card-Charge-Data": {
             /**
@@ -917,18 +1006,18 @@ export interface components {
         };
         /**
          * Payment Card Input
-         * @description Discriminated union of the possible card payment inputs. The discriminator is the `input_type` field gaining values from the [Payment Card Input Type](#/schemas/Payment-Card-Input-Type) enum.
+         * @description The card the payment is charged with. The `input_type` field selects the case, taking values from the [Payment Card Input Type](#/schemas/Payment-Card-Input-Type) enum.
          */
         "Payment-Card-Input": components["schemas"]["Card-Token-Input"] | components["schemas"]["Google-Pay-Input"] | components["schemas"]["Apple-Pay-Input"] | components["schemas"]["Encrypted-Card-Input"];
         /**
          * Payment Card Input Type
-         * @description Discriminator for the cases of the [Payment Card Input](#/schemas/Payment-Card-Input) union
+         * @description The values of the field that selects the case of [Payment Card Input](#/schemas/Payment-Card-Input)
          * @enum {string}
          */
         "Payment-Card-Input-Type": "CARD_TOKEN" | "APPLE_PAY" | "GOOGLE_PAY" | "ENCRYPTED_CARD";
         /**
          * Card Token Input
-         * @description The `CARD_TOKEN` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the token input and 3DS challenge preference
+         * @description The `CARD_TOKEN` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Carries a saved card token
          */
         "Card-Token-Input": {
             /**
@@ -944,18 +1033,18 @@ export interface components {
         };
         /**
          * Payment Card Challenge Preference
-         * @description An indication from the merchant about the 3DS authentication of card payments.
+         * @description The merchant's preference for the 3-D Secure authentication of a card payment.
          *     - `AUTO` - let GoPay decide
-         *     - `CHALLENGE_PREFERRED` - try to enforce a 3DS challenge on the user for stronger authentication
-         *     - `NO_CHALLENGE_PREFERRED` - try to skip 3DS authentication for a simpler checkout experience
+         *     - `CHALLENGE_PREFERRED` - ask for a 3-D Secure challenge for stronger authentication; it may still be skipped, for example for Apple Pay
+         *     - `NO_CHALLENGE_PREFERRED` - ask to skip the challenge; the card issuer can still require one
          * @example AUTO
          * @enum {string}
          */
         "Payment-Card-Challenge-Preference": "CHALLENGE_PREFERRED" | "NO_CHALLENGE_PREFERRED" | "AUTO";
         /**
          * Google Pay Input
-         * @description The `GOOGLE_PAY` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the data acquired from Google Pay.
-         *     See [Payment Data Cryptography](https://developers.google.com/pay/api/web/guides/resources/payment-data-cryptography) in Google Pay documentation for details
+         * @description The `GOOGLE_PAY` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Carries the payment data returned by Google Pay.
+         *     See [Payment Data Cryptography](https://developers.google.com/pay/api/web/guides/resources/payment-data-cryptography) in Google Pay documentation for details.
          */
         "Google-Pay-Input": {
             /**
@@ -970,22 +1059,35 @@ export interface components {
             protocolVersion?: string;
             /**
              * @description Digital signature of the payment data
-             * @example MEQCIH6Q4OwQ0jAceFEkGF0JID6sJNXxOEi4r+mA7biRxqBQAiAondqoUpU/bdsrAOpZIsrHQS9nwiiNwOrr24RyPeHA0Q\u003d\u003d
+             * @example MEQCIH6Q4OwQ0jAceFEkGF0JID6sJNXxOEi4r+mA7biRxqBQAiAondqoUpU/bdsrAOpZIsrHQS9nwiiNwOrr24RyPeHA0Q==
              */
             signature?: string;
-            /** @description Intermediate signing key from Google used to verify the signature */
+            /**
+             * @description Intermediate signing key from Google used to verify the signature
+             * @example {
+             *       "signedKey": "{\"keyExpiration\":\"1542323393147\",\"keyValue\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw==\"}",
+             *       "signatures": [
+             *         "MEYCIQCO2EIi48s8VTH+ilMEpoXLFfkxAwHjfPSCVED/QDSHmQIhALLJmrUlNAY8hDQRV/y1iKZGsWpeNmIP+z+tCQHQxP0v"
+             *       ]
+             *     }
+             */
             intermediateSigningKey?: {
                 /**
                  * @description JSON-encoded string containing the key value and expiration
-                 * @example {\"keyExpiration\":\"1542323393147\",\"keyValue\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw\\u003d\\u003d\"}
+                 * @example {"keyExpiration":"1542323393147","keyValue":"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/1+3HBVSbdv+j7NaArdgMyoSAM43yRydzqdg1TxodSzA96Dj4Mc1EiKroxxunavVIvdxGnJeFViTzFvzFRxyCw=="}
                  */
                 signedKey?: string;
-                /** @description Signatures of the intermediate signing key */
+                /**
+                 * @description Signatures of the intermediate signing key
+                 * @example [
+                 *       "MEYCIQCO2EIi48s8VTH+ilMEpoXLFfkxAwHjfPSCVED/QDSHmQIhALLJmrUlNAY8hDQRV/y1iKZGsWpeNmIP+z+tCQHQxP0v"
+                 *     ]
+                 */
                 signatures?: string[];
             };
             /**
              * @description JSON-encoded string containing the encrypted payment data
-             * @example {\"tag\":\"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U\\u003d\",\"ephemeralPublicKey\":\"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs\\u003d\",\"encryptedMessage\":\"mKOoXwi8OavZ\"}
+             * @example {"tag":"jpGz1F1Bcoi/fCNxI9n7Qrsw7i7KHrGtTf3NrRclt+U=","ephemeralPublicKey":"BJatyFvFPPD21l8/uLP46Ta1hsKHndf8Z+tAgk+DEPQgYTkhHy19cF3h/bXs0tWTmZtnNm+vlVrKbRU9K8+7cZs=","encryptedMessage":"mKOoXwi8OavZ"}
              */
             signedMessage?: string;
         } & {
@@ -993,18 +1095,18 @@ export interface components {
         };
         /**
          * Apple Pay Input
-         * @description The `APPLE_PAY` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Holds the discriminator as well as the data acquired from Apple Pay.
-         *     See [Payment Data Cryptography](https://developer.apple.com/documentation/passkit/payment-token-format-reference) in Apple Pay documentation for details
+         * @description The `APPLE_PAY` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Carries the payment token returned by Apple Pay.
+         *     See [Payment token format reference](https://developer.apple.com/documentation/passkit/payment-token-format-reference) in the Apple Pay documentation for details.
          * @example {
          *       "input_type": "APPLE_PAY",
          *       "data": "V7OcjttPJnUJaQH7x7OjbIeZSINuc...",
          *       "signature": "MIAGCSqGSIb3DQEHAqCAM...",
          *       "version": "EC_v1",
          *       "header": {
-         *         "applicationData": "94ee059335e587e5...c47d0d13c58f7ea4",
-         *         "ephemeralPublicKey": "MFkwEwYHKoZIzj...",
+         *         "applicationData": "94ee059335e587e5f6b717fb172c5c3841659d892a84b7c6c47d0d13c58f7ea4",
+         *         "ephemeralPublicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwpd0HT6uOdE2pZTBZXsJF7IK7EvJQDq4LnQS5B5g8fiD9sEZNt4P9DhWRO44kEbbyiQ1FVgPcSsvJ2Z5I+qPTw==",
          *         "publicKeyHash": "L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=",
-         *         "transactionId": "4f4fac7a1...a6a8ba2c0e8c5"
+         *         "transactionId": "4f4fac7a179ae30ce4c839e85efa4a34811a5ea2af88280c847a6a8ba2c0e8c5"
          *       }
          *     }
          */
@@ -1029,16 +1131,24 @@ export interface components {
              * @example EC_v1
              */
             version: string;
-            /** @description Header containing additional data for decrypting and verifying the payment token */
+            /**
+             * @description Header containing additional data for decrypting and verifying the payment token
+             * @example {
+             *       "applicationData": "94ee059335e587e5f6b717fb172c5c3841659d892a84b7c6c47d0d13c58f7ea4",
+             *       "ephemeralPublicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwpd0HT6uOdE2pZTBZXsJF7IK7EvJQDq4LnQS5B5g8fiD9sEZNt4P9DhWRO44kEbbyiQ1FVgPcSsvJ2Z5I+qPTw==",
+             *       "publicKeyHash": "L6vppo38t31Q/9npxRy/xbA1+cs13h1LV+pMO/FYwvo=",
+             *       "transactionId": "4f4fac7a179ae30ce4c839e85efa4a34811a5ea2af88280c847a6a8ba2c0e8c5"
+             *     }
+             */
             header: {
                 /**
                  * @description Hash of the `applicationData` carried on the Apple Pay payment request. Apple includes it only for sessions created with that value, so the field is optional; forward it unchanged when the Apple Pay session returns it
-                 * @example 94ee059335e587e5...c47d0d13c58f7ea4
+                 * @example 94ee059335e587e5f6b717fb172c5c3841659d892a84b7c6c47d0d13c58f7ea4
                  */
                 applicationData?: string;
                 /**
                  * @description Ephemeral public key used for deriving the shared secret
-                 * @example MFkwEwYHKoZIzj...
+                 * @example MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwpd0HT6uOdE2pZTBZXsJF7IK7EvJQDq4LnQS5B5g8fiD9sEZNt4P9DhWRO44kEbbyiQ1FVgPcSsvJ2Z5I+qPTw==
                  */
                 ephemeralPublicKey: string;
                 /**
@@ -1048,7 +1158,7 @@ export interface components {
                 publicKeyHash: string;
                 /**
                  * @description Unique transaction identifier generated by Apple Pay
-                 * @example 4f4fac7a1...a6a8ba2c0e8c5
+                 * @example 4f4fac7a179ae30ce4c839e85efa4a34811a5ea2af88280c847a6a8ba2c0e8c5
                  */
                 transactionId: string;
             } & {
@@ -1115,7 +1225,7 @@ export interface components {
              */
             javascript_enabled: boolean;
             /**
-             * @description IP address of the customer's browser, as returned by the browser data endpoint. A merchant server charging on the customer's behalf must forward the value collected in the browser, never its own address
+             * @description IP address of the customer's browser, as returned by the browser data endpoint. A merchant's server charging on the customer's behalf must forward the value collected in the browser, never its own address
              * @example 192.0.2.42
              */
             ip: string;
@@ -1144,7 +1254,7 @@ export interface components {
         };
         /**
          * Payment Charge Response
-         * @description Response data returned after initiating or querying a payment charge. Contains the current charge state, instrument details, and any required follow-up action.
+         * @description The charge started by `POST /payments/{payment_id}/charge`: its state, the instrument used, and any step the customer must complete.
          */
         "Payment-Charge-Response": {
             /**
@@ -1156,18 +1266,12 @@ export interface components {
             state: components["schemas"]["Charge-State"];
             /** @description Details of the payment instrument used for this charge */
             payment_instrument: components["schemas"]["Payment-Instrument-Data"];
-            /**
-             * Format: uri
-             * @description URL where the customer will be redirected after completing the payment action
-             * @example https://example.com/return
-             */
-            return_url: string;
-            /** @description The follow-up action required to complete the charge (e.g. 3DS authentication or bank redirect) */
+            /** @description The step the customer must complete, such as 3-D Secure authentication. Present when `state` is `ACTION_REQUIRED` */
             action?: components["schemas"]["Payment-Charge-Action"];
         };
         /**
          * Payment Charge Status Response
-         * @description Response data returned after initiating or querying a payment charge. Contains the current charge state, instrument details, and any required follow-up action.
+         * @description The current state of the payment's charge, the instrument used, any step the customer must complete and, for a failed charge, the reason.
          */
         "Payment-Charge-Status-Response": {
             /**
@@ -1179,20 +1283,17 @@ export interface components {
             state: components["schemas"]["Charge-State"];
             /** @description Details of the payment instrument used for this charge */
             payment_instrument?: components["schemas"]["Payment-Instrument-Data"];
-            /**
-             * Format: uri
-             * @description URL where the customer will be redirected after completing the payment action
-             * @example https://example.com/return
-             */
-            return_url: string;
-            /** @description The follow-up action required to complete the charge (e.g. 3DS authentication or bank redirect) */
+            /** @description The step the customer must complete, such as 3-D Secure authentication. Present when `state` is `ACTION_REQUIRED` */
             action?: components["schemas"]["Payment-Charge-Action"];
-            /** @description Reason for the charge's failure. Only present when state is `FAILED` */
+            /**
+             * @description Reason for the charge's failure. Only present when state is `FAILED`
+             * @example Issuer declined the authorisation
+             */
             fail_reason?: string;
         };
         /**
          * Payment Instrument Data
-         * @description Discriminated union of the possible payment instrument output data. The discriminator is the `payment_instrument` field gaining values from the [Payment Instrument](#/schemas/Payment-Instrument) enum.
+         * @description The payment instrument a charge used. The `payment_instrument` field selects the case, taking values from the [Payment Instrument](#/schemas/Payment-Instrument) enum.
          * @example {
          *       "payment_instrument": "PAYMENT_CARD",
          *       "details": {
@@ -1277,7 +1378,7 @@ export interface components {
         "Card-scheme": "VISA" | "MASTERCARD";
         /**
          * Payment Charge Action
-         * @description Discriminated union of actions that may be required to complete a payment charge. The discriminator is the `action_type` field. The action typically involves redirecting the customer to an external page (e.g. 3DS authentication or bank login).
+         * @description A step the customer must complete before the charge can continue, such as 3-D Secure authentication on the card issuer's page. The `action_type` field selects the case.
          * @example {
          *       "action_type": "EMV3DS",
          *       "state": "CREATED",
@@ -1287,7 +1388,7 @@ export interface components {
         "Payment-Charge-Action": components["schemas"]["Emv-3DS-Action"];
         /**
          * Payment Charge Action Type
-         * @description Discriminator for the cases of the Payment Charge Action union.
+         * @description The values of the field that selects the case of Payment Charge Action.
          *     - `EMV3DS` - EMV 3-D Secure authentication for card payments
          * @example EMV3DS
          * @enum {string}
@@ -1308,11 +1409,11 @@ export interface components {
              * @enum {string}
              */
             action_type: "EMV3DS";
-            /** @description Current state of the 3DS authentication flow */
+            /** @description Current state of the 3-D Secure authentication */
             state: components["schemas"]["Emv-3DS-State"];
             /**
              * Format: uri
-             * @description URL to redirect the customer to for completing the 3DS authentication
+             * @description URL the customer's browser is sent to for the 3-D Secure step. Present while the charge is in `ACTION_REQUIRED`
              * @example https://gate.gopay.com/redirect
              */
             redirect_url?: string;
@@ -1320,12 +1421,12 @@ export interface components {
         /**
          * Emv 3DS State
          * @description The lifecycle state of an EMV 3-D Secure authentication.
-         *     - `CREATED` - The 3DS authentication has been initiated
-         *     - `CHALLENGE_REQUIRED` - The customer must complete a 3DS challenge (e.g. OTP, biometric)
-         *     - `AUTHENTICATED_CHALLENGE` - The customer was successfully authenticated via a 3DS challenge
+         *     - `CREATED` - The 3-D Secure authentication has been initiated
+         *     - `CHALLENGE_REQUIRED` - The customer must complete a 3-D Secure challenge, such as a one-time code or a confirmation in the banking app
+         *     - `AUTHENTICATED_CHALLENGE` - The customer was authenticated through a challenge
          *     - `AUTHENTICATED_FRICTIONLESS` - The customer was authenticated without a challenge (frictionless flow)
-         *     - `NOT_AUTHENTICATED` - The 3DS authentication was not completed
-         *     - `FAILED` - The 3DS authentication failed
+         *     - `NOT_AUTHENTICATED` - The 3-D Secure authentication was not completed
+         *     - `FAILED` - The 3-D Secure authentication failed
          * @example CREATED
          * @enum {string}
          */
@@ -1448,22 +1549,22 @@ export interface components {
          */
         "QR-Code-List": {
             /**
-             * @description QR code in the SPAYD (Short Payment Descriptor) format, commonly used in the Czech Republic. Encoded as a base64 PNG image.
+             * @description QR code in the SPAYD (Short Payment Descriptor) format, commonly used in the Czech Republic. Encoded as a base64 image in the requested format.
              * @example iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAAAklEQVR4AewaftIAAAglSURBVO3BUa4cuZYEwXCi9r9lH30WDh6RBJVXrekOM/wlVfU/rVTV1kpVba1U1dZKVW2tVNXWSlVtrVTV1kpVba1U1dYnh4D8DdRMQE6omYBMat4CZFIzATmhZgLyk9ScADKpmYD8DdQ8WamqrZWq2lqpqq2Vqtr65Deo+WlA3gJkUnMLyBM1t9RMQCY1E5BvaiYgJ4CcUHNDzU8DcmOlqrZWqmprpaq2Vqpq65OXAbml5i1qJiATkEnNBOQtQN4EZFLzFjUngExqbgC5peYtK1W1tVJVWytVtbVSVVuf/AuomYC8Sc0TILfUTEAmNSeAfFNzQs0EZFLzX7BSVVsrVbW1UlVbK1W19cm/AJBJzQRkUnMCyKTmCZATQCY1E5BJzaTmG5A3AZnU/NusVNXWSlVtrVTV1kpVbX3yMjV/mpoTak4AOQHkiZoJyJuATGp+kpoJyKTmhpq/wUpVba1U1dZKVW2tVNXWJ78ByN8AyKRmAjKpOaFmAvJNzQRkUjMBuaVmAvJNzQTkbwDkb7VSVVsrVbW1UlVb+Ev+hYBMam4BmdR8AzKpuQXklppvQCY1E5ATav4LVqpqa6WqtlaqamulqrY+OQRkUnMCyN8AyKRmAjKpuQFkUjMBmdRMQG6omYBMak4AuaXmCZBJzQTklponK1W1tVJVWytVtbVSVVufHFIzAZnUTGpOAJnUPAHyJjUTkCdqTgCZ1NxSMwH5puafoGYC8hY1P2mlqrZWqmprpaq2Vqpq65NDQCY1Pw3IEzX/BDU31NxSc0LNW4BMak4AmdR8AzKpOQFkUvOWlaraWqmqrZWq2lqpqi38Jf8AIJOaJ0AmNSeAnFBzAsgTNROQSc0tIDfU3ALyk9RMQCY1E5ATap6sVNXWSlVtrVTV1kpVbX3yG4BMat4E5AaQE2omIDfUTEAmNSeATGpOqLkB5E1qngCZgExqTqiZgNxYqaqtlaraWqmqrZWq2vrkEJBbQG6p+QbkTUAmNROQtwCZ1ExqTqiZgHxTMwGZ1ExAJjUngExqfhKQSc2NlaraWqmqrZWq2lqpqi38JZeAnFBzC8g3NROQSc0E5ISaCcik5gaQSc0tIDfUTED+NDUngJxQMwGZ1DxZqaqtlaraWqmqLfwlB4BMaiYgJ9S8BcgJNROQE2reAuSEmgnIpOYJkFtqJiBvUXMLyKTmLStVtbVSVVsrVbW1UlVb+EsuAZnUnAByQ80EZFIzAZnUnADyk9RMQG6puQFkUnMCyKTmCZATav60laraWqmqrZWq2lqpqq1P/gAgt9R8AzKpOaHmlpobQCY1E5BJzQRkUnMDyKTmlpoJyBM1t4BMaiYgk5onK1W1tVJVWytVtbVSVVuf/AY1E5BJzQTkBJC3ALmlZgLyRM1PA3JDzQkgk5oTap4AOaFmUvOTVqpqa6WqtlaqamulqrY++Q1Abql5C5CfBmRS8xY1J9S8BcikZlIzAZnUnADyFiCTmresVNXWSlVtrVTV1kpVbeEvOQBkUjMBOaFmAvJEzQkgk5oTQP4Gak4AeaLmBJATaiYgb1EzAZnUnAAyqXmyUlVbK1W1tVJVWytVtfXJy9RMQG6peQLkFpBJzQkg39TcAjIB+UlAJjVvUjMBeQLkBJBJzaTmxkpVba1U1dZKVW2tVNUW/pIXAZnUnADyRM0JIJOanwTkTWomIJOaCcifpmYCMqn5SUBOqHmyUlVbK1W1tVJVW58cAvImICfUPAEyqTkBZFLzFjUTkEnNBGRSMwF5i5oJyKRmAjKpmYC8Rc2kZgJyY6WqtlaqamulqrZWqmoLf8klIH+amgnICTUngExqngB5k5oTQCY1bwFyQs0E5ImaCcgtNROQSc2TlaraWqmqrZWq2lqpqq1PDgE5oWYCMqmZgExqvgGZ1LxJzQkg39RMQE6omYCcUPOT1ExA3gLkhJoJyATkLStVtbVSVVsrVbW1UlVbn/zlgHxTMwF5k5oTam6oeROQJ2omIJOaW0AmNROQb2pOAJnUTEDeslJVWytVtbVSVVsrVbX1yW9QMwGZ1ExAJjVPgExqfhqQSc03IJOaCcgJNROQE2qeqJmATGpOqJmA3AByAsgJNTdWqmprpaq2Vqpqa6WqtvCXHAAyqTkBZFIzAXmLmgnICTUTkCdqJiCTmjcBeYuaW0B+kppbQCY1T1aqamulqrZWqmprpaq2Pjmk5paaE2puAJmAnFAzATmh5icBmdRMap4AOQFkUnNLzQ0gJ4BMat6yUlVbK1W1tVJVWytVtfXJISB/AzW31ExA3gLknwDkiZoJyKTmBJBbQL6peROQt6xU1dZKVW2tVNXWJ79BzU8DckPNLTU31JwAcgvIpGYC8kTNBGRSM6mZgJxQ8xY1E5C3rFTV1kpVba1U1dZKVW198jIgt9T8aWreAmRSM6k5AWRSMwG5AWRScwLICSB/mpq3rFTV1kpVba1U1dZKVW198h8CZFLzFjUTkEnNBGRSc0vNNyCTmgnIpGZSMwG5oWYCcgLIpGYCMql5slJVWytVtbVSVVsrVbX1yb+AmgnICSCTmhNAbgA5AeQnAZnUTEDepOYbkEnNCTUTkLesVNXWSlVtrVTV1kpVbX3yMjX/n6i5peYJkBNqJiC3gHxTcwLIpOZNQP40NTdWqmprpaq2Vqpqa6Wqtj75DUD+BkBuAZnUnADyRM0EZAIyqZmAvAXIpOYEkBNq3gLkFpBJzZOVqtpaqaqtlaraWqmqLfwlVfU/rVTV1kpVba1U1dZKVW2tVNXWSlVtrVTV1kpVbf0fJGLzp4ep9m8AAAAASUVORK5CYII=
              */
             spayd?: string;
             /**
-             * @description QR code in the Pay by Square format, commonly used in Slovakia. Encoded as a base64 image.
+             * @description QR code in the Pay by Square format, commonly used in Slovakia. Encoded as a base64 image in the requested format.
              * @example {QR code in base64}
              */
             paybysquare?: string;
             /**
-             * @description QR code in the SEPA (Single Euro Payments Area) format for EUR payments. Encoded as a base64 image.
+             * @description QR code in the SEPA (Single Euro Payments Area) format for EUR payments. Encoded as a base64 image in the requested format.
              * @example {QR code in base64}
              */
             sepa?: string;
             /**
-             * @description QR code in the MNB (Magyar Nemzeti Bank) format, commonly used in Hungary. Encoded as a base64 image.
+             * @description QR code in the MNB (Magyar Nemzeti Bank) format, commonly used in Hungary. Encoded as a base64 image in the requested format.
              * @example {QR code in base64}
              */
             mnb_qr?: string;
@@ -1478,7 +1579,7 @@ export interface components {
         };
         /**
          * Permanent Card Token Details
-         * @description Details of a permanently stored card token. This token can be reused across multiple payments until the card expires or the token is explicitly deleted.
+         * @description Details of a saved card token. The token is reused on later charges until it is deleted; issuer updates such as a new expiration date are applied to it in place.
          * @example {
          *       "card_id": "8007127320",
          *       "masked_pan": "406821******1234",
@@ -1525,10 +1626,11 @@ export interface components {
             /**
              * @description Whether the card is a corporate (business) card
              * @default false
+             * @example false
              */
             corporate: boolean;
             /**
-             * @description A unique hash identifying the physical card, stable across multiple tokenizations of the same card
+             * @description A unique hash identifying the physical card, stable across repeated tokenisations of the same card
              * @example 73c8d0a48d91def897612b54e630997745e1faad43045e732189cfe4acf4961b
              */
             fingerprint: string;
@@ -1574,7 +1676,7 @@ export interface components {
         "Card-Token-Status": "ACTIVE" | "SUSPENDED" | "DELETED";
         /**
          * JWK
-         * @description The structure of the public encryption key. It is formatted according to RFC 7515: JSON Web Key (JWK)
+         * @description The structure of the public encryption key. It is formatted according to RFC 7517: JSON Web Key (JWK)
          * @example {
          *       "kty": "RSA",
          *       "kid": "key_20250406",
@@ -1624,13 +1726,13 @@ export interface components {
          * JWE
          * @description The structure containing the encrypted payload. It is described by [RFC 7516: JSON Web Encryption (JWE)](https://datatracker.ietf.org/doc/html/rfc7516)
          *
-         *     This is generated by client libraries managed by GoPay.
-         * @example eyJalgIjoiUlNBLU9BRVAtMjU2IiwiZW5jIjoiQTI1NkdDTSIsImtpZCI6ImtleV8yMDI1MDQwNl8wMDEifQ.aG93ZGlkYmFzZTY0.dGhpc2lzdGhlaXY.ZW5jcnlwdGVkY2FyZGhvbGRlcmRhdGE.YXV0aHRhZw
+         *     It is produced by the GoPay client SDK.
+         * @example eyJhbGciOiJSU0EtT0FFUC0yNTYiLCJlbmMiOiJBMjU2R0NNIiwia2lkIjoia2V5XzIwMjUwNDA2In0.aG93ZGlkYmFzZTY0.dGhpc2lzdGhlaXY.ZW5jcnlwdGVkY2FyZGhvbGRlcmRhdGE.YXV0aHRhZw
          */
         JWE: string;
         /**
          * Card Form URL
-         * @description Response containing the URL of the hosted card input form. Use this form to securely collect card details without handling raw card data on your own servers.
+         * @description The URL of the hosted card input form, which the GoPay browser SDK embeds in the merchant's page.
          */
         "Card-Form-URL": {
             /**
@@ -1661,7 +1763,7 @@ export interface components {
             message: string;
             /**
              * @description Detailed error description
-             * @example Error Details
+             * @example The field `payment_instrument` is required
              */
             detail: string;
             /**
@@ -1676,24 +1778,34 @@ export interface components {
              */
             timestamp: string;
         };
-        /** Encrypted Card Input */
+        /**
+         * Encrypted Card Input
+         * @description The `ENCRYPTED_CARD` variant of the [Payment Card Input](#/schemas/Payment-Card-Input) union. Carries a card the customer entered, encrypted by the GoPay client SDK. Single-use and valid for ten minutes.
+         */
         "Encrypted-Card-Input": {
             /**
-             * @description discriminator enum property added by openapi-typescript
+             * @description Always `ENCRYPTED_CARD` (enum property replaced by openapi-typescript)
              * @enum {string}
              */
             input_type: "ENCRYPTED_CARD";
+            /** @description The encrypted card */
             payload: components["schemas"]["JWE"];
         };
-        /** Refund Create Request */
+        /**
+         * Refund Create Request
+         * @description The amount to refund from a paid payment
+         */
         "Refund-Create-Request": {
             /**
-             * @description Amount to be refunded in cents. For a full amount, set it equal to the payment amount
+             * @description Amount to be refunded in cents. For a full amount, set it equal to the payment amount. In HUF, the amount must be a multiple of 100
              * @example 100
              */
             amount: number;
         };
-        /** Refund Details */
+        /**
+         * Refund Details
+         * @description A refund issued against a payment
+         */
         "Refund-Details": {
             /**
              * @description Refund ID
@@ -1734,7 +1846,7 @@ export interface components {
         "Refund-State": "REQUESTED" | "SUCCESS" | "FAILED";
         /**
          * Recurrence Schedule
-         * @description How often an AUTO recurrence creates a payment
+         * @description How often an `AUTO` recurrence creates a payment
          * @example {
          *       "period": "MONTH",
          *       "cycle": 1
@@ -1755,7 +1867,7 @@ export interface components {
         };
         /**
          * Recurrence Create Request
-         * @description Discriminated union of the two recurrence kinds. The discriminator is the `type` field gaining values from the [Recurrence Type](#/schemas/Recurrence-Type) enum. An `AUTO` recurrence carries a `schedule`; an `ON_DEMAND` one must not, because the merchant asks for each further payment itself.
+         * @description One of the two recurrence kinds. The `type` field selects the case, taking values from the [Recurrence Type](#/schemas/Recurrence-Type) enum. An `AUTO` recurrence carries a `schedule`; an `ON_DEMAND` one must not, because the merchant asks for each further payment itself.
          */
         "Recurrence-Create-Request": components["schemas"]["Recurrence-Create-Auto"] | components["schemas"]["Recurrence-Create-On-Demand"];
         /**
@@ -1868,7 +1980,7 @@ export interface components {
             type: components["schemas"]["Recurrence-Type"];
             /** @description Current state of the recurrence */
             state: components["schemas"]["Recurrence-State"];
-            /** @description Present only for an AUTO recurrence */
+            /** @description Present only for an `AUTO` recurrence */
             schedule?: components["schemas"]["Recurrence-Schedule"];
             /**
              * Format: date
@@ -1876,7 +1988,7 @@ export interface components {
              * @example 2027-09-04
              */
             recurrence_date_to: string;
-            /** @description Why the recurrence stopped — present only in state STOPPED */
+            /** @description Why the recurrence stopped — present only in state `STOPPED` */
             stop_reason?: components["schemas"]["Recurrence-Stop-Reason"];
             /** @description Payment the recurrence carries — the stored template until one is created */
             payment: components["schemas"]["Recurrence-Payment"];
@@ -1916,12 +2028,12 @@ export interface components {
             /** @description Information about the customer */
             customer: components["schemas"]["Customer"];
             /**
-             * @description Address of GoPay's hosted payment gateway, where the customer pays the created payment. It cannot be embedded in the merchant's own checkout — see `Payment-Details.gw_url`. Absent until the recurrence has created one
+             * @description Address of GoPay's hosted payment gateway, where the customer pays the created payment. It cannot be embedded in the merchant's own checkout — see `Payment Details.gw_url`. Absent until the recurrence has created one
              * @example https://gate.gopay.com/gw/123456789
              */
             gw_url?: string;
             /**
-             * @description Secret the client SDK exchanges for a payment-scoped token. Absent until the recurrence has created a payment. **Do not embed in URLs, log or store!**
+             * @description Secret the merchant's server passes to the GoPay client SDK, so that the SDK can act on the payment. Absent until the recurrence has created a payment. **Do not embed in URLs, log or store!**
              * @example ps_6aa48c5fadd5ca9ccbc2a30bb13d7e8e
              */
             payment_secret?: string;
@@ -1942,7 +2054,13 @@ export interface components {
         "Recurrence-State": "NEW" | "REQUESTED" | "STARTED" | "STOPPED";
         /**
          * Recurrence Stop Reason
-         * @description Why a recurrence in state STOPPED ended
+         * @description Why a recurrence in state `STOPPED` ended.
+         *     - `RECURRENCE_EXPIRED` - `recurrence_date_to` passed
+         *     - `CARD_EXPIRED` - The authorised card expired
+         *     - `CANCELLED_VIA_API` - Stopped with `DELETE /recurrences/{rec_id}`
+         *     - `CANCELLED_VIA_BACKOFFICE` - Stopped by a GoPay operator on the merchant's behalf
+         *     - `CANCELLED_BY_GOPAY` - Stopped by GoPay
+         *     - `UNKNOWN` - The reason is not available
          * @example CANCELLED_VIA_API
          * @enum {string}
          */
@@ -1958,7 +2076,7 @@ export interface components {
         "Customer-Override": {
             /**
              * Format: email
-             * @description Customer email.
+             * @description Customer email
              * @example john.doe@example.com
              */
             email?: string;
@@ -1993,7 +2111,7 @@ export interface components {
              */
             postal_code?: string;
             /**
-             * @description Customer country code in respect to [ISO 3166-1 alpha-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)
+             * @description Customer country code according to [ISO 3166-1 alpha-3](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)
              * @example CZE
              */
             country_code?: string;
@@ -2023,7 +2141,7 @@ export interface components {
          */
         "Payment-Instance-Override": {
             /**
-             * @description Total amount in cents
+             * @description Total amount in cents. In HUF, the amount must be a multiple of 100
              * @example 9900
              */
             amount?: number;
@@ -2037,14 +2155,25 @@ export interface components {
              * @example Test order
              */
             order_description?: string;
-            /** @description Additional parameters for the payment */
+            /**
+             * @description Additional parameters for the payment
+             * @example [
+             *       {
+             *         "name": "Custom param",
+             *         "value": "Custom value"
+             *       }
+             *     ]
+             */
             additional_params?: components["schemas"]["Additional-Param"][];
             /** @description Customer fields to replace; omitted ones keep the stored value */
             customer?: components["schemas"]["Customer-Override"];
-            /** @description Callback urls */
+            /** @description URLs for the return redirect and the notifications */
             callback?: components["schemas"]["Payment-Callback"];
         };
-        /** Link Create Request */
+        /**
+         * Link Create Request
+         * @description The payment data a new payment link carries, its lifetime, and whether it may be used more than once
+         */
         "Link-Create-Request": {
             /** @description Payment data used for every payment this link creates */
             payment: components["schemas"]["Payment-From-Link-Request"];
@@ -2060,7 +2189,10 @@ export interface components {
              */
             reusable: boolean;
         };
-        /** Link Details */
+        /**
+         * Link Details
+         * @description A payment link, its state, and the payment data it carries
+         */
         "Link-Details": {
             /**
              * @description Link ID, used on the status and disable calls. Not the code that appears in `url`
@@ -2136,7 +2268,7 @@ export interface components {
          */
         "Payment-From-Link-Request": {
             /**
-             * @description Total amount in cents
+             * @description Total amount in cents. In HUF, the amount must be a multiple of 100
              * @example 15000
              */
             amount: number;
@@ -2152,25 +2284,557 @@ export interface components {
              * @example Invoice 2026-00042
              */
             order_description?: string;
-            /** @description Additional parameters for the payment. Each `name` must not contain `=`, and `name` and `value` together may not exceed 511 characters */
+            /**
+             * @description Additional parameters for the payment. Each `name` must not contain `=`, and `name` and `value` together may not exceed 511 characters
+             * @example [
+             *       {
+             *         "name": "Custom param",
+             *         "value": "Custom value"
+             *       }
+             *     ]
+             */
             additional_params?: components["schemas"]["Additional-Param"][];
             /** @description Information about the customer. The email address is required */
             customer: components["schemas"]["Customer"];
-            /** @description Callback urls. Both must be http or https and at most 512 characters long */
+            /** @description URLs for the return redirect and the notifications. `return_url` is required, `notification_url` is optional. Each must be http or https and at most 512 characters long */
             callback: components["schemas"]["Payment-Callback"];
         };
-        /** Validate Merchant Request */
+        /**
+         * Validate Merchant Request
+         * @description The Apple Pay merchant validation request
+         */
         "Validate-Merchant-Request": {
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description The validation URL Apple Pay issued for the session
+             * @example https://apple-pay-gateway.apple.com/paymentservices/paymentSession
+             */
             validationUrl: string;
         };
-        /** Validate-Merchant-Response */
+        /**
+         * Validate Merchant Response
+         * @description The merchant session object Apple Pay expects, passed to the Apple Pay sheet unchanged
+         */
         "Validate-Merchant-Response": {
             [key: string]: unknown;
         };
+        /**
+         * Event
+         * @description One of the events GoPay records. The `type` field selects the case, taking values from the [Event Type](#/schemas/Event-Type) enum. A `type` the merchant's code does not recognise is ignored rather than treated as an error, so that a new type does not break a working integration.
+         * @example {
+         *       "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+         *       "type": "payments.paid",
+         *       "occurred_at": "2026-07-08T12:04:39.123Z",
+         *       "data": {
+         *         "payment_id": "300000001",
+         *         "charge_id": "9123456789"
+         *       }
+         *     }
+         */
+        Event: components["schemas"]["Payment-Paid-Event"] | components["schemas"]["Payment-Canceled-Event"] | components["schemas"]["Payment-Timeouted-Event"] | components["schemas"]["Link-Payment-Created-Event"] | components["schemas"]["Link-Disabled-Event"] | components["schemas"]["Refund-Succeeded-Event"] | components["schemas"]["Refund-Failed-Event"] | components["schemas"]["Recurrence-Started-Event"] | components["schemas"]["Recurrence-Payment-Created-Event"] | components["schemas"]["Recurrence-Stopped-Event"] | components["schemas"]["Card-Updated-Event"] | components["schemas"]["Card-Deleted-Event"];
+        /**
+         * Event Type
+         * @description The values of the field that selects the case of [Event](#/schemas/Event)
+         * @example payments.paid
+         * @enum {string}
+         */
+        "Event-Type": "payments.paid" | "payments.canceled" | "payments.timeouted" | "links.payment_created" | "links.disabled" | "refunds.succeeded" | "refunds.failed" | "recurrences.started" | "recurrences.payment_created" | "recurrences.stopped" | "cards.updated" | "cards.deleted";
+        /**
+         * Payment Paid Event
+         * @description The `payments.paid` variant of the [Event](#/schemas/Event) union. The payment reached `PAID`.
+         */
+        "Payment-Paid-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `payments.paid` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "payments.paid";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Payment-Paid-Data"];
+        };
+        /**
+         * Payment Canceled Event
+         * @description The `payments.canceled` variant of the [Event](#/schemas/Event) union. The payment reached `CANCELED`: the customer abandoned it, the charge was rejected at authorisation, or the merchant canceled it before it was charged.
+         */
+        "Payment-Canceled-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `payments.canceled` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "payments.canceled";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Payment-Event-Data"];
+        };
+        /**
+         * Payment Timeouted Event
+         * @description The `payments.timeouted` variant of the [Event](#/schemas/Event) union. The payment did not reach a terminal outcome within its timeout.
+         */
+        "Payment-Timeouted-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `payments.timeouted` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "payments.timeouted";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Payment-Event-Data"];
+        };
+        /**
+         * Link Payment Created Event
+         * @description The `links.payment_created` variant of the [Event](#/schemas/Event) union. A customer opened a payment link and a payment was created from it.
+         */
+        "Link-Payment-Created-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `links.payment_created` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "links.payment_created";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Link-Payment-Created-Data"];
+        };
+        /**
+         * Link Disabled Event
+         * @description The `links.disabled` variant of the [Event](#/schemas/Event) union. The merchant deactivated a payment link.
+         */
+        "Link-Disabled-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `links.disabled` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "links.disabled";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Link-Event-Data"];
+        };
+        /**
+         * Refund Succeeded Event
+         * @description The `refunds.succeeded` variant of the [Event](#/schemas/Event) union. A refund settled.
+         */
+        "Refund-Succeeded-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `refunds.succeeded` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "refunds.succeeded";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Refund-Event-Data"];
+        };
+        /**
+         * Refund Failed Event
+         * @description The `refunds.failed` variant of the [Event](#/schemas/Event) union. A refund could not be settled.
+         */
+        "Refund-Failed-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `refunds.failed` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "refunds.failed";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Refund-Event-Data"];
+        };
+        /**
+         * Recurrence Started Event
+         * @description The `recurrences.started` variant of the [Event](#/schemas/Event) union. A recurrence was activated by the payment named in `data`.
+         */
+        "Recurrence-Started-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `recurrences.started` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "recurrences.started";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Recurrence-Payment-Data"];
+        };
+        /**
+         * Recurrence Payment Created Event
+         * @description The `recurrences.payment_created` variant of the [Event](#/schemas/Event) union. A scheduled payment was created from a recurrence.
+         */
+        "Recurrence-Payment-Created-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `recurrences.payment_created` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "recurrences.payment_created";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Recurrence-Payment-Data"];
+        };
+        /**
+         * Recurrence Stopped Event
+         * @description The `recurrences.stopped` variant of the [Event](#/schemas/Event) union. A recurrence was stopped.
+         */
+        "Recurrence-Stopped-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `recurrences.stopped` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "recurrences.stopped";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Recurrence-Event-Data"];
+        };
+        /**
+         * Card Updated Event
+         * @description The `cards.updated` variant of the [Event](#/schemas/Event) union. A saved card token changed in place, for instance after the issuer reissued the card.
+         */
+        "Card-Updated-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `cards.updated` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "cards.updated";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Card-Event-Data"];
+        };
+        /**
+         * Card Deleted Event
+         * @description The `cards.deleted` variant of the [Event](#/schemas/Event) union. A saved card token was deleted.
+         */
+        "Card-Deleted-Event": {
+            /**
+             * @description Unique identifier of the event. It is the value the merchant's server deduplicates on
+             * @example 01ARZ3NDEKTSV4RRFFQ69G5FAV
+             */
+            id: string;
+            /**
+             * @description Always `cards.deleted` (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "cards.deleted";
+            /**
+             * Format: date-time
+             * @description When the fact happened, in UTC. May carry fractional seconds
+             * @example 2026-07-08T12:04:39.123Z
+             */
+            occurred_at: string;
+            /** @description Identifiers of the entities the event concerns */
+            data: components["schemas"]["Card-Event-Data"];
+        };
+        /**
+         * Payment Paid Data
+         * @description Identifies the payment and, if a charge paid it, the charge.
+         */
+        "Payment-Paid-Data": {
+            /**
+             * @description Identifier of the payment
+             * @example 300000001
+             */
+            payment_id: string;
+            /**
+             * @description Identifier of the charge that paid the payment. Absent when no charge paid it, for instance on the hosted gateway at `gw_url`
+             * @example 9123456789
+             */
+            charge_id?: string;
+        };
+        /**
+         * Payment Event Data
+         * @description Identifies the payment the event concerns.
+         */
+        "Payment-Event-Data": {
+            /**
+             * @description Identifier of the payment
+             * @example 300000001
+             */
+            payment_id: string;
+        };
+        /**
+         * Link Payment Created Data
+         * @description Identifies the payment link and the payment created from it.
+         */
+        "Link-Payment-Created-Data": {
+            /**
+             * @description Identifier of the payment link
+             * @example 346346346
+             */
+            link_id: string;
+            /**
+             * @description Identifier of the payment
+             * @example 300000001
+             */
+            payment_id: string;
+        };
+        /**
+         * Link Event Data
+         * @description Identifies the payment link the event concerns.
+         */
+        "Link-Event-Data": {
+            /**
+             * @description Identifier of the payment link
+             * @example 346346346
+             */
+            link_id: string;
+        };
+        /**
+         * Refund Event Data
+         * @description Identifies the refund and the payment it belongs to.
+         */
+        "Refund-Event-Data": {
+            /**
+             * @description Identifier of the payment
+             * @example 300000001
+             */
+            payment_id: string;
+            /**
+             * @description Identifier of the refund
+             * @example 3050123456
+             */
+            refund_id: string;
+        };
+        /**
+         * Recurrence Payment Data
+         * @description Identifies the recurrence and the payment the event concerns. For `recurrences.started` the payment is the one that started the recurrence; for `recurrences.payment_created` it is the newly created payment.
+         */
+        "Recurrence-Payment-Data": {
+            /**
+             * @description Identifier of the recurrence
+             * @example 5521002
+             */
+            recurrence_id: string;
+            /**
+             * @description Identifier of the payment
+             * @example 300000001
+             */
+            payment_id: string;
+        };
+        /**
+         * Recurrence Event Data
+         * @description Identifies the recurrence the event concerns.
+         */
+        "Recurrence-Event-Data": {
+            /**
+             * @description Identifier of the recurrence
+             * @example 5521002
+             */
+            recurrence_id: string;
+        };
+        /**
+         * Card Event Data
+         * @description Identifies the saved card token the event concerns. Card tokens belong to the merchant and are shared across the merchant's eshops.
+         */
+        "Card-Event-Data": {
+            /**
+             * @description Identifier of the saved card token
+             * @example 8007127320
+             */
+            card_id: string;
+        };
+        /**
+         * Event List
+         * @description One page of events of an eshop, newest first
+         */
+        "Event-List": {
+            /**
+             * @description The events in this page
+             * @example [
+             *       {
+             *         "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+             *         "type": "payments.paid",
+             *         "occurred_at": "2026-07-08T12:04:39.123Z",
+             *         "data": {
+             *           "payment_id": "300000001",
+             *           "charge_id": "9123456789"
+             *         }
+             *       }
+             *     ]
+             */
+            items: components["schemas"]["Event"][];
+            /**
+             * Format: uri
+             * @description The full address of the next page, carrying the filters of the request and the `id` of
+             *     the last event of this page as the position to continue from. Absent when no further
+             *     matching event exists.
+             * @example https://gate.gopay.com/gp-gw/api/4.0/eshops/8123456789/events?type=refunds.*&max_items=20&prev_item=01H8ZQ7X9K4Q0M2V6T8B3C5D7E
+             */
+            next_page_url?: string;
+        };
+        /**
+         * JWK Set
+         * @description A set of public keys holding the webhook signing keys currently in use. It is formatted according to RFC 7517: JSON Web Key Set (JWK Set)
+         */
+        "JWK-Set": {
+            /**
+             * @description The webhook signing keys currently in use
+             * @example [
+             *       {
+             *         "kty": "RSA",
+             *         "use": "sig",
+             *         "kid": "sign-2026-02",
+             *         "alg": "RS256",
+             *         "n": "4JHqz4QwbiVuVzLhjJwwgK_EC86qVTPhQIpmiQCoGNzLBQlsBdt13Y10AlzRSMMF65LyF5Y8doKR-gJlCR9J5P9YPr1IgU0wVyqJ349yL7O_lMWy5TfWdGz7KOrq9tyHVtjH0i5ztAIQHPvQ02LayjdNgUA4Z8RxFsSz03nCU-dJLJOg63BS23VfxEs4J_kmbITSACIxiIAerc-wUwIQkjlHyHQQtac7kcCQfSqDB3F2YqxFkWOC66drt2zcMutjxcK-ZcnjdBiQnTI_9izbJB9mX4CoErMWre7GNt_krHoi6OP6DoOvjEsABAS2Dyf13xLuNVH-QHpCUaYqR70OTQ",
+             *         "e": "AQAB"
+             *       }
+             *     ]
+             */
+            keys: components["schemas"]["Signing-JWK"][];
+        };
+        /**
+         * Signing JWK
+         * @description The structure of a public webhook signing key. It is formatted according to RFC 7517: JSON Web Key (JWK)
+         * @example {
+         *       "kty": "RSA",
+         *       "use": "sig",
+         *       "kid": "sign-2026-02",
+         *       "alg": "RS256",
+         *       "n": "4JHqz4QwbiVuVzLhjJwwgK_EC86qVTPhQIpmiQCoGNzLBQlsBdt13Y10AlzRSMMF65LyF5Y8doKR-gJlCR9J5P9YPr1IgU0wVyqJ349yL7O_lMWy5TfWdGz7KOrq9tyHVtjH0i5ztAIQHPvQ02LayjdNgUA4Z8RxFsSz03nCU-dJLJOg63BS23VfxEs4J_kmbITSACIxiIAerc-wUwIQkjlHyHQQtac7kcCQfSqDB3F2YqxFkWOC66drt2zcMutjxcK-ZcnjdBiQnTI_9izbJB9mX4CoErMWre7GNt_krHoi6OP6DoOvjEsABAS2Dyf13xLuNVH-QHpCUaYqR70OTQ",
+         *       "e": "AQAB"
+         *     }
+         */
+        "Signing-JWK": {
+            /**
+             * @description Key type. Always `RSA` for the signing keys used by GoPay.
+             * @example RSA
+             * @constant
+             */
+            kty: "RSA";
+            /**
+             * @description Key usage. Always `sig` (signature).
+             * @example sig
+             * @constant
+             */
+            use: "sig";
+            /**
+             * @description Key ID. Matches the `kid` of the protected header of the `X-GoPay-Signature` the key verifies
+             * @example sign-2026-02
+             */
+            kid: string;
+            /**
+             * @description Algorithm the signature was produced with. Always `RS256`.
+             * @example RS256
+             * @constant
+             */
+            alg: "RS256";
+            /**
+             * @description The `RSA` public key modulus part.
+             * @example 4JHqz4QwbiVuVzLhjJwwgK_EC86qVTPhQIpmiQCoGNzLBQlsBdt13Y10AlzRSMMF65LyF5Y8doKR-gJlCR9J5P9YPr1IgU0wVyqJ349yL7O_lMWy5TfWdGz7KOrq9tyHVtjH0i5ztAIQHPvQ02LayjdNgUA4Z8RxFsSz03nCU-dJLJOg63BS23VfxEs4J_kmbITSACIxiIAerc-wUwIQkjlHyHQQtac7kcCQfSqDB3F2YqxFkWOC66drt2zcMutjxcK-ZcnjdBiQnTI_9izbJB9mX4CoErMWre7GNt_krHoi6OP6DoOvjEsABAS2Dyf13xLuNVH-QHpCUaYqR70OTQ
+             */
+            n: string;
+            /**
+             * @description The `RSA` public key exponent part.
+             * @default AQAB
+             * @example AQAB
+             */
+            e: string;
+        };
     };
     responses: {
-        /** @description Google Pay Payment Request object consumed by the Google Payment button */
+        /** @description Google Pay payment request configuration consumed by the Google Pay button */
         "Google-Pay-Info-Response": {
             headers: {
                 [name: string]: unknown;
@@ -2178,79 +2842,185 @@ export interface components {
             content: {
                 "application/json": {
                     /**
+                     * @description Google Pay environment the payment runs in: `TEST` in the sandbox, `PRODUCTION` in production
                      * @example TEST
                      * @enum {string}
                      */
                     environment?: "TEST" | "PRODUCTION";
+                    /** @description The Google Pay `PaymentDataRequest` object passed to the Google Pay API */
                     paymentDataRequest?: {
-                        /** @example 2 */
+                        /**
+                         * @description Major version of the Google Pay API
+                         * @example 2
+                         */
                         apiVersion?: number;
-                        /** @example 0 */
+                        /**
+                         * @description Minor version of the Google Pay API
+                         * @example 0
+                         */
                         apiVersionMinor?: number;
+                        /** @description Payment methods the Google Pay sheet offers */
                         allowedPaymentMethods?: {
-                            /** @example CARD */
+                            /**
+                             * @description Type of the payment method
+                             * @example CARD
+                             */
                             type?: string;
+                            /** @description Card authentication methods and networks accepted */
                             parameters?: {
+                                /**
+                                 * @description Card authentication methods accepted
+                                 * @example [
+                                 *       "PAN_ONLY",
+                                 *       "CRYPTOGRAM_3DS"
+                                 *     ]
+                                 */
                                 allowedAuthMethods?: ("PAN_ONLY" | "CRYPTOGRAM_3DS")[];
+                                /**
+                                 * @description Card networks accepted
+                                 * @example [
+                                 *       "MASTERCARD",
+                                 *       "VISA"
+                                 *     ]
+                                 */
                                 allowedCardNetworks?: ("VISA" | "MASTERCARD")[];
                             };
+                            /** @description How Google Pay encrypts the payment data for GoPay */
                             tokenizationSpecification?: {
-                                /** @example PAYMENT_GATEWAY */
+                                /**
+                                 * @description Tokenization type
+                                 * @example PAYMENT_GATEWAY
+                                 */
                                 type?: string;
+                                /** @description Gateway parameters */
                                 parameters?: {
-                                    /** @example gopay */
+                                    /**
+                                     * @description Gateway identifier registered with Google Pay
+                                     * @example gopay
+                                     */
                                     gateway?: string;
-                                    /** @example 26046768005768011132 */
+                                    /**
+                                     * @description Merchant identifier at the gateway
+                                     * @example 26046768005768011132
+                                     */
                                     gatewayMerchantId?: string;
                                 };
                             };
                         }[];
+                        /** @description Amount and currency shown in the Google Pay sheet */
                         transactionInfo?: {
+                            /** @description Currency of the payment */
                             currencyCode?: components["schemas"]["Currency"];
-                            /** @example CZ */
+                            /**
+                             * @description ISO 3166-1 alpha-2 code of the merchant's country
+                             * @example CZ
+                             */
                             countryCode?: string;
-                            /** @example FINAL */
+                            /**
+                             * @description Whether the total is final
+                             * @example FINAL
+                             */
                             totalPriceStatus?: string;
-                            /** @example 5.00 */
+                            /**
+                             * @description Total amount as a decimal string
+                             * @example 5.00
+                             */
                             totalPrice?: string;
                         };
+                        /** @description Merchant name and Google merchant identifier */
                         merchantInfo?: {
-                            /** @example GoPay Czech */
+                            /**
+                             * @description Merchant name shown in the Google Pay sheet
+                             * @example GoPay Czech
+                             */
                             merchantName?: string;
-                            /** @example 14846034534970557458 */
+                            /**
+                             * @description Google merchant identifier
+                             * @example 14846034534970557458
+                             */
                             merchantId?: string;
                         };
+                        /**
+                         * @description Whether Google Pay asks the customer for an email address
+                         * @example true
+                         */
                         emailRequired?: boolean;
                     };
                 };
             };
         };
-        /** @description Example response */
+        /** @description Apple Pay payment request object consumed by the Apple Pay button */
         "Apple-Pay-Info-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
                 "application/json": {
-                    /** @example 6 */
+                    /**
+                     * @description Apple Pay JS API version the request is built for
+                     * @example 6
+                     */
                     applepayVersion?: number;
-                    /** @example 8398119642 */
+                    /**
+                     * @description Apple merchant identifier
+                     * @example 8398119642
+                     */
                     merchantIdentifier?: string;
+                    /** @description The Apple Pay payment request passed to Apple Pay */
                     applePayPaymentRequest?: {
+                        /**
+                         * @description Payment capabilities the merchant supports
+                         * @example [
+                         *       "supports3DS"
+                         *     ]
+                         */
                         merchantCapabilities?: string[];
+                        /**
+                         * @description Card networks accepted
+                         * @example [
+                         *       "masterCard",
+                         *       "visa"
+                         *     ]
+                         */
                         supportedNetworks?: ("maestro" | "masterCard" | "electron" | "visa" | "vPay")[];
-                        /** @example CZ */
+                        /**
+                         * @description ISO 3166-1 alpha-2 code of the merchant's country
+                         * @example CZ
+                         */
                         countryCode?: string;
+                        /** @description Currency of the payment */
                         currencyCode?: components["schemas"]["Currency"];
+                        /**
+                         * @description Billing contact fields Apple Pay asks for
+                         * @example []
+                         */
                         requiredBillingContactFields?: string[];
+                        /**
+                         * @description Shipping contact fields Apple Pay asks for
+                         * @example []
+                         */
                         requiredShippingContactFields?: string[];
+                        /**
+                         * @description Data Apple Pay returns hashed in the payment token
+                         * @example OTIyMzg3MzA0Ng==
+                         */
                         applicationData?: string;
+                        /** @description Total shown in the Apple Pay sheet */
                         total?: {
-                            /** @example GoPay Czech Branch */
+                            /**
+                             * @description Label shown next to the amount
+                             * @example GoPay Czech Branch
+                             */
                             label?: string;
-                            /** @example 5.00 */
+                            /**
+                             * @description Amount as a decimal string
+                             * @example 5.00
+                             */
                             amount?: string;
-                            /** @example final */
+                            /**
+                             * @description Whether the amount is final
+                             * @example final
+                             */
                             type?: string;
                         };
                     };
@@ -2275,7 +3045,7 @@ export interface components {
                 "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
-        /** @description Example response */
+        /** @description Forbidden */
         "Forbidden-403-Response": {
             headers: {
                 [name: string]: unknown;
@@ -2284,7 +3054,7 @@ export interface components {
                 "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
-        /** @description Example response */
+        /** @description Not Found */
         "Not-Found-404-Response": {
             headers: {
                 [name: string]: unknown;
@@ -2293,7 +3063,7 @@ export interface components {
                 "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
-        /** @description Example response */
+        /** @description Conflict */
         "Conflict-409-Response": {
             headers: {
                 [name: string]: unknown;
@@ -2311,34 +3081,81 @@ export interface components {
                 "application/json": components["schemas"]["Error-Response-Body"];
             };
         };
-        /** @description Example response */
+        /** @description Apple Pay payment request object for a native application */
         "Apple-Pay-App-Info-Response": {
             headers: {
                 [name: string]: unknown;
             };
             content: {
                 "application/json": {
-                    /** @example 6 */
+                    /**
+                     * @description Apple Pay JS API version the request is built for
+                     * @example 6
+                     */
                     applepayVersion?: number;
-                    /** @example com.gopay.merchant.demo */
+                    /**
+                     * @description Apple merchant identifier
+                     * @example merchant.com.gopay.demo
+                     */
                     merchantIdentifier?: string;
+                    /** @description The Apple Pay payment request passed to Apple Pay */
                     applePayPaymentRequest?: {
+                        /**
+                         * @description Payment capabilities the merchant supports
+                         * @example [
+                         *       "supports3DS"
+                         *     ]
+                         */
                         merchantCapabilities?: string[];
+                        /**
+                         * @description Card networks accepted
+                         * @example [
+                         *       "masterCard",
+                         *       "visa"
+                         *     ]
+                         */
                         supportedNetworks?: string[];
-                        /** @example CZ */
+                        /**
+                         * @description ISO 3166-1 alpha-2 code of the merchant's country
+                         * @example CZ
+                         */
                         countryCode?: string;
-                        /** @example CZK */
+                        /**
+                         * @description Currency of the payment
+                         * @example CZK
+                         */
                         currencyCode?: string;
+                        /**
+                         * @description Billing contact fields Apple Pay asks for
+                         * @example []
+                         */
                         requiredBillingContactFields?: Record<string, never>[];
+                        /**
+                         * @description Shipping contact fields Apple Pay asks for
+                         * @example []
+                         */
                         requiredShippingContactFields?: Record<string, never>[];
-                        /** @example OTIyMzg3MzA0Ng== */
+                        /**
+                         * @description Data Apple Pay returns hashed in the payment token
+                         * @example OTIyMzg3MzA0Ng==
+                         */
                         applicationData?: string;
+                        /** @description Line items shown in the Apple Pay sheet */
                         paymentSummaryItems?: {
-                            /** @example GoPay Demo Merchant */
+                            /**
+                             * @description Label shown next to the amount
+                             * @example GoPay Demo Merchant
+                             */
                             label?: string;
-                            /** @example 5.00 */
+                            /**
+                             * @description Amount as a decimal string
+                             * @example 5.00
+                             */
                             amount?: string;
-                            /** @example final */
+                            /**
+                             * @description Whether the amount is final
+                             * @example final
+                             */
                             type?: string;
                         }[];
                     };
@@ -2368,7 +3185,7 @@ export interface operations {
         };
         requestBody: components["requestBodies"]["Access-Token-Request"];
         responses: {
-            /** @description Shared Response */
+            /** @description The access token */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2399,7 +3216,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description The new payment */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -2421,14 +3238,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description The payment */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2448,14 +3265,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description No Content */
+            /** @description Done; the response has no body */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -2474,14 +3291,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Shared Response */
+            /** @description Current state of the payment's charge */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2501,7 +3318,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -2512,7 +3329,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description The charge that was started */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -2532,19 +3349,19 @@ export interface operations {
     "get-payments-payment_id-qr-payment-info": {
         parameters: {
             query?: {
-                /** @description File format of the generated base64 */
+                /** @description Image format of the generated QR code */
                 format?: "png" | "svg";
             };
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Shared Response */
+            /** @description The QR payment data for the payment */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2565,7 +3382,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -2585,7 +3402,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -2605,7 +3422,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -2624,11 +3441,11 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description The origin of the document where the payment button is displayed (added automatically in AJAX) */
+                /** @description The origin of the page where the Apple Pay button is displayed. The browser adds it automatically */
                 Origin: string;
             };
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -2639,7 +3456,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Shared Response */
+            /** @description The merchant session for the Apple Pay sheet */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2661,14 +3478,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description The refunds of the payment */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2688,7 +3505,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Payment ID */
+                /** @description Identifier of the payment, `Payment Details.id` */
                 payment_id: string;
             };
             cookie?: never;
@@ -2699,7 +3516,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description The new refund */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -2721,14 +3538,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Refund ID */
+                /** @description Identifier of the refund */
                 refund_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description The refund */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2759,7 +3576,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description The new recurrence */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -2788,7 +3605,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description The recurrence */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2815,7 +3632,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No Content */
+            /** @description Done; the response has no body */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -2846,7 +3663,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description The new payment */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -2880,7 +3697,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description The new payment */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -2913,7 +3730,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description The new payment link */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -2943,7 +3760,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description The payment link */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2973,7 +3790,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No Content */
+            /** @description Done; the response has no body */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -3001,7 +3818,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Shared Response */
+            /** @description The new saved card token */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -3022,13 +3839,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID of the saved payment card */
                 card_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Shared Response */
+            /** @description The saved card */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3048,13 +3866,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID of the saved payment card */
                 card_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description No Content */
+            /** @description Done; the response has no body */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -3076,7 +3895,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Shared Response */
+            /** @description The public encryption key */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3099,7 +3918,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Shared Response */
+            /** @description The URL of the hosted card form */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3122,13 +3941,120 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Shared Response */
+            /** @description The browser data derived from the request */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Browser-Data-Detected"];
+                };
+            };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-eshops-goid-events": {
+        parameters: {
+            query?: {
+                /** @description Maximum number of events in one page */
+                max_items?: number;
+                /**
+                 * @description The `id` of the last event of the previous page. The page starts at the event after it.
+                 *     GoPay writes the value into `next_page_url` and the caller follows that URL rather than
+                 *     assembling the parameter. A value that has aged out of the 30-day window is rejected.
+                 */
+                prev_item?: string;
+                /**
+                 * @description The event types to include, comma-separated in a single parameter, up to 20 items. An item
+                 *     is either an exact type (`payments.paid`) or a whole namespace (`payments.*`). An unknown
+                 *     type is rejected. Omitted, every type matches.
+                 */
+                type?: string;
+                /** @description Include events that occurred at or after this instant. Must be earlier than `occurred_before` when both are given */
+                occurred_after?: string;
+                /** @description Include events that occurred before this instant */
+                occurred_before?: string;
+                /** @description The kind of entity `related_id` refers to. Required together with `related_id` */
+                related_type?: "payments" | "links" | "refunds" | "recurrences" | "cards";
+                /**
+                 * @description Include only events that carry this identifier, whichever position it appears in within
+                 *     `data`. Required together with `related_type`.
+                 */
+                related_id?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Unique identifier of a registered merchant website */
+                goid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of the eshop's events, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Event-List"];
+                };
+            };
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-eshops-goid-events-event_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of a registered merchant website */
+                goid: string;
+                /** @description Identifier of the event */
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The event */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Event"];
+                };
+            };
+            400: components["responses"]["Bad-Request-400-Response"];
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "get-webhooks-public-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The webhook signing keys currently in use */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JWK-Set"];
                 };
             };
             401: components["responses"]["Unauthorized-401-Response"];

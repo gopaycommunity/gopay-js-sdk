@@ -287,7 +287,6 @@ describe('GoPaySDK', () => {
                         masked_pan: '406821******1234',
                     },
                 },
-                return_url: 'https://example.com/return',
                 action: {
                     action_type: 'EMV3DS',
                     state: 'CREATED',

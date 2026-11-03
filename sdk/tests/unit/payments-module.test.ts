@@ -39,7 +39,6 @@ const mockChargeResponse = {
             fingerprint: '73c8d0a48d91def89761...',
         },
     },
-    return_url: 'https://example.com/return',
     action: {
         action_type: 'EMV3DS',
         state: 'CREATED',
@@ -444,7 +443,6 @@ describe('PaymentsModule', () => {
                     input_type: 'GOOGLE_PAY',
                 },
             },
-            return_url: 'https://example.com/return',
             action: {
                 action_type: 'EMV3DS',
                 state: 'CREATED',
@@ -548,7 +546,6 @@ describe('PaymentsModule', () => {
                     input_type: 'APPLE_PAY',
                 },
             },
-            return_url: 'https://example.com/return',
             action: {
                 action_type: 'EMV3DS',
                 state: 'CREATED',
@@ -904,7 +901,6 @@ describe('PaymentsModule', () => {
             expect(result).toEqual(mockChargeResponse);
             expect(result.id).toBe('pay_300000001');
             expect(result.state).toBe('REQUESTED');
-            expect(result.return_url).toBe('https://example.com/return');
         });
 
         it('throws when paymentId is empty', async () => {
