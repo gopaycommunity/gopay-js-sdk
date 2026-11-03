@@ -1,0 +1,58 @@
+<!-- ── Events and webhooks ────────────────────────────────────── -->
+<details class="group">
+    <summary class="flex items-center gap-3 pt-1 cursor-pointer select-none">
+        <div class="h-px w-4 bg-[#E1E5EB] shrink-0"></div>
+        <svg aria-hidden="true" class="h-3 w-3 text-[#6B7280] transition-transform group-open:rotate-90 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-[0.68rem] font-semibold text-[#6B7280] tracking-widest uppercase shrink-0">Events &amp; webhooks · gopay-js-sdk</span>
+        <div class="h-px flex-1 bg-[#E1E5EB]"></div>
+    </summary>
+    <div class="space-y-5 mt-3">
+
+        <!-- List events -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.listEvents(goid, params)</h2>
+            <p class="desc">GET /eshops/{goid}/events — the eshop's events, newest first. Needs <code>event:read</code>. Leave the payment ID empty to list every type. The first event's <code>id</code> is auto-filled below.</p>
+            <div class="fields">
+                <label>GoID<input id="events-goid" type="text" value="8123456789" /></label>
+                <label>Payment ID<input id="events-payment-id" type="text" placeholder="auto-filled by sdk.createPayment()" /></label>
+                <label>Max items<input id="events-max-items" type="number" min="1" max="100" step="1" value="10" /></label>
+            </div>
+            <button type="button" onclick="runListEvents()">Run</button>
+            <pre id="events-list-output">—</pre>
+        </section>
+
+        <!-- Get event -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getEvent(goid, eventId)</h2>
+            <p class="desc">GET /eshops/{goid}/events/{event_id} — one event, e.g. the one a webhook named. Needs <code>event:read</code>.</p>
+            <div class="fields">
+                <label>Event ID<input id="events-event-id" type="text" placeholder="auto-filled by sdk.listEvents()" /></label>
+            </div>
+            <button type="button" onclick="runGetEvent()">Run</button>
+            <pre id="events-get-output">—</pre>
+        </section>
+
+        <!-- Verify webhook -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.verifyWebhook(rawBody, signature)</h2>
+            <p class="desc">Checks the <code>X-GoPay-Signature</code> of a received webhook against GoPay's signing keys and returns the event. Needs <code>shared:read</code>. Paste the body exactly as received: a single changed byte, re-indented JSON included, fails the check.</p>
+            <div class="fields">
+                <label>Body<textarea id="webhook-body" rows="4" placeholder='{"id":"…","type":"payments.paid",…}'></textarea></label>
+                <label>X-GoPay-Signature<input id="webhook-signature" type="text" placeholder="eyJhbGciOiJSUzI1NiIsImtpZCI6…..…" /></label>
+            </div>
+            <button type="button" onclick="runVerifyWebhook()">Run</button>
+            <pre id="webhook-verify-output">—</pre>
+        </section>
+
+        <!-- Signing keys -->
+        <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
+            <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.getWebhookPublicKeys()</h2>
+            <p class="desc">GET /webhooks/public-keys — the JWK Set webhooks are signed with. <code>verifyWebhook</code> fetches and caches it itself. Needs <code>shared:read</code>.</p>
+            <button type="button" onclick="runGetWebhookPublicKeys()">Run</button>
+            <pre id="webhook-keys-output">—</pre>
+        </section>
+
+    </div>
+</details>

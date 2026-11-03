@@ -32,6 +32,12 @@ import {
     cardPaySetTheme,
     cardPayUnmount,
 } from './card-pay.js';
+import {
+    runGetEvent,
+    runGetWebhookPublicKeys,
+    runListEvents,
+    runVerifyWebhook,
+} from './events.js';
 import { prefillPaymentId, updateBrowserBadge } from './helpers.js';
 import {
     runCreatePaymentLink,
@@ -154,7 +160,12 @@ if (shareableKey && clientId) {
     initBrowserSDK(shareableKey, clientId);
 }
 if (goid) {
-    for (const fieldId of ['create-goid', 'link-goid', 'rec-create-goid']) {
+    for (const fieldId of [
+        'create-goid',
+        'link-goid',
+        'rec-create-goid',
+        'events-goid',
+    ]) {
         const el = document.getElementById(fieldId);
         if (el) {
             el.value = goid;
@@ -266,6 +277,10 @@ window.runRefundPayment = runRefundPayment;
 window.runListRefunds = runListRefunds;
 window.runGetRefund = runGetRefund;
 window.runAwaitRefundState = runAwaitRefundState;
+window.runListEvents = runListEvents;
+window.runGetEvent = runGetEvent;
+window.runVerifyWebhook = runVerifyWebhook;
+window.runGetWebhookPublicKeys = runGetWebhookPublicKeys;
 window.runCreatePaymentLink = runCreatePaymentLink;
 window.runGetPaymentLink = runGetPaymentLink;
 window.runDisablePaymentLink = runDisablePaymentLink;

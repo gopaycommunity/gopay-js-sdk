@@ -207,6 +207,7 @@ export function prefillPaymentId(result) {
         'qr-payment-id',
         'refund-payment-id',
         'refund-list-payment-id',
+        'events-payment-id',
     ]) {
         const el = document.getElementById(fieldId);
         if (el) {

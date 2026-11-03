@@ -128,6 +128,8 @@ const payment = await sdk.createPayment(goid, params);
 | `card:write` | `GoPayScopes.CARD_WRITE` | `getBrowserKeys()` — allows the browser SDK to present the card form |
 | `card:read` | `GoPayScopes.CARD_READ` | `getCardDetails`, `deleteCard` |
 | `payment:charge` | `GoPayScopes.PAYMENT_CHARGE` | Browser SDK only (`attachPayment` / `payment_credentials` grant) |
+| `event:read` | `GoPayScopes.EVENT_READ` | `listEvents`, `getEvent`, `iterateEvents` |
+| `shared:read` | `GoPayScopes.SHARED_READ` | `verifyWebhook` (for the signing keys), `getWebhookPublicKeys` |
 
 For `getBrowserKeys()` to work, include `card:write` in your server-side `authenticate()` call. `shareableKey` must also be set in the SDK config (see [Browser keys](#browser-keys) below). Include `payment:write` (and any other scopes) as needed for the rest of your integration.
 
@@ -670,6 +672,88 @@ await sdk.deleteCard(card.card_id);
 
 ---
 
+### Webhooks
+
+GoPay tells your server about payments, refunds, payment links, recurrences and cards by sending
+an event to your eshop's webhook URL. Every request carries an `X-GoPay-Signature` header;
+`verifyWebhook()` checks it and returns the event.
+
+```ts
+import express from 'express';
+import { combineScopes, GoPayErrorCodes, GoPayScopes, GoPaySDKError } from '@gopaycz/gopay-js-sdk';
+
+await sdk.authenticate({
+  grant_type: 'client_credentials',
+  client_id: process.env.GOPAY_CLIENT_ID,
+  client_secret: process.env.GOPAY_CLIENT_SECRET,
+  scope: combineScopes(GoPayScopes.PAYMENT_READ, GoPayScopes.SHARED_READ),
+});
+
+// express.raw, not express.json: the signature covers the bytes GoPay sent.
+app.post('/gopay/webhooks', express.raw({ type: 'application/json' }), async (req, res) => {
+  let event;
+  try {
+    event = await sdk.verifyWebhook(req.body, req.headers['x-gopay-signature']);
+  } catch (err) {
+    if (err instanceof GoPaySDKError && err.errorCode === GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE) {
+      return res.sendStatus(503); // not checked yet: GoPay retries
+    }
+    return res.sendStatus(400); // not a webhook GoPay signed
+  }
+
+  await inbox.saveOnce(event); // keyed on event.id, so a repeat is a no-op
+  res.sendStatus(200); // acknowledge first, do the work afterwards
+});
+
+// Later, from the inbox:
+switch (event.type) {
+  case 'payments.paid': {
+    const payment = await sdk.getPaymentStatus(event.data.payment_id);
+    // fulfil the order from payment.state, not from the event
+    break;
+  }
+  case 'refunds.succeeded':
+    // event.data.payment_id, event.data.refund_id
+    break;
+  default:
+    // a type added to the API later arrives as it is: ignore it rather than fail
+}
+```
+
+- **Raw body.** Register `express.raw()` (or your framework's equivalent) on this route ahead of
+  any JSON parser. Parsed and re-serialised JSON no longer matches the signature, and passing an
+  object instead of the body throws `INVALID_ARGUMENT`.
+- **Answer fast.** Return `2xx` as soon as the event is verified and stored. A slow or failing
+  answer is delivered again.
+- **Deduplicate on `event.id`.** The same event can arrive more than once — a retry after a lost
+  acknowledgement, for one — so handle each `id` once.
+- **Re-fetch the entity.** An event says *what* changed (`event.data.payment_id`, …), not its new
+  state, and events can arrive out of order. Read the current state before acting on it.
+- **Keys.** The signing keys are fetched on the first webhook (`GET /webhooks/public-keys`, scope
+  `shared:read`), cached by `kid` and refreshed once they are an hour old. A rotated-in key is
+  picked up on the first webhook signed with it; an unknown `kid` refetches the keys at most
+  every 10 seconds, and in between it is `WEBHOOK_KEYS_UNAVAILABLE`, so GoPay retries it.
+  `getWebhookPublicKeys()` returns the same JWK Set for verifying elsewhere.
+
+### Events
+
+The events webhooks carry can also be read back — to catch up after your endpoint was down, or to
+look up the event a webhook named. Requires `event:read`.
+
+```ts
+// Newest first; max_items 1–100, next_page_url while older events remain
+const page = await sdk.listEvents(goid, { related_type: 'payments', related_id: paymentId });
+
+const event = await sdk.getEvent(goid, eventId);
+
+// Every matching event, fetching the next page only once the previous one is used up
+for await (const event of sdk.iterateEvents(goid, { occurred_after: '2026-11-01T00:00:00Z' })) {
+  await inbox.saveOnce(event);
+}
+```
+
+---
+
 ## Errors
 
 The SDK throws two typed error classes so you can handle them precisely.
@@ -691,6 +775,8 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 | `NETWORK_TIMEOUT` | Request exceeded `requestTimeoutMs`. |
 | `NETWORK_ERROR` | Network-level failure (no response received). |
 | `CARD_FORM_ERROR` | The card form iframe encountered an error (e.g. URL unavailable, init timeout, or encryption failure). |
+| `WEBHOOK_INVALID` | `verifyWebhook()`: the request is not a webhook GoPay signed — missing or malformed `X-GoPay-Signature`, a key GoPay does not publish, a signature that does not match the body, or a body that is not an event. Answer `4xx`. |
+| `WEBHOOK_KEYS_UNAVAILABLE` | `verifyWebhook()`: the signing keys could not be loaded, so nothing was checked; `cause` says why. Answer `5xx` and GoPay retries. |
 
 It also carries `cause` — the underlying error it wraps, when it wraps one, and `undefined` otherwise. It is declared as an own property rather than relying on `Error.cause`, which arrived in ES2022 while this package compiles against ES2020. Reach for it when the `errorCode` says *what* failed and you need *why*: a `NETWORK_ERROR`, for instance, carries the original `fetch` rejection.
 
