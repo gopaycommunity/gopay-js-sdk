@@ -1,3 +1,26 @@
+## [1.10.6](https://github.com/gopaycommunity/gopay-js-sdk/compare/browser-sdk-1.10.5...browser-sdk-1.10.6) (2026-11-03)
+
+
+### Bug Fixes
+
+* bump fast-uri to 3.1.9 for the URI parsing advisories GPOMA-2722 ([977fcca](https://github.com/gopaycommunity/gopay-js-sdk/commit/977fcca3b20d01b69982fda6c1cefaf3000ba522))
+* bump ip-address to 10.7.4 for the zone identifier advisory GPOMA-2722 ([e35a0c9](https://github.com/gopaycommunity/gopay-js-sdk/commit/e35a0c9bc08fe23d99371af45b54dc39aceee168))
+* **chore:** update base image to base/node 1.10.0 (Node 26.12.1) GPOMA-2789 ([ab21610](https://github.com/gopaycommunity/gopay-js-sdk/commit/ab216100507752a75b966936fcef743b7d46588d))
+* **ci:** install corepack explicitly, node 26 no longer bundles it GPOMA-2789 ([036d522](https://github.com/gopaycommunity/gopay-js-sdk/commit/036d5224b39b13e26b3c807388c75f7cb5b9225c))
+* **ci:** log in to harbor on a self-hosted runner to pull base/node GPOMA-2789 ([1fda28e](https://github.com/gopaycommunity/gopay-js-sdk/commit/1fda28ea6f35b809c6d91e3da7077e9e21e418ee))
+* **ci:** move pipeline steps off the retired fe runners to gopay.dev.2x GPOMA-2779 ([2debe07](https://github.com/gopaycommunity/gopay-js-sdk/commit/2debe076ce984df50c5579eb09736cc6203dac90))
+* **ci:** update Docker login credentials and image registry paths ([e06bc9f](https://github.com/gopaycommunity/gopay-js-sdk/commit/e06bc9f000930bfcff5f5bb05b46048a0a7ecaf2))
+* dedupe the lockfile after the dependency updates GPOMA-2722 ([8e138c1](https://github.com/gopaycommunity/gopay-js-sdk/commit/8e138c1591dc8b2b850fffa93a94d18740074ef9))
+* drop the test-only export and tighten the onFieldErrors wording, count errors as a start for old iframes GPOMA-2722 ([8b50d9e](https://github.com/gopaycommunity/gopay-js-sdk/commit/8b50d9e3b439b00b8fd385d06f71a64b6c7b30da))
+* give each card form event a short overview in its message GPOMA-2722 ([86f521e](https://github.com/gopaycommunity/gopay-js-sdk/commit/86f521e1f8c619c7020ae591cd2017e0ba96d969))
+* raise glob and minimatch past their advisories with resolutions, update biome, playwright and vite GPOMA-2722 ([3ee4259](https://github.com/gopaycommunity/gopay-js-sdk/commit/3ee4259e3658c8fa1ab0ce75a7c6f2fccae66493))
+* re-export the card form protocol types straight from the protocol file GPOMA-2722 ([3956869](https://github.com/gopaycommunity/gopay-js-sdk/commit/39568690bc60ecd56961d43f51c0f8a042c1de6d))
+* replace the casts in form-progress with a guard, count submit errors with the card form steps, pin the error projection GPOMA-2722 ([d1e3b53](https://github.com/gopaycommunity/gopay-js-sdk/commit/d1e3b535f424cf4d069e9087e82d35822d30d51c))
+* report card form progress, the browser's clock and unsent telemetry GPOMA-2722 ([a691dbe](https://github.com/gopaycommunity/gopay-js-sdk/commit/a691dbecb68610d39be3a2b8c2a14b8e4fb934ac))
+* report the moments of the card form that say something, not every change GPOMA-2722 ([e911998](https://github.com/gopaycommunity/gopay-js-sdk/commit/e911998ce76f8d8371f21c1c8459109ef2980e07))
+* sort the error codes seen with a locale compare GPOMA-2722 ([4923f57](https://github.com/gopaycommunity/gopay-js-sdk/commit/4923f57784f24ef41c21ef84c6dd71359af6677b))
+* stop sending the SDK instance id, the tab's transaction id and the payment id say the same GPOMA-2722 ([21afc58](https://github.com/gopaycommunity/gopay-js-sdk/commit/21afc58fa140840ece0361d0e870a43bf0f5f08e))
+
 ## [1.10.5](https://github.com/gopaycommunity/gopay-js-sdk/compare/browser-sdk-1.10.4...browser-sdk-1.10.5) (2026-10-12)
 
 
