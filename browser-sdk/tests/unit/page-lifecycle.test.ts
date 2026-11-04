@@ -293,8 +293,6 @@ describe('page events on the wire', () => {
     let requests: Request[];
 
     beforeEach(() => {
-        // The sequence is per tab, kept in sessionStorage; this is a new tab.
-        globalThis.sessionStorage.clear();
         requests = [];
         vi.stubGlobal(
             'fetch',

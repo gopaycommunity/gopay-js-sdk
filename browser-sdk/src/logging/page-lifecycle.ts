@@ -21,9 +21,9 @@ import { rearmLeaveBeacon } from './leave-beacon.js';
  * - `PAGE.restored` — the page came back from the back/forward cache, a second
  *   visit on the same document.
  * - `PAGE.discarded` — this document is the reload of a tab the browser threw
- *   away. sessionStorage survives the discard, so it carries the same
- *   `transaction_id` as the visit that went silent, which is the explanation
- *   that visit never got to send. Chromium only.
+ *   away: the explanation the visit that went silent never got to send. The
+ *   reload is a new page load with a `transaction_id` of its own; the
+ *   `payment_session_id` both carry is what joins them. Chromium only.
  * - `PAGE.navigate` / `PAGE.reload` / `PAGE.back_forward` / `PAGE.prerender` —
  *   how this document was reached, once, with how many milliseconds into its
  *   life the first SDK was built. It separates a merchant re-rendering the

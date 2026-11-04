@@ -6,10 +6,9 @@ import {
 } from '../../src/logging/sanitize.js';
 
 /**
- * The event sequence is per tab and lives in sessionStorage, which jsdom keeps
- * for the whole file; the count of unsent events is per page and lives in the
- * module. Every test is a fresh tab on a fresh page, so every test loads a
- * fresh copy of the modules that keep either — all of them, and together, so
+ * The transaction id, the event sequence and the count of unsent events are
+ * per page and live in their modules. Every test is a fresh page, so every
+ * test loads a fresh copy of the modules that keep them — all of them, and together, so
  * that no test holds a class or a function from a copy another test's logger
  * does not share. The sanitizers hold nothing and stay imported.
  */
@@ -24,7 +23,6 @@ let newTraceId: typeof import('../../src/logging/ids.js').newTraceId;
 let registerLeaveBeacon: typeof import('../../src/logging/leave-beacon.js').registerLeaveBeacon;
 
 beforeEach(async () => {
-    globalThis.sessionStorage?.clear();
     vi.resetModules();
     ({ GoPayErrorCodes, GoPayHTTPError, GoPaySDKError } = await import(
         '../../src/errors.js'
@@ -234,30 +232,27 @@ describe('getTransactionId()', () => {
         expect(getTransactionId()).toBe(getTransactionId());
     });
 
-    it('persists so a 3DS redirect does not split one payment in two', () => {
-        // The id survives because it lives in storage, not in a module
-        // variable — a reload re-imports the module but not the store.
-        const store = new Map<string, string>([
-            ['gopay.sdk.transaction_id', 'txn-from-before-the-redirect'],
-        ]);
-        vi.stubGlobal('sessionStorage', {
-            getItem: (k: string) => store.get(k) ?? null,
-            setItem: (k: string, v: string) => store.set(k, v),
-        });
+    it('is per page load: the page after a 3DS redirect or a reload gets a new one', async () => {
+        const before = getTransactionId();
+        // A navigation loads the module again.
+        vi.resetModules();
+        const { getTransactionId: afterLoad } = await import(
+            '../../src/logging/ids.js'
+        );
 
-        expect(getTransactionId()).toBe('txn-from-before-the-redirect');
+        expect(afterLoad()).not.toBe(before);
     });
 
-    it('still returns an id when storage throws', () => {
-        vi.stubGlobal('sessionStorage', {
-            getItem: () => {
-                throw new Error('blocked');
-            },
-            setItem: () => {
-                throw new Error('blocked');
-            },
-        });
-        expect(getTransactionId()).toMatch(/\S/u);
+    it('never reads or writes sessionStorage', () => {
+        // gw-ui keeps its id per page load too; one kept in the tab's storage
+        // would not match the id gw-ui and the gateway's log group by.
+        const getItem = vi.fn(() => 'txn-from-a-previous-page');
+        const setItem = vi.fn();
+        vi.stubGlobal('sessionStorage', { getItem, setItem });
+
+        expect(getTransactionId()).not.toBe('txn-from-a-previous-page');
+        expect(getItem).not.toHaveBeenCalled();
+        expect(setItem).not.toHaveBeenCalled();
     });
 });
 
@@ -1612,7 +1607,7 @@ describe('the GPOMA-2707 event shape', () => {
             expect((await eventAt(75)).seq).toBe(76);
         });
 
-        it('numbers the tab across SDK instances', async () => {
+        it('numbers the page across SDK instances', async () => {
             telemetry().lifecycle('init');
             telemetry().lifecycle('init');
 
@@ -1622,16 +1617,17 @@ describe('the GPOMA-2707 event shape', () => {
             expect([a?.seq, b?.seq]).toEqual([1, 2]);
         });
 
-        it('carries the numbering over a page load in the same tab', async () => {
-            // What the page before a reload or a 3DS round trip left behind.
+        it('starts again from 1 on a new page load, as gw-ui does', async () => {
+            // What an older SDK on the page before a reload or a 3DS round
+            // trip left in the tab: no longer read.
             globalThis.sessionStorage.setItem('gopay.sdk.sequence', '41');
 
             telemetry().lifecycle('init');
 
-            expect((await eventAt(0)).seq).toBe(42);
+            expect((await eventAt(0)).seq).toBe(1);
         });
 
-        it('counts in memory where storage is blocked', async () => {
+        it('counts where storage is blocked, since it never uses it', async () => {
             vi.stubGlobal('sessionStorage', {
                 getItem: () => {
                     throw new Error('blocked');
@@ -1645,25 +1641,7 @@ describe('the GPOMA-2707 event shape', () => {
             t.lifecycle('leave');
 
             const events = await Promise.all([0, 1].map(eventAt));
-            const [first, second] = events.map((e) => Number(e.seq));
-            expect(second).toBe((first ?? 0) + 1);
-        });
-
-        it('repeats a number rather than skip one when storage stops taking writes', async () => {
-            const store = new Map<string, string>();
-            vi.stubGlobal('sessionStorage', {
-                getItem: (k: string) => store.get(k) ?? null,
-                setItem: () => {
-                    throw new Error('QuotaExceededError');
-                },
-            });
-            const t = telemetry();
-            t.lifecycle('init');
-            t.lifecycle('leave');
-
-            // A skipped number would read as an event lost on the way.
-            const events = await Promise.all([0, 1].map(eventAt));
-            expect(events.map((e) => e.seq)).toEqual([1, 1]);
+            expect(events.map((e) => e.seq)).toEqual([1, 2]);
         });
     });
 
