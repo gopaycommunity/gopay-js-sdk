@@ -7,7 +7,7 @@ import {
 import { nowMs } from '../logging/telemetry.js';
 import { buildUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
-import type { CorrelationIds } from './correlation.js';
+import { type CorrelationIds, correlationIdsOf } from './correlation.js';
 import { fetchWithRetry } from './fetch-with-retry.js';
 import { parseBody } from './response.js';
 import { timeoutSignal } from './timeout-signal.js';
@@ -169,8 +169,15 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
             return response;
         }
 
+        // The request went out, so what fails from here on carries its ids — before onError sees it.
+        const ids = correlationIdsOf(init.headers);
+        const emitForRequest = (error: GoPaySDKError): never => {
+            attachCorrelation(error, ids);
+            return emitError(error);
+        };
+
         if (payment && store.getPaymentCredentials() !== payment) {
-            return emitError(paymentReplaced());
+            return emitForRequest(paymentReplaced());
         }
         await refresh();
 
@@ -202,10 +209,10 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
             // The retry is a wait of its own: a payment attached meanwhile
             // holds a token this 401 says nothing about.
             if (payment && store.getPaymentCredentials() !== payment) {
-                return emitError(paymentReplaced());
+                return emitForRequest(paymentReplaced());
             }
             dropAfterAuthFailure();
-            emitError(
+            emitForRequest(
                 new GoPaySDKError(
                     '[GoPaySDK] Request unauthorized after token refresh. Check OAuth2 scopes.',
                     { errorCode: GoPayErrorCodes.AUTH_UNAUTHORIZED },

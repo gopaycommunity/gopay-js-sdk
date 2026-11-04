@@ -87,15 +87,31 @@ describe('User-Agent and correlation headers', () => {
             ['empty', ''],
             ['a line break', 'shop\r\nX-Injected: 1'],
             ['non-ASCII', 'obchod-č'],
-        ])('refuses a suffix that is %s', (_name, userAgentSuffix) => {
-            expect(() =>
-                createGoPaySDK({ baseUrl: BASE_URL, userAgentSuffix }),
-            ).toThrow(
-                expect.objectContaining({
-                    errorCode: GoPayErrorCodes.INVALID_CONFIG,
-                }),
-            );
-        });
+            // Plain JavaScript can pass anything; it must still be the SDK's own error.
+            ['a number', 42 as unknown as string],
+        ])(
+            'refuses a suffix that is %s, and onError hears of it',
+            (_name, userAgentSuffix) => {
+                const onError = vi.fn();
+
+                expect(() =>
+                    createGoPaySDK({
+                        baseUrl: BASE_URL,
+                        userAgentSuffix,
+                        onError,
+                    }),
+                ).toThrow(
+                    expect.objectContaining({
+                        errorCode: GoPayErrorCodes.INVALID_CONFIG,
+                    }),
+                );
+                expect(onError).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        errorCode: GoPayErrorCodes.INVALID_CONFIG,
+                    }),
+                );
+            },
+        );
     });
 
     it('sends none of them when the SDK runs in a page', async () => {
@@ -257,6 +273,42 @@ describe('User-Agent and correlation headers', () => {
     });
 
     describe('ids on errors', () => {
+        it('carries them on a 401 that outlived the token refresh, already when onError sees it', async () => {
+            const onError = vi.fn((error: GoPaySDKError | GoPayHTTPError) => ({
+                ...error,
+            }));
+            const sdk = await authenticated({ onError });
+            fetchMock.mockImplementation(async (req: Request) => {
+                requests.push(req);
+                return isToken(req) ? tokenResponse() : makeResponse({}, 401);
+            });
+
+            const error = (await sdk
+                .getPaymentStatus(PAYMENT_ID)
+                .catch((reason: unknown) => reason)) as GoPaySDKError;
+
+            const sent = apiRequests();
+            const retried = sent[sent.length - 1];
+            expect(error.errorCode).toBe(GoPayErrorCodes.AUTH_UNAUTHORIZED);
+            expect(error.traceId).toBe(header(retried, 'X-GoPay-Trace-Id'));
+            expect(error.transactionId).toBe(
+                header(retried, 'X-GoPay-Transaction-Id'),
+            );
+            const reported = onError.mock.results
+                .map(
+                    (result) =>
+                        result.value as {
+                            errorCode?: string;
+                            traceId?: string;
+                        },
+                )
+                .find(
+                    (value) =>
+                        value.errorCode === GoPayErrorCodes.AUTH_UNAUTHORIZED,
+                );
+            expect(reported?.traceId).toBe(error.traceId);
+        });
+
         async function failingCall(response: () => Promise<Response>) {
             const onError = vi.fn((error: GoPaySDKError | GoPayHTTPError) => ({
                 ...error,

@@ -16,6 +16,13 @@ export interface CorrelationIds {
 
 const PAYMENT_PATH = /^\/?payments\/([^/?#]+)/;
 
+/** The ids `correlate` put on a request, read back where only its headers travel. */
+export function correlationIdsOf(headers: Headers): CorrelationIds | undefined {
+    const traceId = headers.get('X-GoPay-Trace-Id');
+    const transactionId = headers.get('X-GoPay-Transaction-Id');
+    return traceId && transactionId ? { traceId, transactionId } : undefined;
+}
+
 /**
  * Sets the ids on a request's headers and returns them. One trace id per request: a retry
  * resends the same headers and so keeps it, which is what lets the attempts be grouped.

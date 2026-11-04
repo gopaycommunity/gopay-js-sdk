@@ -7,12 +7,13 @@ const TRANSACTION_ID = /^[A-Za-z0-9._-]{1,64}$/;
 /** Printable ASCII: a header value cannot carry anything else. */
 const USER_AGENT_SUFFIX = /^[\x20-\x7E]{1,200}$/;
 
-export function userAgentFor(suffix: string | undefined): string {
+export function userAgentFor(suffix: unknown): string {
     const base = `GoPay JS v4 ${SDK_VERSION}`;
     if (suffix === undefined) {
         return base;
     }
-    const trimmed = suffix.trim();
+    // Not trusted to be a string: plain JavaScript can pass anything here.
+    const trimmed = typeof suffix === 'string' ? suffix.trim() : '';
     if (!USER_AGENT_SUFFIX.test(trimmed)) {
         throw new GoPaySDKError(
             '[GoPaySDK] config.userAgentSuffix must be 1–200 printable ASCII characters',
@@ -24,9 +25,9 @@ export function userAgentFor(suffix: string | undefined): string {
 
 type Scope = { transactionId: string };
 
-// Taken from the process rather than imported, so that `node:` stays out of a browser bundle
-// (the example app runs this SDK in a page). Node 20.12–20.15 lacks getBuiltinModule; there
-// every request gets an id of its own.
+// Taken from the process rather than imported, so that `node:` stays out of a browser bundle:
+// the example app runs this SDK in a page, which has no AsyncLocalStorage and gets an id per
+// request. Every Node.js the package supports (20.16+) has getBuiltinModule.
 const asyncHooks = (
     globalThis as {
         process?: { getBuiltinModule?: (id: string) => unknown };
@@ -114,7 +115,7 @@ export function createTransactions(report: (error: GoPaySDKError) => void) {
             }
             if (!storage) {
                 const error = new GoPaySDKError(
-                    '[GoPaySDK] withTransactionId needs AsyncLocalStorage through process.getBuiltinModule (Node.js 20.16 or later)',
+                    '[GoPaySDK] withTransactionId needs Node.js (20.16 or later): there is no AsyncLocalStorage here',
                     { errorCode: GoPayErrorCodes.INVALID_CONFIG },
                 );
                 report(error);
