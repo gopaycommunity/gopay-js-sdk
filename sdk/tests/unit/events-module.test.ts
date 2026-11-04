@@ -1,7 +1,11 @@
 import { createHttpClient } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPayHTTPError } from '../../src/errors.js';
-import { createGoPaySDK } from '../../src/index.js';
+import {
+    createGoPaySDK,
+    type GoPayEvent,
+    isKnownEvent,
+} from '../../src/index.js';
 import { createEventsApi } from '../../src/modules/events/events.module.js';
 import { makeResponse } from './helpers.js';
 
@@ -223,5 +227,33 @@ describe('EventsModule', () => {
         expect(error).toBeDefined();
         expect(onError).toHaveBeenCalledOnce();
         expect(onError.mock.calls[0]?.[0]).toBe(error);
+    });
+});
+
+// Compile-time: `yarn ci` type-checks the tests. Past the guard a known `case` narrows `data`
+// to its own shape, and an unknown event still has a readable `type`.
+function describeEvent(event: GoPayEvent): string {
+    if (!isKnownEvent(event)) {
+        return `unknown ${event.type}`;
+    }
+    switch (event.type) {
+        case 'payments.paid':
+            return event.data.payment_id;
+        case 'refunds.succeeded':
+            return event.data.refund_id;
+        default:
+            return event.type;
+    }
+}
+
+describe('isKnownEvent', () => {
+    it('tells the twelve documented types from one added later', () => {
+        const paid = makeEvent('e1') as GoPayEvent;
+        const added = JSON.parse(
+            '{"id":"e2","type":"payments.something_new","occurred_at":"2026-11-04T08:00:00Z","data":{}}',
+        ) as GoPayEvent;
+
+        expect(describeEvent(paid)).toBe('7639814693');
+        expect(describeEvent(added)).toBe('unknown payments.something_new');
     });
 });

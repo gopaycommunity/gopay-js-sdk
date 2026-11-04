@@ -3,6 +3,7 @@ import {
     type GoPayEvent,
     GoPayHTTPError,
     type GoPaySDK,
+    isKnownEvent,
 } from '../../src/index.js';
 import { createSandboxSdk, paymentBody } from './_helpers.js';
 import { expectMatchesSpec } from './spec.js';
@@ -82,7 +83,9 @@ describe('events and webhooks — E2E', () => {
 
         expectMatchesSpec('Event-List', page);
         expect(
-            canceled.type === 'payments.canceled' && canceled.data.payment_id,
+            isKnownEvent(canceled) && canceled.type === 'payments.canceled'
+                ? canceled.data.payment_id
+                : undefined,
         ).toBe(paymentId);
     });
 
@@ -106,8 +109,10 @@ describe('events and webhooks — E2E', () => {
         }
 
         expect(new Set(seen.map((event) => event.id)).size).toBe(5);
-        const times = seen.map((event) => Date.parse(event.occurred_at));
-        expect(times).toEqual([...times].sort((a, b) => b - a));
+        // Newest first means by event id (a ULID): occurred_at of events recorded within the
+        // same few milliseconds can be out of that order (measured on alpha9: 1 and 4 ms).
+        const ids = seen.map((event) => event.id);
+        expect(ids).toEqual([...ids].sort().reverse());
     });
 
     it('surfaces a 400 as GoPayHTTPError', async () => {

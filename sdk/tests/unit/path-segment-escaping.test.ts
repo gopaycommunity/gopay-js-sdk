@@ -2,6 +2,7 @@ import { createHttpClient, requirePathSegment } from '@gopay-internal/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoPayErrorCodes, GoPaySDKError } from '../../src/errors.js';
 import { createCardsApi } from '../../src/modules/cards/cards.module.js';
+import { createEventsApi } from '../../src/modules/events/events.module.js';
 import { createLinksApi } from '../../src/modules/links/links.module.js';
 import { createPaymentsApi } from '../../src/modules/payments/payments.module.js';
 import { createRecurrencesApi } from '../../src/modules/recurrences/recurrences.module.js';
@@ -254,6 +255,16 @@ describe('modules do not let a path segment escape its endpoint', () => {
                     payment: mockPayment,
                 }),
             '/eshops/{id}/recurrences',
+        ],
+        [
+            'events.listEvents',
+            (raw) => createEventsApi(client).listEvents(raw),
+            '/eshops/{id}/events',
+        ],
+        [
+            'events.getEvent',
+            (raw) => createEventsApi(client).getEvent(raw, raw),
+            '/eshops/{id}/events/{id}',
         ],
     ];
 

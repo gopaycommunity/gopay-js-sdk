@@ -14,6 +14,7 @@ import {
     GoPayHTTPError,
     GoPaySDKError,
 } from '../../src/errors.js';
+import { createGoPaySDK } from '../../src/index.js';
 import { createWebhooksApi } from '../../src/modules/webhooks/webhooks.module.js';
 import { makeResponse } from './helpers.js';
 
@@ -33,6 +34,9 @@ const capturedBody = Buffer.from(captured.body_base64, 'base64');
 
 const b64url = (value: string | Uint8Array) =>
     Buffer.from(value).toString('base64url');
+
+/** A well-formed protected header, so a row fails for the part it is about and not for a missing kid. */
+const WITH_KID = b64url(JSON.stringify({ alg: 'RS256', kid: 'test-a' }));
 
 interface TestKey {
     kid: string;
@@ -232,19 +236,35 @@ describe('WebhooksModule', () => {
             );
 
         it.each([
-            ['missing', undefined],
-            ['empty', ''],
-            ['two headers', ['a..b', 'a..b']],
-            ['not a JWS', 'abc'],
-            ['an attached payload', 'eyJhbGciOiJSUzI1NiJ9.e30.c2ln'],
-            ['four parts', 'a..b.c'],
-            ['padded base64', 'eyJhbGciOiJSUzI1NiJ9..c2ln=='],
-            ['standard base64', 'eyJhbGciOiJSUzI1NiJ9..c2/n+A'],
-            ['a header that is not JSON', `${b64url('not json')}..c2ln`],
-        ])('refuses %s, before fetching any key', async (_name, header) => {
-            await refused(header);
-            expect(fetchMock).not.toHaveBeenCalled();
-        });
+            ['missing', undefined, 'exactly one X-GoPay-Signature'],
+            ['empty', '', 'exactly one X-GoPay-Signature'],
+            [
+                'two headers',
+                [`${WITH_KID}..c2ln`, `${WITH_KID}..c2ln`],
+                'exactly one X-GoPay-Signature',
+            ],
+            ['not a JWS', 'abc', 'not a detached JWS'],
+            [
+                'an attached payload',
+                `${WITH_KID}.e30.c2ln`,
+                'not a detached JWS',
+            ],
+            ['four parts', `${WITH_KID}..c2ln.c2ln`, 'not a detached JWS'],
+            ['padded base64', `${WITH_KID}..c2ln==`, 'not base64url'],
+            ['standard base64', `${WITH_KID}..c2/n+A`, 'not base64url'],
+            [
+                'a header that is not JSON',
+                `${b64url('not json')}..c2ln`,
+                'not JSON',
+            ],
+        ])(
+            'refuses %s, before fetching any key',
+            async (_name, header, reason) => {
+                const error = await refused(header);
+                expect(error.message).toContain(reason);
+                expect(fetchMock).not.toHaveBeenCalled();
+            },
+        );
 
         it.each([
             ['another alg', { alg: 'HS256', kid: 'test-a' }],
@@ -344,6 +364,26 @@ describe('WebhooksModule', () => {
             ).resolves.toBeDefined();
         });
 
+        it('retries a failed refresh after ten seconds, not after another hour', async () => {
+            fetchMock.mockImplementation(async () => jwksResponse(keyA.jwk));
+            await webhooks.verifyWebhook(event(), await sign(keyA, event()));
+            now += 60 * 60_000;
+            fetchMock.mockImplementation(async () => makeResponse({}, 500));
+            await webhooks.verifyWebhook(event(), await sign(keyA, event()));
+            const afterFailure = keyFetches();
+            now += 9_999;
+            await webhooks.verifyWebhook(event(), await sign(keyA, event()));
+            expect(keyFetches()).toBe(afterFailure);
+            now += 1;
+            fetchMock.mockImplementation(async () => jwksResponse(keyB.jwk));
+
+            // Refreshed at last: keyA was withdrawn meanwhile and stops verifying.
+            await expectCode(
+                webhooks.verifyWebhook(event(), await sign(keyA, event())),
+                GoPayErrorCodes.WEBHOOK_INVALID,
+            );
+        });
+
         it('refuses a signature made with another key under a published kid', async () => {
             fetchMock.mockResolvedValue(jwksResponse(keyA.jwk));
 
@@ -356,20 +396,27 @@ describe('WebhooksModule', () => {
             );
         });
 
-        it('ignores keys that are not RS256 signing keys, and keeps the rest', async () => {
+        // keyA's own material each time, so only the marking can be what refuses it.
+        it.each([
+            ['marked for encryption', { use: 'enc' }],
+            ['for another algorithm', { alg: 'RS512' }],
+            ['of another key type', { kty: 'EC' }],
+        ])('ignores a key %s', async (_name, change) => {
             fetchMock.mockResolvedValue(
-                jwksResponse(
-                    { ...keyA.jwk, use: 'enc' },
-                    { ...keyB.jwk, kid: 'test-a', alg: 'RS512' },
-                    { ...keyB.jwk, n: '!' },
-                    keyB.jwk,
-                ),
+                jwksResponse({ ...keyA.jwk, ...change }),
             );
 
             await expectCode(
                 webhooks.verifyWebhook(event(), await sign(keyA, event())),
                 GoPayErrorCodes.WEBHOOK_INVALID,
             );
+        });
+
+        it('skips a key that does not import, and keeps the rest', async () => {
+            fetchMock.mockResolvedValue(
+                jwksResponse({ ...keyA.jwk, n: '!' }, keyB.jwk),
+            );
+
             await expect(
                 webhooks.verifyWebhook(event(), await sign(keyB, event())),
             ).resolves.toBeDefined();
@@ -502,6 +549,53 @@ describe('WebhooksModule', () => {
             expect(
                 (fetchMock.mock.calls[0]?.[0] as Request | undefined)?.url,
             ).toBe('https://example.com/gp-gw/api/4.0/webhooks/public-keys');
+        });
+    });
+
+    describe('onError', () => {
+        it('does not hear of WEBHOOK_INVALID, which anyone can cause', async () => {
+            const onError = vi.fn();
+            const sdk = createGoPaySDK({
+                baseUrl: 'https://example.com/gp-gw/api/4.0',
+                onError,
+            });
+
+            await expectCode(
+                sdk.verifyWebhook(event(), 'abc'),
+                GoPayErrorCodes.WEBHOOK_INVALID,
+            );
+            expect(onError).not.toHaveBeenCalled();
+        });
+
+        it('hears of a parsed body and of keys that cannot be loaded', async () => {
+            const onError = vi.fn();
+            const client = createHttpClient({
+                baseUrl: 'https://example.com/gp-gw/api/4.0',
+                onError,
+            });
+            client.setToken({
+                access_token: 'test-token',
+                expires_in: 86_400,
+                token_type: 'bearer',
+            });
+            const api = createWebhooksApi(client);
+            const parsed = JSON.parse(event()) as unknown as string;
+
+            await expectCode(
+                api.verifyWebhook(parsed, await sign(keyA, event())),
+                GoPayErrorCodes.INVALID_ARGUMENT,
+            );
+            fetchMock.mockImplementation(async () => makeResponse({}, 403));
+            await expectCode(
+                api.verifyWebhook(event(), await sign(keyA, event())),
+                GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE,
+            );
+
+            const codes = onError.mock.calls.map(
+                ([error]) => (error as GoPaySDKError).errorCode,
+            );
+            expect(codes).toContain(GoPayErrorCodes.INVALID_ARGUMENT);
+            expect(codes).toContain(GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE);
         });
     });
 });

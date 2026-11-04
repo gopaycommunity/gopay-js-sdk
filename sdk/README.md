@@ -143,7 +143,7 @@ For `getBrowserKeys()` to work, include `card:write` in your server-side `authen
 | `baseUrl`             | `string`                                          | _(see below)_ | Override the API base URL (e.g. for mock servers). Takes precedence over `environment`. |
 | `requestTimeoutMs`    | `number`                                          | `10000`     | Per-request timeout in milliseconds. Throws `GoPaySDKError` with `errorCode: 'NETWORK_TIMEOUT'` on expiry. |
 | `debugLoggingEnabled` | `boolean`                                         | `false`     | Logs `→ METHOD URL` / `← STATUS URL` for every request via `console.debug`.             |
-| `onError`             | `(error: GoPaySDKError \| GoPayHTTPError) => void` | —           | Called synchronously for every error the SDK throws. Useful for centralised logging or alerting. |
+| `onError`             | `(error: GoPaySDKError \| GoPayHTTPError) => void` | —           | Called synchronously for every error the SDK throws — except `WEBHOOK_INVALID`, see [Webhooks](#webhooks). Useful for centralised logging or alerting. |
 | `userAgentSuffix`     | `string`                                          | —           | Appended to the SDK's `User-Agent` (`GoPay JS v4 <version>`), e.g. `my-shop/2.1`, so GoPay's logs name your integration. Printable ASCII, at most 200 characters. |
 
 ```ts
@@ -679,9 +679,14 @@ GoPay tells your server about payments, refunds, payment links, recurrences and 
 an event to your eshop's webhook URL. Every request carries an `X-GoPay-Signature` header;
 `verifyWebhook()` checks it and returns the event.
 
+| Method | Description |
+|---|---|
+| `verifyWebhook(rawBody, signatureHeader)` | Check a received webhook's `X-GoPay-Signature` against GoPay's signing keys and return its event. Requires `shared:read` scope, for the keys. |
+| `getWebhookPublicKeys()` | The JWK Set webhooks are signed with (`GET /webhooks/public-keys`), for verifying elsewhere. Requires `shared:read` scope. |
+
 ```ts
 import express from 'express';
-import { combineScopes, GoPayErrorCodes, GoPayScopes, GoPaySDKError } from '@gopaycz/gopay-js-sdk';
+import { combineScopes, GoPayErrorCodes, GoPayScopes, GoPaySDKError, isKnownEvent } from '@gopaycz/gopay-js-sdk';
 
 await sdk.authenticate({
   grant_type: 'client_credentials',
@@ -696,10 +701,12 @@ app.post('/gopay/webhooks', express.raw({ type: 'application/json' }), async (re
   try {
     event = await sdk.verifyWebhook(req.body, req.headers['x-gopay-signature']);
   } catch (err) {
-    if (err instanceof GoPaySDKError && err.errorCode === GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE) {
-      return res.sendStatus(503); // not checked yet: GoPay retries
+    if (err instanceof GoPaySDKError && err.errorCode === GoPayErrorCodes.WEBHOOK_INVALID) {
+      return res.sendStatus(400); // not a webhook GoPay signed
     }
-    return res.sendStatus(400); // not a webhook GoPay signed
+    // Not checked: keys not loaded, or a JSON parser ahead of this route. GoPay retries a 5xx,
+    // never a 4xx, so the webhook survives until this is fixed.
+    return res.sendStatus(503);
   }
 
   await inbox.saveOnce(event); // keyed on event.id, so a repeat is a no-op
@@ -707,6 +714,11 @@ app.post('/gopay/webhooks', express.raw({ type: 'application/json' }), async (re
 });
 
 // Later, from the inbox:
+if (!isKnownEvent(event)) {
+  // a type added to the API after this SDK version (UnknownGoPayEvent): log it, do not fail
+  logger.info('unhandled GoPay event', event.type);
+  return;
+}
 switch (event.type) {
   case 'payments.paid': {
     const payment = await sdk.getPaymentStatus(event.data.payment_id);
@@ -717,13 +729,14 @@ switch (event.type) {
     // event.data.payment_id, event.data.refund_id
     break;
   default:
-    // a type added to the API later arrives as it is: ignore it rather than fail
+    // the known types this shop does not act on
 }
 ```
 
 - **Raw body.** Register `express.raw()` (or your framework's equivalent) on this route ahead of
   any JSON parser. Parsed and re-serialised JSON no longer matches the signature, and passing an
-  object instead of the body throws `INVALID_ARGUMENT`.
+  object instead of the body throws `INVALID_ARGUMENT` — answer that `5xx` too, so the webhooks
+  that arrive before the fix are retried rather than lost.
 - **Answer fast.** Return `2xx` as soon as the event is verified and stored. A slow or failing
   answer is delivered again.
 - **Deduplicate on `event.id`.** The same event can arrive more than once — a retry after a lost
@@ -733,16 +746,25 @@ switch (event.type) {
 - **Keys.** The signing keys are fetched on the first webhook (`GET /webhooks/public-keys`, scope
   `shared:read`), cached by `kid` and refreshed once they are an hour old. A rotated-in key is
   picked up on the first webhook signed with it; an unknown `kid` refetches the keys at most
-  every 10 seconds, and in between it is `WEBHOOK_KEYS_UNAVAILABLE`, so GoPay retries it.
-  `getWebhookPublicKeys()` returns the same JWK Set for verifying elsewhere.
+  every 10 seconds, and in between it is `WEBHOOK_KEYS_UNAVAILABLE`, so GoPay retries it. A
+  refresh that fails keeps the last keys and is tried again after those 10 seconds.
+- **`onError`.** `WEBHOOK_INVALID` is not passed to `onError`: anyone who can reach the endpoint
+  can cause one, and `onError` is where alerting listens. Every other failure is.
 
 ### Events
 
 The events webhooks carry can also be read back — to catch up after your endpoint was down, or to
-look up the event a webhook named. Requires `event:read`.
+look up the event a webhook named.
+
+| Method | Description |
+|---|---|
+| `listEvents(goid, params?)` | One page of the eshop's events, newest first (`GET /eshops/{goid}/events`); `next_page_url` while older ones remain. Requires `event:read` scope. |
+| `getEvent(goid, eventId)` | One event (`GET /eshops/{goid}/events/{eventId}`). Requires `event:read` scope. |
+| `iterateEvents(goid, params?)` | Every matching event across pages, as an async iterator. Requires `event:read` scope. |
 
 ```ts
-// Newest first; max_items 1–100, next_page_url while older events remain
+// Newest first by event id: occurred_at of events recorded together can be a few ms out of
+// that order. max_items 1–100, next_page_url while older events remain
 const page = await sdk.listEvents(goid, { related_type: 'payments', related_id: paymentId });
 
 const event = await sdk.getEvent(goid, eventId);
@@ -776,7 +798,7 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 | `NETWORK_TIMEOUT` | Request exceeded `requestTimeoutMs`. |
 | `NETWORK_ERROR` | Network-level failure (no response received). |
 | `CARD_FORM_ERROR` | The card form iframe encountered an error (e.g. URL unavailable, init timeout, or encryption failure). |
-| `WEBHOOK_INVALID` | `verifyWebhook()`: the request is not a webhook GoPay signed — missing or malformed `X-GoPay-Signature`, a key GoPay does not publish, a signature that does not match the body, or a body that is not an event. Answer `4xx`. |
+| `WEBHOOK_INVALID` | `verifyWebhook()`: the request is not a webhook GoPay signed — missing or malformed `X-GoPay-Signature`, a key GoPay does not publish, a signature that does not match the body, or a body that is not an event. Answer `4xx`. Not passed to `onError`. |
 | `WEBHOOK_KEYS_UNAVAILABLE` | `verifyWebhook()`: the signing keys could not be loaded, so nothing was checked; `cause` says why. Answer `5xx` and GoPay retries. |
 
 It also carries `cause` — the underlying error it wraps, when it wraps one, and `undefined` otherwise. It is declared as an own property rather than relying on `Error.cause`, which arrived in ES2022 while this package compiles against ES2020. Reach for it when the `errorCode` says *what* failed and you need *why*: a `NETWORK_ERROR`, for instance, carries the original `fetch` rejection.
@@ -942,9 +964,8 @@ await sdk.withTransactionId(req.id, async () => {
 });
 ```
 
-The per-call id relies on `AsyncLocalStorage`, which the SDK takes through
-`process.getBuiltinModule` (Node.js 20.16 or later). On an older Node.js each request gets an id
-of its own, and `withTransactionId` throws `INVALID_CONFIG`.
+The per-call id relies on Node.js's `AsyncLocalStorage` (the package needs Node.js 20.16 or later).
+Run in a browser page, the SDK sends no ids at all and `withTransactionId` throws `INVALID_CONFIG`.
 
 ---
 

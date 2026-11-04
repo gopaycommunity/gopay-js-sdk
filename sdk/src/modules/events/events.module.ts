@@ -1,14 +1,58 @@
 import { type HttpClient, requirePathSegment } from '@gopay-internal/core';
 import type { components, operations } from '../../types/generated.js';
 
-/**
- * An event of the eshop: one of the twelve types the API documents, discriminated on `type`.
- * A type added to the API later arrives unchanged rather than as an error, so keep a
- * `default` branch when switching on it.
- */
-export type GoPayEvent = components['schemas']['Event'];
+/** One of the twelve event types the API documents, discriminated on `type`. */
+export type KnownGoPayEvent = components['schemas']['Event'];
 export type GoPayEventType = components['schemas']['Event-Type'];
-export type EventList = components['schemas']['Event-List'];
+
+/** An event of a type added to the API after this SDK version: it arrives as sent, never as an error. */
+export interface UnknownGoPayEvent {
+    id: string;
+    type: string;
+    occurred_at: string;
+    data: Record<string, unknown>;
+}
+
+/**
+ * An event of the eshop. Check {@link isKnownEvent} first: TypeScript narrows a switch on
+ * `type` only over the known variants, and the unknown one is what is left otherwise.
+ */
+export type GoPayEvent = KnownGoPayEvent | UnknownGoPayEvent;
+
+const KNOWN_EVENT_TYPES = [
+    'payments.paid',
+    'payments.canceled',
+    'payments.timeouted',
+    'links.payment_created',
+    'links.disabled',
+    'refunds.succeeded',
+    'refunds.failed',
+    'recurrences.started',
+    'recurrences.payment_created',
+    'recurrences.stopped',
+    'cards.updated',
+    'cards.deleted',
+] as const satisfies readonly GoPayEventType[];
+
+// A type the spec adds turns this into an error at the next codegen, not a silent `false`.
+const everyTypeListed: Exclude<
+    GoPayEventType,
+    (typeof KNOWN_EVENT_TYPES)[number]
+> extends never
+    ? true
+    : never = true;
+const known: ReadonlySet<string> = everyTypeListed
+    ? new Set(KNOWN_EVENT_TYPES)
+    : new Set();
+
+/** Whether the event is one of the types this SDK version knows, with its `data` typed. */
+export function isKnownEvent(event: GoPayEvent): event is KnownGoPayEvent {
+    return known.has(event.type);
+}
+
+export type EventList = Omit<components['schemas']['Event-List'], 'items'> & {
+    items: GoPayEvent[];
+};
 /** Filters and paging of `GET /eshops/{goid}/events`. */
 export type ListEventsParams = NonNullable<
     operations['get-eshops-goid-events']['parameters']['query']

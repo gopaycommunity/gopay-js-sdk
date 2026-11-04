@@ -71,7 +71,10 @@ async function importSigningKey(
 function createKeyStore(client: HttpClient) {
     let keys = new Map<string, CryptoKey>();
     let loading: Promise<void> | undefined;
+    // Last success and last attempt apart: a failed refresh is retried after the short
+    // interval, not after another hour of trusting the old set.
     let fetchedAt = Number.NEGATIVE_INFINITY;
+    let attemptedAt = Number.NEGATIVE_INFINITY;
     let lastFailure: unknown;
 
     async function load(): Promise<void> {
@@ -90,10 +93,11 @@ function createKeyStore(client: HttpClient) {
             });
             keys = next;
             lastFailure = undefined;
+            fetchedAt = Date.now();
         } catch (error) {
             lastFailure = error;
         } finally {
-            fetchedAt = Date.now();
+            attemptedAt = Date.now();
             loading = undefined;
         }
     }
@@ -104,13 +108,9 @@ function createKeyStore(client: HttpClient) {
          * could not be established — not checked is not forged, and GoPay retries a 5xx only.
          */
         async keyFor(kid: string): Promise<CryptoKey | undefined> {
-            const age = Date.now() - fetchedAt;
-            const known = keys.has(kid);
-            if (
-                !loading &&
-                (age >= KEYS_MAX_AGE_MS ||
-                    (!known && age >= REFETCH_INTERVAL_MS))
-            ) {
+            const now = Date.now();
+            const due = now - fetchedAt >= KEYS_MAX_AGE_MS || !keys.has(kid);
+            if (!loading && due && now - attemptedAt >= REFETCH_INTERVAL_MS) {
                 loading = load();
             }
             const checked = loading !== undefined;
@@ -130,33 +130,53 @@ function createKeyStore(client: HttpClient) {
 export function createWebhooksApi(client: HttpClient) {
     const keyStore = createKeyStore(client);
 
+    async function verify(
+        rawBody: WebhookBody,
+        signatureHeader: WebhookSignatureHeader,
+    ): Promise<GoPayEvent> {
+        const body = bodyBytes(rawBody);
+        const signature = parseSignatureHeader(signatureHeader);
+        const key = await keyStore.keyFor(signature.kid);
+        if (!key) {
+            throw invalidWebhook(
+                'it is signed with a key GoPay does not publish',
+            );
+        }
+        if (!(await verifySignature(key, signature, body))) {
+            throw invalidWebhook('the signature does not match the body');
+        }
+        return parseEvent(body);
+    }
+
     return {
         /**
          * Check that a webhook comes from GoPay and return its event. Requires the
-         * `shared:read` OAuth2 scope, for the signing keys (fetched once, cached by `kid`).
+         * `shared:read` OAuth2 scope, for the signing keys: cached by `kid`, refreshed once an
+         * hour, and refetched for a `kid` not in the cache at most every 10 seconds.
          *
          * Pass the body exactly as received — `express.raw({ type: 'application/json' })`,
          * not `express.json()` — and the `X-GoPay-Signature` header.
          *
-         * Throws `GoPaySDKError` with `WEBHOOK_INVALID` (answer 4xx) or
-         * `WEBHOOK_KEYS_UNAVAILABLE` (answer 5xx, GoPay retries).
+         * Throws `GoPaySDKError` with `WEBHOOK_INVALID` (answer 4xx); anything else —
+         * `WEBHOOK_KEYS_UNAVAILABLE`, or `INVALID_ARGUMENT` for a parsed body — answer 5xx,
+         * so GoPay retries once it is fixed. `WEBHOOK_INVALID` is not passed to `onError`:
+         * anyone who can reach the endpoint can cause one.
          */
         async verifyWebhook(
             rawBody: WebhookBody,
             signatureHeader: WebhookSignatureHeader,
         ): Promise<GoPayEvent> {
-            const body = bodyBytes(rawBody);
-            const signature = parseSignatureHeader(signatureHeader);
-            const key = await keyStore.keyFor(signature.kid);
-            if (!key) {
-                throw invalidWebhook(
-                    'it is signed with a key GoPay does not publish',
-                );
+            try {
+                return await verify(rawBody, signatureHeader);
+            } catch (error) {
+                if (
+                    !(error instanceof GoPaySDKError) ||
+                    error.errorCode !== GoPayErrorCodes.WEBHOOK_INVALID
+                ) {
+                    client.reportError(error);
+                }
+                throw error;
             }
-            if (!(await verifySignature(key, signature, body))) {
-                throw invalidWebhook('the signature does not match the body');
-            }
-            return parseEvent(body);
         },
 
         /**

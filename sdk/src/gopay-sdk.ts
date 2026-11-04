@@ -26,23 +26,33 @@ export function createGoPaySDK(config: GoPayConfig = {}) {
     const transactions = createTransactions((error) =>
         client.reportError(error),
     );
-    const userAgent = userAgentFor(config.userAgentSuffix);
-    // In a page (the example app runs this SDK in one) the headers would make every call a
-    // CORS preflight, refused wherever the gateway does not allow them yet. A server sends none.
-    const inPage =
-        (globalThis as { document?: unknown }).document !== undefined;
+    // In a page (the example app runs this SDK in one) a User-Agent of its own is not
+    // something a browser lets a script send, and the ids would add a CORS preflight.
+    const inPage = 'document' in globalThis;
+    const correlation = {
+        userAgent: undefined as string | undefined,
+        transactionId: transactions.current,
+    };
     const client = createHttpClient(
         config,
         undefined,
         undefined,
-        inPage ? undefined : { userAgent, transactionId: transactions.current },
+        inPage ? undefined : correlation,
     );
-    // reportErrors so that config.onError also sees the failures raised before a
-    // request goes out — argument validation, mostly — and not just the ones the
-    // HTTP client raises itself.
+    // Checked once the client exists, so onError sees a bad suffix the way it sees a bad
+    // baseUrl, rather than the SDK throwing before anything could report it.
+    try {
+        correlation.userAgent = userAgentFor(config.userAgentSuffix);
+    } catch (error) {
+        client.reportError(error);
+        throw error;
+    }
     return {
-        ...transactions.bind(
-            reportErrors(client, {
+        ...transactions.bind({
+            // reportErrors so that config.onError also sees the failures raised before a
+            // request goes out — argument validation, mostly — and not just the ones the
+            // HTTP client raises itself.
+            ...reportErrors(client, {
                 version: SDK_VERSION,
                 ...createAuthApi(client),
                 ...createPaymentsApi(client),
@@ -51,9 +61,11 @@ export function createGoPaySDK(config: GoPayConfig = {}) {
                 ...createLinksApi(client),
                 ...createRecurrencesApi(client),
                 ...createEventsApi(client),
-                ...createWebhooksApi(client),
             }),
-        ),
+            // Reports for itself: a request that is not a webhook, which anyone can send,
+            // must not reach the onError the README points at alerting.
+            ...createWebhooksApi(client),
+        }),
         /**
          * Run `fn` with every SDK call inside it sent under `transactionId`
          * (`X-GoPay-Transaction-Id`) — your own request id, say — instead of an id per call.

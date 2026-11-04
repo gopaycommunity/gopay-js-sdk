@@ -8,8 +8,11 @@ export type {
     EventList,
     GoPayEvent,
     GoPayEventType,
+    KnownGoPayEvent,
     ListEventsParams,
+    UnknownGoPayEvent,
 } from './modules/events/events.module.js';
+export { isKnownEvent } from './modules/events/events.module.js';
 export type { CreatePaymentLinkParams } from './modules/links/links.module.js';
 export type {
     AwaitChargeOptions,
