@@ -17,7 +17,7 @@
     },
     "homepage": "https://github.com/gopaycommunity/gopay-js-sdk/tree/master/sdk#readme",
     "engines": {
-        "node": ">=20.12.0"
+        "node": ">=20.16.0"
     },
     "type": "module",
     "main": "./dist/index.cjs",
