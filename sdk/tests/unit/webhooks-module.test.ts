@@ -567,6 +567,68 @@ describe('WebhooksModule', () => {
             expect(onError).not.toHaveBeenCalled();
         });
 
+        function reportingApi() {
+            const onError = vi.fn();
+            const client = createHttpClient({
+                baseUrl: 'https://example.com/gp-gw/api/4.0',
+                onError,
+            });
+            client.setToken({
+                access_token: 'test-token',
+                expires_in: 86_400,
+                token_type: 'bearer',
+            });
+            return { onError, api: createWebhooksApi(client) };
+        }
+
+        const reported = (onError: ReturnType<typeof vi.fn>) =>
+            onError.mock.calls.map(
+                ([error]) => error as GoPaySDKError | GoPayHTTPError,
+            );
+
+        // Anyone can name a kid that does not exist; the first such webhook refetches the keys,
+        // the rest meet the throttle and are "not checked yet" (a 5xx), which is not an outage.
+        it('does not hear of forged webhooks naming an unknown kid, throttled or not', async () => {
+            const { onError, api } = reportingApi();
+            fetchMock.mockImplementation(async () => jwksResponse(keyA.jwk));
+            const forged = await sign(keyB, event());
+
+            const codes: unknown[] = [];
+            for (let i = 0; i < 5; i++) {
+                const error = await api
+                    .verifyWebhook(event(), forged)
+                    .catch((reason: unknown) => reason);
+                codes.push((error as GoPaySDKError).errorCode);
+            }
+
+            expect(codes).toContain(GoPayErrorCodes.WEBHOOK_INVALID);
+            expect(codes).toContain(GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE);
+            expect(onError).not.toHaveBeenCalled();
+        });
+
+        it('hears of a key load that failed once per attempt, not once per webhook', async () => {
+            const { onError, api } = reportingApi();
+            fetchMock.mockImplementation(async () => makeResponse({}, 500));
+            const header = await sign(keyA, event());
+
+            for (let i = 0; i < 4; i++) {
+                await expectCode(
+                    api.verifyWebhook(event(), header),
+                    GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE,
+                );
+            }
+            // The HTTP client's report of the failed fetch, once, not one per webhook.
+            expect(reported(onError)).toHaveLength(1);
+            expect(reported(onError)[0]).toBeInstanceOf(GoPayHTTPError);
+
+            now += 10_000;
+            await expectCode(
+                api.verifyWebhook(event(), header),
+                GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE,
+            );
+            expect(reported(onError)).toHaveLength(2);
+        });
+
         it('hears of a parsed body and of keys that cannot be loaded', async () => {
             const onError = vi.fn();
             const client = createHttpClient({
@@ -591,11 +653,29 @@ describe('WebhooksModule', () => {
                 GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE,
             );
 
-            const codes = onError.mock.calls.map(
-                ([error]) => (error as GoPaySDKError).errorCode,
-            );
-            expect(codes).toContain(GoPayErrorCodes.INVALID_ARGUMENT);
-            expect(codes).toContain(GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE);
+            const heard = reported(onError);
+            expect(
+                heard.some(
+                    (error) =>
+                        error instanceof GoPaySDKError &&
+                        error.errorCode === GoPayErrorCodes.INVALID_ARGUMENT,
+                ),
+            ).toBe(true);
+            // The key fetch's own 403, reported by the HTTP client; no WEBHOOK_* error besides.
+            expect(
+                heard.some(
+                    (error) =>
+                        error instanceof GoPayHTTPError && error.status === 403,
+                ),
+            ).toBe(true);
+            expect(
+                heard.some(
+                    (error) =>
+                        error instanceof GoPaySDKError &&
+                        error.errorCode ===
+                            GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE,
+                ),
+            ).toBe(false);
         });
     });
 });

@@ -95,6 +95,8 @@ function createKeyStore(client: HttpClient) {
             lastFailure = undefined;
             fetchedAt = Date.now();
         } catch (error) {
+            // Already reported by the client, once per attempt; the webhooks that wait on it,
+            // and any that arrive while the failure stands, must not report it again.
             lastFailure = error;
         } finally {
             attemptedAt = Date.now();
@@ -160,7 +162,8 @@ export function createWebhooksApi(client: HttpClient) {
          * Throws `GoPaySDKError` with `WEBHOOK_INVALID` (answer 4xx); anything else —
          * `WEBHOOK_KEYS_UNAVAILABLE`, or `INVALID_ARGUMENT` for a parsed body — answer 5xx,
          * so GoPay retries once it is fixed. `WEBHOOK_INVALID` is not passed to `onError`:
-         * anyone who can reach the endpoint can cause one.
+         * anyone who can reach the endpoint can cause one, nor is `WEBHOOK_KEYS_UNAVAILABLE`.
+         * A key load that failed is: the underlying `GoPayHTTPError`, once per attempt.
          */
         async verifyWebhook(
             rawBody: WebhookBody,
@@ -169,9 +172,13 @@ export function createWebhooksApi(client: HttpClient) {
             try {
                 return await verify(rawBody, signatureHeader);
             } catch (error) {
+                // Neither is reported: WEBHOOK_INVALID is whatever anyone sends, and a failed
+                // key load was reported by the HTTP client when it happened.
                 if (
                     !(error instanceof GoPaySDKError) ||
-                    error.errorCode !== GoPayErrorCodes.WEBHOOK_INVALID
+                    (error.errorCode !== GoPayErrorCodes.WEBHOOK_INVALID &&
+                        error.errorCode !==
+                            GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE)
                 ) {
                     client.reportError(error);
                 }

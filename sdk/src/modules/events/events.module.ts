@@ -19,31 +19,23 @@ export interface UnknownGoPayEvent {
  */
 export type GoPayEvent = KnownGoPayEvent | UnknownGoPayEvent;
 
-const KNOWN_EVENT_TYPES = [
-    'payments.paid',
-    'payments.canceled',
-    'payments.timeouted',
-    'links.payment_created',
-    'links.disabled',
-    'refunds.succeeded',
-    'refunds.failed',
-    'recurrences.started',
-    'recurrences.payment_created',
-    'recurrences.stopped',
-    'cards.updated',
-    'cards.deleted',
-] as const satisfies readonly GoPayEventType[];
-
-// A type the spec adds turns this into an error at the next codegen, not a silent `false`.
-const everyTypeListed: Exclude<
-    GoPayEventType,
-    (typeof KNOWN_EVENT_TYPES)[number]
-> extends never
-    ? true
-    : never = true;
-const known: ReadonlySet<string> = everyTypeListed
-    ? new Set(KNOWN_EVENT_TYPES)
-    : new Set();
+// A Record over the whole enum: a type the spec adds, or one listed here that it removes, is a
+// compile error at the next codegen rather than a silent `false`.
+const KNOWN_EVENT_TYPES: Record<GoPayEventType, true> = {
+    'payments.paid': true,
+    'payments.canceled': true,
+    'payments.timeouted': true,
+    'links.payment_created': true,
+    'links.disabled': true,
+    'refunds.succeeded': true,
+    'refunds.failed': true,
+    'recurrences.started': true,
+    'recurrences.payment_created': true,
+    'recurrences.stopped': true,
+    'cards.updated': true,
+    'cards.deleted': true,
+};
+const known: ReadonlySet<string> = new Set(Object.keys(KNOWN_EVENT_TYPES));
 
 /** Whether the event is one of the types this SDK version knows, with its `data` typed. */
 export function isKnownEvent(event: GoPayEvent): event is KnownGoPayEvent {
@@ -146,25 +138,38 @@ export function createEventsApi(client: HttpClient) {
             // reportErrors only sees what a call returns; a generator returns before it
             // fetches anything, so a failed page is reported here.
             const fetchPage = async (
-                pageParams: () => ListEventsParams | undefined,
+                pageParams: ListEventsParams | undefined,
             ): Promise<EventList> => {
                 try {
-                    return await listEvents(goid, pageParams(), options);
+                    return await listEvents(goid, pageParams, options);
                 } catch (error) {
                     client.reportError(error);
                     throw error;
                 }
             };
-            let page = await fetchPage(() => params);
-            for (;;) {
+            // Page n+1 needs the cursor in page n, so pages are fetched one after another, each
+            // only when the previous one is used up. `for await` is that loop; an `await` in a
+            // plain loop body would say the same thing and read as a missed Promise.all.
+            let nextParams: ListEventsParams | undefined = params;
+            let more = true;
+            const pages: AsyncIterable<EventList> = {
+                [Symbol.asyncIterator]: () => ({
+                    async next() {
+                        if (!more) {
+                            return { done: true, value: undefined };
+                        }
+                        const page = await fetchPage(nextParams);
+                        const cursor = page.next_page_url;
+                        more = cursor !== undefined && cursor !== '';
+                        if (cursor) {
+                            nextParams = nextPageParams(cursor, client.baseUrl);
+                        }
+                        return { done: false, value: page };
+                    },
+                }),
+            };
+            for await (const page of pages) {
                 yield* page.items;
-                const next = page.next_page_url;
-                if (!next) {
-                    return;
-                }
-                page = await fetchPage(() =>
-                    nextPageParams(next, client.baseUrl),
-                );
             }
         },
     };

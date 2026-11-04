@@ -143,7 +143,7 @@ For `getBrowserKeys()` to work, include `card:write` in your server-side `authen
 | `baseUrl`             | `string`                                          | _(see below)_ | Override the API base URL (e.g. for mock servers). Takes precedence over `environment`. |
 | `requestTimeoutMs`    | `number`                                          | `10000`     | Per-request timeout in milliseconds. Throws `GoPaySDKError` with `errorCode: 'NETWORK_TIMEOUT'` on expiry. |
 | `debugLoggingEnabled` | `boolean`                                         | `false`     | Logs `→ METHOD URL` / `← STATUS URL` for every request via `console.debug`.             |
-| `onError`             | `(error: GoPaySDKError \| GoPayHTTPError) => void` | —           | Called synchronously for every error the SDK throws — except `WEBHOOK_INVALID`, see [Webhooks](#webhooks). Useful for centralised logging or alerting. |
+| `onError`             | `(error: GoPaySDKError \| GoPayHTTPError) => void` | —           | Called synchronously for every error the SDK throws — except what a webhook request alone can cause, see [Webhooks](#webhooks). Useful for centralised logging or alerting. |
 | `userAgentSuffix`     | `string`                                          | —           | Appended to the SDK's `User-Agent` (`GoPay JS v4 <version>`), e.g. `my-shop/2.1`, so GoPay's logs name your integration. Printable ASCII, at most 200 characters. |
 
 ```ts
@@ -748,8 +748,10 @@ switch (event.type) {
   picked up on the first webhook signed with it; an unknown `kid` refetches the keys at most
   every 10 seconds, and in between it is `WEBHOOK_KEYS_UNAVAILABLE`, so GoPay retries it. A
   refresh that fails keeps the last keys and is tried again after those 10 seconds.
-- **`onError`.** `WEBHOOK_INVALID` is not passed to `onError`: anyone who can reach the endpoint
-  can cause one, and `onError` is where alerting listens. Every other failure is.
+- **`onError`.** Anyone who can reach the endpoint can cause a `WEBHOOK_INVALID`, or a
+  `WEBHOOK_KEYS_UNAVAILABLE` by naming a `kid` that does not exist, and `onError` is where
+  alerting listens. Neither is passed to it per webhook. A signing-key load that really failed is,
+  once per attempt; so is every other failure.
 
 ### Events
 

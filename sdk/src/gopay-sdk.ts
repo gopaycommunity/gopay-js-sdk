@@ -1,4 +1,8 @@
-import { createHttpClient, reportErrors } from '@gopay-internal/core';
+import {
+    type Correlation,
+    createHttpClient,
+    reportErrors,
+} from '@gopay-internal/core';
 import type { GoPayConfig } from './config.js';
 import { createTransactions, userAgentFor } from './correlation.js';
 import { createAuthApi } from './modules/auth/auth.module.js';
@@ -29,10 +33,7 @@ export function createGoPaySDK(config: GoPayConfig = {}) {
     // In a page (the example app runs this SDK in one) a User-Agent of its own is not
     // something a browser lets a script send, and the ids would add a CORS preflight.
     const inPage = 'document' in globalThis;
-    const correlation = {
-        userAgent: undefined as string | undefined,
-        transactionId: transactions.current,
-    };
+    const correlation: Correlation = { transactionId: transactions.current };
     const client = createHttpClient(
         config,
         undefined,
