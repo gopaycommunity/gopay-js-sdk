@@ -109,7 +109,7 @@ export class GoPaySDKError extends Error {
     readonly cause: unknown;
     /**
      * `X-GoPay-Trace-Id` of the request this error came from, also on a timeout or a network
-     * error — quote it to GoPay support. Undefined when no request went out, and in the browser SDK.
+     * error — quote it to GoPay support. Undefined when no request went out.
      */
     readonly traceId: string | undefined = undefined;
     /** `X-GoPay-Transaction-Id` of the SDK call this error came from; undefined as `traceId` is. */
@@ -144,7 +144,7 @@ export class GoPayHTTPError extends Error {
     readonly endpoint: string | undefined;
     /**
      * `X-GoPay-Trace-Id` of the request this error came from, also on a timeout or a network
-     * error — quote it to GoPay support. Undefined when no request went out, and in the browser SDK.
+     * error — quote it to GoPay support. Undefined when no request went out.
      */
     readonly traceId: string | undefined = undefined;
     /** `X-GoPay-Transaction-Id` of the SDK call this error came from; undefined as `traceId` is. */

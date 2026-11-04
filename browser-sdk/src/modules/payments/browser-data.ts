@@ -1,4 +1,5 @@
 import {
+    attachCorrelation,
     buildUrl,
     GoPayErrorCodes,
     GoPayHTTPError,
@@ -155,6 +156,13 @@ export async function fetchBrowserData(
     // store — including the client id — leaving the SDK instance unable to charge
     // the payment that was about to be charged. A plain request keeps the failure
     // local, and keeps a tolerated 404 from firing the merchant's onError.
+    const headers = new Headers({
+        Accept: SDK_ACCEPT_HEADER,
+        Authorization: `Basic ${credentials}`,
+    });
+    // The same request ids every other call carries, so this one is in the
+    // gateway's log under the page's transaction too.
+    const ids = client.correlate(headers, '/cards/browser-data');
     const { signal, release } = timeoutSignal(
         BROWSER_DATA_TIMEOUT_MS,
         options?.signal,
@@ -174,16 +182,21 @@ export async function fetchBrowserData(
             response = await fetch(
                 new Request(buildUrl(client.baseUrl, '/cards/browser-data'), {
                     method: 'GET',
-                    headers: {
-                        Accept: SDK_ACCEPT_HEADER,
-                        Authorization: `Basic ${credentials}`,
-                    },
+                    headers,
                     signal,
                 }),
             );
             status = response.status;
         } finally {
-            client.recordApiCall('GET', '/cards/browser-data', started, status);
+            client.recordApiCall(
+                'GET',
+                '/cards/browser-data',
+                started,
+                status,
+                {
+                    traceId: ids?.traceId,
+                },
+            );
         }
 
         if (!response.ok) {
@@ -196,10 +209,12 @@ export async function fetchBrowserData(
             // Carries the same method/endpoint pair the shared client attaches,
             // so this error groups in monitoring like every other one. Spelled
             // out rather than normalized: the path holds no id segments.
-            throw new GoPayHTTPError(response.status, body, {
+            const error = new GoPayHTTPError(response.status, body, {
                 method: 'GET',
                 endpoint: '/cards/browser-data',
             });
+            attachCorrelation(error, ids);
+            throw error;
         }
 
         const body: unknown = await response.json();
@@ -207,10 +222,12 @@ export async function fetchBrowserData(
             // NETWORK_ERROR rather than a new code: growing the public
             // GoPayErrorCodes enum is consumer-facing surface, and a proxy
             // error page reaching us here is a transport problem in practice.
-            throw new GoPaySDKError(
+            const error = new GoPaySDKError(
                 '[GoPayBrowserSDK] Browser data endpoint returned an unexpected shape.',
                 { errorCode: GoPayErrorCodes.NETWORK_ERROR },
             );
+            attachCorrelation(error, ids);
+            throw error;
         }
         return { ...collectBrowserData(), ...body };
     } finally {

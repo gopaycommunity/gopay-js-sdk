@@ -9,6 +9,7 @@ export type { CoreConfig, GoPayEnvironment } from './config.js';
 export { BASE_URLS, LOGGER_URLS } from './config.js';
 export type { GoPayErrorCode } from './errors.js';
 export {
+    attachCorrelation,
     GoPayErrorCodes,
     GoPayHTTPError,
     GoPaySDKError,
@@ -26,7 +27,11 @@ export type {
     StoredTokenPair,
 } from './http/token-store.js';
 export { createTokenStore } from './http/token-store.js';
-export type { ApiCallRecord, Telemetry } from './logging/telemetry.js';
+export type {
+    ApiCallDetails,
+    ApiCallRecord,
+    Telemetry,
+} from './logging/telemetry.js';
 export { msSince, NO_TELEMETRY, nowMs } from './logging/telemetry.js';
 export type { AwaitPaymentStatusOptions } from './payment-status-polling.js';
 export { awaitPaymentStatus } from './payment-status-polling.js';

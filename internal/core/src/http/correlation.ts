@@ -1,12 +1,21 @@
 /**
- * Request ids the API v4 gateway logs, so a call can be found from either side. Server SDK
- * only: from a browser these headers need the gateway's CORS to allow them first (GPOMA-2730).
+ * Request ids the API v4 gateway logs, so a call can be found from either side. The server
+ * SDK sets them per SDK call, the browser SDK per page load (as gw-ui does); the gateway's
+ * CORS allows all three from a page.
  */
 export interface Correlation {
-    /** The whole `User-Agent` value. */
+    /**
+     * The whole `User-Agent` value. Server only: a page cannot set it, and a page that tried
+     * would turn every call into a CORS preflight the gateway does not allow.
+     */
     userAgent?: string;
     /** The transaction id of the SDK call this request belongs to. */
     transactionId(): string;
+    /**
+     * The payment the SDK is working on, for a request whose path names none — the token
+     * exchange and the card endpoints in the browser. A payment in the path wins.
+     */
+    paymentId?(): string | undefined;
 }
 
 export interface CorrelationIds {
@@ -41,8 +50,11 @@ export function correlate(
     };
     headers.set('X-GoPay-Trace-Id', ids.traceId);
     headers.set('X-GoPay-Transaction-Id', ids.transactionId);
-    // Still percent-encoded as it went into the path: a header value must stay ASCII.
-    const paymentId = PAYMENT_PATH.exec(path)?.[1];
+    // Percent-encoded, as it goes into a path: a header value must stay ASCII.
+    const attached = correlation.paymentId?.();
+    const paymentId =
+        PAYMENT_PATH.exec(path)?.[1] ??
+        (attached ? encodeURIComponent(attached) : undefined);
     if (paymentId) {
         headers.set('X-GoPay-Payment-Session-Id', paymentId);
     }

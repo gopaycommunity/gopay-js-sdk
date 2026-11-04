@@ -257,41 +257,229 @@ describe('createGoPayBrowserSDK()', () => {
         });
     });
 
-    // The gateway's CORS does not allow these from a page yet: a browser sending them would
-    // have every call refused at preflight (GPOMA-2730). Only the server SDK sets them.
-    it('sends no correlation headers and no User-Agent of its own', async () => {
-        const seen: Request[] = [];
-        fetchMock.mockImplementation(async (req: Request) => {
-            seen.push(req);
-            return makeResponse(
-                req.url.includes('/oauth2/token')
-                    ? validTokenPair
-                    : { id: 'pay_001', state: 'REQUESTED' },
+    // -------------------------------------------------------------------------
+    // Correlation headers — the ids gw-logger events carry, on API v4 requests
+    // -------------------------------------------------------------------------
+
+    describe('correlation headers', () => {
+        const API = 'https://example.com/';
+        const apiRequests = (seen: Request[]) =>
+            seen.filter((req) => req.url.startsWith(API));
+        const header = (req: Request | undefined, name: string) =>
+            req?.headers.get(name) ?? null;
+        /** The gw-logger events posted so far, parsed. */
+        const loggedEvents = async (seen: Request[]) =>
+            Promise.all(
+                seen
+                    .filter((req) => !req.url.startsWith(API))
+                    .map(async (req) => {
+                        const { event } = (await req.clone().json()) as {
+                            event: Record<string, unknown>;
+                        };
+                        return event;
+                    }),
+            );
+
+        let seen: Request[];
+
+        beforeEach(() => {
+            seen = [];
+        });
+
+        const answer = (
+            route: (req: Request) => Response | undefined = () => undefined,
+        ) =>
+            fetchMock.mockImplementation(async (req: Request) => {
+                seen.push(req);
+                const routed = route(req);
+                if (routed) {
+                    return routed;
+                }
+                if (!req.url.startsWith(API)) {
+                    return new Response(null, { status: 204 });
+                }
+                return makeResponse(
+                    req.url.includes('/oauth2/token')
+                        ? validTokenPair
+                        : { id: 'pay_001', state: 'REQUESTED' },
+                );
+            });
+
+        it('puts the page’s transaction id, a trace id per request and the payment on every API call, and no User-Agent', async () => {
+            answer();
+
+            await sdk.attachPayment({
+                paymentId: 'pay_001',
+                paymentSecret: 'secret',
+            });
+            await sdk.getChargeState();
+
+            const api = apiRequests(seen);
+            expect(api.map((req) => new URL(req.url).pathname)).toEqual([
+                '/oauth2/token',
+                '/payments/pay_001/charge',
+            ]);
+            const [token, charge] = api;
+            const transactionId = header(token, 'X-GoPay-Transaction-Id');
+            expect(transactionId).toMatch(/\S/u);
+            expect(header(charge, 'X-GoPay-Transaction-Id')).toBe(
+                transactionId,
+            );
+            // The token exchange names no payment in its path; the attached
+            // one goes on it all the same.
+            expect(header(token, 'X-GoPay-Payment-Session-Id')).toBe('pay_001');
+            expect(header(charge, 'X-GoPay-Payment-Session-Id')).toBe(
+                'pay_001',
+            );
+            expect(header(token, 'X-GoPay-Trace-Id')).toMatch(/\S/u);
+            expect(header(charge, 'X-GoPay-Trace-Id')).not.toBe(
+                header(token, 'X-GoPay-Trace-Id'),
+            );
+            for (const req of api) {
+                // Not settable from a page, and would fail the preflight.
+                expect(header(req, 'User-Agent')).toBeNull();
+            }
+
+            // Same page, same transaction as the events gw-logger received.
+            const events = await loggedEvents(seen);
+            expect(events.length).toBeGreaterThan(0);
+            for (const event of events) {
+                expect(event.transaction_id).toBe(transactionId);
+            }
+        });
+
+        it('gives the api_call event the trace id its request went out with', async () => {
+            answer();
+
+            // Numeric, as real ids are: the event's target is the template.
+            await sdk.attachPayment({
+                paymentId: '3000000001',
+                paymentSecret: 'secret',
+            });
+            await sdk.getChargeState();
+
+            const [token, charge] = apiRequests(seen);
+            const apiCalls = (await loggedEvents(seen)).filter(
+                (event) => event.event_type === 'api_call',
+            );
+            expect(
+                apiCalls.map((event) => [event.target, event.trace_id]),
+            ).toEqual([
+                ['/oauth2/token', header(token, 'X-GoPay-Trace-Id')],
+                ['/payments/{id}/charge', header(charge, 'X-GoPay-Trace-Id')],
+            ]);
+        });
+
+        it('keeps the trace id across the retry after a 401, and gives the re-grant its own', async () => {
+            let charges = 0;
+            answer((req) => {
+                if (req.url.includes('/charge') && charges++ === 0) {
+                    return makeResponse({}, 401);
+                }
+                return undefined;
+            });
+
+            await sdk.attachPayment({
+                paymentId: 'pay_001',
+                paymentSecret: 'secret',
+            });
+            await sdk.getChargeState();
+
+            const api = apiRequests(seen);
+            expect(api.map((req) => new URL(req.url).pathname)).toEqual([
+                '/oauth2/token',
+                '/payments/pay_001/charge',
+                '/oauth2/token',
+                '/payments/pay_001/charge',
+            ]);
+            const [, first, regrant, retry] = api;
+            expect(header(retry, 'X-GoPay-Trace-Id')).toBe(
+                header(first, 'X-GoPay-Trace-Id'),
+            );
+            expect(header(regrant, 'X-GoPay-Trace-Id')).not.toBe(
+                header(first, 'X-GoPay-Trace-Id'),
+            );
+            expect(header(regrant, 'X-GoPay-Payment-Session-Id')).toBe(
+                'pay_001',
             );
         });
 
-        await sdk.attachPayment({
-            paymentId: 'pay_001',
-            paymentSecret: 'secret',
-        });
-        await sdk.getChargeState().catch(() => undefined);
+        it('sets them on the browser-data request, the payment only once one is attached', async () => {
+            answer((req) =>
+                req.url.includes('/cards/browser-data')
+                    ? makeResponse({
+                          ip: '203.0.113.7',
+                          user_agent: 'jsdom',
+                          accept_header: 'text/html',
+                      })
+                    : undefined,
+            );
 
-        const api = seen.filter((req) =>
-            req.url.startsWith('https://example.com/'),
-        );
-        expect(api.map((req) => new URL(req.url).pathname)).toEqual([
-            '/oauth2/token',
-            '/payments/pay_001/charge',
-        ]);
-        for (const req of api) {
-            for (const name of [
-                'X-GoPay-Trace-Id',
-                'X-GoPay-Transaction-Id',
-                'X-GoPay-Payment-Session-Id',
-                'User-Agent',
-            ]) {
-                expect(req.headers.get(name)).toBeNull();
+            await sdk.getBrowserData();
+            await sdk.attachPayment({
+                paymentId: 'pay_001',
+                paymentSecret: 'secret',
+            });
+            await sdk.getBrowserData();
+
+            const [before, , after] = apiRequests(seen);
+            expect(new URL(before?.url ?? '').pathname).toBe(
+                '/cards/browser-data',
+            );
+            expect(header(before, 'X-GoPay-Trace-Id')).toMatch(/\S/u);
+            expect(header(before, 'X-GoPay-Transaction-Id')).toMatch(/\S/u);
+            expect(header(before, 'X-GoPay-Payment-Session-Id')).toBeNull();
+            expect(header(after, 'X-GoPay-Payment-Session-Id')).toBe('pay_001');
+
+            const apiCall = (await loggedEvents(seen)).find(
+                (event) =>
+                    event.event_type === 'api_call' &&
+                    event.target === '/cards/browser-data',
+            );
+            expect(apiCall?.trace_id).toBe(header(before, 'X-GoPay-Trace-Id'));
+        });
+
+        it('puts the ids of the failed request on the error', async () => {
+            answer((req) =>
+                req.url.includes('/charge')
+                    ? makeResponse({ errors: [] }, 500)
+                    : undefined,
+            );
+            await sdk.attachPayment({
+                paymentId: 'pay_001',
+                paymentSecret: 'secret',
+            });
+
+            const error = await sdk.getChargeState().catch((e: unknown) => e);
+
+            const api = apiRequests(seen);
+            const charge = api[api.length - 1];
+            expect(error).toMatchObject({
+                status: 500,
+                traceId: header(charge, 'X-GoPay-Trace-Id'),
+                transactionId: header(charge, 'X-GoPay-Transaction-Id'),
+            });
+        });
+
+        it('keeps them off the requests to gw-logger', async () => {
+            answer();
+
+            await sdk.attachPayment({
+                paymentId: 'pay_001',
+                paymentSecret: 'secret',
+            });
+
+            const logger = seen.filter((req) => !req.url.startsWith(API));
+            expect(logger.length).toBeGreaterThan(0);
+            for (const req of logger) {
+                for (const name of [
+                    'X-GoPay-Trace-Id',
+                    'X-GoPay-Transaction-Id',
+                    'X-GoPay-Payment-Session-Id',
+                ]) {
+                    expect(header(req, name)).toBeNull();
+                }
             }
-        }
+        });
     });
 });

@@ -123,7 +123,7 @@ type BudgetKind = keyof typeof EVENT_BUDGET;
 interface CommonFields {
     client_id?: string;
     payment_session_id?: string;
-    /** The tab's event number, set when the event is actually sent; see ids.ts. */
+    /** The page's event number, set when the event is actually sent; see ids.ts. */
     seq?: number;
     sdk_version: string;
     integration: string;
@@ -265,12 +265,10 @@ function orUndefined(value: string | undefined): string | undefined {
  * reported: the event carrying it can be lost too, and a later one still
  * holds the total.
  *
- * Per page, shared by every instance on it. `seq` is per tab and survives a
- * reload or the return from 3DS, which this count does not, so until `seq` is
- * numbered per page (GPOMA-2730) a loss just before a navigation reads, on the
- * next page, as a gap larger than `unsent` — lost after gw-logger, which it
- * may not have been. A page that goes away with failures still to report takes
- * them with it, the same gap again.
+ * Per page, shared by every instance on it — the same scope as `seq` and the
+ * transaction id, so the two always describe the same run of events. A page
+ * that goes away with failures still to report takes them with it: its last
+ * events are lost without a later one to show the gap.
  */
 let unsentCount = 0;
 
@@ -796,7 +794,7 @@ export function createGwLoggerTelemetry(options: {
             // the event would replace the payment error the caller was about
             // to receive with a telemetry error. Logging is never worth that.
             const event = build();
-            // The tab's numbering, not this instance's — see lastSequence().
+            // The page's numbering, not this instance's — see lastSequence().
             // Spent only once the request exists, so a refused or unbuildable
             // event leaves no gap.
             const next = lastSequence() + 1;
@@ -852,6 +850,9 @@ export function createGwLoggerTelemetry(options: {
         apiCall(record: ApiCallRecord): void {
             post('api_call', () => ({
                 ...base(),
+                // The request's own X-GoPay-Trace-Id, so this event and the
+                // gateway's log line for the request share one trace id.
+                trace_id: record.traceId ?? newTraceId(),
                 event_type: 'api_call',
                 action: lastSegment(record.endpoint),
                 // Without it the POST that starts a charge and the GETs that

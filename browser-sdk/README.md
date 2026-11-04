@@ -643,6 +643,29 @@ allowed to replace it.
 Group by `endpoint` and `status`, never by the raw URL: request paths carry the
 payment id, so grouping on them opens a fresh group per payment.
 
+### Request ids
+
+Every request the SDK makes to the Payments API carries ids that GoPay logs
+with it, so a call your customer's browser made can be found on GoPay's side:
+
+| Header | Value |
+| --- | --- |
+| `X-GoPay-Trace-Id` | New for each request; a retry of the same request keeps it. |
+| `X-GoPay-Transaction-Id` | One per page load, shared by every request and SDK instance on the page. A new page — including the one the customer returns to from 3DS — gets a new one. |
+| `X-GoPay-Payment-Session-Id` | The attached payment's id, once `attachPayment()` has been called. |
+
+An error from a request carries the first two as `traceId` and `transactionId`,
+a timeout and a network error included. Send them to your monitoring with the
+rest of the error, and quote them to GoPay support:
+
+```ts
+onError(err) {
+  Sentry.captureException(err, {
+    extra: { traceId: err.traceId, transactionId: err.transactionId },
+  });
+},
+```
+
 ### Run your own global handler — the SDK does not install one
 
 `onError` covers what the SDK raises on the paths it instruments. It cannot
@@ -716,7 +739,7 @@ attaching to a payment, a card form or wallet button becoming usable, and the
 visit ending — plus the SDK version, which build of the package is running
 (ESM/CJS or the CDN bundle), which payment method and flow the event belongs to,
 the id of the payment being paid, your `clientId` and the event's position
-among those sent from the browser tab. When
+among those sent from the page. When
 the customer is sent to 3DS authentication, the visit's end is reported before
 the redirect, with the authentication page's address but none of its parameters.
 Each step of a wallet payment is reported as it happens — the button loading and

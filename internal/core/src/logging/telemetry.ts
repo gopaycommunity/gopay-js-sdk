@@ -22,6 +22,18 @@ export interface ApiCallRecord {
      */
     requestBody?: unknown;
     responseBody?: unknown;
+    /**
+     * The `X-GoPay-Trace-Id` the request went out with, so the event and the gateway's log
+     * line for the same request share it. Absent when the client sets no correlation ids.
+     */
+    traceId?: string;
+}
+
+/** What a call site knows about a request besides its outcome; see {@link ApiCallRecord}. */
+export interface ApiCallDetails {
+    request?: unknown;
+    response?: unknown;
+    traceId?: string;
 }
 
 /**

@@ -7,6 +7,7 @@ import {
 } from '@gopay-internal/core';
 import type { AttachPaymentArgs, GoPayBrowserConfig } from './config.js';
 import { createGwLoggerTelemetry } from './logging/gw-logger.js';
+import { getTransactionId } from './logging/ids.js';
 import { registerLeaveBeacon } from './logging/leave-beacon.js';
 import { registerPageLifecycle } from './logging/page-lifecycle.js';
 import {
@@ -76,6 +77,13 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
         { ...coreConfig, shareableKey },
         'Call attachPayment({ paymentId, paymentSecret }) again.',
         telemetry,
+        // The ids gw-logger events carry, on every API v4 request too, so the
+        // gateway's log lines for a checkout can be found from its events and
+        // the other way round. No User-Agent: a page cannot set one.
+        {
+            transactionId: getTransactionId,
+            paymentId: () => attachedPaymentId,
+        },
     );
     client.setClientId(clientId);
 

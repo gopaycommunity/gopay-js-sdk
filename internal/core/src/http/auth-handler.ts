@@ -4,7 +4,7 @@ import {
     GoPayHTTPError,
     GoPaySDKError,
 } from '../errors.js';
-import { nowMs } from '../logging/telemetry.js';
+import { type ApiCallDetails, nowMs } from '../logging/telemetry.js';
 import { buildUrl } from './build-url.js';
 import { SDK_ACCEPT_HEADER } from './constants.js';
 import { type CorrelationIds, correlationIdsOf } from './correlation.js';
@@ -33,7 +33,7 @@ interface AuthHandlerDeps {
         path: string,
         started: number,
         statusCode: number | null,
-        bodies?: { request?: unknown; response?: unknown },
+        details?: ApiCallDetails,
     ) => void;
     getShareableKey?: () => string | undefined;
     getClientId?: () => string | null;
@@ -316,6 +316,7 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
                 // would spend the stream the parse below needs.
                 deps.recordApiCall('POST', AUTH_PATH, started, status, {
                     request: grant.form,
+                    traceId: ids?.traceId,
                 });
             }
             if (!response.ok) {

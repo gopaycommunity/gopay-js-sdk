@@ -8,6 +8,7 @@ import {
     safeErrorLabel,
 } from '../errors.js';
 import {
+    type ApiCallDetails,
     type ApiCallRecord,
     NO_TELEMETRY,
     nowMs,
@@ -117,7 +118,7 @@ export function createHttpClient(
     config: CoreConfig,
     reAuthAction?: string,
     telemetry: Telemetry = NO_TELEMETRY,
-    // The server SDK's alone until the browser's requests may carry the headers (GPOMA-2730).
+    // Request ids for the gateway's log; without it requests carry none.
     correlation?: Correlation,
 ) {
     /**
@@ -131,15 +132,16 @@ export function createHttpClient(
         path: string,
         started: number,
         statusCode: number | null,
-        bodies?: { request?: unknown; response?: unknown },
+        details?: ApiCallDetails,
     ): void {
         const rec: ApiCallRecord = {
             method,
             endpoint: normalizeEndpoint(path),
             statusCode,
             durationMs: Math.round(nowMs() - started),
-            requestBody: bodies?.request,
-            responseBody: bodies?.response,
+            requestBody: details?.request,
+            responseBody: details?.response,
+            traceId: details?.traceId,
         };
         telemetry.apiCall(rec);
     }
@@ -395,6 +397,13 @@ export function createHttpClient(
          */
         recordApiCall: record,
 
+        /**
+         * Sets the request ids on a request such a bypass sends, as the verb
+         * methods do on theirs; undefined when the client sets none.
+         */
+        correlate: (headers: Headers, path: string) =>
+            correlate(correlation, headers, path),
+
         async get<T>(path: string, options?: RequestOptions): Promise<T> {
             const started = nowMs();
             let status: number | null = null;
@@ -432,6 +441,7 @@ export function createHttpClient(
             } finally {
                 if (issued) {
                     record('GET', path, started, status, {
+                        traceId: ids?.traceId,
                         response: responseBody,
                     });
                 }
@@ -482,6 +492,7 @@ export function createHttpClient(
             } finally {
                 if (issued) {
                     record('POST', path, started, status, {
+                        traceId: ids?.traceId,
                         request: body,
                         response: responseBody,
                     });
@@ -524,6 +535,7 @@ export function createHttpClient(
             } finally {
                 if (issued) {
                     record('DELETE', path, started, status, {
+                        traceId: ids?.traceId,
                         response: responseBody,
                     });
                 }
@@ -585,6 +597,7 @@ export function createHttpClient(
             } finally {
                 if (issued) {
                     record('POST', path, started, status, {
+                        traceId: ids?.traceId,
                         request: form,
                         response: responseBody,
                     });
