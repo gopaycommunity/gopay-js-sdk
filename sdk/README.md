@@ -747,11 +747,13 @@ switch (event.type) {
   `shared:read`), cached by `kid` and refreshed once they are an hour old. A rotated-in key is
   picked up on the first webhook signed with it; an unknown `kid` refetches the keys at most
   every 10 seconds, and in between it is `WEBHOOK_KEYS_UNAVAILABLE`, so GoPay retries it. A
-  refresh that fails keeps the last keys and is tried again after those 10 seconds.
+  refresh that fails, or answers with no usable key, keeps the last keys and is tried again after
+  those 10 seconds.
 - **`onError`.** Anyone who can reach the endpoint can cause a `WEBHOOK_INVALID`, or a
   `WEBHOOK_KEYS_UNAVAILABLE` by naming a `kid` that does not exist, and `onError` is where
   alerting listens. Neither is passed to it per webhook. A signing-key load that really failed is,
-  once per attempt; so is every other failure.
+  once per attempt; so is every other failure. An answer with no usable key is not: no request
+  failed.
 
 ### Events
 
@@ -762,7 +764,7 @@ look up the event a webhook named.
 |---|---|
 | `listEvents(goid, params?)` | One page of the eshop's events, newest first (`GET /eshops/{goid}/events`); `next_page_url` while older ones remain. Requires `event:read` scope. |
 | `getEvent(goid, eventId)` | One event (`GET /eshops/{goid}/events/{eventId}`). Requires `event:read` scope. |
-| `iterateEvents(goid, params?)` | Every matching event across pages, as an async iterator. Requires `event:read` scope. |
+| `iterateEvents(goid, params?)` | Every matching event across pages, as an async iterator. Requires `event:read` scope. Throws `NETWORK_ERROR` after the last good page if `next_page_url` names a page already fetched, or an empty page still names a next one. |
 
 ```ts
 // Newest first by event id: occurred_at of events recorded together can be a few ms out of
@@ -798,10 +800,10 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 | `AUTH_INVALID_TOKEN` | A JWT is malformed or missing the `sub` claim. |
 | `AUTH_UNAUTHORIZED` | Still 401 after a successful token refresh — check OAuth2 scopes. |
 | `NETWORK_TIMEOUT` | Request exceeded `requestTimeoutMs`. |
-| `NETWORK_ERROR` | Network-level failure (no response received). |
+| `NETWORK_ERROR` | Network-level failure (no response received), or a response the SDK cannot use, such as event paging that does not move. |
 | `CARD_FORM_ERROR` | The card form iframe encountered an error (e.g. URL unavailable, init timeout, or encryption failure). |
 | `WEBHOOK_INVALID` | `verifyWebhook()`: the request is not a webhook GoPay signed — missing or malformed `X-GoPay-Signature`, a key GoPay does not publish, a signature that does not match the body, or a body that is not an event. Answer `4xx`. Not passed to `onError`. |
-| `WEBHOOK_KEYS_UNAVAILABLE` | `verifyWebhook()`: the webhook was not checked. Either the signing keys could not be loaded, and `cause` says why, or it names a `kid` the SDK does not have and the keys were fetched less than 10 seconds ago, with no `cause`. Answer `5xx` and GoPay retries. Not passed to `onError`; a failed key load is, as its own `GoPayHTTPError`. |
+| `WEBHOOK_KEYS_UNAVAILABLE` | `verifyWebhook()`: the webhook was not checked. Either the signing keys could not be loaded or came back with no usable key, and `cause` says why, or it names a `kid` the SDK does not have and the keys were fetched less than 10 seconds ago, with no `cause`. Answer `5xx` and GoPay retries. Not passed to `onError`; a failed key load is, as its own `GoPayHTTPError`. |
 
 It also carries `cause` — the underlying error it wraps, when it wraps one, and `undefined` otherwise. It is declared as an own property rather than relying on `Error.cause`, which arrived in ES2022 while this package compiles against ES2020. Reach for it when the `errorCode` says *what* failed and you need *why*: a `NETWORK_ERROR`, for instance, carries the original `fetch` rejection.
 

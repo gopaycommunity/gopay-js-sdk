@@ -8,6 +8,14 @@ import {
 } from '../../src/index.js';
 import { makeResponse } from './helpers.js';
 
+/** An event for a page that has a next one. */
+const PAGE_EVENT = {
+    id: 'e1',
+    type: 'payments.canceled',
+    occurred_at: '2026-11-05T08:00:00Z',
+    data: { payment_id: '1' },
+};
+
 const BASE_URL = 'https://gw.example.com/gp-gw/api/4.0';
 const UUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -193,7 +201,8 @@ describe('User-Agent and correlation headers', () => {
                 .mockImplementationOnce(async (req: Request) => {
                     requests.push(req);
                     return makeResponse({
-                        items: [],
+                        // One event: an empty page that names a next one is refused.
+                        items: [PAGE_EVENT],
                         next_page_url: `${BASE_URL}/eshops/1/events?prev_item=e1`,
                     });
                 })
@@ -430,7 +439,8 @@ describe('User-Agent and correlation headers', () => {
                 .mockImplementationOnce(async (req: Request) => {
                     requests.push(req);
                     return makeResponse({
-                        items: [],
+                        // One event: an empty page that names a next one is refused.
+                        items: [PAGE_EVENT],
                         next_page_url: `${BASE_URL}/eshops/1/events?prev_item=e1`,
                     });
                 })

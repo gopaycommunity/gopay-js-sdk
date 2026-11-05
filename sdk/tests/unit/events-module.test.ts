@@ -217,6 +217,84 @@ describe('EventsModule', () => {
             },
         );
 
+        // A gateway that keeps answering with a cursor that does not move would otherwise be
+        // paged forever. Capped twice, on events and on pages (an empty page yields none), so a
+        // regression fails instead of hanging.
+        const PAGE_CAP = 10;
+        const capped = (page: () => Response) => async (): Promise<Response> =>
+            fetchMock.mock.calls.length > PAGE_CAP
+                ? makeResponse({ items: [], next_page_url: null })
+                : page();
+
+        async function drainCapped(cap = 10) {
+            const seen: string[] = [];
+            let error: unknown;
+            try {
+                for await (const event of events.iterateEvents(GOID, {
+                    max_items: 1,
+                })) {
+                    seen.push(event.id);
+                    if (seen.length === cap) {
+                        break;
+                    }
+                }
+            } catch (reason) {
+                error = reason;
+            }
+            return { seen, error };
+        }
+
+        it.each([
+            ['the first page again', `?max_items=1`],
+            ['itself', `?prev_item=e2&max_items=1`],
+        ])(
+            'stops with NETWORK_ERROR at a next_page_url that names %s, after its events',
+            async (_name, query) => {
+                fetchMock
+                    .mockImplementationOnce(async () =>
+                        makeResponse({
+                            items: [makeEvent('e1')],
+                            next_page_url: `${BASE_URL}/eshops/${GOID}/events?max_items=1&prev_item=e2`,
+                        }),
+                    )
+                    .mockImplementation(
+                        capped(() =>
+                            makeResponse({
+                                items: [makeEvent('e2')],
+                                next_page_url: `${BASE_URL}/eshops/${GOID}/events${query}`,
+                            }),
+                        ),
+                    );
+
+                const { seen, error } = await drainCapped();
+
+                expect(seen).toEqual(['e1', 'e2']);
+                expect(error).toMatchObject({
+                    errorCode: GoPayErrorCodes.NETWORK_ERROR,
+                });
+                expect(fetchMock).toHaveBeenCalledTimes(2);
+            },
+        );
+
+        it('stops with NETWORK_ERROR at an empty page that names a next one', async () => {
+            fetchMock.mockImplementation(
+                capped(() =>
+                    makeResponse({
+                        items: [],
+                        next_page_url: `${BASE_URL}/eshops/${GOID}/events?prev_item=e9`,
+                    }),
+                ),
+            );
+
+            const { seen, error } = await drainCapped();
+
+            expect(seen).toEqual([]);
+            expect(error).toMatchObject({
+                errorCode: GoPayErrorCodes.NETWORK_ERROR,
+            });
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
         it('fetches the next page only once the previous one is used up', async () => {
             fetchMock.mockImplementation(async () =>
                 makeResponse({
@@ -235,6 +313,48 @@ describe('EventsModule', () => {
 
     // reportErrors cannot see into a generator, and the HTTP client reports only what fails
     // in a request; a page refused before one goes out is iterateEvents' own to report.
+    it('reports paging that does not move to onError, once', async () => {
+        const onError = vi.fn();
+        const sdk = createGoPaySDK({ baseUrl: BASE_URL, onError });
+        // Capped like the iterateEvents() cases, so a regression fails instead of hanging.
+        fetchMock.mockImplementation(async (req: Request) => {
+            if (req.url.includes('/oauth2/token')) {
+                return makeResponse({
+                    access_token: 'token',
+                    expires_in: 1800,
+                    token_type: 'bearer',
+                });
+            }
+            return fetchMock.mock.calls.length > 10
+                ? makeResponse({ items: [], next_page_url: null })
+                : makeResponse({
+                      items: [],
+                      next_page_url: `${BASE_URL}/eshops/${GOID}/events?prev_item=e9`,
+                  });
+        });
+        await sdk.authenticate({
+            grant_type: 'client_credentials',
+            client_id: 'id',
+            client_secret: 'secret',
+            scope: 'event:read',
+        });
+
+        const error = await (async () => {
+            for await (const _ of sdk.iterateEvents(GOID)) {
+                // drain
+            }
+        })().then(
+            () => undefined,
+            (reason: unknown) => reason,
+        );
+
+        expect(error).toMatchObject({
+            errorCode: GoPayErrorCodes.NETWORK_ERROR,
+        });
+        expect(onError).toHaveBeenCalledOnce();
+        expect(onError.mock.calls[0]?.[0]).toBe(error);
+    });
+
     it.each([
         ['a page refused before any request', ''],
         ['a page that failed in the request', GOID],
