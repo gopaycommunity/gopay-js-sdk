@@ -1,3 +1,30 @@
+# [1.24.0](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.23.8...1.24.0) (2026-11-05)
+
+
+### Bug Fixes
+
+* carry request ids on a 401 after token refresh, report a bad userAgentSuffix GPOMA-2705 ([7e6400c](https://github.com/gopaycommunity/gopay-js-sdk/commit/7e6400cbd546b183e9f08b5631ac2faabb74761f))
+* end event paging on a null next_page_url, and say what onError hears of GPOMA-2705 ([d68af01](https://github.com/gopaycommunity/gopay-js-sdk/commit/d68af01b739a9ae401e06c3950414ec93660cc71))
+* **example:** preselect every scope, so one authenticate covers the events and webhook panels too GPOMA-2705 ([c008c0f](https://github.com/gopaycommunity/gopay-js-sdk/commit/c008c0ff477036b51b63c9e81e741d21ab162df9))
+* **example:** say where a webhook signature comes from, and that getEvent output has none GPOMA-2705 ([08c5b3e](https://github.com/gopaycommunity/gopay-js-sdk/commit/08c5b3ef3ca8bbd3696ac6c6ed8453cf156e5804))
+* keep forged webhooks out of onError, tidy the event types and paging GPOMA-2705 ([5740a06](https://github.com/gopaycommunity/gopay-js-sdk/commit/5740a06105f1d02ebab0859dd17614106ac0f737))
+* require Node.js 20.16, the first with process.getBuiltinModule GPOMA-2705 ([81b3587](https://github.com/gopaycommunity/gopay-js-sdk/commit/81b3587bac7258457bf939e8eacd4850e98e1ee5))
+* update api from next spec GPOMA-2705 ([0d0c44c](https://github.com/gopaycommunity/gopay-js-sdk/commit/0d0c44c9c4baad8ad61dcdcc261291ed1a790b41))
+
+
+### Features
+
+* send a User-Agent and request ids GoPay's logs can find a call by GPOMA-2705 ([fe42402](https://github.com/gopaycommunity/gopay-js-sdk/commit/fe42402acebbb71bd27d4d9c9ad5fc3839489da4))
+* tell later event types apart with isKnownEvent, retry a failed key refresh sooner GPOMA-2705 ([11317d5](https://github.com/gopaycommunity/gopay-js-sdk/commit/11317d52a193e031ec6b8f5d2a2000474d60ca1a))
+* verify API v4 webhooks and read the eshop's events GPOMA-2705 ([716cb43](https://github.com/gopaycommunity/gopay-js-sdk/commit/716cb43f2fae15d394ce9ed25226e81ab6654793))
+
+
+### BREAKING CHANGES
+
+* @gopaycz/gopay-js-sdk needs Node.js 20.16 or later (was 20.12).
+* the charge response types no longer have `return_url`. The gateway stopped
+returning it; read the return URL from the payment's `callback.return_url` instead.
+
 ## [1.23.8](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.23.7...1.23.8) (2026-11-03)
 
 
