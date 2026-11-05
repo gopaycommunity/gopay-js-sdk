@@ -138,6 +138,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/payments/{payment_id}/init-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identifier of the payment, `Payment Details.id` */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Initialise Client Session
+         * @description Opens the client session for the payment and records which GoPay client SDK, and which version of it, works with the payment. The payment's language is set from the `Accept-Language` header: the supported language that the header ranks highest is used. If the header is missing or names no supported language, the payment's language is set to English.
+         *
+         *     The operation may be called repeatedly while the payment is in the `CREATED` state; each call replaces the values recorded by the previous one. Any other state returns `409`.
+         *
+         *     The GoPay client SDK calls it when it starts working with the payment. Intended for the GoPay client SDK; the merchant's code does not normally call it.
+         */
+        post: operations["post-payments-payment_id-init-session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/payments/{payment_id}/google-pay/info": {
         parameters: {
             query?: never;
@@ -2312,6 +2339,29 @@ export interface components {
             validationUrl: string;
         };
         /**
+         * Init Session Request
+         * @description The GoPay client SDK that opens the client session for the payment
+         */
+        "Init-Session-Request": {
+            /** @description The GoPay client SDK that calls the operation */
+            client_type: components["schemas"]["Client-Type"];
+            /**
+             * @description Version of the GoPay client SDK that calls the operation
+             * @example 1.4.0
+             */
+            client_version: string;
+        };
+        /**
+         * Client Type
+         * @description The GoPay client SDK that works with the payment.
+         *     - `SDK_BROWSER` - The GoPay browser SDK, in the customer's browser
+         *     - `SDK_ANDROID` - The GoPay Android SDK, in the merchant's Android app
+         *     - `SDK_IOS` - The GoPay iOS SDK, in the merchant's iOS app
+         * @example SDK_BROWSER
+         * @enum {string}
+         */
+        "Client-Type": "SDK_BROWSER" | "SDK_ANDROID" | "SDK_IOS";
+        /**
          * Validate Merchant Response
          * @description The merchant session object Apple Pay expects, passed to the Apple Pay sheet unchanged
          */
@@ -3370,6 +3420,40 @@ export interface operations {
                     "application/json": components["schemas"]["QR-Payment-Details"];
                 };
             };
+            401: components["responses"]["Unauthorized-401-Response"];
+            403: components["responses"]["Forbidden-403-Response"];
+            404: components["responses"]["Not-Found-404-Response"];
+            409: components["responses"]["Conflict-409-Response"];
+            500: components["responses"]["Internal-Server-Error-500-Response"];
+        };
+    };
+    "post-payments-payment_id-init-session": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The customer's preferred languages. The supported language ranked highest becomes the language of the payment. The browser adds it automatically */
+                "Accept-Language"?: string;
+            };
+            path: {
+                /** @description Identifier of the payment, `Payment Details.id` */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Init-Session-Request"];
+            };
+        };
+        responses: {
+            /** @description Done; the response has no body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Bad-Request-400-Response"];
             401: components["responses"]["Unauthorized-401-Response"];
             403: components["responses"]["Forbidden-403-Response"];
             404: components["responses"]["Not-Found-404-Response"];

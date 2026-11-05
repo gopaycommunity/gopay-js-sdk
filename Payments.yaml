@@ -313,6 +313,59 @@ paths:
         in: path
         required: true
         description: Identifier of the payment, `Payment Details.id`
+  '/payments/{payment_id}/init-session':
+    post:
+      tags:
+        - SDK Services
+      summary: Initialise Client Session
+      description: |-
+        Opens the client session for the payment and records which GoPay client SDK, and which version of it, works with the payment. The payment's language is set from the `Accept-Language` header: the supported language that the header ranks highest is used. If the header is missing or names no supported language, the payment's language is set to English.
+
+        The operation may be called repeatedly while the payment is in the `CREATED` state; each call replaces the values recorded by the previous one. Any other state returns `409`.
+
+        The GoPay client SDK calls it when it starts working with the payment. Intended for the GoPay client SDK; the merchant's code does not normally call it.
+      operationId: post-payments-payment_id-init-session
+      parameters:
+        - name: Accept-Language
+          in: header
+          description: The customer's preferred languages. The supported language ranked highest becomes the language of the payment. The browser adds it automatically
+          required: false
+          schema:
+            type: string
+          examples:
+            cs:
+              value: 'cs-CZ,cs;q=0.9,en;q=0.8'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Init-Session-Request'
+      responses:
+        '204':
+          description: Done; the response has no body
+        '400':
+          $ref: '#/components/responses/Bad-Request-400-Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized-401-Response'
+        '403':
+          $ref: '#/components/responses/Forbidden-403-Response'
+        '404':
+          $ref: '#/components/responses/Not-Found-404-Response'
+        '409':
+          $ref: '#/components/responses/Conflict-409-Response'
+        '500':
+          $ref: '#/components/responses/Internal-Server-Error-500-Response'
+      security:
+        - payment_credentials:
+            - 'payment:read'
+    parameters:
+      - schema:
+          type: string
+        name: payment_id
+        in: path
+        required: true
+        description: Identifier of the payment, `Payment Details.id`
   '/payments/{payment_id}/google-pay/info':
     get:
       tags:
@@ -3823,6 +3876,38 @@ components:
           description: The validation URL Apple Pay issued for the session
           examples:
             - https://apple-pay-gateway.apple.com/paymentservices/paymentSession
+    Init-Session-Request:
+      title: Init Session Request
+      description: The GoPay client SDK that opens the client session for the payment
+      type: object
+      required:
+        - client_type
+        - client_version
+      properties:
+        client_type:
+          $ref: '#/components/schemas/Client-Type'
+          description: The GoPay client SDK that calls the operation
+        client_version:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Version of the GoPay client SDK that calls the operation
+          examples:
+            - 1.4.0
+    Client-Type:
+      type: string
+      enum:
+        - SDK_BROWSER
+        - SDK_ANDROID
+        - SDK_IOS
+      title: Client Type
+      description: |-
+        The GoPay client SDK that works with the payment.
+        - `SDK_BROWSER` - The GoPay browser SDK, in the customer's browser
+        - `SDK_ANDROID` - The GoPay Android SDK, in the merchant's Android app
+        - `SDK_IOS` - The GoPay iOS SDK, in the merchant's iOS app
+      examples:
+        - SDK_BROWSER
     Validate-Merchant-Response:
       title: Validate Merchant Response
       description: The merchant session object Apple Pay expects, passed to the Apple Pay sheet unchanged
