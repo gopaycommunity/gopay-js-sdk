@@ -664,17 +664,33 @@ describe('WebhooksModule', () => {
             expect(onError).not.toHaveBeenCalled();
         });
 
-        it('does not hear of a key set with no usable key, which no request reported', async () => {
+        // No request failed, so the client reports nothing; without this report an endpoint
+        // that keeps answering with no usable key is an outage onError never hears of.
+        it('hears of a key set with no usable key once per attempt, not once per webhook', async () => {
             const { onError, api } = reportingApi();
             fetchMock.mockImplementation(async () =>
                 makeResponse({ keys: [] }),
             );
+            const header = await sign(keyA, event());
 
+            for (let i = 0; i < 3; i++) {
+                await expectCode(
+                    api.verifyWebhook(event(), header),
+                    GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE,
+                );
+            }
+            expect(
+                reported(onError).map(
+                    (e) => e instanceof GoPaySDKError && e.errorCode,
+                ),
+            ).toEqual([GoPayErrorCodes.NETWORK_ERROR]);
+
+            now += 10_000;
             await expectCode(
-                api.verifyWebhook(event(), await sign(keyA, event())),
+                api.verifyWebhook(event(), header),
                 GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE,
             );
-            expect(onError).not.toHaveBeenCalled();
+            expect(onError).toHaveBeenCalledTimes(2);
         });
 
         it('hears of a key load that failed once per attempt, not once per webhook', async () => {

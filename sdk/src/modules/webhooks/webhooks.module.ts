@@ -95,18 +95,23 @@ function createKeyStore(client: HttpClient) {
             // Taken as one, it would replace a good set, and each webhook waiting on this
             // refetch would get WEBHOOK_INVALID, a 4xx that GoPay does not retry.
             if (next.size === 0) {
-                throw new GoPaySDKError(
+                const empty = new GoPaySDKError(
                     '[GoPaySDK] GET /webhooks/public-keys returned no usable signing key.',
                     { errorCode: GoPayErrorCodes.NETWORK_ERROR },
                 );
+                // Reported here, once per attempt like a failed request: no request failed, so
+                // the client did not, and an endpoint that keeps answering this way would
+                // otherwise turn every webhook into a 5xx that onError never hears of.
+                client.reportError(empty);
+                throw empty;
             }
             keys = next;
             lastFailure = undefined;
             fetchedAt = Date.now();
         } catch (error) {
-            // A failed request is already reported by the client, once per attempt; an empty
-            // set is not reported at all. The webhooks that wait on it, and any that arrive
-            // while the failure stands, must not report it again.
+            // Already reported once per attempt: a failed request by the client, a set with no
+            // usable key just above. The webhooks that wait on it, and any that arrive while
+            // the failure stands, must not report it again.
             lastFailure = error;
         } finally {
             attemptedAt = Date.now();
