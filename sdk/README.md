@@ -801,7 +801,7 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 | `NETWORK_ERROR` | Network-level failure (no response received). |
 | `CARD_FORM_ERROR` | The card form iframe encountered an error (e.g. URL unavailable, init timeout, or encryption failure). |
 | `WEBHOOK_INVALID` | `verifyWebhook()`: the request is not a webhook GoPay signed — missing or malformed `X-GoPay-Signature`, a key GoPay does not publish, a signature that does not match the body, or a body that is not an event. Answer `4xx`. Not passed to `onError`. |
-| `WEBHOOK_KEYS_UNAVAILABLE` | `verifyWebhook()`: the signing keys could not be loaded, so nothing was checked; `cause` says why. Answer `5xx` and GoPay retries. |
+| `WEBHOOK_KEYS_UNAVAILABLE` | `verifyWebhook()`: the webhook was not checked. Either the signing keys could not be loaded, and `cause` says why, or it names a `kid` the SDK does not have and the keys were fetched less than 10 seconds ago, with no `cause`. Answer `5xx` and GoPay retries. Not passed to `onError`; a failed key load is, as its own `GoPayHTTPError`. |
 
 It also carries `cause` — the underlying error it wraps, when it wraps one, and `undefined` otherwise. It is declared as an own property rather than relying on `Error.cause`, which arrived in ES2022 while this package compiles against ES2020. Reach for it when the `errorCode` says *what* failed and you need *why*: a `NETWORK_ERROR`, for instance, carries the original `fetch` rejection.
 

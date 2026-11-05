@@ -189,6 +189,34 @@ describe('EventsModule', () => {
             ).toBe('e1');
         });
 
+        // The spec types next_page_url as a string or absent; a null must still end the paging,
+        // not refetch the same page forever. Capped so a regression fails instead of hanging.
+        it.each([
+            ['null', null],
+            ['empty', ''],
+        ])(
+            'stops at a next_page_url that is %s',
+            async (_name, nextPageUrl) => {
+                fetchMock.mockImplementation(async () =>
+                    makeResponse({
+                        items: [makeEvent('e1')],
+                        next_page_url: nextPageUrl,
+                    }),
+                );
+
+                const seen: string[] = [];
+                for await (const event of events.iterateEvents(GOID)) {
+                    seen.push(event.id);
+                    if (seen.length === 5) {
+                        break;
+                    }
+                }
+
+                expect(seen).toEqual(['e1']);
+                expect(fetchMock).toHaveBeenCalledTimes(1);
+            },
+        );
+
         it('fetches the next page only once the previous one is used up', async () => {
             fetchMock.mockImplementation(async () =>
                 makeResponse({

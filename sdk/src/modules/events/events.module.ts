@@ -159,10 +159,13 @@ export function createEventsApi(client: HttpClient) {
                             return { done: true, value: undefined };
                         }
                         const page = await fetchPage(nextParams);
+                        // One condition for both: a cursor that is absent, empty or null ends
+                        // the paging, rather than leaving `more` set with nowhere to go.
                         const cursor = page.next_page_url;
-                        more = cursor !== undefined && cursor !== '';
                         if (cursor) {
                             nextParams = nextPageParams(cursor, client.baseUrl);
+                        } else {
+                            more = false;
                         }
                         return { done: false, value: page };
                     },
