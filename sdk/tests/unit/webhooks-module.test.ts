@@ -396,14 +396,15 @@ describe('WebhooksModule', () => {
             );
         });
 
-        // keyA's own material each time, so only the marking can be what refuses it.
+        // keyA's own material each time, so only the marking can be what refuses it. keyB
+        // beside it: a set with no usable key at all is a failed fetch, tested below.
         it.each([
             ['marked for encryption', { use: 'enc' }],
             ['for another algorithm', { alg: 'RS512' }],
             ['of another key type', { kty: 'EC' }],
         ])('ignores a key %s', async (_name, change) => {
             fetchMock.mockResolvedValue(
-                jwksResponse({ ...keyA.jwk, ...change }),
+                jwksResponse({ ...keyA.jwk, ...change }, keyB.jwk),
             );
 
             await expectCode(
@@ -421,6 +422,63 @@ describe('WebhooksModule', () => {
                 webhooks.verifyWebhook(event(), await sign(keyB, event())),
             ).resolves.toBeDefined();
         });
+
+        // A 200 that leaves nothing to verify with must not read as "every webhook is forged":
+        // WEBHOOK_INVALID is a 4xx, and GoPay does not retry one.
+        const noUsableKey: [string, () => Response][] = [
+            ['an empty object', () => makeResponse({})],
+            ['an empty key list', () => makeResponse({ keys: [] })],
+            [
+                'only an unusable key',
+                () => jwksResponse({ ...keyA.jwk, use: 'enc' }),
+            ],
+        ];
+
+        it.each(noUsableKey)(
+            'reports keys unavailable when the first fetch returns %s',
+            async (_name, body) => {
+                fetchMock.mockImplementation(async () => body());
+
+                await expectCode(
+                    webhooks.verifyWebhook(event(), await sign(keyA, event())),
+                    GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE,
+                );
+            },
+        );
+
+        it.each(noUsableKey)(
+            'keeps the last keys when the hourly refresh returns %s, and retries in ten seconds',
+            async (_name, body) => {
+                fetchMock.mockImplementation(async () =>
+                    jwksResponse(keyA.jwk),
+                );
+                await webhooks.verifyWebhook(
+                    event(),
+                    await sign(keyA, event()),
+                );
+                now += 60 * 60_000;
+                fetchMock.mockImplementation(async () => body());
+
+                // The last set still verifies; a kid it lacks is not checked yet, a 5xx.
+                await expect(
+                    webhooks.verifyWebhook(event(), await sign(keyA, event())),
+                ).resolves.toBeDefined();
+                await expectCode(
+                    webhooks.verifyWebhook(event(), await sign(keyB, event())),
+                    GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE,
+                );
+                const afterFailure = keyFetches();
+                now += 10_000;
+                fetchMock.mockImplementation(async () =>
+                    jwksResponse(keyA.jwk, keyB.jwk),
+                );
+
+                await expect(
+                    webhooks.verifyWebhook(event(), await sign(keyB, event())),
+                ).resolves.toBeDefined();
+                expect(keyFetches()).toBe(afterFailure + 1);
+            },
+        );
 
         it('shares one fetch between webhooks arriving together', async () => {
             fetchMock.mockResolvedValue(jwksResponse(keyA.jwk));
@@ -603,6 +661,19 @@ describe('WebhooksModule', () => {
 
             expect(codes).toContain(GoPayErrorCodes.WEBHOOK_INVALID);
             expect(codes).toContain(GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE);
+            expect(onError).not.toHaveBeenCalled();
+        });
+
+        it('does not hear of a key set with no usable key, which no request reported', async () => {
+            const { onError, api } = reportingApi();
+            fetchMock.mockImplementation(async () =>
+                makeResponse({ keys: [] }),
+            );
+
+            await expectCode(
+                api.verifyWebhook(event(), await sign(keyA, event())),
+                GoPayErrorCodes.WEBHOOK_KEYS_UNAVAILABLE,
+            );
             expect(onError).not.toHaveBeenCalled();
         });
 

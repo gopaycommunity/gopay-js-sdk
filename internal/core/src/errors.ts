@@ -36,7 +36,7 @@ export const GoPayErrorCodes = {
     // Webhooks (server SDK)
     /** The request is not a webhook GoPay signed: missing or malformed `X-GoPay-Signature`, unknown key, signature mismatch, or a body that is not an event. Answer 4xx; a retry carries the same bytes. */
     WEBHOOK_INVALID: 'WEBHOOK_INVALID',
-    /** The signing keys could not be loaded (`GET /webhooks/public-keys` failed), so the webhook was not checked. Answer 5xx so GoPay retries it. */
+    /** The signing keys could not be loaded (`GET /webhooks/public-keys` failed or returned no usable key), so the webhook was not checked. Answer 5xx so GoPay retries it. */
     WEBHOOK_KEYS_UNAVAILABLE: 'WEBHOOK_KEYS_UNAVAILABLE',
     // Usage errors
     /** SDK configuration is invalid (e.g. malformed baseUrl, wrong runtime environment) */
