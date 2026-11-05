@@ -315,26 +315,36 @@ describe('createGoPayBrowserSDK()', () => {
             await sdk.getChargeState();
 
             const api = apiRequests(seen);
+            // init-session goes out from attachPayment() itself, before it
+            // resolves, so it always precedes the charge.
             expect(api.map((req) => new URL(req.url).pathname)).toEqual([
                 '/oauth2/token',
+                '/payments/pay_001/init-session',
                 '/payments/pay_001/charge',
             ]);
-            const [token, charge] = api;
+            const [token, initSession, charge] = api;
             const transactionId = header(token, 'X-GoPay-Transaction-Id');
             expect(transactionId).toMatch(/\S/u);
+            expect(header(initSession, 'X-GoPay-Transaction-Id')).toBe(
+                transactionId,
+            );
             expect(header(charge, 'X-GoPay-Transaction-Id')).toBe(
                 transactionId,
             );
             // The token exchange names no payment in its path; the attached
             // one goes on it all the same.
             expect(header(token, 'X-GoPay-Payment-Session-Id')).toBe('pay_001');
+            expect(header(initSession, 'X-GoPay-Payment-Session-Id')).toBe(
+                'pay_001',
+            );
             expect(header(charge, 'X-GoPay-Payment-Session-Id')).toBe(
                 'pay_001',
             );
-            expect(header(token, 'X-GoPay-Trace-Id')).toMatch(/\S/u);
-            expect(header(charge, 'X-GoPay-Trace-Id')).not.toBe(
-                header(token, 'X-GoPay-Trace-Id'),
-            );
+            const traceIds = api.map((req) => header(req, 'X-GoPay-Trace-Id'));
+            for (const traceId of traceIds) {
+                expect(traceId).toMatch(/\S/u);
+            }
+            expect(new Set(traceIds).size).toBe(traceIds.length);
             for (const req of api) {
                 // Not settable from a page, and would fail the preflight.
                 expect(header(req, 'User-Agent')).toBeNull();
@@ -358,7 +368,7 @@ describe('createGoPayBrowserSDK()', () => {
             });
             await sdk.getChargeState();
 
-            const [token, charge] = apiRequests(seen);
+            const [token, initSession, charge] = apiRequests(seen);
             const apiCalls = (await loggedEvents(seen)).filter(
                 (event) => event.event_type === 'api_call',
             );
@@ -366,6 +376,10 @@ describe('createGoPayBrowserSDK()', () => {
                 apiCalls.map((event) => [event.target, event.trace_id]),
             ).toEqual([
                 ['/oauth2/token', header(token, 'X-GoPay-Trace-Id')],
+                [
+                    '/payments/{id}/init-session',
+                    header(initSession, 'X-GoPay-Trace-Id'),
+                ],
                 ['/payments/{id}/charge', header(charge, 'X-GoPay-Trace-Id')],
             ]);
         });
@@ -385,7 +399,11 @@ describe('createGoPayBrowserSDK()', () => {
             });
             await sdk.getChargeState();
 
-            const api = apiRequests(seen);
+            // init-session left out: it is the charge's retry this is about,
+            // and the attach sends it whatever happens to the charge.
+            const api = apiRequests(seen).filter(
+                (req) => !req.url.endsWith('/init-session'),
+            );
             expect(api.map((req) => new URL(req.url).pathname)).toEqual([
                 '/oauth2/token',
                 '/payments/pay_001/charge',

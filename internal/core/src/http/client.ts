@@ -88,6 +88,12 @@ function reportOnce(
      * count the same occurrence twice.
      */
     emitTelemetry = true,
+    /**
+     * False for a request the SDK makes on its own behalf and does not need
+     * (RequestOptions.quiet): the operational event still goes out, but the
+     * integrator is not told about a failure they can do nothing about.
+     */
+    notifyIntegrator = true,
 ): void {
     if (reportedErrors.has(error)) {
         return;
@@ -98,6 +104,9 @@ function reportOnce(
     // left through apiCall carrying their real status.
     if (emitTelemetry && error instanceof GoPaySDKError) {
         telemetry.error(error);
+    }
+    if (!notifyIntegrator) {
+        return;
     }
     // A throwing onError is the integrator's bug, and must not replace the
     // error the SDK was already reporting.
@@ -244,12 +253,17 @@ export function createHttpClient(
 
     function emitError<E extends GoPaySDKError | GoPayHTTPError>(
         error: E,
+        notifyIntegrator = true,
     ): never {
-        reportOnce(config, error, telemetry);
+        reportOnce(config, error, telemetry, true, notifyIntegrator);
         throw error;
     }
 
-    function handleError(err: unknown, ids?: CorrelationIds): never {
+    function handleError(
+        err: unknown,
+        ids?: CorrelationIds,
+        notifyIntegrator = true,
+    ): never {
         // Report before rethrowing. These arrive already typed — either from
         // throwIfNotOk, which has reported them, or from a validator such as
         // buildUrl, which has not — or as the platform's own failure, which
@@ -260,7 +274,7 @@ export function createHttpClient(
             mapped instanceof GoPaySDKError ||
             mapped instanceof GoPayHTTPError
         ) {
-            return emitError(mapped);
+            return emitError(mapped, notifyIntegrator);
         }
         throw mapped;
     }
@@ -270,6 +284,7 @@ export function createHttpClient(
         method: string,
         path: string,
         ids?: CorrelationIds,
+        notifyIntegrator = true,
     ): Promise<void> {
         if (response.ok) {
             return;
@@ -281,7 +296,7 @@ export function createHttpClient(
         });
         // Before emitting, so onError already sees them.
         attachCorrelation(error, ids);
-        emitError(error);
+        emitError(error, notifyIntegrator);
     }
 
     return {
@@ -438,6 +453,7 @@ export function createHttpClient(
             let issued = false;
             let responseBody: unknown;
             let ids: CorrelationIds | undefined;
+            const notifyIntegrator = options?.quiet !== true;
             try {
                 const url = buildUrl(baseUrl, path);
                 const headers = new Headers({
@@ -454,14 +470,25 @@ export function createHttpClient(
                     url,
                     { method: 'POST', headers, body: JSON.stringify(body) },
                     options?.signal,
+                    notifyIntegrator,
                 );
                 status = response.status;
-                await throwIfNotOk(response, 'POST', path, ids);
-                responseBody = await response.json();
+                await throwIfNotOk(
+                    response,
+                    'POST',
+                    path,
+                    ids,
+                    notifyIntegrator,
+                );
+                // 204 has no body to parse, and reading one anyway fails as
+                // invalid JSON — which the catch below would then report as a
+                // network error on a request that succeeded.
+                responseBody =
+                    response.status === 204 ? undefined : await response.json();
                 return responseBody as T;
             } catch (err) {
                 responseBody = errorBody(err);
-                return handleError(err, ids);
+                return handleError(err, ids, notifyIntegrator);
             } finally {
                 if (issued) {
                     record('POST', path, started, status, {

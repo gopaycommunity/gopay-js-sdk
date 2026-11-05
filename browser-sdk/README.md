@@ -355,6 +355,8 @@ Exchanges `paymentSecret` for a payment-scoped JWT (`payment_credentials` grant,
 
 Once `attachPayment()` resolves, the payment stays usable however long the customer spends at checkout — you don't need to call it again. If a later `attachPayment()` or `logout()` overtakes it before it resolves, it rejects with `PAYMENT_NOT_ATTACHED` instead.
 
+It also tells GoPay that the browser SDK, and which version of it, works with the payment, and GoPay sets the payment's language from the customer's browser: the language their browser prefers most among those GoPay supports, or English. Nothing to configure. `attachPayment()` doesn't wait for this, and if it fails — as it does for a payment that is no longer `CREATED`, on a return page for instance — nothing rejects and `onError` isn't called.
+
 Throws `GoPaySDKError(PAYMENT_NOT_ATTACHED)` if these methods are called first.
 
 ### `sdk.isAuthenticated()` / `sdk.logout()`

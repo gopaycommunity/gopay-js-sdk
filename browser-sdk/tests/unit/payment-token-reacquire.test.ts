@@ -50,7 +50,14 @@ describe('payment token re-acquisition', () => {
 
     const tokenCalls = () =>
         seen.filter((r) => r.url.includes('/oauth2/token'));
-    const paymentCalls = () => seen.filter((r) => r.url.includes('/payments/'));
+    // init-session is left out: attachPayment() fires it on every attach
+    // without waiting, and these tests are about the calls that follow.
+    const paymentCalls = () =>
+        seen.filter(
+            (r) =>
+                r.url.includes('/payments/') &&
+                !r.url.endsWith('/init-session'),
+        );
 
     beforeEach(() => {
         vi.useFakeTimers({ toFake: ['Date'] });
@@ -98,6 +105,12 @@ describe('payment token re-acquisition', () => {
                         tokenOwner.set(body.access_token, owner);
                     }
                     return res;
+                }
+                // Answered before the scripted payment responses, which
+                // belong to the calls under test and would otherwise be used
+                // up by the init-session every attach sends.
+                if (req.url.endsWith('/init-session')) {
+                    return new Response(null, { status: 204 });
                 }
                 if (req.url.includes('/payments/')) {
                     const hold = paymentHolds.shift();

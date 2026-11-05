@@ -16,6 +16,7 @@ import {
 } from './modules/auth/auth.module.js';
 import { createCardsApi } from './modules/cards/cards.module.js';
 import { fetchBrowserData } from './modules/payments/browser-data.js';
+import { initSession } from './modules/payments/init-session.js';
 import { createPaymentsApi } from './modules/payments/payments.module.js';
 import { createWalletsApi } from './modules/wallets/wallets.module.js';
 import { SDK_VERSION } from './version.js';
@@ -185,6 +186,11 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
             // authentication, so in the logs the two are only told apart by
             // this marker.
             telemetry.lifecycle('navigate', { flow: 'attach' });
+            // Not awaited: the attach is complete without it, and a slow or
+            // failing init-session must not hold up the checkout. A charge
+            // started straight after this may reach GoPay before it does —
+            // accepted; the card form's charge comes seconds later.
+            void initSession(client, pid);
         },
 
         ...cardsApi,

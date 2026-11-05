@@ -153,6 +153,13 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         url: string,
         init: Omit<RequestInit, 'signal'> & { headers: Headers },
         signal?: AbortSignal,
+        /**
+         * False for a request nothing waits on (RequestOptions.quiet): its 401
+         * is returned as it is. Recovering would re-exchange the payment's
+         * credentials and, on a second 401, drop its token — a call the
+         * checkout never needed must not touch the session the checkout runs on.
+         */
+        recoverAuth = true,
     ): Promise<Response> {
         const { getTimeoutMs, debugLogResponse, store, emitError } = deps;
         // Not released here: the caller reads the body after this returns,
@@ -165,7 +172,11 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         let response = await fetchWithRetry(url, init, combinedSignal);
         debugLogResponse(response);
 
-        if (response.status !== 401 || url.includes(AUTH_PATH)) {
+        if (
+            response.status !== 401 ||
+            url.includes(AUTH_PATH) ||
+            !recoverAuth
+        ) {
             return response;
         }
 

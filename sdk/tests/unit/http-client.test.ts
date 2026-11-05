@@ -127,6 +127,108 @@ describe('HttpClient', () => {
             expect(err).toBeInstanceOf(GoPayHTTPError);
             expect((err as GoPayHTTPError).status).toBe(403);
         });
+
+        it('resolves undefined on 204 instead of failing on the empty body', async () => {
+            fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+            const onError = vi.fn();
+            const client = createHttpClient({
+                baseUrl: 'https://example.com',
+                onError,
+            });
+            client.tokenStore.set(storedTokens);
+
+            await expect(client.post('/items', {})).resolves.toBeUndefined();
+            expect(onError).not.toHaveBeenCalled();
+        });
+
+        describe('quiet', () => {
+            it('rejects on an HTTP error without telling onError', async () => {
+                fetchMock.mockImplementation(async () =>
+                    makeResponse({ errors: [] }, 409, 'Conflict'),
+                );
+                const onError = vi.fn();
+                const client = createHttpClient({
+                    baseUrl: 'https://example.com',
+                    onError,
+                });
+                client.tokenStore.set(storedTokens);
+
+                const err = await client
+                    .post('/items', {}, { quiet: true })
+                    .catch((e: unknown) => e);
+                expect(err).toBeInstanceOf(GoPayHTTPError);
+                expect((err as GoPayHTTPError).status).toBe(409);
+                expect(onError).not.toHaveBeenCalled();
+            });
+
+            it('rejects on a network error without telling onError', async () => {
+                fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+                const onError = vi.fn();
+                const client = createHttpClient({
+                    baseUrl: 'https://example.com',
+                    onError,
+                });
+                client.tokenStore.set(storedTokens);
+
+                const err = await client
+                    .post('/items', {}, { quiet: true })
+                    .catch((e: unknown) => e);
+                expect(err).toBeInstanceOf(GoPaySDKError);
+                expect((err as GoPaySDKError).errorCode).toBe(
+                    GoPayErrorCodes.NETWORK_ERROR,
+                );
+                expect(onError).not.toHaveBeenCalled();
+            });
+
+            it('returns a 401 as it is: no re-exchange, the token kept', async () => {
+                fetchMock.mockImplementation(async (req: Request) => {
+                    await req.text();
+                    return makeResponse({}, 401, 'Unauthorized');
+                });
+                const onError = vi.fn();
+                const client = createHttpClient({
+                    baseUrl: 'https://example.com',
+                    onError,
+                });
+                client.setClientCredentials(
+                    'my-client',
+                    'my-secret',
+                    'payment:write',
+                );
+                client.tokenStore.set(storedTokens);
+
+                const err = await client
+                    .post('/items', {}, { quiet: true })
+                    .catch((e: unknown) => e);
+                expect(err).toBeInstanceOf(GoPayHTTPError);
+                expect((err as GoPayHTTPError).status).toBe(401);
+                expect(fetchMock).toHaveBeenCalledTimes(1);
+                expect(client.tokenStore.get()?.access_token).toBe('at-abc');
+                expect(onError).not.toHaveBeenCalled();
+            });
+
+            it('applies to its own request only', async () => {
+                fetchMock.mockImplementation(async () =>
+                    makeResponse({ errors: [] }, 500, 'Server Error'),
+                );
+                const onError = vi.fn();
+                const client = createHttpClient({
+                    baseUrl: 'https://example.com',
+                    onError,
+                });
+                client.tokenStore.set(storedTokens);
+
+                await client
+                    .post('/quiet', {}, { quiet: true })
+                    .catch(() => undefined);
+                await client.post('/loud', {}).catch(() => undefined);
+
+                expect(onError).toHaveBeenCalledTimes(1);
+                expect(
+                    (onError.mock.calls[0][0] as GoPayHTTPError).status,
+                ).toBe(500);
+            });
+        });
     });
 
     // -------------------------------------------------------------------------
