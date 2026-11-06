@@ -95,12 +95,11 @@ function pageKey(params: ListEventsParams | undefined): string {
 }
 
 // NETWORK_ERROR, as for any response of an unexpected shape: a new code would grow the public
-// GoPayErrorCodes, and a cursor that does not move is the gateway's fault, not the caller's.
+// GoPayErrorCodes, and a page the SDK cannot page on is the gateway's fault, not the caller's.
 function pagingStuck(reason: string): GoPaySDKError {
-    return new GoPaySDKError(
-        `[GoPaySDK] Event paging stopped: ${reason}, so the next page would never end.`,
-        { errorCode: GoPayErrorCodes.NETWORK_ERROR },
-    );
+    return new GoPaySDKError(`[GoPaySDK] Event paging stopped: ${reason}.`, {
+        errorCode: GoPayErrorCodes.NETWORK_ERROR,
+    });
 }
 
 export function createEventsApi(client: HttpClient) {
@@ -194,6 +193,13 @@ export function createEventsApi(client: HttpClient) {
                             return { done: true, value: undefined };
                         }
                         const page = await fetchPage(nextParams);
+                        if (!Array.isArray(page?.items)) {
+                            const unusable = pagingStuck(
+                                'the page has no item list',
+                            );
+                            client.reportError(unusable);
+                            throw unusable;
+                        }
                         // One condition for both: a cursor that is absent, empty or null ends
                         // the paging, rather than leaving `more` set with nowhere to go.
                         const cursor = page.next_page_url;
@@ -201,14 +207,14 @@ export function createEventsApi(client: HttpClient) {
                             more = false;
                         } else if (page.items.length === 0) {
                             stuck = pagingStuck(
-                                'an empty page names a next page',
+                                'an empty page names a next page, which would page forever',
                             );
                         } else {
                             nextParams = nextPageParams(cursor, client.baseUrl);
                             const key = pageKey(nextParams);
                             if (fetched.has(key)) {
                                 stuck = pagingStuck(
-                                    'next_page_url names a page already fetched',
+                                    'next_page_url names a page already fetched, which would page forever',
                                 );
                             }
                             fetched.add(key);

@@ -15,7 +15,7 @@ export const GoPayErrorCodes = {
     // Network errors
     /** Request timed out */
     NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',
-    /** Network-level failure (no response received), or a response the SDK cannot use: an unexpected shape, event paging that does not move, or a webhook key set with no usable key */
+    /** Network-level failure (no response received), or a response the SDK cannot use (an unexpected shape) */
     NETWORK_ERROR: 'NETWORK_ERROR',
     // Card form errors
     /** The GoPay card encryption iframe reported an error */

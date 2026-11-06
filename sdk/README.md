@@ -799,7 +799,7 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 | `AUTH_INVALID_TOKEN` | A JWT is malformed or missing the `sub` claim. |
 | `AUTH_UNAUTHORIZED` | Still 401 after a successful token refresh — check OAuth2 scopes. |
 | `NETWORK_TIMEOUT` | Request exceeded `requestTimeoutMs`. |
-| `NETWORK_ERROR` | Network-level failure (no response received), or a response the SDK cannot use, such as event paging that does not move or a webhook key set with no usable key. |
+| `NETWORK_ERROR` | Network-level failure (no response received), or a response the SDK cannot use, such as an events page without items, event paging that does not move or a webhook key set with no usable key. |
 | `CARD_FORM_ERROR` | The card form iframe encountered an error (e.g. URL unavailable, init timeout, or encryption failure). |
 | `WEBHOOK_INVALID` | `verifyWebhook()`: the request is not a webhook GoPay signed — missing or malformed `X-GoPay-Signature`, a key GoPay does not publish, a signature that does not match the body, or a body that is not an event. Answer `4xx`. Not passed to `onError`. |
 | `WEBHOOK_KEYS_UNAVAILABLE` | `verifyWebhook()`: the webhook was not checked. Either the signing keys could not be loaded or came back with no usable key, and `cause` says why, or it names a `kid` the SDK does not have and the keys were fetched less than 10 seconds ago, with no `cause`. Answer `5xx` and GoPay retries. Not passed to `onError`; a failed key load is, as its own `GoPayHTTPError`. |

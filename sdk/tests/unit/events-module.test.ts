@@ -276,6 +276,24 @@ describe('EventsModule', () => {
             },
         );
 
+        it('stops with NETWORK_ERROR at a page without an item list', async () => {
+            fetchMock.mockImplementation(
+                capped(() =>
+                    makeResponse({
+                        next_page_url: `${BASE_URL}/eshops/${GOID}/events?prev_item=e9`,
+                    }),
+                ),
+            );
+
+            const { seen, error } = await drainCapped();
+
+            expect(seen).toEqual([]);
+            expect(error).toMatchObject({
+                errorCode: GoPayErrorCodes.NETWORK_ERROR,
+            });
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
         it('stops with NETWORK_ERROR at an empty page that names a next one', async () => {
             fetchMock.mockImplementation(
                 capped(() =>
