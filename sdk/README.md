@@ -802,7 +802,7 @@ Every `GoPaySDKError` carries a machine-readable `errorCode` from the `GoPayErro
 | `NETWORK_ERROR` | Network-level failure (no response received), or a response the SDK cannot use, such as an events page without items, event paging that does not move or a webhook key set with no usable key. |
 | `CARD_FORM_ERROR` | The card form iframe encountered an error (e.g. URL unavailable, init timeout, or encryption failure). |
 | `WEBHOOK_INVALID` | `verifyWebhook()`: the request is not a webhook GoPay signed — missing or malformed `X-GoPay-Signature`, a key GoPay does not publish, a signature that does not match the body, or a body that is not an event. Answer `4xx`. Not passed to `onError`. |
-| `WEBHOOK_KEYS_UNAVAILABLE` | `verifyWebhook()`: the webhook was not checked. Either the signing keys could not be loaded or came back with no usable key, and `cause` says why, or it names a `kid` the SDK does not have and the keys were fetched less than 10 seconds ago, with no `cause`. Answer `5xx` and GoPay retries. Not passed to `onError`; a failed key load is, as its own `GoPayHTTPError`. |
+| `WEBHOOK_KEYS_UNAVAILABLE` | `verifyWebhook()`: the webhook was not checked. Either the signing keys could not be loaded or came back with no usable key, and `cause` says why, or it names a `kid` the SDK does not have and the keys were fetched less than 10 seconds ago, with no `cause`. Answer `5xx` and GoPay retries. Not passed to `onError`; a failed key load is, once per attempt: as its own `GoPayHTTPError`, or as `NETWORK_ERROR` when the keys came back with no usable key. |
 
 It also carries `cause` — the underlying error it wraps, when it wraps one, and `undefined` otherwise. It is declared as an own property rather than relying on `Error.cause`, which arrived in ES2022 while this package compiles against ES2020. Reach for it when the `errorCode` says *what* failed and you need *why*: a `NETWORK_ERROR`, for instance, carries the original `fetch` rejection.
 
@@ -934,8 +934,8 @@ a payment secret, and an error tracker is not a place for either.
 ### Request ids
 
 Every request the SDK sends from a server carries ids GoPay's logs record, so a call can be
-found from both sides. (Run in a browser page, it sends none of these: there they would turn each
-call into a CORS preflight.)
+found from both sides. (Run in a browser page, it sends none of these: the browser SDK owns a
+page's ids, and a `User-Agent` set from a page fails the gateway's CORS preflight.)
 
 | Header | Value |
 |---|---|

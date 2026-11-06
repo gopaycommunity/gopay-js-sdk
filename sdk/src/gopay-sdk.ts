@@ -30,8 +30,8 @@ export function createGoPaySDK(config: GoPayConfig = {}) {
     const transactions = createTransactions((error) =>
         client.reportError(error),
     );
-    // In a page (the example app runs this SDK in one) a User-Agent of its own is not
-    // something a browser lets a script send, and the ids would add a CORS preflight.
+    // In a page (the example app runs this SDK in one) it sends none of them: the browser
+    // SDK owns a page's ids, and a User-Agent set from a page fails the CORS preflight.
     const inPage = 'document' in globalThis;
     const correlation: Correlation = { transactionId: transactions.current };
     const client = createHttpClient(

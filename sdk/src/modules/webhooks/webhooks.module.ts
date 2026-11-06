@@ -178,7 +178,8 @@ export function createWebhooksApi(client: HttpClient) {
          * `WEBHOOK_KEYS_UNAVAILABLE`, or `INVALID_ARGUMENT` for a parsed body — answer 5xx,
          * so GoPay retries once it is fixed. `WEBHOOK_INVALID` is not passed to `onError`:
          * anyone who can reach the endpoint can cause one, nor is `WEBHOOK_KEYS_UNAVAILABLE`.
-         * A key load that failed is: the underlying `GoPayHTTPError`, once per attempt.
+         * A key load that failed is, once per attempt: the underlying `GoPayHTTPError`, or
+         * `NETWORK_ERROR` when the keys came back with no usable key.
          */
         async verifyWebhook(
             rawBody: WebhookBody,
