@@ -1205,7 +1205,8 @@ describe('id generation without randomUUID', () => {
         // secrets — but a scanner cannot tell the two uses apart, and neither
         // can a reader.
         expect(randomSpy).not.toHaveBeenCalled();
-        expect(id).toMatch(/^txn-\d+-(ab){8}$/u);
+        // A version 4 UUID, as randomUUID would give: version and variant bits set.
+        expect(id).toBe('abababab-abab-4bab-abab-abababababab');
     });
 
     it('still yields distinct ids where there is no Web Crypto at all', () => {
@@ -1612,7 +1613,7 @@ describe('the GPOMA-2707 event shape', () => {
             telemetry().lifecycle('init');
 
             const [a, b] = await Promise.all([0, 1].map(eventAt));
-            // One count per tab: an instance whose only event was lost leaves
+            // One count per page: an instance whose only event was lost leaves
             // a gap here, which a count per instance never could.
             expect([a?.seq, b?.seq]).toEqual([1, 2]);
         });

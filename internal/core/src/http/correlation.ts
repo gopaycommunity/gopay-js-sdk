@@ -5,11 +5,11 @@
  */
 export interface Correlation {
     /**
-     * The whole `User-Agent` value. Server only: a page cannot set it, and a page that tried
-     * would turn every call into a CORS preflight the gateway does not allow.
+     * The whole `User-Agent` value. Server only: a page that set it would fail every call at
+     * the CORS preflight, which allows the three `X-GoPay-*` headers but not `User-Agent`.
      */
     userAgent?: string;
-    /** The transaction id of the SDK call this request belongs to. */
+    /** The transaction id this request belongs to: one per SDK call on a server, one per page load in a browser. */
     transactionId(): string;
     /**
      * The payment the SDK is working on, for a request whose path names none — the token

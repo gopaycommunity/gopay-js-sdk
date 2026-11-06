@@ -21,11 +21,11 @@ let idCounter = 0;
 /**
  * These ids are correlation keys, never secrets — but `Math.random()` in a
  * payment SDK is worth not having at all, and a scanner cannot tell the two
- * uses apart. `randomUUID` first; `getRandomValues` where only the UUID helper
- * is missing (it needs a secure context, the byte source does not); and where
- * there is no Web Crypto at all, a timestamp plus an in-page counter, which
- * cannot collide inside the page that produced it — the only scope in which
- * the id has to be unique.
+ * uses apart. `randomUUID` first; where only the UUID helper is missing (it
+ * needs a secure context, the byte source does not), the same version 4 UUID
+ * built from `getRandomValues`; and where there is no Web Crypto at all, a
+ * timestamp plus an in-page counter, which cannot collide inside the page that
+ * produced it — the only scope in which the id has to be unique.
  */
 function newId(): string {
     const webCrypto = globalThis.crypto;
@@ -33,11 +33,20 @@ function newId(): string {
         return webCrypto.randomUUID();
     }
     if (webCrypto?.getRandomValues) {
-        const bytes = webCrypto.getRandomValues(new Uint8Array(8));
-        const hex = Array.from(bytes, (b) =>
-            b.toString(16).padStart(2, '0'),
-        ).join('');
-        return `txn-${Date.now()}-${hex}`;
+        const bytes = webCrypto.getRandomValues(new Uint8Array(16));
+        // RFC 9562 §5.4: version 4 in the high nibble of byte 6, variant 10 in byte 8.
+        bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
+        bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
+        const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0'));
+        return [
+            hex.slice(0, 4),
+            hex.slice(4, 6),
+            hex.slice(6, 8),
+            hex.slice(8, 10),
+            hex.slice(10, 16),
+        ]
+            .map((group) => group.join(''))
+            .join('-');
     }
     idCounter += 1;
     return `txn-${Date.now()}-${idCounter}`;
@@ -76,9 +85,10 @@ export function recordSequence(sent: number): void {
 }
 
 /**
- * ECS `trace.id` — one user action. A fresh one per event: the SDK has no
- * notion of a gesture spanning several calls, and inventing one would group
- * unrelated requests under a single id.
+ * ECS `trace.id` — a fresh one per gw-logger event, and per API v4 request as
+ * its `X-GoPay-Trace-Id` (the request's `api_call` event carries the same one).
+ * The SDK has no notion of a gesture spanning several calls, and inventing one
+ * would group unrelated requests under a single id.
  */
 export function newTraceId(): string {
     return newId();

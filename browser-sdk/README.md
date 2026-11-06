@@ -338,6 +338,10 @@ createGoPayBrowserSDK(config: {
 
 Returns the SDK instance synchronously. No network calls are made at this stage.
 
+A mock server behind `baseUrl` has to allow the `X-GoPay-Trace-Id`, `X-GoPay-Transaction-Id` and
+`X-GoPay-Payment-Session-Id` request headers in its CORS preflight: every request carries them
+(see [Request ids](#request-ids)).
+
 ### `sdk.attachPayment({ paymentId, paymentSecret })`
 
 ```ts
