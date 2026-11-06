@@ -7,6 +7,7 @@ import {
     type HttpClient,
     nowMs,
     SDK_ACCEPT_HEADER,
+    safeErrorLabel,
     timeoutSignal,
 } from '@gopay-internal/core';
 import type { BrowserData, BrowserDataDetected } from '../../types/index.js';
@@ -187,6 +188,30 @@ export async function fetchBrowserData(
                 }),
             );
             status = response.status;
+        } catch (err) {
+            // The caller's own abort stays as it is: tearing the flow down is not a failure.
+            if (options?.signal?.aborted || !(err instanceof Error)) {
+                throw err;
+            }
+            // As the client maps its own requests, so that a timeout or a network failure
+            // carries the ids this request went out with.
+            const failed =
+                err.name === 'TimeoutError'
+                    ? new GoPaySDKError(
+                          '[GoPayBrowserSDK] Browser data request timed out.',
+                          {
+                              errorCode: GoPayErrorCodes.NETWORK_TIMEOUT,
+                          },
+                      )
+                    : new GoPaySDKError(
+                          `[GoPayBrowserSDK] Browser data request failed (${safeErrorLabel(err)}).`,
+                          {
+                              cause: err,
+                              errorCode: GoPayErrorCodes.NETWORK_ERROR,
+                          },
+                      );
+            attachCorrelation(failed, ids);
+            throw failed;
         } finally {
             client.recordApiCall(
                 'GET',

@@ -852,7 +852,7 @@ export function createGwLoggerTelemetry(options: {
                 ...base(),
                 // The request's own X-GoPay-Trace-Id, so this event and the
                 // gateway's log line for the request share one trace id.
-                trace_id: record.traceId ?? newTraceId(),
+                ...(record.traceId ? { trace_id: record.traceId } : {}),
                 event_type: 'api_call',
                 action: lastSegment(record.endpoint),
                 // Without it the POST that starts a charge and the GETs that

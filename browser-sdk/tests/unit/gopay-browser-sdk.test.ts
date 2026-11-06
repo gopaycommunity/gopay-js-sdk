@@ -461,6 +461,48 @@ describe('createGoPayBrowserSDK()', () => {
             });
         });
 
+        // http:// pages, some WebViews and older browsers have Web Crypto without randomUUID:
+        // a trace id from it alone failed every request there before it went out.
+        it('still sends every request where the page has no crypto.randomUUID', async () => {
+            const real = globalThis.crypto;
+            vi.stubGlobal('crypto', {
+                getRandomValues: real.getRandomValues.bind(real),
+                subtle: real.subtle,
+            });
+            answer();
+
+            await sdk.attachPayment({
+                paymentId: 'pay_001',
+                paymentSecret: 'secret',
+            });
+            await sdk.getChargeState();
+
+            const [token, charge] = apiRequests(seen);
+            expect(header(token, 'X-GoPay-Trace-Id')).toMatch(/\S/u);
+            expect(header(charge, 'X-GoPay-Trace-Id')).toMatch(/\S/u);
+            expect(header(charge, 'X-GoPay-Trace-Id')).not.toBe(
+                header(token, 'X-GoPay-Trace-Id'),
+            );
+        });
+
+        it('puts the ids on a browser-data request that fails in the network', async () => {
+            answer((req) => {
+                if (req.url.includes('/cards/browser-data')) {
+                    throw new TypeError('Failed to fetch');
+                }
+                return undefined;
+            });
+
+            const error = await sdk.getBrowserData().catch((e: unknown) => e);
+
+            const [request] = apiRequests(seen);
+            expect(error).toMatchObject({
+                errorCode: GoPayErrorCodes.NETWORK_ERROR,
+                traceId: header(request, 'X-GoPay-Trace-Id'),
+                transactionId: header(request, 'X-GoPay-Transaction-Id'),
+            });
+        });
+
         it('keeps them off the requests to gw-logger', async () => {
             answer();
 

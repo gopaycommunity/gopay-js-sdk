@@ -7,7 +7,7 @@ import {
 } from '@gopay-internal/core';
 import type { AttachPaymentArgs, GoPayBrowserConfig } from './config.js';
 import { createGwLoggerTelemetry } from './logging/gw-logger.js';
-import { getTransactionId } from './logging/ids.js';
+import { getTransactionId, newTraceId } from './logging/ids.js';
 import { registerLeaveBeacon } from './logging/leave-beacon.js';
 import { registerPageLifecycle } from './logging/page-lifecycle.js';
 import {
@@ -83,6 +83,7 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
         {
             transactionId: getTransactionId,
             paymentId: () => attachedPaymentId,
+            newTraceId,
         },
     );
     client.setClientId(clientId);

@@ -16,6 +16,12 @@ export interface Correlation {
      * exchange and the card endpoints in the browser. A payment in the path wins.
      */
     paymentId?(): string | undefined;
+    /**
+     * A new trace id. `crypto.randomUUID` by default; the browser passes its own, because a
+     * page served over plain http, and an older browser, has no `randomUUID`, and a missing
+     * one would fail every request before it went out.
+     */
+    newTraceId?(): string;
 }
 
 export interface CorrelationIds {
@@ -45,7 +51,7 @@ export function correlate(
         return undefined;
     }
     const ids = {
-        traceId: crypto.randomUUID(),
+        traceId: correlation.newTraceId?.() ?? crypto.randomUUID(),
         transactionId: correlation.transactionId(),
     };
     headers.set('X-GoPay-Trace-Id', ids.traceId);
