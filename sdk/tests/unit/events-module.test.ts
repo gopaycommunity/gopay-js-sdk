@@ -331,7 +331,10 @@ describe('EventsModule', () => {
 
     // reportErrors cannot see into a generator, and the HTTP client reports only what fails
     // in a request; a page refused before one goes out is iterateEvents' own to report.
-    it('reports paging that does not move to onError, once', async () => {
+    it.each([
+        ['an empty page that names a next one', { items: [] as unknown[] }],
+        ['a page without an item list', {}],
+    ])('reports %s to onError, once', async (_case, page) => {
         const onError = vi.fn();
         const sdk = createGoPaySDK({ baseUrl: BASE_URL, onError });
         // Capped like the iterateEvents() cases, so a regression fails instead of hanging.
@@ -346,7 +349,7 @@ describe('EventsModule', () => {
             return fetchMock.mock.calls.length > 10
                 ? makeResponse({ items: [], next_page_url: null })
                 : makeResponse({
-                      items: [],
+                      ...page,
                       next_page_url: `${BASE_URL}/eshops/${GOID}/events?prev_item=e9`,
                   });
         });

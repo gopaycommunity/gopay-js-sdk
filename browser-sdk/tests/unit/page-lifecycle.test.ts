@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createGwLoggerTelemetry } from '../../src/logging/gw-logger.js';
 
 /**
  * page-lifecycle.ts keeps per-page state at module level — the visibility last
@@ -292,7 +291,15 @@ describe('page lifecycle', () => {
 describe('page events on the wire', () => {
     let requests: Request[];
 
-    beforeEach(() => {
+    // The page's event numbering lives in its module: a fresh copy per test, so no test's
+    // `seq` depends on which ran before it.
+    let createGwLoggerTelemetry: typeof import('../../src/logging/gw-logger.js').createGwLoggerTelemetry;
+
+    beforeEach(async () => {
+        vi.resetModules();
+        ({ createGwLoggerTelemetry } = await import(
+            '../../src/logging/gw-logger.js'
+        ));
         requests = [];
         vi.stubGlobal(
             'fetch',

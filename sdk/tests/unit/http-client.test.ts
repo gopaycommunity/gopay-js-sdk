@@ -1017,4 +1017,63 @@ describe('HttpClient', () => {
             expect(debugSpy).not.toHaveBeenCalled();
         });
     });
+
+    // -------------------------------------------------------------------------
+    // correlation — the request ids, as the browser SDK sets them
+    // -------------------------------------------------------------------------
+
+    describe('correlation', () => {
+        const sent = (name: string) =>
+            fetchMock.mock.calls.map(([req]) =>
+                (req as Request).headers.get(name),
+            );
+
+        it('names the payment in the path over the attached one, and encodes the attached one', async () => {
+            fetchMock.mockImplementation(async () =>
+                makeResponse({ ok: true }),
+            );
+            const client = createHttpClient(
+                { baseUrl: 'https://example.com' },
+                undefined,
+                undefined,
+                { transactionId: () => 'txn-1', paymentId: () => 'pay A/1' },
+            );
+            client.tokenStore.set(storedTokens);
+
+            await client.get('/payments/pay_B');
+            await client.get('/cards/card-form-url');
+
+            expect(sent('X-GoPay-Payment-Session-Id')).toEqual([
+                'pay_B',
+                'pay%20A%2F1',
+            ]);
+        });
+
+        it("gives every verb's api_call the trace id its request went out with", async () => {
+            fetchMock.mockImplementation(async () =>
+                makeResponse({ ok: true }),
+            );
+            const telemetry = { apiCall: vi.fn(), error: vi.fn() };
+            const client = createHttpClient(
+                { baseUrl: 'https://example.com' },
+                undefined,
+                telemetry,
+                { transactionId: () => 'txn-1' },
+            );
+            client.tokenStore.set(storedTokens);
+
+            await client.get('/a');
+            await client.post('/b', {});
+            await client.delete('/c');
+            await client.postForm('/d', { x: '1' });
+
+            const traceIds = sent('X-GoPay-Trace-Id');
+            expect(new Set(traceIds).size).toBe(4);
+            expect(
+                telemetry.apiCall.mock.calls.map(
+                    ([record]) => (record as { traceId?: string }).traceId,
+                ),
+            ).toEqual(traceIds);
+        });
+    });
 });
