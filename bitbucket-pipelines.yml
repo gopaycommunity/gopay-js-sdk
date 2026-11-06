@@ -187,6 +187,11 @@ definitions:
           # Both bundles, for the reason spelled out on *test-playwright above.
           - yarn workspace @gopaycz/gopay-js-sdk run build
           - yarn workspace @gopaycz/gopay-js-sdk-browser run build
+          # Webhook delivery has its own step, *webhook-delivery-on-env. The workspace value names
+          # the receiver of the environment the PR pipelines run on; kept here, the delivery test
+          # would poll that receiver for a webhook the target delivered to its own (#508, #509).
+          # Unset, the test is not declared in this step.
+          - unset GOPAY_E2E_WEBHOOK_INSPECTION_URL
           # The API suite first: it is where the breadth is - refunds and the whole recurrence
           # lifecycle are exercised here and by nothing in the browser specs - and it fails in
           # seconds on a bad gateway or bad credentials, before a browser is ever started.
@@ -204,6 +209,46 @@ definitions:
           - playwright-report/**
           - sdk/test-results/**
           - browser-sdk/test-results/**
+
+    # Webhook delivery against the e2e-on-env target, apart from the suite above.
+    #
+    # FAILS ON EVERY ENVIRONMENT WITHOUT A WEBHOOK RECEIVER, by design. The test reads back what
+    # the gateway delivered from demo-site's receiver (GPOMA-2797), and only dev-cluster
+    # environments that run demo-site with GOPAY_PAYMENTS_V4_WEBHOOK_INSPECTION have one -
+    # personal environments without demo-site, sandbox and gate.test do not. A red step here on
+    # such an environment means "no receiver there", nothing about the SDK; that is why it is a
+    # step of its own, run in parallel, so it never takes the suite's verdict with it.
+    #
+    # The receiver comes from the target (gw.<env>.dev.gopay.com -> demo.<env>.dev.gopay.com),
+    # because the gateway delivers to the demo-site of its own environment.
+    # scripts/webhook-receiver-url.mjs derives it and asks it once, so a missing receiver fails in
+    # a second with the reason instead of after the test's 30 s wait.
+    #
+    # A receiver that answers but never gets the webhook is the other half of the setup missing:
+    # gp-main's eshop notification URL and EVENT_WEBHOOK_ALLOW_INTERNAL_URL (k8s-deployment
+    # app/dev/alpha/values.yaml).
+    - step: &webhook-delivery-on-env
+        name: Webhook delivery against chosen env (fails where demo-site has no receiver)
+        runs-on: *dev-2x
+        caches:
+          - yarn-global
+          - yarn-cache
+        script:
+          # Same vetting as *test-playwright-on-env: this step holds the same credentials.
+          - node scripts/refuse-production-target.mjs "$TARGET_BASE_URL"
+          # An assignment, not `export X="$(...)"`: export's own status would hide the script's.
+          - RECEIVER="$(node scripts/webhook-receiver-url.mjs "$TARGET_BASE_URL")"
+          - npm install -g corepack@latest
+          - corepack enable
+          - yarn install --immutable
+          - export GOPAY_PAYMENTS_V4_BASE_URL="$TARGET_BASE_URL"
+          - export GOPAY_E2E_WEBHOOK_INSPECTION_URL="$RECEIVER"
+          # The whole file, not the one test picked by name: a name filter that matches nothing
+          # skips everything and vitest still exits 0, so renaming the test would turn this step
+          # green without running it. The other tests in the file take about a second.
+          - yarn workspace @gopaycz/gopay-js-sdk exec vitest run tests/e2e/events.e2e.test.ts
+        artifacts:
+          - sdk/test-results/**
 
     - step: &release
         name: Release
@@ -330,8 +375,13 @@ pipelines:
     # when that day comes: the dev cluster serves v4 under /api/merchant/payments/4.0 while test
     # and sandbox use /gp-gw/api/4.0. alpha8 is gone as well, renumbered to alpha9, and the
     # certificate no longer covers the old name.
+    #
+    # Two steps in parallel. The webhook one fails wherever demo-site has no receiver - see its
+    # definition - and runs apart so that a red there never hides the suite's result.
     e2e-on-env:
       - variables:
           - name: TARGET_BASE_URL
             default: https://gw.alpha9.dev.gopay.com/api/merchant/payments/4.0
-      - step: *test-playwright-on-env
+      - parallel:
+          - step: *test-playwright-on-env
+          - step: *webhook-delivery-on-env
