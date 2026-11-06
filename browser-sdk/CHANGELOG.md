@@ -1,3 +1,18 @@
+## [1.11.1](https://github.com/gopaycommunity/gopay-js-sdk/compare/browser-sdk-1.11.0...browser-sdk-1.11.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* build a version 4 UUID where randomUUID is missing, describe the ids per page load GPOMA-2730 ([0e81f69](https://github.com/gopaycommunity/gopay-js-sdk/commit/0e81f69be589fd27968767ee3f32a25dd64d293b))
+* **events:** stop iterateEvents at a repeated cursor or an empty page with a next one GPOMA-2705 ([d33eab7](https://github.com/gopaycommunity/gopay-js-sdk/commit/d33eab76a5fb19ab470ac79a6fc54b26b146c542))
+* **events:** stop with NETWORK_ERROR at an events page without an item list GPOMA-2705 ([f570c26](https://github.com/gopaycommunity/gopay-js-sdk/commit/f570c2667e9fdbd69f168866d2aded24ca1cda1b))
+* keep requests working without crypto.randomUUID, put ids on browser-data failures GPOMA-2730 ([6ac308e](https://github.com/gopaycommunity/gopay-js-sdk/commit/6ac308e9dc9f8cb10f333b14c380fe032b644d6e))
+* keep the transaction id and the event sequence per page load, as gw-ui does GPOMA-2730 ([2b9704d](https://github.com/gopaycommunity/gopay-js-sdk/commit/2b9704da9b430a5753d91e5f33cf687a59b943ca))
+* map a browser-data body that stalls or is not JSON like any failed request, with ids GPOMA-2730 ([26156f8](https://github.com/gopaycommunity/gopay-js-sdk/commit/26156f8b033cb8a7859ae3c07b4115d0de9ed56a))
+* send the transaction, trace and payment ids on every API v4 request from the browser GPOMA-2730 ([af00f4a](https://github.com/gopaycommunity/gopay-js-sdk/commit/af00f4a1374bf252fbb4bd7f240dc5e50bc8ecf6))
+* **webhooks:** count a key set with no usable key as a failed fetch GPOMA-2705 ([b551c85](https://github.com/gopaycommunity/gopay-js-sdk/commit/b551c85c5a60a37571e51e800f51382314e59f3a))
+* **webhooks:** report a key set with no usable key to onError, once per attempt GPOMA-2705 ([2b0b6aa](https://github.com/gopaycommunity/gopay-js-sdk/commit/2b0b6aae0a70156bb8302db1d330fee757c99366))
+
 # [1.11.0](https://github.com/gopaycommunity/gopay-js-sdk/compare/browser-sdk-1.10.6...browser-sdk-1.11.0) (2026-11-05)
 
 
