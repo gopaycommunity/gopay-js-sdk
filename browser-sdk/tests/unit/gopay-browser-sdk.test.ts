@@ -392,10 +392,20 @@ describe('createGoPayBrowserSDK()', () => {
                 '/oauth2/token',
                 '/payments/pay_001/charge',
             ]);
-            const [, first, regrant, retry] = api;
+            const [token, first, regrant, retry] = api;
             expect(header(retry, 'X-GoPay-Trace-Id')).toBe(
                 header(first, 'X-GoPay-Trace-Id'),
             );
+            // The re-grant is a request of its own, and its api_call event says so.
+            const tokenCalls = (await loggedEvents(seen)).filter(
+                (event) =>
+                    event.event_type === 'api_call' &&
+                    event.target === '/oauth2/token',
+            );
+            expect(tokenCalls.map((event) => event.trace_id)).toEqual([
+                header(token, 'X-GoPay-Trace-Id'),
+                header(regrant, 'X-GoPay-Trace-Id'),
+            ]);
             expect(header(regrant, 'X-GoPay-Trace-Id')).not.toBe(
                 header(first, 'X-GoPay-Trace-Id'),
             );
@@ -485,22 +495,95 @@ describe('createGoPayBrowserSDK()', () => {
             );
         });
 
-        it('puts the ids on a browser-data request that fails in the network', async () => {
+        const timeoutError = () =>
+            Object.assign(new Error('timed out'), { name: 'TimeoutError' });
+        const stalledBody = () => {
+            const response = makeResponse({});
+            Object.defineProperty(response, 'json', {
+                value: async () => {
+                    throw timeoutError();
+                },
+            });
+            return response;
+        };
+
+        // Every way the request can fail ends as an SDK error carrying the ids it went out with,
+        // reading the body included: that is where a stalled response times out.
+        it.each([
+            [
+                'fails in the network',
+                (): Response => {
+                    throw new TypeError('Failed to fetch');
+                },
+                { errorCode: GoPayErrorCodes.NETWORK_ERROR },
+            ],
+            [
+                'times out',
+                (): Response => {
+                    throw timeoutError();
+                },
+                { errorCode: GoPayErrorCodes.NETWORK_TIMEOUT },
+            ],
+            [
+                'stalls its body until it times out',
+                stalledBody,
+                { errorCode: GoPayErrorCodes.NETWORK_TIMEOUT },
+            ],
+            [
+                'answers 200 with a body that is not JSON',
+                () => new Response('<html></html>', { status: 200 }),
+                { errorCode: GoPayErrorCodes.NETWORK_ERROR },
+            ],
+            [
+                'answers 200 with a body of another shape',
+                () => makeResponse({}),
+                { errorCode: GoPayErrorCodes.NETWORK_ERROR },
+            ],
+            [
+                'answers 500',
+                () => makeResponse({ errors: [] }, 500),
+                { status: 500 },
+            ],
+        ])(
+            'puts the ids on a browser-data request that %s',
+            async (_name, respond, expected) => {
+                answer((req) =>
+                    req.url.includes('/cards/browser-data')
+                        ? respond()
+                        : undefined,
+                );
+
+                const error = await sdk
+                    .getBrowserData()
+                    .catch((e: unknown) => e);
+
+                const [request] = apiRequests(seen);
+                expect(error).toMatchObject({
+                    ...expected,
+                    traceId: header(request, 'X-GoPay-Trace-Id'),
+                    transactionId: header(request, 'X-GoPay-Transaction-Id'),
+                });
+            },
+        );
+
+        it('leaves the caller’s own abort of the browser-data request as it is', async () => {
+            const controller = new AbortController();
+            controller.abort();
+            const aborted = Object.assign(new Error('aborted'), {
+                name: 'AbortError',
+            });
             answer((req) => {
                 if (req.url.includes('/cards/browser-data')) {
-                    throw new TypeError('Failed to fetch');
+                    throw aborted;
                 }
                 return undefined;
             });
 
-            const error = await sdk.getBrowserData().catch((e: unknown) => e);
+            const error = await sdk
+                .getBrowserData({ signal: controller.signal })
+                .catch((e: unknown) => e);
 
-            const [request] = apiRequests(seen);
-            expect(error).toMatchObject({
-                errorCode: GoPayErrorCodes.NETWORK_ERROR,
-                traceId: header(request, 'X-GoPay-Trace-Id'),
-                transactionId: header(request, 'X-GoPay-Transaction-Id'),
-            });
+            expect(error).toBe(aborted);
         });
 
         it('keeps them off the requests to gw-logger', async () => {

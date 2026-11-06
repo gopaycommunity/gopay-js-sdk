@@ -1,11 +1,11 @@
 import type { CoreConfig } from '../config.js';
 import {
     attachCorrelation,
-    GoPayErrorCodes,
     GoPayHTTPError,
     GoPaySDKError,
     isForeignCode,
     safeErrorLabel,
+    toTransportError,
 } from '../errors.js';
 import {
     type ApiCallDetails,
@@ -250,46 +250,19 @@ export function createHttpClient(
     }
 
     function handleError(err: unknown, ids?: CorrelationIds): never {
-        attachCorrelation(err, ids);
         // Report before rethrowing. These arrive already typed — either from
         // throwIfNotOk, which has reported them, or from a validator such as
-        // buildUrl, which has not. reportOnce tells the two apart, so the
-        // second case stops being invisible without the first firing twice.
-        if (err instanceof GoPaySDKError) {
-            emitError(err);
+        // buildUrl, which has not — or as the platform's own failure, which
+        // toTransportError types. reportOnce tells the reported ones apart, so
+        // the rest stop being invisible without the first firing twice.
+        const mapped = toTransportError(err, ids);
+        if (
+            mapped instanceof GoPaySDKError ||
+            mapped instanceof GoPayHTTPError
+        ) {
+            return emitError(mapped);
         }
-        if (err instanceof GoPayHTTPError) {
-            emitError(err);
-        }
-
-        if (err instanceof Error && err.name === 'TimeoutError') {
-            const timedOut = new GoPaySDKError(
-                '[GoPaySDK] Request timed out.',
-                {
-                    errorCode: GoPayErrorCodes.NETWORK_TIMEOUT,
-                },
-            );
-            attachCorrelation(timedOut, ids);
-            return emitError(timedOut);
-        }
-
-        if (err instanceof Error) {
-            // The label, never the message: a network error raised by
-            // the host carries text nobody here wrote, and it would go
-            // straight out through telemetry.error. `cause` keeps the
-            // original for a developer with a console open.
-            const failed = new GoPaySDKError(
-                `[GoPaySDK] Network error (${safeErrorLabel(err)}).`,
-                {
-                    cause: err,
-                    errorCode: GoPayErrorCodes.NETWORK_ERROR,
-                },
-            );
-            attachCorrelation(failed, ids);
-            return emitError(failed);
-        }
-
-        throw err;
+        throw mapped;
     }
 
     async function throwIfNotOk(

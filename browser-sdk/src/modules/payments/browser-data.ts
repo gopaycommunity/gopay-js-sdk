@@ -1,5 +1,4 @@
 import {
-    attachCorrelation,
     buildUrl,
     GoPayErrorCodes,
     GoPayHTTPError,
@@ -7,8 +6,8 @@ import {
     type HttpClient,
     nowMs,
     SDK_ACCEPT_HEADER,
-    safeErrorLabel,
     timeoutSignal,
+    toTransportError,
 } from '@gopay-internal/core';
 import type { BrowserData, BrowserDataDetected } from '../../types/index.js';
 
@@ -188,30 +187,6 @@ export async function fetchBrowserData(
                 }),
             );
             status = response.status;
-        } catch (err) {
-            // The caller's own abort stays as it is: tearing the flow down is not a failure.
-            if (options?.signal?.aborted || !(err instanceof Error)) {
-                throw err;
-            }
-            // As the client maps its own requests, so that a timeout or a network failure
-            // carries the ids this request went out with.
-            const failed =
-                err.name === 'TimeoutError'
-                    ? new GoPaySDKError(
-                          '[GoPayBrowserSDK] Browser data request timed out.',
-                          {
-                              errorCode: GoPayErrorCodes.NETWORK_TIMEOUT,
-                          },
-                      )
-                    : new GoPaySDKError(
-                          `[GoPayBrowserSDK] Browser data request failed (${safeErrorLabel(err)}).`,
-                          {
-                              cause: err,
-                              errorCode: GoPayErrorCodes.NETWORK_ERROR,
-                          },
-                      );
-            attachCorrelation(failed, ids);
-            throw failed;
         } finally {
             client.recordApiCall(
                 'GET',
@@ -234,12 +209,10 @@ export async function fetchBrowserData(
             // Carries the same method/endpoint pair the shared client attaches,
             // so this error groups in monitoring like every other one. Spelled
             // out rather than normalized: the path holds no id segments.
-            const error = new GoPayHTTPError(response.status, body, {
+            throw new GoPayHTTPError(response.status, body, {
                 method: 'GET',
                 endpoint: '/cards/browser-data',
             });
-            attachCorrelation(error, ids);
-            throw error;
         }
 
         const body: unknown = await response.json();
@@ -247,14 +220,21 @@ export async function fetchBrowserData(
             // NETWORK_ERROR rather than a new code: growing the public
             // GoPayErrorCodes enum is consumer-facing surface, and a proxy
             // error page reaching us here is a transport problem in practice.
-            const error = new GoPaySDKError(
+            throw new GoPaySDKError(
                 '[GoPayBrowserSDK] Browser data endpoint returned an unexpected shape.',
                 { errorCode: GoPayErrorCodes.NETWORK_ERROR },
             );
-            attachCorrelation(error, ids);
-            throw error;
         }
         return { ...collectBrowserData(), ...body };
+    } catch (err) {
+        // The caller's own abort stays as it is: tearing the flow down is not a failure.
+        if (options?.signal?.aborted) {
+            throw err;
+        }
+        // Mapped as the client maps its own requests, reading the body included: a body that
+        // stalls until the timer fires, or a 200 that is not JSON, still carries this
+        // request's ids. Our timer fired when the signal is aborted and the caller's is not.
+        throw toTransportError(err, ids, signal.aborted);
     } finally {
         release();
     }

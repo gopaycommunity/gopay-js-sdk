@@ -294,11 +294,11 @@ describe('fetchBrowserData()', () => {
             // BROWSER_DATA_TIMEOUT_MS is 10s
             await vi.advanceTimersByTimeAsync(10_001);
 
-            // `pending` resolves to the rejection or to the data, and only one
-            // of them has a name — asserted as a property so the claim does not
-            // have to narrow the union first. Not `toBeInstanceOf(Error)`: what
-            // arrives is a DOMException, which jsdom does not derive from it.
-            expect(await pending).toHaveProperty('name', 'AbortError');
+            // Our own timer fired, on the legacy path as an AbortError from the
+            // body: reported as the timeout it is, as the client reports its own.
+            expect(await pending).toMatchObject({
+                errorCode: GoPayErrorCodes.NETWORK_TIMEOUT,
+            });
         } finally {
             vi.useRealTimers();
             AbortSignal.timeout = realTimeout;

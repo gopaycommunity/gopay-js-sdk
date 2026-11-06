@@ -112,7 +112,10 @@ export class GoPaySDKError extends Error {
      * error — quote it to GoPay support. Undefined when no request went out.
      */
     readonly traceId: string | undefined = undefined;
-    /** `X-GoPay-Transaction-Id` of the SDK call this error came from; undefined as `traceId` is. */
+    /**
+     * `X-GoPay-Transaction-Id` of the request this error came from: the SDK call's in the server
+     * SDK, the page load's in the browser SDK. Undefined as `traceId` is.
+     */
     readonly transactionId: string | undefined = undefined;
 
     constructor(
@@ -147,7 +150,10 @@ export class GoPayHTTPError extends Error {
      * error — quote it to GoPay support. Undefined when no request went out.
      */
     readonly traceId: string | undefined = undefined;
-    /** `X-GoPay-Transaction-Id` of the SDK call this error came from; undefined as `traceId` is. */
+    /**
+     * `X-GoPay-Transaction-Id` of the request this error came from: the SDK call's in the server
+     * SDK, the page load's in the browser SDK. Undefined as `traceId` is.
+     */
     readonly transactionId: string | undefined = undefined;
 
     constructor(
@@ -178,4 +184,40 @@ export function attachCorrelation(
     ) {
         Object.assign(error, ids);
     }
+}
+
+/**
+ * A request's own failure as the SDK error it is reported as, carrying the request's ids: its
+ * timeout as NETWORK_TIMEOUT, anything else the platform threw while sending it or reading its
+ * body as NETWORK_ERROR. An SDK error passes through with the ids added; what is not an Error
+ * is returned as it is. `timedOut` is for a caller that knows its own timer fired: on an older
+ * engine that arrives as an AbortError, not a TimeoutError.
+ */
+export function toTransportError(
+    error: unknown,
+    ids: { traceId: string; transactionId: string } | undefined,
+    timedOut = false,
+): unknown {
+    attachCorrelation(error, ids);
+    if (error instanceof GoPaySDKError || error instanceof GoPayHTTPError) {
+        return error;
+    }
+    let mapped: GoPaySDKError;
+    if (timedOut || (error instanceof Error && error.name === 'TimeoutError')) {
+        mapped = new GoPaySDKError('[GoPaySDK] Request timed out.', {
+            errorCode: GoPayErrorCodes.NETWORK_TIMEOUT,
+        });
+    } else if (error instanceof Error) {
+        // The label, never the message: a network error raised by the host carries text
+        // nobody here wrote, and it would go straight out through telemetry.error. `cause`
+        // keeps the original for a developer with a console open.
+        mapped = new GoPaySDKError(
+            `[GoPaySDK] Network error (${safeErrorLabel(error)}).`,
+            { cause: error, errorCode: GoPayErrorCodes.NETWORK_ERROR },
+        );
+    } else {
+        return error;
+    }
+    attachCorrelation(mapped, ids);
+    return mapped;
 }

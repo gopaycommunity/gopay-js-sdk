@@ -15,6 +15,7 @@ export {
     GoPaySDKError,
     isForeignCode,
     safeErrorLabel,
+    toTransportError,
 } from './errors.js';
 export { buildUrl } from './http/build-url.js';
 export type { HttpClient } from './http/client.js';
