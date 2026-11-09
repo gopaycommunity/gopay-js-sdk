@@ -267,6 +267,14 @@ describe('createGoPayBrowserSDK()', () => {
             seen.filter((req) => req.url.startsWith(API));
         const header = (req: Request | undefined, name: string) =>
             req?.headers.get(name) ?? null;
+        const pathOf = (req: Request) => new URL(req.url).pathname;
+        /**
+         * The request to `path`. Paired by path rather than by position:
+         * init-session goes out from attachPayment() without being awaited,
+         * so nothing orders it against the calls that follow the attach.
+         */
+        const byPath = (requests: Request[], path: string) =>
+            requests.find((req) => pathOf(req) === path);
         /** The gw-logger events posted so far, parsed. */
         const loggedEvents = async (seen: Request[]) =>
             Promise.all(
@@ -315,14 +323,14 @@ describe('createGoPayBrowserSDK()', () => {
             await sdk.getChargeState();
 
             const api = apiRequests(seen);
-            // init-session goes out from attachPayment() itself, before it
-            // resolves, so it always precedes the charge.
-            expect(api.map((req) => new URL(req.url).pathname)).toEqual([
+            expect(api.map(pathOf).sort()).toEqual([
                 '/oauth2/token',
-                '/payments/pay_001/init-session',
                 '/payments/pay_001/charge',
+                '/payments/pay_001/init-session',
             ]);
-            const [token, initSession, charge] = api;
+            const token = byPath(api, '/oauth2/token');
+            const initSession = byPath(api, '/payments/pay_001/init-session');
+            const charge = byPath(api, '/payments/pay_001/charge');
             const transactionId = header(token, 'X-GoPay-Transaction-Id');
             expect(transactionId).toMatch(/\S/u);
             expect(header(initSession, 'X-GoPay-Transaction-Id')).toBe(
@@ -368,20 +376,25 @@ describe('createGoPayBrowserSDK()', () => {
             });
             await sdk.getChargeState();
 
-            const [token, initSession, charge] = apiRequests(seen);
+            const api = apiRequests(seen);
+            const traceOf = (path: string) =>
+                header(byPath(api, path), 'X-GoPay-Trace-Id');
             const apiCalls = (await loggedEvents(seen)).filter(
                 (event) => event.event_type === 'api_call',
             );
+            // One event per request, each with its own request's trace id.
+            expect(apiCalls).toHaveLength(3);
             expect(
-                apiCalls.map((event) => [event.target, event.trace_id]),
-            ).toEqual([
-                ['/oauth2/token', header(token, 'X-GoPay-Trace-Id')],
-                [
-                    '/payments/{id}/init-session',
-                    header(initSession, 'X-GoPay-Trace-Id'),
-                ],
-                ['/payments/{id}/charge', header(charge, 'X-GoPay-Trace-Id')],
-            ]);
+                Object.fromEntries(
+                    apiCalls.map((event) => [event.target, event.trace_id]),
+                ),
+            ).toEqual({
+                '/oauth2/token': traceOf('/oauth2/token'),
+                '/payments/{id}/init-session': traceOf(
+                    '/payments/3000000001/init-session',
+                ),
+                '/payments/{id}/charge': traceOf('/payments/3000000001/charge'),
+            });
         });
 
         it('keeps the trace id across the retry after a 401, and gives the re-grant its own', async () => {
