@@ -7,6 +7,7 @@ export {
     createGoPayBrowserSDK,
     type GoPayBrowserSDK,
 } from './gopay-browser-sdk.js';
+export { showLoadingSpinner } from './internal/loading-spinner.js';
 export {
     DARK_CARD_FORM_THEME,
     DEFAULT_CARD_FORM_THEME,

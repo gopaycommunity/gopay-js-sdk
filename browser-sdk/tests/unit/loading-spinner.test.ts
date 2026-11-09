@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { showLoadingSpinner } from '../../src/index.js';
 import { showSpinnerIn } from '../../src/internal/loading-spinner.js';
 
 describe('showSpinnerIn()', () => {
@@ -102,5 +103,64 @@ describe('showSpinnerIn()', () => {
             document.head.querySelectorAll('style'),
         ).filter((s) => s.textContent?.includes('gp-spin'));
         expect(animStyles).toHaveLength(1);
+    });
+
+    it('caps the spinner at its container, so a 40px wallet slot holds it', () => {
+        showSpinnerIn(container, { color: '#1899d6' });
+        const svg = container.querySelector('svg') as SVGSVGElement;
+        expect(svg.style.maxWidth).toBe('100%');
+        expect(svg.style.maxHeight).toBe('100%');
+    });
+});
+
+describe('showLoadingSpinner()', () => {
+    let container: HTMLElement;
+
+    beforeEach(() => {
+        container = document.createElement('div');
+    });
+
+    it('is exported from the package entry', () => {
+        expect(typeof showLoadingSpinner).toBe('function');
+    });
+
+    it('draws the charge spinner in GoPay blue when no colour is given', () => {
+        showLoadingSpinner(container);
+        expect(
+            container
+                .querySelector('[role="status"] circle')
+                ?.getAttribute('stroke'),
+        ).toBe('#1899d6');
+    });
+
+    it('takes the colour from the spinner option the card form takes', () => {
+        showLoadingSpinner(container, { color: '#c8102e' });
+        expect(container.querySelector('circle')?.getAttribute('stroke')).toBe(
+            '#c8102e',
+        );
+    });
+
+    it('hands the container to a custom render and returns its cleanup', () => {
+        const innerCleanup = vi.fn();
+        const render = vi.fn(() => innerCleanup);
+        const hide = showLoadingSpinner(container, { render });
+        expect(render).toHaveBeenCalledWith(container);
+        hide();
+        expect(innerCleanup).toHaveBeenCalledOnce();
+    });
+
+    it('adds nothing for spinner: false', () => {
+        const hide = showLoadingSpinner(container, false);
+        expect(container.children).toHaveLength(0);
+        expect(() => hide()).not.toThrow();
+    });
+
+    it('appends next to what the container holds and removes only itself', () => {
+        const kept = document.createElement('span');
+        container.appendChild(kept);
+        const hide = showLoadingSpinner(container);
+        expect(container.children).toHaveLength(2);
+        hide();
+        expect(Array.from(container.children)).toEqual([kept]);
     });
 });

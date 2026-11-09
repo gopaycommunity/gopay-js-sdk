@@ -390,6 +390,8 @@ mountCardForm(
 | `submitMode` | `'internal' \| 'external'` | `'internal'` | `'external'` hides the iframe button; use `controller.submit()` |
 | `onValidityChange` | `(isValid: boolean) => void` | — | External submit mode only |
 | `onFieldErrors` | `(errors: CardFormFieldError[]) => void` | — | Fires whenever the errors shown change, and on every submit (older iframes repeat on every validation run); empty array means the form is clean |
+| `onLoadingStateChange` | `(state: LoadingState) => void` | — | Every loading transition: `'fetching-card-form-url'`, `'iframe-loading'`, `'charging'`, `'polling-charge-state'`, `'idle'` |
+| `spinner` | `SpinnerConfig` | GoPay spinner in `theme.submitBackgroundColor` | `{ color }` recolours it, `{ render(container) }` replaces it and must return the function that removes it, `false` shows none — see [`showLoadingSpinner()`](#showloadingspinnercontainer-spinner) |
 
 **`ThreeDSConfig`** (used in `mountCardForm` and `awaitChargeState`):
 
@@ -588,6 +590,29 @@ exported `BrowserData` type. Code written against 1.6.x keeps compiling and beha
 `collectBrowserData()` has the same signature and the same shape as before. Reach for
 `sdk.getBrowserData()` only where **your server** performs the charge and needs the values
 collected in the browser.
+
+### `showLoadingSpinner(container, spinner?)`
+
+```ts
+showLoadingSpinner(container: HTMLElement, spinner?: SpinnerConfig): () => void
+```
+
+Shows the spinner the card form and the wallet buttons show while they charge, for a wait the SDK
+does not run itself — typically a charge your **server** makes, such as one with a saved card.
+Returns a function that removes it.
+
+Pass the same `spinner` option you give `mountCardForm()` and the wallet buttons, and every way of
+paying on the page shows the same loading. The spinner is appended to `container`, so hide or
+disable whatever else it holds yourself.
+
+```ts
+const hide = showLoadingSpinner(container, { color: theme.submitBackgroundColor });
+try {
+    await fetch('/api/charge-saved-card', { method: 'POST', body });
+} finally {
+    hide();
+}
+```
 
 ### Error codes
 

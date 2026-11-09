@@ -11,7 +11,10 @@ import type {
     LoadingState,
     SpinnerConfig,
 } from '../../internal/loading-spinner.js';
-import { showSpinnerIn } from '../../internal/loading-spinner.js';
+import {
+    DEFAULT_SPINNER_COLOR,
+    showSpinnerIn,
+} from '../../internal/loading-spinner.js';
 import { reportFailure } from '../../internal/report-failure.js';
 import {
     type BrowserTelemetry,
@@ -271,7 +274,7 @@ export function createCardsApi(
             const spinnerColor =
                 options.theme?.submitBackgroundColor ??
                 DEFAULT_CARD_FORM_THEME.submitBackgroundColor ??
-                '#1899d6';
+                DEFAULT_SPINNER_COLOR;
 
             // Tracks the currently active spinner cleanup; reassigned on each state transition.
             let spinnerCleanup: () => void = () => {};
