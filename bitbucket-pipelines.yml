@@ -189,7 +189,7 @@ definitions:
           - yarn workspace @gopaycz/gopay-js-sdk-browser run build
           # Webhook delivery has its own step, *webhook-delivery-on-env. The workspace value names
           # the receiver of the environment the PR pipelines run on; kept here, the delivery test
-          # would poll that receiver for a webhook the target delivered to its own (#508, #509).
+          # would poll that receiver for a webhook the target delivered to its own.
           # Unset, the test is not declared in this step.
           - unset GOPAY_E2E_WEBHOOK_INSPECTION_URL
           # The API suite first: it is where the breadth is - refunds and the whole recurrence

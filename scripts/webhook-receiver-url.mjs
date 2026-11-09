@@ -6,7 +6,7 @@
  * notification URL is `https://demo${GP_DOMAIN}/api/v1/webhooks` - so the receiver has to be
  * derived from the target, not taken from the workspace variable: that one names the receiver of
  * the environment the PR pipelines run on, and polling it after a run aimed elsewhere waits out the
- * timeout for a webhook that was delivered somewhere else (#508, #509).
+ * timeout for a webhook that was delivered somewhere else.
  *
  * Only the dev cluster has a receiver: `gw.<env>.dev.gopay.com` -> `demo.<env>.dev.gopay.com`,
  * and only where demo-site runs with GOPAY_PAYMENTS_V4_WEBHOOK_INSPECTION on. Anything else exits
