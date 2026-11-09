@@ -154,7 +154,7 @@ export function createAuthHandler(deps: AuthHandlerDeps) {
         init: Omit<RequestInit, 'signal'> & { headers: Headers },
         signal?: AbortSignal,
         /**
-         * False for a request nothing waits on (RequestOptions.quiet): its 401
+         * False for a request nothing waits on (PostOptions.quiet): its 401
          * is returned as it is. Recovering would re-exchange the payment's
          * credentials and, on a second 401, drop its token — a call the
          * checkout never needed must not touch the session the checkout runs on.

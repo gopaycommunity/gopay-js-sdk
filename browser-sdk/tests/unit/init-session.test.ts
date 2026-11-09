@@ -34,6 +34,7 @@ type InitSessionReply = () => Response | Promise<Response>;
 
 describe('init-session on attachPayment()', () => {
     let initSessions: Request[];
+    let logged: Request[];
     let initSessionReply: InitSessionReply;
     let tokenHolds: Map<string, Promise<void>>;
     let tokenExchanges: number;
@@ -47,6 +48,7 @@ describe('init-session on attachPayment()', () => {
 
     beforeEach(() => {
         initSessions = [];
+        logged = [];
         initSessionReply = () => new Response(null, { status: 204 });
         tokenHolds = new Map();
         tokenExchanges = 0;
@@ -67,6 +69,7 @@ describe('init-session on attachPayment()', () => {
                     return makeResponse({ id: 'pay-A', state: 'CREATED' });
                 }
                 // gw-logger ingest
+                logged.push(req);
                 return new Response(null, { status: 204 });
             }),
         );
@@ -167,6 +170,41 @@ describe('init-session on attachPayment()', () => {
         expect(sdk.isAuthenticated()).toBe(true);
         expect(onError).not.toHaveBeenCalled();
     });
+
+    // What init-session.ts promises in place of onError: the failure is not
+    // reported to the integrator, but GoPay's own operational data still has it.
+    it.each([409, 500])(
+        'records a failed init-session (%i) in telemetry with its status',
+        async (status) => {
+            initSessionReply = () => makeResponse({ errors: [] }, status);
+
+            // Numeric, as real ids are: the event's target is the template.
+            await sdk.attachPayment({
+                paymentId: '3000000001',
+                paymentSecret: 'sec',
+            });
+            await settle();
+
+            const events = await Promise.all(
+                logged.map(
+                    async (req) =>
+                        (
+                            (await req.clone().json()) as {
+                                event: Record<string, unknown>;
+                            }
+                        ).event,
+                ),
+            );
+            const initSessionCalls = events.filter(
+                (event) =>
+                    event.event_type === 'api_call' &&
+                    event.target === '/payments/{id}/init-session',
+            );
+            expect(initSessionCalls).toHaveLength(1);
+            expect(initSessionCalls[0].status_code).toBe(status);
+            expect(onError).not.toHaveBeenCalled();
+        },
+    );
 
     it('opens a session for each payment attached', async () => {
         await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec' });

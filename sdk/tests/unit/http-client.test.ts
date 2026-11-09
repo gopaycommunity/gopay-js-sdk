@@ -142,15 +142,21 @@ describe('HttpClient', () => {
         });
 
         describe('quiet', () => {
-            it('rejects on an HTTP error without telling onError', async () => {
+            // Quiet keeps a failure from the integrator, not from GoPay's own
+            // operational data: each test below also reads the telemetry.
+            const spyTelemetry = () => ({ apiCall: vi.fn(), error: vi.fn() });
+
+            it('rejects on an HTTP error without telling onError, and records it', async () => {
                 fetchMock.mockImplementation(async () =>
                     makeResponse({ errors: [] }, 409, 'Conflict'),
                 );
                 const onError = vi.fn();
-                const client = createHttpClient({
-                    baseUrl: 'https://example.com',
-                    onError,
-                });
+                const telemetry = spyTelemetry();
+                const client = createHttpClient(
+                    { baseUrl: 'https://example.com', onError },
+                    undefined,
+                    telemetry,
+                );
                 client.tokenStore.set(storedTokens);
 
                 const err = await client
@@ -159,15 +165,27 @@ describe('HttpClient', () => {
                 expect(err).toBeInstanceOf(GoPayHTTPError);
                 expect((err as GoPayHTTPError).status).toBe(409);
                 expect(onError).not.toHaveBeenCalled();
+                // An HTTP error leaves through the api_call record with its
+                // status, and only there - for a quiet request as for any other.
+                expect(telemetry.apiCall).toHaveBeenCalledTimes(1);
+                expect(telemetry.apiCall).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        method: 'POST',
+                        statusCode: 409,
+                    }),
+                );
+                expect(telemetry.error).not.toHaveBeenCalled();
             });
 
-            it('rejects on a network error without telling onError', async () => {
+            it('rejects on a network error without telling onError, and records it', async () => {
                 fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
                 const onError = vi.fn();
-                const client = createHttpClient({
-                    baseUrl: 'https://example.com',
-                    onError,
-                });
+                const telemetry = spyTelemetry();
+                const client = createHttpClient(
+                    { baseUrl: 'https://example.com', onError },
+                    undefined,
+                    telemetry,
+                );
                 client.tokenStore.set(storedTokens);
 
                 const err = await client
@@ -178,6 +196,14 @@ describe('HttpClient', () => {
                     GoPayErrorCodes.NETWORK_ERROR,
                 );
                 expect(onError).not.toHaveBeenCalled();
+                expect(telemetry.error).toHaveBeenCalledTimes(1);
+                expect(telemetry.error).toHaveBeenCalledWith(err);
+                expect(telemetry.apiCall).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        method: 'POST',
+                        statusCode: null,
+                    }),
+                );
             });
 
             it('returns a 401 as it is: no re-exchange, the token kept', async () => {
@@ -227,6 +253,21 @@ describe('HttpClient', () => {
                 expect(
                     (onError.mock.calls[0][0] as GoPayHTTPError).status,
                 ).toBe(500);
+            });
+
+            // Checked by the typecheck of this file, not at run time: no verb
+            // but post honours quiet, so no other verb accepts it.
+            it('is accepted by post alone', () => {
+                const client = createHttpClient({
+                    baseUrl: 'https://example.com',
+                });
+                const quietGet = () =>
+                    // @ts-expect-error quiet is a post option
+                    client.get('/items', { quiet: true });
+                const quietDelete = () =>
+                    // @ts-expect-error quiet is a post option
+                    client.delete('/items', { quiet: true });
+                expect([quietGet, quietDelete]).toHaveLength(2);
             });
         });
     });

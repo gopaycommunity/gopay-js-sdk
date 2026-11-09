@@ -30,7 +30,7 @@ import {
     type PaymentCredentials,
     type StoredTokenPair,
 } from './token-store.js';
-import type { RequestOptions } from './types.js';
+import type { PostOptions, RequestOptions } from './types.js';
 
 /**
  * Errors already handed to `onError`.
@@ -90,7 +90,7 @@ function reportOnce(
     emitTelemetry = true,
     /**
      * False for a request the SDK makes on its own behalf and does not need
-     * (RequestOptions.quiet): the operational event still goes out, but the
+     * (PostOptions.quiet): the operational event still goes out, but the
      * integrator is not told about a failure they can do nothing about.
      */
     notifyIntegrator = true,
@@ -439,7 +439,7 @@ export function createHttpClient(
         async post<T>(
             path: string,
             body?: unknown,
-            options?: RequestOptions,
+            options?: PostOptions,
         ): Promise<T> {
             const started = nowMs();
             let status: number | null = null;
