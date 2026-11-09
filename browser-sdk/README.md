@@ -608,8 +608,8 @@ For shared error types (`GoPaySDKError`, `GoPayHTTPError`, network codes) see th
 ## Monitoring
 
 `onError` is the hook for your own monitoring: it receives every error the SDK
-raises, and you forward from it into whatever you already run. No monitoring
-client is bundled — you bring your own.
+raises — with the one exception below — and you forward from it into whatever
+you already run. No monitoring client is bundled — you bring your own.
 
 ```ts
 import * as Sentry from '@sentry/browser';
@@ -645,6 +645,12 @@ argument validation, which run before any request is issued — and sees each on
 exactly once. It observes rather than handles: the error still propagates to your
 `catch`, and an exception thrown by your own `onError` is swallowed rather than
 allowed to replace it.
+
+The one exception is the call `attachPayment()` makes on its own to tell GoPay
+which SDK works with the payment, the one that sets the payment's language (see
+`sdk.attachPayment` above). Nothing waits on it, so its failure reaches neither
+`onError` nor your code. The usual one is not an error at all: on a return page
+the payment is past `CREATED`, and GoPay answers `409`.
 
 Group by `endpoint` and `status`, never by the raw URL: request paths carry the
 payment id, so grouping on them opens a fresh group per payment.
