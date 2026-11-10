@@ -229,6 +229,9 @@ const chargeResult = await googleCtrl.result;
 | `awaitOptions` | `Omit<AwaitChargeOptions, 'threeDS'>` | — | Extra polling / timeout options |
 | `onUnavailable` | `() => void` | — | Called (and `result` rejected) when the wallet is not usable on this device |
 | `onCancel` | `() => void` | — | Called when the user dismisses the payment sheet |
+| `onLoadingStateChange` | `(state: LoadingState) => void` | — | `'charging'`, `'polling-charge-state'`, then `'idle'` once the charge settles |
+| `theme` | `{ submitBackgroundColor?: string }` | — | Colours the spinner the button's slot shows while the charge runs |
+| `spinner` | `SpinnerConfig` | GoPay spinner in `theme.submitBackgroundColor` | As the card form's [`spinner`](#sdkmountcardformcontainer-options) option |
 
 **Apple Pay only** — fields inside `appleButtonOptions`:
 
@@ -601,9 +604,10 @@ Shows the spinner the card form and the wallet buttons show while they charge, f
 does not run itself — typically a charge your **server** makes, such as one with a saved card.
 Returns a function that removes it.
 
-Pass the same `spinner` option you give `mountCardForm()` and the wallet buttons, and every way of
-paying on the page shows the same loading. The spinner is appended to `container`, so hide or
-disable whatever else it holds yourself.
+It takes no theme: unless told otherwise it draws in GoPay blue, where the card form and the wallet
+buttons take the colour from `theme.submitBackgroundColor`. If you theme them, pass that colour as
+`{ color: theme.submitBackgroundColor }`, or give all three the same `spinner` option. The spinner
+is appended to `container`, so hide or disable whatever else it holds yourself.
 
 ```ts
 const hide = showLoadingSpinner(container, { color: theme.submitBackgroundColor });

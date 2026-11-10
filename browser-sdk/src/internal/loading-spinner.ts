@@ -90,9 +90,10 @@ export function showSpinnerIn(
  * `container`, for a step the SDK does not run itself — typically a charge your server makes,
  * such as one with a saved card, while the page waits for it. Returns a function that removes it.
  *
- * Takes the same `spinner` option as `mountCardForm()` and the wallet buttons, so passing the
- * value given to them keeps every way of paying on the page showing the same loading. The spinner
- * is appended, not swapped in: what else the container holds is left to you.
+ * Takes no theme: it draws in GoPay blue unless `spinner` says otherwise, while the card form and
+ * the wallet buttons take the colour from `theme.submitBackgroundColor`. If you theme them, pass
+ * that colour as `{ color: theme.submitBackgroundColor }`, or give all three the same `spinner`
+ * option. The spinner is appended, not swapped in: what else the container holds is left to you.
  *
  * ```ts
  * const hide = showLoadingSpinner(container, { color: theme.submitBackgroundColor });
