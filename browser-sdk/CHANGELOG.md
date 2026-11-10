@@ -1,3 +1,15 @@
+# [1.12.0](https://github.com/gopaycommunity/gopay-js-sdk/compare/browser-sdk-1.11.1...browser-sdk-1.12.0) (2026-11-10)
+
+
+### Bug Fixes
+
+* update api from next spec GPOMA-2805 ([f734821](https://github.com/gopaycommunity/gopay-js-sdk/commit/f734821ab637018dbe0fd428706c0d3ce6a7d522))
+
+
+### Features
+
+* attachPayment sets the payment's language from the customer's browser GPOMA-2805 ([aa24c0f](https://github.com/gopaycommunity/gopay-js-sdk/commit/aa24c0f9a5c22c258fdb951022eec5689f70a817))
+
 ## [1.11.1](https://github.com/gopaycommunity/gopay-js-sdk/compare/browser-sdk-1.11.0...browser-sdk-1.11.1) (2026-11-06)
 
 
