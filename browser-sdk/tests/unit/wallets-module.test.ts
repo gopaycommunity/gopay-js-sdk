@@ -2858,6 +2858,36 @@ describe('mountGooglePayButton()', () => {
         );
     });
 
+    it.each([
+        [
+            'the theme',
+            { theme: { submitBackgroundColor: '#c8102e' } },
+            '#c8102e',
+        ],
+        ['GoPay blue without one', {}, '#1899d6'],
+    ])('colours the charge spinner from %s', async (_, options, expected) => {
+        // Read while the charge is awaited — the moment the spinner stands in for the button.
+        let stroke: string | null | undefined;
+        const paymentsApi = makePaymentsApi({
+            awaitChargeState: vi.fn().mockImplementation(async () => {
+                stroke = container
+                    .querySelector('circle')
+                    ?.getAttribute('stroke');
+                return mockChargeState;
+            }),
+        });
+        const api = createWalletsApi(
+            makeClient() as never,
+            () => paymentsApi as never,
+        );
+
+        const ctrl = await api.mountGooglePayButton(container, options);
+        await must(capturedOnClick, 'the Google Pay button onClick')();
+        await ctrl.result;
+
+        expect(stroke).toBe(expected);
+    });
+
     it('uses empty object for isReadyToPay and loadPaymentData when paymentDataRequest is absent', async () => {
         const paymentsApi = makePaymentsApi({
             getGooglePayInfo: vi

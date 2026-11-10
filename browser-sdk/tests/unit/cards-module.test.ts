@@ -951,6 +951,46 @@ describe('createCardsApi() — browser SDK', () => {
             expect(result).toMatchObject({ state: 'SUCCEEDED' });
         });
 
+        it.each([
+            ['the theme', { submitBackgroundColor: '#c8102e' }, '#c8102e'],
+            ['GoPay blue without one', { labelColor: '#000000' }, '#1899d6'],
+        ])('colours the charge spinner from %s', async (_, theme, expected) => {
+            fetchMock.mockResolvedValue(
+                makeResponse({ card_form_url: CARD_FORM_URL }),
+            );
+            // Read while the charge is awaited — the moment the spinner stands in for the form.
+            let stroke: string | null | undefined;
+            awaitChargeStateMock.mockImplementationOnce(async () => {
+                stroke = container
+                    .querySelector('circle')
+                    ?.getAttribute('stroke');
+                return { state: 'SUCCEEDED', id: 'pay_001' };
+            });
+
+            const cards = createCardsApi(
+                client,
+                () =>
+                    mockPaymentsApi as unknown as ReturnType<
+                        typeof createPaymentsApi
+                    >,
+            );
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+                theme,
+            });
+
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_tok',
+            });
+
+            await ctrl.result;
+            expect(stroke).toBe(expected);
+        });
+
         it('forwards awaitOptions.onStateChange calls to the caller', async () => {
             fetchMock.mockResolvedValue(
                 makeResponse({ card_form_url: CARD_FORM_URL }),
