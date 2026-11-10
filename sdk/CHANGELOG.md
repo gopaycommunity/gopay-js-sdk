@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.25.0...1.26.0) (2026-11-10)
+
+
+### Features
+
+* export showLoadingSpinner, the spinner the card form and wallets charge under GPOMA-2811 ([d89bbf9](https://github.com/gopaycommunity/gopay-js-sdk/commit/d89bbf9d3e67b9cecb82a35b3e602540d303594c))
+
 # [1.25.0](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.24.1...1.25.0) (2026-11-10)
 
 
