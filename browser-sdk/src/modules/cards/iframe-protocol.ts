@@ -271,8 +271,8 @@ export interface CardFormFieldError {
 /**
  * How far the payer has got with a field: nothing in it, something that is not
  * yet a valid value, or a value the form would accept. A state, never a length
- * or a digit count — `partial` covers one digit and a full number that fails
- * Luhn alike.
+ * or a digit count — `partial` covers one digit, a full number that fails Luhn
+ * and a well-formed number of a brand the form does not take alike.
  */
 export type CardFormFieldState = 'empty' | 'partial' | 'complete';
 
