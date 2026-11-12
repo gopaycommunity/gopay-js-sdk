@@ -1,3 +1,10 @@
+## [1.26.1](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.26.0...1.26.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **cards:** say that a partial field state also covers a card brand the form refuses GWUICC4-30 ([30d326b](https://github.com/gopaycommunity/gopay-js-sdk/commit/30d326b5b160ddd27afa9442120712d527f0ed5f))
+
 # [1.26.0](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.25.0...1.26.0) (2026-11-10)
 
 
