@@ -52,6 +52,12 @@ import type {
 type PaymentChargeStatusResponse =
     components['schemas']['Payment-Charge-Status-Response'];
 
+/** What `result` resolves with, one member per flow. */
+type CardFormResult =
+    | EncryptedCardPayload
+    | EncryptedCardPayloadWithMetadata
+    | PaymentChargeStatusResponse;
+
 type PaymentsApi = ReturnType<typeof createPaymentsApi>;
 
 /** How a mounted card form went away; carried by its height summary. */
@@ -278,13 +284,7 @@ export function createCardsApi(
         async mountCardForm(
             container: HTMLElement,
             options: CardFormOptions,
-        ): Promise<
-            CardFormController<
-                | EncryptedCardPayload
-                | EncryptedCardPayloadWithMetadata
-                | PaymentChargeStatusResponse
-            >
-        > {
+        ): Promise<CardFormController<CardFormResult>> {
             if (activeCardFormSession !== null) {
                 const alreadyMounted = new GoPaySDKError(
                     '[GoPayBrowserSDK] A card form is already mounted. Call unmount() on the existing controller before mounting a new one.',
@@ -293,11 +293,7 @@ export function createCardsApi(
                 // Reported here rather than in rejectResult: this guard returns
                 // its own already-rejected promise and never reaches the funnel.
                 client.reportError(alreadyMounted);
-                const result = Promise.reject<
-                    | EncryptedCardPayload
-                    | EncryptedCardPayloadWithMetadata
-                    | PaymentChargeStatusResponse
-                >(alreadyMounted);
+                const result = Promise.reject<CardFormResult>(alreadyMounted);
                 result.catch(() => {});
                 return {
                     result,
@@ -463,21 +459,12 @@ export function createCardsApi(
 
             // Create the result promise before defining cleanup so rejectResult
             // is captured in the cleanup closure below.
-            let resolveResult!: (
-                value:
-                    | EncryptedCardPayload
-                    | EncryptedCardPayloadWithMetadata
-                    | PaymentChargeStatusResponse,
-            ) => void;
+            let resolveResult!: (value: CardFormResult) => void;
             let rejectResult!: (
                 reason: unknown,
                 reportOptions?: { telemetry?: boolean },
             ) => void;
-            const result = new Promise<
-                | EncryptedCardPayload
-                | EncryptedCardPayloadWithMetadata
-                | PaymentChargeStatusResponse
-            >((res, rej) => {
+            const result = new Promise<CardFormResult>((res, rej) => {
                 // Settling twice is a no-op, so an aborted charge rejecting
                 // late cannot overwrite the unmount error, and vice versa.
                 resolveResult = (value) => {
