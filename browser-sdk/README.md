@@ -105,6 +105,34 @@ const response = await fetch('/api/charge', {
 //                   input: { input_type: 'CARD_TOKEN', card_token }, browser_data: browserData } })
 ```
 
+### Card details with the payload
+
+`flow: 'payload-with-metadata'` works as `return-payload`, and also tells you what GoPay knows
+about the card before you charge it — for example to show the card scheme, or to treat corporate
+or credit cards differently. When the customer submits, the card form looks up the first eight
+digits of the card number (the BIN) at GoPay. `result` then resolves with the encrypted payload
+and the card's details:
+
+```ts
+import type { EncryptedCardPayloadWithMetadata } from '@gopaycz/gopay-js-sdk-browser';
+
+const controller = await sdk.mountCardForm(container, { flow: 'payload-with-metadata' });
+const { encryptedPayload, cardMetadata } =
+    (await controller.result) as EncryptedCardPayloadWithMetadata;
+
+if (cardMetadata) {
+    // { scheme: 'VISA', corporate: false, brand: 'GOLD', service_type: 'DEBIT',
+    //   issuer: 'Komerční banka, a.s.', issuer_country: 'CZE' }
+}
+```
+
+`cardMetadata` (`CardMetadata`) always has `scheme` (`'VISA' | 'MASTERCARD'`) and `corporate`;
+`brand`, `service_type` (`'DEBIT' | 'CREDIT'`), `issuer` and `issuer_country` (ISO 3166-1 alpha-3)
+are present when GoPay knows them. It is `null` when GoPay knows nothing about the BIN — always the
+case for a scheme other than Visa or Mastercard — or when the lookup fails or takes longer than
+3 seconds. The payload arrives either way, so handle `null` as "no details" and not as a failed
+payment. Neither the digits nor any other part of the card number ever reach your page.
+
 ---
 
 ## Flow B — full browser payments
@@ -386,7 +414,7 @@ mountCardForm(
 
 | Field | Type | Default | Notes |
 |---|---|---|---|
-| `flow` | `'return-payload' \| 'direct-charge'` | required | `direct-charge` requires prior `attachPayment()` |
+| `flow` | `'return-payload' \| 'payload-with-metadata' \| 'direct-charge'` | required | `direct-charge` requires prior `attachPayment()`; `payload-with-metadata` — see [Card details with the payload](#card-details-with-the-payload) |
 | `threeDS` | `ThreeDSConfig` | `{ mode: 'redirect' }` | `direct-charge` only — controls 3DS handling (see below) |
 | `theme` | `CardFormTheme` | built-in | Exported from the package — see [Theme options](#theme-options) |
 | `locale` | `string` | `navigator.language` | BCP 47, e.g. `'cs-CZ'` |
@@ -506,7 +534,7 @@ const controller = await sdk.mountCardForm(container, {
 
 | Member | Description |
 |---|---|
-| `result` | `Promise` — resolves with `{ encryptedPayload }` (return-payload) or `PaymentChargeStatusResponse` (direct-charge) |
+| `result` | `Promise` — resolves with `{ encryptedPayload }` (return-payload), `{ encryptedPayload, cardMetadata }` (payload-with-metadata; `cardMetadata` may be `null`) or `PaymentChargeStatusResponse` (direct-charge) |
 | `setTheme(theme)` | Update theme at runtime |
 | `setLocale(locale)` | Update locale at runtime |
 | `submit()` | Trigger submission (external submit mode only) |
