@@ -27,6 +27,33 @@ export interface CardFormConfig {
      *   state via `GOPAY_CARD_FORM_VALIDITY`.
      */
     submitMode?: 'internal' | 'external';
+    /**
+     * Look up the card's BIN when it is submitted, and send what GoPay knows
+     * about the card with the encrypted card, as `card_metadata` on
+     * `GOPAY_CARD_ENCRYPT_RESULT`. Default: false — no lookup is made.
+     */
+    binLookup?: boolean;
+}
+
+/**
+ * What GoPay knows about a card from the first eight digits of its number, as
+ * `POST /cards/bin-lookup` answers it. `scheme`, `corporate`, `brand` and
+ * `service_type` mean what they mean on a saved card.
+ *
+ * Nothing in it is part of the card number: the iframe sends the digits to
+ * GoPay, never to the parent.
+ */
+export interface CardMetadata {
+    scheme: 'VISA' | 'MASTERCARD';
+    /** Whether the card is a corporate (business) card. */
+    corporate: boolean;
+    /** Card brand or tier, e.g. GOLD, PLATINUM, STANDARD. */
+    brand?: string;
+    service_type?: 'DEBIT' | 'CREDIT';
+    /** Name of the bank that issued the card. */
+    issuer?: string;
+    /** Country of the issuing bank, as an ISO 3166-1 alpha-3 code. */
+    issuer_country?: string;
 }
 
 /**
@@ -286,7 +313,16 @@ export type CardFormErrorTrigger = 'submit' | 'input' | 'blur';
 
 export type OutboundMessage =
     | { type: 'GOPAY_CARD_ENCRYPT_READY' }
-    | { type: 'GOPAY_CARD_ENCRYPT_RESULT'; card_token: string }
+    /**
+     * `card_metadata` is present only when the init asked for `binLookup` and
+     * the lookup answered. A lookup that fails, times out or knows nothing of
+     * the BIN leaves it out — the card is still encrypted and sent.
+     */
+    | {
+          type: 'GOPAY_CARD_ENCRYPT_RESULT';
+          card_token: string;
+          card_metadata?: CardMetadata;
+      }
     | {
           type: 'GOPAY_CARD_ENCRYPT_ERROR';
           error: string;

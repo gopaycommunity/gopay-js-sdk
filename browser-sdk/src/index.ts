@@ -20,6 +20,7 @@ export type {
     CardFormFieldError,
     CardFormOptions,
     CardFormTheme,
+    CardMetadata,
     LoadingState,
     SpinnerConfig,
 } from './modules/cards/cards.module.js';
@@ -41,6 +42,7 @@ export type {
     BrowserData,
     BrowserDataDetected,
     EncryptedCardPayload,
+    EncryptedCardPayloadWithMetadata,
     GoPayEnvironment,
 } from './types/index.js';
 export { SDK_VERSION } from './version.js';

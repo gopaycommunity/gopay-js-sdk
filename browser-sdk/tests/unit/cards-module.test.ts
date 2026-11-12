@@ -721,6 +721,154 @@ describe('createCardsApi() — browser SDK', () => {
     });
 
     // -------------------------------------------------------------------------
+    // mountCardForm() — flow: payload-with-metadata (GPOMA-2821)
+    // -------------------------------------------------------------------------
+
+    describe('mountCardForm() with flow: payload-with-metadata', () => {
+        const METADATA = {
+            scheme: 'VISA',
+            corporate: false,
+            brand: 'GOLD',
+            service_type: 'DEBIT',
+            issuer: 'Komerční banka, a.s.',
+            issuer_country: 'CZE',
+        };
+
+        async function initSent(
+            flow: 'payload-with-metadata' | 'return-payload',
+        ): Promise<Record<string, unknown>> {
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, { flow });
+            ctrl.result.catch(() => {});
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            const postMessageSpy = vi.spyOn(
+                iframe.contentWindow as Window,
+                'postMessage',
+            );
+            iframe.onload?.(new Event('load'));
+            const [init] = postMessageSpy.mock.calls[0] as [
+                Record<string, unknown>,
+            ];
+            return init;
+        }
+
+        async function resultFor(
+            flow: 'payload-with-metadata' | 'return-payload',
+            message: Record<string, unknown>,
+        ): Promise<unknown> {
+            const cards = createCardsApi(client, () => null);
+            const ctrl = await cards.mountCardForm(container, { flow });
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            simulateMessage(iframe, {
+                type: 'GOPAY_CARD_ENCRYPT_RESULT',
+                card_token: 'enc_token_abc',
+                ...message,
+            });
+            return ctrl.result;
+        }
+
+        it('asks the iframe for the BIN lookup in GOPAY_CARD_FORM_INIT', async () => {
+            const init = await initSent('payload-with-metadata');
+            expect(init).toMatchObject({
+                type: 'GOPAY_CARD_FORM_INIT',
+                binLookup: true,
+            });
+        });
+
+        it('leaves the init of return-payload as it was, without binLookup', async () => {
+            const init = await initSent('return-payload');
+            expect(init).not.toHaveProperty('binLookup');
+        });
+
+        it('resolves result with the payload and the metadata the iframe sent', async () => {
+            const result = await resultFor('payload-with-metadata', {
+                card_metadata: METADATA,
+            });
+            expect(result).toEqual({
+                encryptedPayload: 'enc_token_abc',
+                cardMetadata: METADATA,
+            });
+        });
+
+        it('resolves cardMetadata null when the iframe sends none', async () => {
+            // A failed or empty lookup, and an iframe that predates the lookup.
+            const result = await resultFor('payload-with-metadata', {});
+            expect(result).toEqual({
+                encryptedPayload: 'enc_token_abc',
+                cardMetadata: null,
+            });
+        });
+
+        it.each([
+            ['an empty object', {}],
+            ['an object without corporate', { scheme: 'VISA' }],
+            ['a string', 'VISA'],
+            ['null', null],
+            ['an unknown scheme', { scheme: 'AMEX', corporate: false }],
+        ])(
+            'resolves cardMetadata null when the iframe sends %s',
+            async (_, card_metadata) => {
+                const result = await resultFor('payload-with-metadata', {
+                    card_metadata,
+                });
+                expect(result).toEqual({
+                    encryptedPayload: 'enc_token_abc',
+                    cardMetadata: null,
+                });
+            },
+        );
+
+        it('passes on only the documented fields, each in its documented shape', async () => {
+            const result = await resultFor('payload-with-metadata', {
+                card_metadata: {
+                    scheme: 'MASTERCARD',
+                    corporate: true,
+                    brand: 42,
+                    service_type: 'PREPAID',
+                    issuer: 'x'.repeat(201),
+                    issuer_country: 'cz',
+                    bin: '55555555',
+                },
+            });
+            expect(result).toEqual({
+                encryptedPayload: 'enc_token_abc',
+                cardMetadata: { scheme: 'MASTERCARD', corporate: true },
+            });
+        });
+
+        it('leaves the init of direct-charge without binLookup too', async () => {
+            const paymentsApi = {} as ReturnType<typeof createPaymentsApi>;
+            const cards = createCardsApi(client, () => paymentsApi);
+            const ctrl = await cards.mountCardForm(container, {
+                flow: 'direct-charge',
+            });
+            ctrl.result.catch(() => {});
+            const iframe = container.querySelector(
+                'iframe',
+            ) as HTMLIFrameElement;
+            const postMessageSpy = vi.spyOn(
+                iframe.contentWindow as Window,
+                'postMessage',
+            );
+            iframe.onload?.(new Event('load'));
+            expect(postMessageSpy.mock.calls[0]?.[0]).not.toHaveProperty(
+                'binLookup',
+            );
+        });
+
+        it('keeps return-payload to { encryptedPayload } even if metadata arrives', async () => {
+            const result = await resultFor('return-payload', {
+                card_metadata: METADATA,
+            });
+            expect(result).toEqual({ encryptedPayload: 'enc_token_abc' });
+        });
+    });
+
+    // -------------------------------------------------------------------------
     // mountCardForm() — flow: direct-charge (with attached payment)
     // -------------------------------------------------------------------------
 

@@ -21,7 +21,10 @@ import {
     NO_BROWSER_TELEMETRY,
 } from '../../logging/gw-logger.js';
 import type { components } from '../../types/generated.js';
-import type { EncryptedCardPayload } from '../../types/index.js';
+import type {
+    EncryptedCardPayload,
+    EncryptedCardPayloadWithMetadata,
+} from '../../types/index.js';
 import type {
     AwaitChargeOptions,
     createPaymentsApi,
@@ -39,6 +42,7 @@ import type {
     CardFormConfig,
     CardFormFieldError,
     CardFormTheme,
+    CardMetadata,
     CardRequestSubmit,
     CardSetLocale,
     CardSetTheme,
@@ -62,6 +66,7 @@ type CardFormEnd =
 export type {
     CardFormErrorCode,
     CardFormField,
+    CardMetadata,
 } from './iframe-protocol.js';
 export type { CardFormFieldError, CardFormTheme, LoadingState, SpinnerConfig };
 
@@ -71,6 +76,10 @@ export interface CardFormController<R = EncryptedCardPayload> {
      *
      * flow: 'return-payload' — resolves with `{ encryptedPayload: string }`.
      *   Forward this to your server, which calls `tokenizeEncryptedCard` on the server SDK.
+     *
+     * flow: 'payload-with-metadata' — resolves with `{ encryptedPayload, cardMetadata }`:
+     *   the same payload, and what GoPay knows about the card from its BIN
+     *   ({@link CardMetadata}), or `null` when the lookup failed or knew nothing.
      *
      * flow: 'direct-charge' — resolves with the terminal `PaymentChargeStatusResponse`
      *   after the SDK charges the payment and polls to completion.
@@ -120,6 +129,10 @@ type ReturnPayloadOptions = {
     flow: 'return-payload';
 };
 
+type PayloadWithMetadataOptions = {
+    flow: 'payload-with-metadata';
+};
+
 type CardFormBaseOptions = {
     theme?: CardFormTheme;
     locale?: string;
@@ -150,7 +163,50 @@ type CardFormBaseOptions = {
 };
 
 export type CardFormOptions = CardFormBaseOptions &
-    (DirectChargeOptions | ReturnPayloadOptions);
+    (DirectChargeOptions | ReturnPayloadOptions | PayloadWithMetadataOptions);
+
+const SCHEMES: ReadonlySet<unknown> = new Set(['VISA', 'MASTERCARD']);
+const SERVICE_TYPES: ReadonlySet<unknown> = new Set(['DEBIT', 'CREDIT']);
+
+function isShortText(v: unknown): v is string {
+    return typeof v === 'string' && v.length > 0 && v.length <= 200;
+}
+
+/**
+ * The card form is deployed separately from this SDK, so what it sends is
+ * rebuilt field by field, as field errors are: only the documented fields reach
+ * the merchant, each in its documented shape, and an answer without a valid
+ * `scheme` and `corporate` is no metadata at all.
+ */
+function toCardMetadata(value: unknown): CardMetadata | null {
+    if (typeof value !== 'object' || value === null) {
+        return null;
+    }
+    const v = value as Record<string, unknown>;
+    if (!SCHEMES.has(v.scheme) || typeof v.corporate !== 'boolean') {
+        return null;
+    }
+    const metadata: CardMetadata = {
+        scheme: v.scheme as CardMetadata['scheme'],
+        corporate: v.corporate,
+    };
+    if (isShortText(v.brand)) {
+        metadata.brand = v.brand;
+    }
+    if (SERVICE_TYPES.has(v.service_type)) {
+        metadata.service_type = v.service_type as CardMetadata['service_type'];
+    }
+    if (isShortText(v.issuer)) {
+        metadata.issuer = v.issuer;
+    }
+    if (
+        typeof v.issuer_country === 'string' &&
+        /^[A-Z]{3}$/.test(v.issuer_country)
+    ) {
+        metadata.issuer_country = v.issuer_country;
+    }
+    return metadata;
+}
 
 export function createCardsApi(
     client: HttpClient,
@@ -207,6 +263,12 @@ export function createCardsApi(
          * `{ encryptedPayload: string }`. Forward this to your server to
          * call `tokenizeEncryptedCard` on the server SDK.
          *
+         * **flow: 'payload-with-metadata'** — as `return-payload`, and the
+         * iframe also looks the card's BIN up at GoPay when the customer
+         * submits: `result` resolves with `{ encryptedPayload, cardMetadata }`,
+         * where `cardMetadata` is `null` when the lookup failed, timed out or
+         * GoPay knows nothing of the BIN. The card is sent either way.
+         *
          * **flow: 'direct-charge'** — after encryption, the SDK automatically
          * charges the payment and polls until terminal state. A spinner is shown
          * while waiting; the 3DS iframe mounts in `options.redirectContainer` if
@@ -218,7 +280,9 @@ export function createCardsApi(
             options: CardFormOptions,
         ): Promise<
             CardFormController<
-                EncryptedCardPayload | PaymentChargeStatusResponse
+                | EncryptedCardPayload
+                | EncryptedCardPayloadWithMetadata
+                | PaymentChargeStatusResponse
             >
         > {
             if (activeCardFormSession !== null) {
@@ -230,7 +294,9 @@ export function createCardsApi(
                 // its own already-rejected promise and never reaches the funnel.
                 client.reportError(alreadyMounted);
                 const result = Promise.reject<
-                    EncryptedCardPayload | PaymentChargeStatusResponse
+                    | EncryptedCardPayload
+                    | EncryptedCardPayloadWithMetadata
+                    | PaymentChargeStatusResponse
                 >(alreadyMounted);
                 result.catch(() => {});
                 return {
@@ -398,14 +464,19 @@ export function createCardsApi(
             // Create the result promise before defining cleanup so rejectResult
             // is captured in the cleanup closure below.
             let resolveResult!: (
-                value: EncryptedCardPayload | PaymentChargeStatusResponse,
+                value:
+                    | EncryptedCardPayload
+                    | EncryptedCardPayloadWithMetadata
+                    | PaymentChargeStatusResponse,
             ) => void;
             let rejectResult!: (
                 reason: unknown,
                 reportOptions?: { telemetry?: boolean },
             ) => void;
             const result = new Promise<
-                EncryptedCardPayload | PaymentChargeStatusResponse
+                | EncryptedCardPayload
+                | EncryptedCardPayloadWithMetadata
+                | PaymentChargeStatusResponse
             >((res, rej) => {
                 // Settling twice is a no-op, so an aborted charge rejecting
                 // late cannot overwrite the unmount error, and vice versa.
@@ -590,6 +661,11 @@ export function createCardsApi(
                         theme,
                         locale,
                         submitMode,
+                        // Only when asked, so the other flows' init stays as it
+                        // was and their iframe makes no lookup.
+                        ...(options.flow === 'payload-with-metadata' && {
+                            binLookup: true,
+                        }),
                     } satisfies CardFormConfig,
                     expectedOrigin,
                 );
@@ -628,6 +704,9 @@ export function createCardsApi(
 
             const handleEncryptResult = async (
                 encryptedPayload: string,
+                // unknown, not CardMetadata: it is postMessage data until
+                // toCardMetadata has checked it.
+                cardMetadata: unknown,
             ): Promise<void> => {
                 // Reported before the branch, so both flows mark it. It is the
                 // only proof the customer got as far as submitting: the
@@ -648,6 +727,17 @@ export function createCardsApi(
 
                 if (options.flow === 'return-payload') {
                     resolveResult({ encryptedPayload });
+                    return;
+                }
+
+                if (options.flow === 'payload-with-metadata') {
+                    // The iframe leaves the field out when the lookup failed or
+                    // knew nothing, and an iframe that predates the lookup never
+                    // sends it: null for all three, decided here only.
+                    resolveResult({
+                        encryptedPayload,
+                        cardMetadata: toCardMetadata(cardMetadata),
+                    });
                     return;
                 }
 
@@ -871,7 +961,10 @@ export function createCardsApi(
                         return;
                     case 'GOPAY_CARD_ENCRYPT_RESULT':
                         cleanup('encrypted');
-                        await handleEncryptResult(event.data.card_token);
+                        await handleEncryptResult(
+                            event.data.card_token,
+                            event.data.card_metadata,
+                        );
                         return;
                     default:
                         return;
