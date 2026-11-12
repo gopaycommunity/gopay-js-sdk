@@ -46,8 +46,9 @@
         <!-- Card Pay -->
         <section class="bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm">
             <h2 class="text-base font-semibold text-[#2D3643] mb-4">sdk.mountCardForm(container, options)</h2>
-            <p class="desc">Mounts the GoPay-hosted card encryption iframe. Two flows:
+            <p class="desc">Mounts the GoPay-hosted card encryption iframe. Three flows:
                 <strong>return-payload</strong> — resolves with <code>{ encryptedPayload }</code>, auto-filled into the Browser charge section below; forward the payload to your server and call <code>sdk.tokenizeEncryptedCard()</code>.
+                <strong>payload-with-metadata</strong> — the same, plus <code>cardMetadata</code>: what GoPay knows about the card from its BIN (scheme, corporate, brand, service type, issuer, issuer country), or <code>null</code> when the lookup failed or knew nothing.
                 <strong>direct-charge</strong> — the SDK charges the attached payment in the browser and returns the terminal <code>PaymentChargeStatusResponse</code>; requires <code>attachPayment()</code> to have been called first. 3DS is handled automatically per the chosen mode.</p>
             <p class="note">Test card: <code>4111 1111 1111 1111</code> — any future expiry (e.g. <code>12/30</code>), any 3-digit CVV.</p>
             <div class="flex items-center gap-2 flex-wrap mb-3">
@@ -65,6 +66,7 @@
             <div class="flex items-center gap-2 flex-wrap mb-3">
                 <span class="text-xs text-[#6B7280] font-medium">Flow:</span>
                 <button type="button" id="cardpay-flow-return-payload" onclick="cardPaySetFlow('return-payload')" class="!text-xs !py-1 !px-3">Return Payload</button>
+                <button type="button" id="cardpay-flow-payload-with-metadata" onclick="cardPaySetFlow('payload-with-metadata')" class="!text-xs !py-1 !px-3 js-btn-inactive">Payload + Metadata</button>
                 <button type="button" id="cardpay-flow-direct-charge" onclick="cardPaySetFlow('direct-charge')" class="!text-xs !py-1 !px-3 js-btn-inactive">Direct Charge</button>
             </div>
             <div class="flex items-center gap-3 flex-wrap mb-3">

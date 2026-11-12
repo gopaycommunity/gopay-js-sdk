@@ -76,14 +76,15 @@ export function cardPaySetSubmitMode(mode) {
         .classList.toggle('hidden', !isExternal);
 }
 
+const FLOWS = ['return-payload', 'payload-with-metadata', 'direct-charge'];
+
 export function cardPaySetFlow(flow) {
     currentFlow = flow;
-    document
-        .getElementById('cardpay-flow-return-payload')
-        .classList.toggle('js-btn-inactive', flow !== 'return-payload');
-    document
-        .getElementById('cardpay-flow-direct-charge')
-        .classList.toggle('js-btn-inactive', flow !== 'direct-charge');
+    for (const f of FLOWS) {
+        document
+            .getElementById(`cardpay-flow-${f}`)
+            .classList.toggle('js-btn-inactive', flow !== f);
+    }
 }
 
 export function cardPayExtSubmit() {
@@ -138,7 +139,10 @@ export async function cardPayOpenIframe() {
     }
 
     const isExternal = currentSubmitMode === 'external';
-    const isDirectCharge = currentFlow === 'direct-charge';
+    // Read once: the flow buttons stay clickable while the form is open, and the
+    // result belongs to the flow that was mounted.
+    const flow = currentFlow;
+    const isDirectCharge = flow === 'direct-charge';
     container.style.display = 'block';
 
     if (isExternal) {
@@ -176,9 +180,7 @@ export async function cardPayOpenIframe() {
             : undefined,
     };
 
-    const options = isDirectCharge
-        ? { ...baseOptions, flow: 'direct-charge' }
-        : { ...baseOptions, flow: 'return-payload' };
+    const options = { ...baseOptions, flow };
 
     let controller = null;
     try {
@@ -215,6 +217,14 @@ export async function cardPayOpenIframe() {
             pre,
             `\n\n── onSuccess ──\n${JSON.stringify(sanitizeBody(result), null, 2)}`,
         );
+        if (flow === 'payload-with-metadata') {
+            appendOutput(
+                pre,
+                result.cardMetadata === null
+                    ? '\n\ncardMetadata is null — the BIN lookup failed, timed out or knew nothing of the card; the payload still arrived.'
+                    : '\n\ncardMetadata came from the BIN lookup the card form made on submit.',
+            );
+        }
         if (!isDirectCharge) {
             appendOutput(
                 pre,
