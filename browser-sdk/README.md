@@ -28,7 +28,7 @@ CDN (IIFE — exposes `window.GoPayBrowserSDK`):
 | | Flow A — encrypt-only | Flow B — full browser payments |
 |---|---|---|
 | **Required inputs** | `shareableKey`, `clientId` | + `paymentId`, `paymentSecret` |
-| **Browser methods** | `mountCardForm({ flow: 'return-payload' })` | + `chargePayment`, Apple Pay, Google Pay, `getStatus` |
+| **Browser methods** | `mountCardForm({ flow: 'return-payload' })`, or `'payload-with-metadata'` for the [card's details too](#card-details-with-the-payload) | + `chargePayment`, Apple Pay, Google Pay, `getStatus` |
 | **Server handles** | tokenize + charge (or save token for later) | — (browser charges directly) |
 
 ---
@@ -90,8 +90,11 @@ const controller = await sdk.mountCardForm(container, {
     locale: 'en',
 });
 
-// 3. Wait for the encrypted payload.
-const { encryptedPayload } = await controller.result;
+// 3. Wait for the encrypted payload. `result` is typed for every flow, so narrow it
+//    with `in` rather than a cast; the check then holds at runtime too.
+const result = await controller.result;
+if (!('encryptedPayload' in result)) throw new Error('Unexpected card form result');
+const { encryptedPayload } = result;
 
 // 4. Forward to your server — include browserData for charging on the server.
 const paymentId = 'PAY-123'; // from your server-side payment creation step
@@ -114,11 +117,11 @@ digits of the card number (the BIN) at GoPay. `result` then resolves with the en
 and the card's details:
 
 ```ts
-import type { EncryptedCardPayloadWithMetadata } from '@gopaycz/gopay-js-sdk-browser';
-
 const controller = await sdk.mountCardForm(container, { flow: 'payload-with-metadata' });
-const { encryptedPayload, cardMetadata } =
-    (await controller.result) as EncryptedCardPayloadWithMetadata;
+const result = await controller.result;
+// Only this flow's result has a `cardMetadata` key, so `in` narrows to it.
+if (!('cardMetadata' in result)) throw new Error('Unexpected card form result');
+const { encryptedPayload, cardMetadata } = result;
 
 if (cardMetadata) {
     // { scheme: 'VISA', corporate: false, brand: 'GOLD', service_type: 'DEBIT',
