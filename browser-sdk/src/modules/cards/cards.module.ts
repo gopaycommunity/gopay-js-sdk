@@ -33,6 +33,7 @@ import type {
 import { DEFAULT_CARD_FORM_THEME } from './card-form-themes.js';
 import {
     createFormProgress,
+    enumGuard,
     isCardFormFieldError,
     projectProgress,
     projectTrigger,
@@ -171,8 +172,14 @@ type CardFormBaseOptions = {
 export type CardFormOptions = CardFormBaseOptions &
     (DirectChargeOptions | ReturnPayloadOptions | PayloadWithMetadataOptions);
 
-const SCHEMES: ReadonlySet<unknown> = new Set(['VISA', 'MASTERCARD']);
-const SERVICE_TYPES: ReadonlySet<unknown> = new Set(['DEBIT', 'CREDIT']);
+const isScheme = enumGuard<CardMetadata['scheme']>({
+    VISA: true,
+    MASTERCARD: true,
+});
+const isServiceType = enumGuard<NonNullable<CardMetadata['service_type']>>({
+    DEBIT: true,
+    CREDIT: true,
+});
 
 function isShortText(v: unknown): v is string {
     return typeof v === 'string' && v.length > 0 && v.length <= 200;
@@ -189,18 +196,18 @@ function toCardMetadata(value: unknown): CardMetadata | null {
         return null;
     }
     const v = value as Record<string, unknown>;
-    if (!SCHEMES.has(v.scheme) || typeof v.corporate !== 'boolean') {
+    if (!isScheme(v.scheme) || typeof v.corporate !== 'boolean') {
         return null;
     }
     const metadata: CardMetadata = {
-        scheme: v.scheme as CardMetadata['scheme'],
+        scheme: v.scheme,
         corporate: v.corporate,
     };
     if (isShortText(v.brand)) {
         metadata.brand = v.brand;
     }
-    if (SERVICE_TYPES.has(v.service_type)) {
-        metadata.service_type = v.service_type as CardMetadata['service_type'];
+    if (isServiceType(v.service_type)) {
+        metadata.service_type = v.service_type;
     }
     if (isShortText(v.issuer)) {
         metadata.issuer = v.issuer;

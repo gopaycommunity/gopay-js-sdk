@@ -15,7 +15,7 @@ import type {
  * Lookup goes through sets built from their keys: `in` would also match
  * prototype keys (`{ field: 'toString' }`), and `Object.hasOwn` needs ES2022.
  */
-function enumGuard<T extends string>(
+export function enumGuard<T extends string>(
     record: Record<T, true>,
 ): (value: unknown) => value is T {
     const members = new Set<string>(Object.keys(record));
