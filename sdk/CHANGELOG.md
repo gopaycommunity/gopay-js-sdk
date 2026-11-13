@@ -1,3 +1,16 @@
+# [1.27.0](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.26.1...1.27.0) (2026-11-13)
+
+
+### Bug Fixes
+
+* **example:** name both payload flows where the tokenize section is auto-filled GPOMA-2821 ([5b5bb5f](https://github.com/gopaycommunity/gopay-js-sdk/commit/5b5bb5f7d35a5bf5d2783ad86ef1cee186499463))
+* **example:** offer the payload-with-metadata flow on the card form GPOMA-2821 ([a554aa6](https://github.com/gopaycommunity/gopay-js-sdk/commit/a554aa6c795e00a9e1cc1ae75aaa77640202e9a3))
+
+
+### Features
+
+* **cards:** resolve the card's BIN details with the encrypted payload in a payload-with-metadata flow GPOMA-2821 ([eb92b26](https://github.com/gopaycommunity/gopay-js-sdk/commit/eb92b260aef6b5778247f99f4009b04886e0eb47))
+
 ## [1.26.1](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.26.0...1.26.1) (2026-11-12)
 
 
