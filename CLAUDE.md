@@ -141,7 +141,7 @@ Two separate npm packages:
 
 `sdk.mountCardForm(container, options?)` fetches the hosted iframe URL from `GET /cards/card-form-url`, mounts the GoPay-hosted card encryption iframe, and returns `Promise<CardFormController>`:
 
-- **`result`** — `Promise<CardTokenResponse>` that resolves with the card token on success, rejects on error or cancellation.
+- **`result`** — resolves per `flow`: `{ encryptedPayload }` (`return-payload`), `{ encryptedPayload, cardMetadata }` (`payload-with-metadata`; `cardMetadata` is `null` when the BIN lookup failed or knew nothing), or the terminal `PaymentChargeStatusResponse` (`direct-charge`). Typed as the union of the three; rejects on error or cancellation.
 - **`setTheme(theme)`** / **`setLocale(locale)`** — send runtime updates to the iframe via `postMessage`.
 - **`submit()`** — triggers form submission from the parent page; only valid when `submitMode: 'external'`.
 - **`isValid`** — live validity state (only populated in external submit mode).
@@ -151,8 +151,8 @@ Two separate npm packages:
 **Init flow:**
 1. `mountCardForm` calls `GET /cards/card-form-url` internally to obtain the iframe URL.
 2. The SDK appends the iframe (`sandbox="allow-scripts allow-forms allow-same-origin"`). `allow-same-origin` keeps the real origin so `postMessage(targetOrigin)` works; the absent `allow-top-navigation` and `allow-popups` deny those vectors.
-3. On `iframe.onload`, the SDK posts `GOPAY_CARD_FORM_INIT` with tokens, environment, theme, locale, and submit mode. Target origin is the iframe's origin (derived from the card-form URL).
-4. The iframe posts back `GOPAY_CARD_ENCRYPT_RESULT` (carrying the JWE payload), then the SDK calls `POST /cards/tokens` internally and resolves `result`.
+3. On `iframe.onload`, the SDK posts `GOPAY_CARD_FORM_INIT` with tokens, environment, theme, locale, and submit mode, plus `binLookup: true` for `payload-with-metadata` only. Target origin is the iframe's origin (derived from the card-form URL).
+4. The iframe posts back `GOPAY_CARD_ENCRYPT_RESULT` with the JWE payload as `card_token`, and with `card_metadata` when it was asked for the BIN lookup and the lookup answered. The payload flows resolve `result` with it; `direct-charge` charges the attached payment with it and resolves with the charge state.
 
 **Submit modes:**
 - `'internal'` (default) — iframe renders its own submit button.
