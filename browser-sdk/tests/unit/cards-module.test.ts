@@ -279,7 +279,9 @@ describe('createCardsApi() — browser SDK', () => {
             });
 
             const result = await ctrl.result;
-            expect(result).toEqual({ encryptedPayload: 'enc_token_abc' });
+            // Strict: a `cardMetadata: undefined` key would pass toEqual and make
+            // `'cardMetadata' in result` true for a return-payload caller.
+            expect(result).toStrictEqual({ encryptedPayload: 'enc_token_abc' });
         });
 
         it('rejects result with CARD_FORM_ERROR on GOPAY_CARD_ENCRYPT_ERROR', async () => {
@@ -788,7 +790,7 @@ describe('createCardsApi() — browser SDK', () => {
             const result = await resultFor('payload-with-metadata', {
                 card_metadata: METADATA,
             });
-            expect(result).toEqual({
+            expect(result).toStrictEqual({
                 encryptedPayload: 'enc_token_abc',
                 cardMetadata: METADATA,
             });
@@ -797,7 +799,7 @@ describe('createCardsApi() — browser SDK', () => {
         it('resolves cardMetadata null when the iframe sends none', async () => {
             // A failed or empty lookup, and an iframe that predates the lookup.
             const result = await resultFor('payload-with-metadata', {});
-            expect(result).toEqual({
+            expect(result).toStrictEqual({
                 encryptedPayload: 'enc_token_abc',
                 cardMetadata: null,
             });
@@ -815,7 +817,7 @@ describe('createCardsApi() — browser SDK', () => {
                 const result = await resultFor('payload-with-metadata', {
                     card_metadata,
                 });
-                expect(result).toEqual({
+                expect(result).toStrictEqual({
                     encryptedPayload: 'enc_token_abc',
                     cardMetadata: null,
                 });
@@ -834,9 +836,20 @@ describe('createCardsApi() — browser SDK', () => {
                     bin: '55555555',
                 },
             });
-            expect(result).toEqual({
+            expect(result).toStrictEqual({
                 encryptedPayload: 'enc_token_abc',
                 cardMetadata: { scheme: 'MASTERCARD', corporate: true },
+            });
+        });
+
+        it('drops a brand or issuer that is empty', async () => {
+            const result = await resultFor('payload-with-metadata', {
+                card_metadata: { ...METADATA, brand: '', issuer: '' },
+            });
+            const { brand, issuer, ...rest } = METADATA;
+            expect(result).toStrictEqual({
+                encryptedPayload: 'enc_token_abc',
+                cardMetadata: rest,
             });
         });
 
@@ -864,7 +877,7 @@ describe('createCardsApi() — browser SDK', () => {
             const result = await resultFor('return-payload', {
                 card_metadata: METADATA,
             });
-            expect(result).toEqual({ encryptedPayload: 'enc_token_abc' });
+            expect(result).toStrictEqual({ encryptedPayload: 'enc_token_abc' });
         });
     });
 
