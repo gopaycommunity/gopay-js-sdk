@@ -50,8 +50,8 @@ describe('payment token re-acquisition', () => {
 
     const tokenCalls = () =>
         seen.filter((r) => r.url.includes('/oauth2/token'));
-    // init-session is left out: attachPayment() fires it on every attach
-    // without waiting, and these tests are about the calls that follow.
+    // init-session is left out: attachPayment() sends it on every attach,
+    // and these tests are about the calls that follow.
     const paymentCalls = () =>
         seen.filter(
             (r) =>

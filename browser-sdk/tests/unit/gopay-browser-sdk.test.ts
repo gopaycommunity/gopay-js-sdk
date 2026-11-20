@@ -269,9 +269,8 @@ describe('createGoPayBrowserSDK()', () => {
             req?.headers.get(name) ?? null;
         const pathOf = (req: Request) => new URL(req.url).pathname;
         /**
-         * The request to `path`. Paired by path rather than by position:
-         * init-session goes out from attachPayment() without being awaited,
-         * so nothing orders it against the calls that follow the attach.
+         * The request to `path`. Paired by path rather than by position, so
+         * that a test names the request it means.
          */
         const byPath = (requests: Request[], path: string) =>
             requests.find((req) => pathOf(req) === path);
@@ -323,10 +322,11 @@ describe('createGoPayBrowserSDK()', () => {
             await sdk.getChargeState();
 
             const api = apiRequests(seen);
-            expect(api.map(pathOf).sort()).toEqual([
+            // In this order: the attach waits for init-session.
+            expect(api.map(pathOf)).toEqual([
                 '/oauth2/token',
-                '/payments/pay_001/charge',
                 '/payments/pay_001/init-session',
+                '/payments/pay_001/charge',
             ]);
             const token = byPath(api, '/oauth2/token');
             const initSession = byPath(api, '/payments/pay_001/init-session');

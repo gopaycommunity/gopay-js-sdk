@@ -389,7 +389,7 @@ Exchanges `paymentSecret` for a payment-scoped JWT (`payment_credentials` grant,
 
 Once `attachPayment()` resolves, the payment stays usable however long the customer spends at checkout — you don't need to call it again. If a later `attachPayment()` or `logout()` overtakes it before it resolves, it rejects with `PAYMENT_NOT_ATTACHED` instead.
 
-It also tells GoPay that the browser SDK, and which version of it, works with the payment, and GoPay sets the payment's language from the customer's browser: the language their browser prefers most among those GoPay supports, or English. Nothing to configure. `attachPayment()` doesn't wait for this, and if it fails — as it does for a payment that is no longer `CREATED`, on a return page for instance — nothing rejects and `onError` isn't called.
+It also tells GoPay that the browser SDK, and which version of it, works with the payment, and GoPay sets the payment's language from the customer's browser: the language their browser prefers most among those GoPay supports, or English. Nothing to configure. `attachPayment()` waits for this, for at most 2 seconds, so that it is normally done before your next call reaches the payment; one that takes longer is left to finish on its own. If it fails — as it does for a payment that is no longer `CREATED`, on a return page for instance — `attachPayment()` resolves all the same, and `onError` isn't called.
 
 Throws `GoPaySDKError(PAYMENT_NOT_ATTACHED)` if these methods are called first.
 
@@ -708,8 +708,8 @@ allowed to replace it.
 
 The one exception is the call `attachPayment()` makes on its own to tell GoPay
 which SDK works with the payment, the one that sets the payment's language (see
-`sdk.attachPayment` above). Nothing waits on it, so its failure reaches neither
-`onError` nor your code. The usual one is not an error at all: on a return page
+`sdk.attachPayment` above). Nothing depends on its answer, so its failure reaches
+neither `onError` nor your code. The usual one is not an error at all: on a return page
 the payment is past `CREATED`, and GoPay answers `409`.
 
 Group by `endpoint` and `status`, never by the raw URL: request paths carry the

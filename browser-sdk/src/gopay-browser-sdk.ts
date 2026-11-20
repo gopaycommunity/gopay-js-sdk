@@ -174,23 +174,30 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
             // Overtaken by a later attachPayment() or a logout(): that one owns
             // the session. Resolving would tell the caller this payment is
             // attached, and the next charge would go to a different one.
-            if (!isCurrent()) {
-                throw new GoPaySDKError(
-                    '[GoPayBrowserSDK] attachPayment() was overtaken by a later attachPayment() or logout(); this payment is not attached.',
-                    { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
-                );
-            }
-            paymentsApi = createPaymentsApi(client, pid, threeDS, telemetry);
+            const assertCurrent = () => {
+                if (!isCurrent()) {
+                    throw new GoPaySDKError(
+                        '[GoPayBrowserSDK] attachPayment() was overtaken by a later attachPayment() or logout(); this payment is not attached.',
+                        { errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED },
+                    );
+                }
+            };
+            assertCurrent();
             // The attach has no HTTP call of its own to stand for it: the
             // exchange is a POST /oauth2/token like the SDK's own
             // authentication, so in the logs the two are only told apart by
-            // this marker.
+            // this marker. Ahead of init-session, which belongs to the attach
+            // it follows.
             telemetry.lifecycle('navigate', { flow: 'attach' });
-            // Not awaited: the attach is complete without it, and a slow or
-            // failing init-session must not hold up the checkout. A charge
-            // started straight after this may reach GoPay before it does —
-            // accepted; the card form's charge comes seconds later.
-            void initSession(client, pid);
+            // Awaited, and before the payment's methods are unlocked: it has
+            // to be the first request the payment sees and to be answered
+            // before the next one — see init-session.ts. It never rejects and
+            // gives up waiting on its own, so the attach cannot fail or hang
+            // on it.
+            await initSession(client, pid);
+            // The wait is long enough to be overtaken in, like the exchange.
+            assertCurrent();
+            paymentsApi = createPaymentsApi(client, pid, threeDS, telemetry);
         },
 
         ...cardsApi,

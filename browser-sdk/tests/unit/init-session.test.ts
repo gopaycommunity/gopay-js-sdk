@@ -12,10 +12,13 @@ import { createGoPayBrowserSDK } from '../../src/gopay-browser-sdk.js';
 
 /**
  * attachPayment() tells GoPay which client SDK works with the payment through
- * POST /payments/{id}/init-session. Nothing depends on it, so it must never
- * cost the checkout anything: the attach does not wait for it, and its failure
- * — a 409 is routine on a return page, the payment is past CREATED there —
- * neither rejects anything nor reaches the integrator's onError.
+ * POST /payments/{id}/init-session, and waits for the answer: GoPay does not
+ * cope with init-session overlapping another call on a fresh payment, so it
+ * has to be answered before the page can make one. Nothing depends on what
+ * the answer is, though, so it must never cost the checkout the payment: the
+ * wait is capped, and a failure — a 409 is routine on a return page, the
+ * payment is past CREATED there — neither rejects anything nor reaches the
+ * integrator's onError.
  */
 
 const makeResponse = (data: unknown, status = 200) =>
@@ -39,6 +42,7 @@ describe('init-session on attachPayment()', () => {
     let tokenHolds: Map<string, Promise<void>>;
     let tokenExchanges: number;
     let onError: Mock<(error: unknown) => void>;
+    let lastPaymentPath: string;
     let sdk: ReturnType<typeof createGoPayBrowserSDK>;
 
     const ownerOf = (req: Request) =>
@@ -66,6 +70,7 @@ describe('init-session on attachPayment()', () => {
                     return initSessionReply();
                 }
                 if (req.url.includes('/payments/')) {
+                    lastPaymentPath = new URL(req.url).pathname;
                     return makeResponse({ id: 'pay-A', state: 'CREATED' });
                 }
                 // gw-logger ingest
@@ -83,11 +88,12 @@ describe('init-session on attachPayment()', () => {
     });
 
     afterEach(() => {
+        vi.useRealTimers();
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
     });
 
-    /** Let the unawaited init-session go out and settle. */
+    /** Let everything already under way run as far as it can. */
     const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
     it('sends the browser SDK and its version, with the payment token', async () => {
@@ -117,15 +123,95 @@ describe('init-session on attachPayment()', () => {
         expect(initSessions[0].headers.get('Accept-Language')).toBeNull();
     });
 
-    it('does not hold up the attach', async () => {
-        initSessionReply = () => new Promise<Response>(() => {});
+    // The point of waiting: no call of the page's can reach the payment
+    // while init-session is under way.
+    it('holds the attach, and the payment’s methods, until it has answered', async () => {
+        let answer!: () => void;
+        const answered = new Promise<void>((resolve) => {
+            answer = resolve;
+        });
+        initSessionReply = async () => {
+            await answered;
+            return new Response(null, { status: 204 });
+        };
+        let attached = false;
 
-        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec' });
+        const attach = sdk
+            .attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec' })
+            .then(() => {
+                attached = true;
+            });
+        await settle();
+        expect(initSessions).toHaveLength(1);
+        expect(attached).toBe(false);
+        await expect(sdk.getStatus()).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
+
+        answer();
+        await attach;
         await expect(sdk.getStatus()).resolves.toMatchObject({
             state: 'CREATED',
         });
-        await settle();
+    });
+
+    it('stops waiting after 2 seconds for one that never answers', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        initSessionReply = () => new Promise<Response>(() => {});
+        let attached = false;
+
+        const attach = sdk
+            .attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec' })
+            .then(() => {
+                attached = true;
+            });
+        await vi.advanceTimersByTimeAsync(1_999);
         expect(initSessions).toHaveLength(1);
+        expect(attached).toBe(false);
+
+        await vi.advanceTimersByTimeAsync(1);
+        await attach;
+        await expect(sdk.getStatus()).resolves.toMatchObject({
+            state: 'CREATED',
+        });
+        expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('leaves no timer behind once it has answered', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec' });
+
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    // The wait is long enough for the page to attach another payment in.
+    it('rejects an attach that a later one overtook while it waited', async () => {
+        let answerA!: () => void;
+        const answeredA = new Promise<void>((resolve) => {
+            answerA = resolve;
+        });
+        initSessionReply = async () => {
+            if (initSessions.length === 1) {
+                await answeredA;
+            }
+            return new Response(null, { status: 204 });
+        };
+
+        const first = sdk.attachPayment({
+            paymentId: 'pay-A',
+            paymentSecret: 'sec',
+        });
+        await settle();
+        await sdk.attachPayment({ paymentId: 'pay-B', paymentSecret: 'sec' });
+        answerA();
+
+        await expect(first).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
+        // pay-B stays the attached payment.
+        await sdk.getChargeState();
+        expect(lastPaymentPath).toBe('/payments/pay-B/charge');
     });
 
     it.each([
