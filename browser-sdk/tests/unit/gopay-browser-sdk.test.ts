@@ -322,7 +322,9 @@ describe('createGoPayBrowserSDK()', () => {
             await sdk.getChargeState();
 
             const api = apiRequests(seen);
-            // In this order: the attach waits for init-session.
+            // init-session goes out with the attach, ahead of the page's own
+            // call. That the attach also waits for its answer is for
+            // init-session.test.ts to show — this order holds without it.
             expect(api.map(pathOf)).toEqual([
                 '/oauth2/token',
                 '/payments/pay_001/init-session',

@@ -16,7 +16,7 @@ import {
 } from './modules/auth/auth.module.js';
 import { createCardsApi } from './modules/cards/cards.module.js';
 import { fetchBrowserData } from './modules/payments/browser-data.js';
-import { initSession } from './modules/payments/init-session.js';
+import { createSessionOpener } from './modules/payments/init-session.js';
 import { createPaymentsApi } from './modules/payments/payments.module.js';
 import { createWalletsApi } from './modules/wallets/wallets.module.js';
 import { SDK_VERSION } from './version.js';
@@ -100,6 +100,7 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
 
     let paymentsApi: PaymentsApi | null = null;
     const getPaymentsApi = () => paymentsApi;
+    const openSession = createSessionOpener(client);
     // Bumped by every attachPayment() and by logout(). Two attaches may overlap
     // while no card form is mounted, and the one called last is the one that
     // counts — not whichever exchange happens to answer last. A logout counts
@@ -120,9 +121,22 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
     // reportErrors so that config.onError also sees the failures raised before a
     // request goes out — argument validation and the mount-time guards — and not
     // just the ones the HTTP client raises itself.
+    const authApi = createAuthApi(client, detach);
+
     return reportErrors(client, {
         version: SDK_VERSION,
-        ...createAuthApi(client, detach),
+        ...authApi,
+
+        /**
+         * Returns `true` while a payment is attached — from the moment
+         * `attachPayment()` resolves, and no sooner. The payment's token is
+         * held from part-way through the attach, while its methods still
+         * throw `PAYMENT_NOT_ATTACHED`; a page that unlocks its pay button on
+         * this must not be told `true` for a payment it cannot use yet.
+         */
+        isAuthenticated(): boolean {
+            return paymentsApi !== null && authApi.isAuthenticated();
+        },
 
         /**
          * Exchange a `payment_secret` for a payment-scoped JWT and unlock
@@ -183,6 +197,9 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
                 }
             };
             assertCurrent();
+            // Built here, unlocked below: an id it rejects fails the attach
+            // now, before anything is sent to the payment or said about it.
+            const attached = createPaymentsApi(client, pid, threeDS, telemetry);
             // The attach has no HTTP call of its own to stand for it: the
             // exchange is a POST /oauth2/token like the SDK's own
             // authentication, so in the logs the two are only told apart by
@@ -194,10 +211,10 @@ export function createGoPayBrowserSDK(config: GoPayBrowserConfig) {
             // before the next one — see init-session.ts. It never rejects and
             // gives up waiting on its own, so the attach cannot fail or hang
             // on it.
-            await initSession(client, pid);
+            await openSession(pid);
             // The wait is long enough to be overtaken in, like the exchange.
             assertCurrent();
-            paymentsApi = createPaymentsApi(client, pid, threeDS, telemetry);
+            paymentsApi = attached;
         },
 
         ...cardsApi,

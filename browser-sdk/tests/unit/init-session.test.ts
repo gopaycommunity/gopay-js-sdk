@@ -147,9 +147,13 @@ describe('init-session on attachPayment()', () => {
         await expect(sdk.getStatus()).rejects.toMatchObject({
             errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
         });
+        // The token is already held, but a page that unlocks its pay button
+        // on isAuthenticated() must not be told yes for methods that throw.
+        expect(sdk.isAuthenticated()).toBe(false);
 
         answer();
         await attach;
+        expect(sdk.isAuthenticated()).toBe(true);
         await expect(sdk.getStatus()).resolves.toMatchObject({
             state: 'CREATED',
         });
@@ -183,6 +187,93 @@ describe('init-session on attachPayment()', () => {
         await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec' });
 
         expect(vi.getTimerCount()).toBe(0);
+    });
+
+    // A double click, or an effect React runs twice: two init-sessions under
+    // way for one fresh payment is the very overlap the wait is there against.
+    it('sends one init-session for a payment attached again while it waits', async () => {
+        let answer!: () => void;
+        const answered = new Promise<void>((resolve) => {
+            answer = resolve;
+        });
+        initSessionReply = async () => {
+            await answered;
+            return new Response(null, { status: 204 });
+        };
+        let secondAttached = false;
+
+        const first = sdk.attachPayment({
+            paymentId: 'pay-A',
+            paymentSecret: 'sec',
+        });
+        first.catch(() => {});
+        await settle();
+        const second = sdk
+            .attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec' })
+            .then(() => {
+                secondAttached = true;
+            });
+        await settle();
+
+        expect(initSessions).toHaveLength(1);
+        expect(secondAttached).toBe(false);
+
+        answer();
+        await second;
+        await expect(first).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.PAYMENT_NOT_ATTACHED,
+        });
+        expect(initSessions).toHaveLength(1);
+        expect(sdk.isAuthenticated()).toBe(true);
+    });
+
+    // Past the 2 seconds the first attach has resolved, but its request is
+    // still out there: a second one would overlap it just the same.
+    it('sends no second init-session while one that outlived the wait is still under way', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        initSessionReply = () => new Promise<Response>(() => {});
+
+        const first = sdk.attachPayment({
+            paymentId: 'pay-A',
+            paymentSecret: 'sec',
+        });
+        await vi.advanceTimersByTimeAsync(2_000);
+        await first;
+
+        let secondAttached = false;
+        const second = sdk
+            .attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec' })
+            .then(() => {
+                secondAttached = true;
+            });
+        // The second attach gets a full wait of its own.
+        await vi.advanceTimersByTimeAsync(1_999);
+        expect(secondAttached).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        await second;
+
+        expect(initSessions).toHaveLength(1);
+    });
+
+    it('sends it again for a payment attached once the first has answered', async () => {
+        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec' });
+        await sdk.attachPayment({ paymentId: 'pay-A', paymentSecret: 'sec' });
+
+        expect(initSessions).toHaveLength(2);
+    });
+
+    // An id that cannot be a path segment fails the attach as it always did:
+    // at once, with nothing sent to the payment.
+    it('sends nothing for a payment id the attach rejects', async () => {
+        await expect(
+            sdk.attachPayment({ paymentId: '..', paymentSecret: 'sec' }),
+        ).rejects.toMatchObject({
+            errorCode: GoPayErrorCodes.INVALID_ARGUMENT,
+        });
+        await settle();
+
+        expect(initSessions).toHaveLength(0);
+        expect(sdk.isAuthenticated()).toBe(false);
     });
 
     // The wait is long enough for the page to attach another payment in.
