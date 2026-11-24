@@ -1,3 +1,10 @@
+## [1.27.1](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.27.0...1.27.1) (2026-11-24)
+
+### Bug Fixes
+
+* **auth:** attachPayment waits for init-session before it unlocks the payment GPOMA-2842 ([bf0b063](https://github.com/gopaycommunity/gopay-js-sdk/commit/bf0b06319abd15444bbc39bf4e6d39d26d0a962b))
+* **auth:** one init-session per payment while it is under way, and isAuthenticated only once the payment is usable GPOMA-2842 ([f7dd984](https://github.com/gopaycommunity/gopay-js-sdk/commit/f7dd984fd6084028e51907922a1e5dd365963cfe))
+
 # [1.27.0](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.26.1...1.27.0) (2026-11-13)
 
 
