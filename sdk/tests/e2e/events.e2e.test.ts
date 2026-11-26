@@ -37,6 +37,33 @@ async function waitFor<T>(
     }
 }
 
+/** Creates and cancels a payment, then waits for its payments.canceled to be listed. */
+async function cancelAndAwaitEvent(
+    sdk: GoPaySDK,
+    goid: string,
+    orderNumber: string,
+): Promise<{ paymentId: string; canceled: GoPayEvent }> {
+    const { id: paymentId } = await sdk.createPayment(
+        goid,
+        paymentBody(orderNumber),
+    );
+    await sdk.cancelPayment(paymentId);
+    // The event is recorded asynchronously, about a second after the cancel.
+    const canceled = await waitFor(
+        `payments.canceled of ${paymentId} in listEvents`,
+        async () =>
+            (
+                await sdk.listEvents(goid, {
+                    related_type: 'payments',
+                    related_id: paymentId,
+                })
+            ).items.find((event) => event.type === 'payments.canceled'),
+        15_000,
+    );
+
+    return { paymentId, canceled };
+}
+
 describe('events and webhooks — E2E', () => {
     let sdk: GoPaySDK;
     let goid: string;
@@ -48,24 +75,11 @@ describe('events and webhooks — E2E', () => {
             'create and cancel payments to read their events',
             SCOPE,
         ));
-        const payment = await sdk.createPayment(
+        ({ paymentId, canceled } = await cancelAndAwaitEvent(
+            sdk,
             goid,
-            paymentBody('e2e-events'),
-        );
-        paymentId = payment.id;
-        await sdk.cancelPayment(paymentId);
-        // The event is recorded asynchronously, about a second after the cancel.
-        canceled = await waitFor(
-            'payments.canceled in listEvents',
-            async () =>
-                (
-                    await sdk.listEvents(goid, {
-                        related_type: 'payments',
-                        related_id: paymentId,
-                    })
-                ).items.find((event) => event.type === 'payments.canceled'),
-            15_000,
-        );
+            'e2e-events',
+        ));
     }, 60_000);
 
     it('loads the webhook signing keys', async () => {
@@ -97,6 +111,12 @@ describe('events and webhooks — E2E', () => {
     });
 
     it('pages across a page boundary, newest first, without repeating an event', async () => {
+        // Five events of its own, with the one from beforeAll: an env's event log starts empty each
+        // day, and the suites that add more run in parallel and write too late to count on.
+        for (let n = 1; n <= 4; n += 1) {
+            await cancelAndAwaitEvent(sdk, goid, `e2e-events-paging-${n}`);
+        }
+
         const first = await sdk.listEvents(goid, { max_items: 2 });
         expect(first.next_page_url).toBeTruthy();
 
@@ -113,7 +133,7 @@ describe('events and webhooks — E2E', () => {
         // same few milliseconds can be out of that order (measured on alpha9: 1 and 4 ms).
         const ids = seen.map((event) => event.id);
         expect(ids).toEqual([...ids].sort().reverse());
-    });
+    }, 90_000);
 
     it('surfaces a 400 as GoPayHTTPError', async () => {
         const error = await sdk
