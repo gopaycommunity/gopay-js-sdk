@@ -1,3 +1,10 @@
+## [1.27.2](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.27.1...1.27.2) (2026-11-26)
+
+### Bug Fixes
+
+* **ci:** name the webhook e2e step after what it needs, demo-site on the chosen env GPOMA-2739 ([13d2573](https://github.com/gopaycommunity/gopay-js-sdk/commit/13d2573e3c3d9bfa48029f46b923adfb8aa8bb85))
+* **test:** the events paging e2e test makes its own five events, as an environment's event log starts empty each day GPOMA-2739 ([580751a](https://github.com/gopaycommunity/gopay-js-sdk/commit/580751a9dcf5cdd34635b043f806ffa4e931efaa))
+
 ## [1.27.1](https://github.com/gopaycommunity/gopay-js-sdk/compare/1.27.0...1.27.1) (2026-11-24)
 
 ### Bug Fixes
