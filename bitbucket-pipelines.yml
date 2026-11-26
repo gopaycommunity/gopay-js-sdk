@@ -228,7 +228,7 @@ definitions:
     # gp-main's eshop notification URL and EVENT_WEBHOOK_ALLOW_INTERNAL_URL (k8s-deployment
     # app/dev/alpha/values.yaml).
     - step: &webhook-delivery-on-env
-        name: Webhook delivery against chosen env (fails where demo-site has no receiver)
+        name: Webhook delivery against chosen env (needs demo-site)
         runs-on: *dev-2x
         caches:
           - yarn-global
